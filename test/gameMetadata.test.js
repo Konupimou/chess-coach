@@ -41,12 +41,16 @@ test("Speicherentwurf übernimmt vorhandene Metadaten und setzt ein lokales Datu
     metadata: {
       playerColor: "w",
       playedAt: "2026-07-24",
+      opponentType: "engine",
+      engineLevel: "hard",
       timeFormat: "rapid",
       playerRating: 1500,
       rated: true,
     },
   });
   assert.equal(draft.playerColor, "w");
+  assert.equal(draft.opponentType, "engine");
+  assert.equal(draft.engineLevel, "hard");
   assert.equal(draft.timeFormat, "rapid");
   assert.equal(draft.playerRating, "1500");
   assert.equal(draft.rated, "yes");

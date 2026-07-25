@@ -341,6 +341,27 @@ test("vorläufige und sehr kurze Analysen zählen nicht als Profilanalyse oder B
   assert.deepEqual(profile.topGameIds, []);
 });
 
+test("vollständig analysierte, aber unbeendete Partien werden nicht als Bestpartie gerankt", () => {
+  const profile = buildPlayerProfile([{
+    id: "unfinished",
+    title: "Abgebrochenes Training",
+    result: "*",
+    plyCount: 24,
+    metadata: { playerColor: "w", playedAt: "2026-07-26" },
+    review: {
+      final: true,
+      coverage: 100,
+      totalMoves: 24,
+      analyzedMoves: 24,
+      whiteAccuracy: 99,
+      blackAccuracy: 80,
+    },
+  }]);
+
+  assert.deepEqual(profile.topGameIds, []);
+  assert.equal(profile.bestGames.length, 0);
+});
+
 test("Längenstatistik nutzt Halbzüge und erkennt die längste Partie", () => {
   const profile = buildPlayerProfile([
     { id: "short", title: "Kurz", plyCount: 31 },

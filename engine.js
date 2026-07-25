@@ -36,10 +36,35 @@ export function scoreFromWhitePerspective(score, fen) {
   };
 }
 
+export function parseBestMoveLine(line) {
+  if (typeof line !== "string") return null;
+  const match = line.match(
+    /^bestmove\s+(\(none\)|[a-h][1-8][a-h][1-8][qrbn]?)(?:\s+ponder\s+([a-h][1-8][a-h][1-8][qrbn]?))?/i,
+  );
+  if (!match) return null;
+  return {
+    move: match[1] === "(none)" ? null : match[1].toLowerCase(),
+    ponder: match[2] ? match[2].toLowerCase() : null,
+  };
+}
+
 export class Engine {
-  constructor({ onEvaluation, onInfo, onError, depth = 15, threads, hashMB, evalFile = null, multiPV = 1 } = {}) {
+  constructor({
+    onEvaluation,
+    onInfo,
+    onBestMove,
+    onReady,
+    onError,
+    depth = 15,
+    threads,
+    hashMB,
+    evalFile = null,
+    multiPV = 1,
+  } = {}) {
     this.onEvaluation = typeof onEvaluation === 'function' ? onEvaluation : () => {};
     this.onInfo = typeof onInfo === 'function' ? onInfo : null;
+    this.onBestMove = typeof onBestMove === "function" ? onBestMove : null;
+    this.onReady = typeof onReady === "function" ? onReady : null;
     this.onError = typeof onError === "function" ? onError : () => {};
 
     // Depth
@@ -83,6 +108,9 @@ export class Engine {
     this.disableMultiThread = false;
     this.currentCandidate = null;
     this.multiPV = Math.max(1, Math.min(parseInt(multiPV, 10) || 1, 5));
+    this.analysisMode = true;
+    this.limitStrength = false;
+    this.targetElo = 2800;
     this.searchSequence = 0;
     this.activeSearch = null;
     this.pendingSearch = null;
@@ -150,6 +178,25 @@ export class Engine {
     this._markOptionsDirty();
   }
 
+  setAnalysisStrength() {
+    if (this.analysisMode && !this.limitStrength) return;
+    this.analysisMode = true;
+    this.limitStrength = false;
+    this._markOptionsDirty();
+  }
+
+  setPlayingStrength(elo) {
+    const parsed = Number.parseInt(elo, 10);
+    const targetElo = Number.isInteger(parsed)
+      ? Math.max(1320, Math.min(parsed, 3190))
+      : 1700;
+    if (!this.analysisMode && this.limitStrength && targetElo === this.targetElo) return;
+    this.analysisMode = false;
+    this.limitStrength = true;
+    this.targetElo = targetElo;
+    this._markOptionsDirty();
+  }
+
   _markOptionsDirty() {
     this.optionsDirty = true;
     if (this.isReady && !this.searching) this._applyDirtyOptions();
@@ -160,6 +207,11 @@ export class Engine {
     this.sf.postMessage(`setoption name Threads value ${this.threads}`);
     this.sf.postMessage(`setoption name Hash value ${this.hashMB}`);
     this.sf.postMessage(`setoption name MultiPV value ${this.multiPV}`);
+    this.sf.postMessage(`setoption name UCI_AnalyseMode value ${this.analysisMode ? "true" : "false"}`);
+    this.sf.postMessage(`setoption name UCI_LimitStrength value ${this.limitStrength ? "true" : "false"}`);
+    if (this.limitStrength) {
+      this.sf.postMessage(`setoption name UCI_Elo value ${this.targetElo}`);
+    }
     this.optionsDirty = false;
   }
 
@@ -343,7 +395,11 @@ export class Engine {
     if (line.includes('uciok')) {
       this._clearHandshakeTimeout();
       if (!this._optionsApplied) {
-        this.sf.postMessage('setoption name UCI_AnalyseMode value true');
+        this.sf.postMessage(`setoption name UCI_AnalyseMode value ${this.analysisMode ? "true" : "false"}`);
+        this.sf.postMessage(`setoption name UCI_LimitStrength value ${this.limitStrength ? "true" : "false"}`);
+        if (this.limitStrength) {
+          this.sf.postMessage(`setoption name UCI_Elo value ${this.targetElo}`);
+        }
         this.sf.postMessage(`setoption name Threads value ${this.threads}`);
         this.sf.postMessage(`setoption name Hash value ${this.hashMB}`);
         this.sf.postMessage(`setoption name MultiPV value ${this.multiPV}`);
@@ -361,6 +417,14 @@ export class Engine {
     if (line.includes('readyok')) {
       this._clearHandshakeTimeout();
       this.isReady = true;
+      if (this.onReady) {
+        try {
+          this.onReady({
+            workerPath: this.activeWorkerPath,
+            threads: this.threads,
+          });
+        } catch {}
+      }
       if (this.pendingSearch) {
         const search = this.pendingSearch;
         this.pendingSearch = null;
@@ -394,8 +458,11 @@ export class Engine {
     }
 
     if (line.startsWith('bestmove ')) {
+      const completedSearch = this.activeSearch;
       const completedInfo = this.latestPrimaryInfo;
+      const completedMove = parseBestMoveLine(line);
       const nextSearch = this.pendingSearch;
+      const wasStopped = this.stopping;
       this.searching = false;
       this.stopping = false;
       this.activeSearch = null;
@@ -410,6 +477,24 @@ export class Engine {
         this._emitInfo(completedInfo);
       } else {
         this._applyDirtyOptions();
+      }
+      if (
+        !wasStopped
+        && completedSearch
+        && completedMove?.move
+        && this.onBestMove
+      ) {
+        const payload = {
+          ...completedMove,
+          fen: completedSearch.fen,
+          searchId: completedSearch.id,
+          info: completedInfo,
+          context: completedSearch.context,
+        };
+        queueMicrotask(() => {
+          if (this.disposed) return;
+          try { this.onBestMove(payload); } catch {}
+        });
       }
       return;
     }
@@ -440,13 +525,14 @@ export class Engine {
     this.sf.postMessage(`go depth ${search.depth}`);
   }
 
-  evaluate(fen, depth = this.depth) {
+  evaluate(fen, depth = this.depth, context = null) {
     if (!this.sf) return;
     const normalizedDepth = Number.isInteger(depth) ? depth : this.depth;
     const search = {
       id: ++this.searchSequence,
       fen,
       depth: normalizedDepth,
+      context: context && typeof context === "object" ? { ...context } : context,
     };
     if (!this.isReady) {
       this.pendingSearch = search;

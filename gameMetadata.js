@@ -35,6 +35,10 @@ export function createGameSaveDraft(record = null, now = new Date()) {
       ? metadata.playedAt
       : dateInputValue(now),
     opponent: typeof metadata.opponent === "string" ? metadata.opponent : "",
+    opponentType: metadata.opponentType === "engine" ? "engine" : "",
+    engineLevel: ["easy", "medium", "hard", "expert"].includes(metadata.engineLevel)
+      ? metadata.engineLevel
+      : "",
     opening: typeof metadata.opening === "string" ? metadata.opening : "",
     timeFormat: Object.hasOwn(TIME_FORMAT_LABELS, metadata.timeFormat)
       ? metadata.timeFormat

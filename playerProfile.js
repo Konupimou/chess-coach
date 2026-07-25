@@ -591,6 +591,7 @@ function bestGameRanking(games, limit, minimumOwnMoves) {
     .filter((game) => (
       game.id
       && game.color
+      && game.perspective
       && game.review.complete
       && game.review.analyzedByColor[game.color] >= minimumOwnMoves
     ))

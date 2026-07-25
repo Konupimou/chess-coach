@@ -3,7 +3,7 @@ import "../style.css";
 
 export const metadata = {
   title: "Chess Coach",
-  description: "Analysiere Schachvarianten mit Stockfish und einem optionalen KI-Coach.",
+  description: "Spiele gegen Stockfish mit Live-Feedback oder analysiere Schachvarianten mit deinem Coach.",
 };
 
 export default function RootLayout({ children }) {

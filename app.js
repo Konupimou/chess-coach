@@ -38,6 +38,13 @@ import {
   TIME_FORMAT_LABELS,
 } from "./gameMetadata.js";
 import { buildPlayerProfile } from "./playerProfile.js";
+import {
+  describeLiveMove,
+  engineOpponentLabel,
+  ENGINE_LEVELS,
+  normalizeEngineLevel,
+  resolvePlayerColor,
+} from "./playMode.js";
 
 export class ChessApp {
   ensureEngine() {
@@ -57,6 +64,8 @@ export class ChessApp {
             }
           },
           onInfo: (info) => this.handleEngineInfo(info),
+          onBestMove: (result) => this.handleEngineBestMove(result),
+          onReady: () => this.handleEngineReady(),
           onError: (error) => this.handleEngineError(error),
           multiPV: Math.max(1, this.suggestionCount || 1)
         });
@@ -76,7 +85,24 @@ export class ChessApp {
     this.destroyed = false;
     this.engine = null;
     this.engineFailed = false;
+    this.engineReady = false;
+    this.appMode = "play";
+    this.playSession = {
+      active: false,
+      colorPreference: "random",
+      playerColor: "w",
+      engineColor: "b",
+      level: "medium",
+      liveFeedback: true,
+      phase: "idle",
+      generation: 0,
+      expectedFen: null,
+      expectedSearchId: null,
+      lastFeedbackPly: 0,
+      feedbackHistory: [],
+    };
     this.game = new Chess();
+    this.declaredGameResult = null;
     this.moveTree = new MoveTreeNode({ fen: this.game.fen() });
     this.currentNode = this.moveTree;
 
@@ -84,11 +110,7 @@ export class ChessApp {
       position: this.currentNode.fen,
       draggable: true,
       pieceTheme: "./libs/img/{piece}.png",
-      onDragStart: () => {
-        if (this.previewState || this.reviewRunning) return false;
-        this.moveArrows?.setVisible(false);
-        return true;
-      },
+      onDragStart: (source, piece) => this.handleDragStart(source, piece),
       onDrop: this.handleMove.bind(this),
       dropOffBoard: "snapback",
       onSnapEnd: () => this.moveArrows?.setVisible(true),
@@ -170,6 +192,7 @@ export class ChessApp {
       boardStack.className = 'board-stack';
       wrap.appendChild(boardStack);
     }
+    this.boardStack = boardStack;
 
     let boardRow = document.getElementById("board-row");
     if (!boardRow) {
@@ -186,6 +209,7 @@ export class ChessApp {
     }
     boardSurface.appendChild(boardEl);
     boardRow.appendChild(boardSurface);
+    this.setupBoardKeyboard(boardEl, boardSurface);
     this.board.resize();
     this.moveArrows = new MoveArrowOverlay({
       hostEl: boardSurface,
@@ -201,6 +225,15 @@ export class ChessApp {
       wrap.appendChild(analysisColumn);
     }
     this.analysisColumn = analysisColumn;
+    this.boardContainer = wrap;
+    this.boardStage = document.getElementById("app");
+    this.boardSurface = boardSurface;
+    this.playModeButton = document.getElementById("play-mode-button");
+    this.analysisModeButton = document.getElementById("analysis-mode-button");
+    this.moveListSection = document.querySelector(".move-list-section");
+    this.moveListEyebrow = document.getElementById("move-list-eyebrow");
+    this.moveListTitle = document.getElementById("move-list-title");
+    this.keyboardHint = document.getElementById("keyboard-hint");
 
     const engineAvailable = this.ensureEngine();
 
@@ -209,6 +242,7 @@ export class ChessApp {
 
     const boardToolbar = document.createElement("div");
     boardToolbar.className = "board-toolbar";
+    this.boardToolbar = boardToolbar;
 
     const statusGroup = document.createElement("div");
     statusGroup.className = "board-status-group";
@@ -270,17 +304,18 @@ export class ChessApp {
     this.engineSettingsButton.addEventListener("click", () => this.openEngineSettings());
     boardActions.appendChild(this.engineSettingsButton);
 
-    const flipButton = document.createElement("button");
-    flipButton.type = "button";
-    flipButton.className = "secondary-button";
-    flipButton.textContent = "Brett drehen";
-    flipButton.addEventListener("click", () => {
+    this.flipButton = document.createElement("button");
+    this.flipButton.type = "button";
+    this.flipButton.className = "secondary-button";
+    this.flipButton.textContent = "Brett drehen";
+    this.flipButton.addEventListener("click", () => {
       this.stopSuggestionPreview();
       const orientation = this.board.flip();
       this.moveArrows?.setOrientation(orientation);
+      this.resetBoardKeyboardCursor();
       this.scheduleBoardResize();
     });
-    boardActions.appendChild(flipButton);
+    boardActions.appendChild(this.flipButton);
 
     this.saveGameButton = document.createElement("button");
     this.saveGameButton.type = "button";
@@ -298,21 +333,29 @@ export class ChessApp {
     this.feedbackButton.addEventListener("click", () => this.startFullGameReview());
     boardActions.appendChild(this.feedbackButton);
 
-    const exportBtn = document.createElement("button");
-    exportBtn.type = "button";
-    exportBtn.className = "secondary-button";
-    exportBtn.textContent = "PGN";
-    exportBtn.addEventListener("click", () => this.exportPgn());
-    boardActions.appendChild(exportBtn);
+    this.exportButton = document.createElement("button");
+    this.exportButton.type = "button";
+    this.exportButton.className = "secondary-button";
+    this.exportButton.textContent = "PGN";
+    this.exportButton.addEventListener("click", () => this.exportPgn());
+    boardActions.appendChild(this.exportButton);
 
-    const resetButton = document.createElement("button");
-    resetButton.type = "button";
-    resetButton.className = "secondary-button";
-    resetButton.textContent = "Neue Partie";
-    resetButton.addEventListener("click", () => this.resetGame());
-    boardActions.appendChild(resetButton);
+    this.resetButton = document.createElement("button");
+    this.resetButton.type = "button";
+    this.resetButton.className = "secondary-button";
+    this.resetButton.textContent = "Neue Partie";
+    this.resetButton.addEventListener("click", () => {
+      if (this.appMode === "play") {
+        this.prepareNewEngineGame();
+      } else {
+        this.resetGame();
+      }
+    });
+    boardActions.appendChild(this.resetButton);
     boardToolbar.appendChild(boardActions);
     boardStack.appendChild(boardToolbar);
+
+    this.createPlayPanel(engineAvailable);
 
     this.suggestionsEl = document.createElement('div');
     this.suggestionsEl.id = 'engine-suggestions';
@@ -328,6 +371,7 @@ export class ChessApp {
 
     const chatWrapper = document.createElement('div');
     chatWrapper.className = 'chat-wrapper';
+    this.chatWrapper = chatWrapper;
     this.createChatPanel(chatWrapper);
     analysisColumn.appendChild(chatWrapper);
 
@@ -492,6 +536,10 @@ export class ChessApp {
     this.createFeedbackDialog();
     this.createSaveGameDialog();
     this.createAccountPanel();
+    this._onPlayModeClick = () => this.setAppMode("play");
+    this._onAnalysisModeClick = () => this.setAppMode("analysis");
+    this.playModeButton?.addEventListener("click", this._onPlayModeClick);
+    this.analysisModeButton?.addEventListener("click", this._onAnalysisModeClick);
 
     this.detachKeys = attachKeyboard({
       onLeft: () => this.goBackOnePly(),
@@ -545,46 +593,929 @@ export class ChessApp {
     this.updateGameStatus();
     this.updateAccuracyDisplay();
     this.updateSaveGameButton();
+    this.updateModeUi();
     this.evaluateCurrentPosition();
     this.initializeAccountIdentity();
   }
 
-  handleMove(source, target) {
-    if (this.reviewRunning) return "snapback";
-    this.stopSuggestionPreview();
-    const turn = this.game.turn();
-    const fromPiece = this.game.get(source);
-    if (!fromPiece || (turn === "w" && fromPiece.color !== "w") || (turn === "b" && fromPiece.color !== "b")) {
-      setTimeout(() => this.board.position(this.game.fen()), 0);
-      return "snapback";
+  createPlayPanel(engineAvailable) {
+    const panel = document.createElement("section");
+    panel.id = "play-mode-panel";
+    panel.className = "card play-mode-card";
+    panel.setAttribute("aria-labelledby", "play-mode-title");
+    this.playPanel = panel;
+
+    const heading = document.createElement("div");
+    heading.className = "play-mode-heading";
+    const headingCopy = document.createElement("div");
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "Gegen die Engine";
+    const title = document.createElement("h2");
+    title.id = "play-mode-title";
+    title.textContent = "Deine Partie";
+    const description = document.createElement("p");
+    description.textContent = "Spiele gegen Stockfish und erhalte direkt nach deinen Zügen ein klares Feedback.";
+    headingCopy.append(eyebrow, title, description);
+    const engineBadge = document.createElement("span");
+    engineBadge.className = "play-engine-badge";
+    engineBadge.textContent = !engineAvailable
+      ? "Engine nicht verfügbar"
+      : this.engineReady
+        ? "Stockfish bereit"
+        : "Stockfish wird geladen …";
+    this.playEngineBadgeEl = engineBadge;
+    heading.append(headingCopy, engineBadge);
+    panel.appendChild(heading);
+
+    this.playEmptyView = document.createElement("div");
+    this.playEmptyView.className = "play-empty-state";
+    const emptyTitle = document.createElement("h3");
+    emptyTitle.textContent = "Neue Engine-Partie starten";
+    const emptyText = document.createElement("p");
+    emptyText.textContent = "Wähle deine Farbe, die Schwierigkeit und ob der Live-Coach deine Züge bewerten soll.";
+    const benefits = document.createElement("ul");
+    [
+      "Du bewegst ausschließlich deine eigenen Figuren.",
+      "Keine Lösung wird vor deinem Zug eingeblendet.",
+      "Gespeichert wird weiterhin nur nach deinem Klick.",
+    ].forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      benefits.appendChild(item);
+    });
+    this.playStartButton = document.createElement("button");
+    this.playStartButton.type = "button";
+    this.playStartButton.className = "primary-action-button play-start-button";
+    this.playStartButton.textContent = "Partie einrichten";
+    this.playStartButton.disabled = !engineAvailable || !this.engineReady;
+    this.playStartButton.addEventListener("click", () => this.openPlaySetupDialog(
+      this.playStartButton,
+    ));
+    this.playEmptyView.append(emptyTitle, emptyText, benefits, this.playStartButton);
+    panel.appendChild(this.playEmptyView);
+
+    this.playActiveView = document.createElement("div");
+    this.playActiveView.className = "play-active-view";
+    this.playActiveView.hidden = true;
+
+    const summary = document.createElement("div");
+    summary.className = "play-session-summary";
+    this.playColorSummaryEl = document.createElement("span");
+    this.playLevelSummaryEl = document.createElement("span");
+    summary.append(this.playColorSummaryEl, this.playLevelSummaryEl);
+    this.playActiveView.appendChild(summary);
+
+    this.playTurnStatusEl = document.createElement("div");
+    this.playTurnStatusEl.className = "play-turn-status";
+    this.playActiveView.appendChild(this.playTurnStatusEl);
+
+    const liveCoach = document.createElement("section");
+    liveCoach.className = "live-coach";
+    const liveHeading = document.createElement("div");
+    liveHeading.className = "live-coach-heading";
+    const liveTitle = document.createElement("h3");
+    liveTitle.textContent = "Live-Coach";
+    const liveSwitch = document.createElement("label");
+    liveSwitch.className = "live-feedback-switch";
+    this.playLiveFeedbackInput = document.createElement("input");
+    this.playLiveFeedbackInput.type = "checkbox";
+    this.playLiveFeedbackInput.setAttribute("role", "switch");
+    this.playLiveFeedbackInput.checked = true;
+    this.playLiveFeedbackInput.addEventListener("change", () => {
+      this.playSession.liveFeedback = this.playLiveFeedbackInput.checked;
+      this.updateModeUi();
+      this.renderPlayPanel();
+    });
+    const liveSwitchText = document.createElement("span");
+    liveSwitchText.textContent = "Feedback";
+    liveSwitch.append(this.playLiveFeedbackInput, liveSwitchText);
+    liveHeading.append(liveTitle, liveSwitch);
+    liveCoach.appendChild(liveHeading);
+
+    this.playFeedbackEl = document.createElement("div");
+    this.playFeedbackEl.className = "live-feedback-state is-waiting";
+    this.playFeedbackEl.setAttribute("role", "status");
+    this.playFeedbackEl.setAttribute("aria-live", "polite");
+    this.playFeedbackBadgeEl = document.createElement("span");
+    this.playFeedbackBadgeEl.className = "live-feedback-badge";
+    this.playFeedbackTitleEl = document.createElement("strong");
+    this.playFeedbackDetailEl = document.createElement("p");
+    this.playFeedbackEl.append(
+      this.playFeedbackBadgeEl,
+      this.playFeedbackTitleEl,
+      this.playFeedbackDetailEl,
+    );
+    liveCoach.appendChild(this.playFeedbackEl);
+
+    this.playFeedbackHistoryEl = document.createElement("ol");
+    this.playFeedbackHistoryEl.className = "live-feedback-history";
+    liveCoach.appendChild(this.playFeedbackHistoryEl);
+    this.playActiveView.appendChild(liveCoach);
+
+    const actions = document.createElement("div");
+    actions.className = "play-session-actions";
+    this.playSaveAction = document.createElement("button");
+    this.playSaveAction.type = "button";
+    this.playSaveAction.className = "primary-action-button";
+    this.playSaveAction.textContent = "Partie speichern";
+    this.playSaveAction.addEventListener("click", () => this.openSaveGameDialog(
+      this.playSaveAction,
+    ));
+    this.playAnalyzeAction = document.createElement("button");
+    this.playAnalyzeAction.type = "button";
+    this.playAnalyzeAction.className = "secondary-button";
+    this.playAnalyzeAction.textContent = "Beenden & analysieren";
+    this.playAnalyzeAction.addEventListener("click", () => this.finishPlayAndAnalyze());
+    this.playResignAction = document.createElement("button");
+    this.playResignAction.type = "button";
+    this.playResignAction.className = "danger-button";
+    this.playResignAction.textContent = "Aufgeben";
+    this.playResignAction.addEventListener("click", () => this.resignEngineGame());
+    actions.append(this.playSaveAction, this.playAnalyzeAction, this.playResignAction);
+    this.playActiveView.appendChild(actions);
+    panel.appendChild(this.playActiveView);
+
+    this.analysisColumn.appendChild(panel);
+    this.playMobileFeedbackEl = document.createElement("div");
+    this.playMobileFeedbackEl.className = "play-mobile-feedback is-waiting";
+    this.playMobileFeedbackEl.setAttribute("aria-hidden", "true");
+    this.playMobileFeedbackTitleEl = document.createElement("strong");
+    this.playMobileFeedbackDetailEl = document.createElement("span");
+    this.playMobileFeedbackEl.append(
+      this.playMobileFeedbackTitleEl,
+      this.playMobileFeedbackDetailEl,
+    );
+    this.boardStack?.insertBefore(this.playMobileFeedbackEl, this.boardToolbar || null);
+    this.createPlaySetupDialog(engineAvailable);
+    this.renderPlayPanel();
+  }
+
+  createPlaySetupDialog(engineAvailable) {
+    const dialog = document.createElement("dialog");
+    dialog.id = "play-setup-dialog";
+    dialog.className = "modal-dialog play-setup-dialog";
+    dialog.setAttribute("aria-labelledby", "play-setup-title");
+    dialog.setAttribute("aria-describedby", "play-setup-description");
+    this.playSetupDialog = dialog;
+
+    const heading = document.createElement("div");
+    heading.className = "dialog-heading";
+    const title = document.createElement("div");
+    title.id = "play-setup-title";
+    title.className = "card-title";
+    title.textContent = "Neue Partie gegen die Engine";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "dialog-close";
+    close.setAttribute("aria-label", "Partieeinrichtung schließen");
+    close.textContent = "×";
+    close.addEventListener("click", () => dialog.close());
+    heading.append(title, close);
+    dialog.appendChild(heading);
+
+    const description = document.createElement("p");
+    description.id = "play-setup-description";
+    description.className = "dialog-description";
+    description.textContent = "Wähle deine Seite und ein Trainingsniveau. Die Spielstärke gilt nur für diese Partie.";
+    dialog.appendChild(description);
+
+    const form = document.createElement("form");
+    form.className = "play-setup-form";
+    this.playSetupForm = form;
+
+    const colorGroup = document.createElement("fieldset");
+    colorGroup.className = "play-option-group";
+    const colorLegend = document.createElement("legend");
+    colorLegend.textContent = "Deine Farbe";
+    colorGroup.appendChild(colorLegend);
+    const colorGrid = document.createElement("div");
+    colorGrid.className = "play-color-options";
+    [
+      { value: "w", label: "Weiß", detail: "Du beginnst" },
+      { value: "random", label: "Zufällig", detail: "wird ausgelost" },
+      { value: "b", label: "Schwarz", detail: "Engine beginnt" },
+    ].forEach(({ value, label, detail }) => {
+      const option = document.createElement("label");
+      option.className = "play-option-card";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "playerColor";
+      input.value = value;
+      input.checked = value === "random";
+      const copy = document.createElement("span");
+      const strong = document.createElement("strong");
+      strong.textContent = label;
+      const small = document.createElement("small");
+      small.textContent = detail;
+      copy.append(strong, small);
+      option.append(input, copy);
+      colorGrid.appendChild(option);
+    });
+    colorGroup.appendChild(colorGrid);
+    form.appendChild(colorGroup);
+
+    const levelGroup = document.createElement("fieldset");
+    levelGroup.className = "play-option-group";
+    const levelLegend = document.createElement("legend");
+    levelLegend.textContent = "Schwierigkeit";
+    levelGroup.appendChild(levelLegend);
+    const levelGrid = document.createElement("div");
+    levelGrid.className = "play-level-options";
+    Object.entries(ENGINE_LEVELS).forEach(([value, level]) => {
+      const option = document.createElement("label");
+      option.className = "play-option-card";
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "engineLevel";
+      input.value = value;
+      input.checked = value === "medium";
+      const copy = document.createElement("span");
+      const strong = document.createElement("strong");
+      strong.textContent = level.label;
+      const small = document.createElement("small");
+      small.textContent = level.description;
+      copy.append(strong, small);
+      option.append(input, copy);
+      levelGrid.appendChild(option);
+    });
+    levelGroup.appendChild(levelGrid);
+    form.appendChild(levelGroup);
+
+    const feedbackOption = document.createElement("label");
+    feedbackOption.className = "play-feedback-option";
+    this.playSetupFeedbackInput = document.createElement("input");
+    this.playSetupFeedbackInput.type = "checkbox";
+    this.playSetupFeedbackInput.name = "liveFeedback";
+    this.playSetupFeedbackInput.setAttribute("role", "switch");
+    this.playSetupFeedbackInput.checked = true;
+    const feedbackCopy = document.createElement("span");
+    const feedbackTitle = document.createElement("strong");
+    feedbackTitle.textContent = "Live-Feedback anzeigen";
+    const feedbackDetail = document.createElement("small");
+    feedbackDetail.textContent = "Bewertet deinen Zug erst danach und verrät vorher keine Lösung.";
+    feedbackCopy.append(feedbackTitle, feedbackDetail);
+    feedbackOption.append(this.playSetupFeedbackInput, feedbackCopy);
+    form.appendChild(feedbackOption);
+
+    if (!engineAvailable) {
+      const unavailable = document.createElement("p");
+      unavailable.className = "error-text";
+      unavailable.textContent = "Stockfish konnte nicht gestartet werden. Bitte lade die Seite neu.";
+      form.appendChild(unavailable);
     }
 
+    const actions = document.createElement("div");
+    actions.className = "dialog-actions play-setup-actions";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "secondary-button";
+    cancel.textContent = "Abbrechen";
+    cancel.addEventListener("click", () => dialog.close());
+    this.playSetupSubmitButton = document.createElement("button");
+    this.playSetupSubmitButton.type = "submit";
+    this.playSetupSubmitButton.className = "primary-action-button";
+    this.playSetupSubmitButton.textContent = "Partie starten";
+    this.playSetupSubmitButton.disabled = !engineAvailable || !this.engineReady;
+    actions.append(cancel, this.playSetupSubmitButton);
+    form.appendChild(actions);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      const started = this.startEngineGame({
+        colorPreference: data.get("playerColor"),
+        level: data.get("engineLevel"),
+        liveFeedback: this.playSetupFeedbackInput.checked,
+      });
+      if (started) dialog.close();
+    });
+    dialog.appendChild(form);
+    dialog.addEventListener("close", () => this.playSetupReturnFocus?.focus?.());
+    document.body.appendChild(dialog);
+  }
+
+  openPlaySetupDialog(returnFocus = this.playStartButton) {
+    if (!this.playSetupDialog || this.playSetupDialog.open) return;
+    const color = this.playSession.colorPreference || "random";
+    const level = normalizeEngineLevel(this.playSession.level);
+    this.playSetupForm?.querySelectorAll('input[name="playerColor"]').forEach((input) => {
+      input.checked = input.value === color;
+    });
+    this.playSetupForm?.querySelectorAll('input[name="engineLevel"]').forEach((input) => {
+      input.checked = input.value === level;
+    });
+    if (this.playSetupFeedbackInput) {
+      this.playSetupFeedbackInput.checked = this.playSession.liveFeedback !== false;
+    }
+    this.playSetupReturnFocus = returnFocus;
+    this.playSetupDialog.showModal();
+    this.playSetupForm?.querySelector('input[name="playerColor"]:checked')?.focus();
+  }
+
+  renderPlayPanel() {
+    if (!this.playPanel) return;
+    const session = this.playSession;
+    const active = Boolean(session.active);
+    this.playEmptyView.hidden = active;
+    this.playActiveView.hidden = !active;
+    if (this.playMobileFeedbackEl) {
+      this.playMobileFeedbackEl.hidden = !active || this.appMode !== "play";
+    }
+    if (!active) return;
+
+    const playerLabel = session.playerColor === "b" ? "Schwarz" : "Weiß";
+    const engineLabel = session.engineColor === "b" ? "Schwarz" : "Weiß";
+    const level = ENGINE_LEVELS[normalizeEngineLevel(session.level)];
+    this.playColorSummaryEl.textContent = `Du: ${playerLabel} · Engine: ${engineLabel}`;
+    this.playLevelSummaryEl.textContent = `Stufe: ${level.label}`;
+
+    let status = "Partie wird vorbereitet …";
+    if (session.phase === "player-turn") {
+      status = `Du bist am Zug${this.game.isCheck() ? " · Schach" : ""}`;
+    } else if (session.phase === "feedback") {
+      status = "Dein Zug wird bewertet …";
+    } else if (session.phase === "engine-thinking") {
+      status = "Stockfish denkt …";
+    } else if (session.phase === "game-over") {
+      const result = this.getGameResult();
+      const playerWon = (session.playerColor === "w" && result === "1-0")
+        || (session.playerColor === "b" && result === "0-1");
+      const engineWon = (session.engineColor === "w" && result === "1-0")
+        || (session.engineColor === "b" && result === "0-1");
+      status = result === "1/2-1/2"
+        ? "Partie beendet · Remis"
+        : playerWon
+          ? "Partie beendet · Du gewinnst"
+          : engineWon
+            ? "Partie beendet · Stockfish gewinnt"
+            : "Partie beendet";
+    }
+    this.playTurnStatusEl.textContent = status;
+
+    if (this.playLiveFeedbackInput) {
+      this.playLiveFeedbackInput.checked = session.liveFeedback;
+    }
+    const latest = session.feedbackHistory[0] || null;
+    if (!session.liveFeedback) {
+      this.playFeedbackEl.className = "live-feedback-state is-disabled";
+      this.playFeedbackBadgeEl.textContent = "Aus";
+      this.playFeedbackTitleEl.textContent = "Live-Feedback ist ausgeschaltet";
+      this.playFeedbackDetailEl.textContent = "Die vollständige Auswertung bleibt nach der Partie verfügbar.";
+    } else if (latest) {
+      this.playFeedbackEl.className = `live-feedback-state is-${latest.tone}`;
+      this.playFeedbackBadgeEl.textContent = latest.badge;
+      this.playFeedbackTitleEl.textContent = latest.title;
+      this.playFeedbackDetailEl.textContent = latest.detail;
+    } else {
+      this.playFeedbackEl.className = "live-feedback-state is-waiting";
+      this.playFeedbackBadgeEl.textContent = "Bereit";
+      this.playFeedbackTitleEl.textContent = session.phase === "player-turn"
+        ? "Spiele deinen Zug"
+        : "Der Live-Coach bereitet die Bewertung vor";
+      this.playFeedbackDetailEl.textContent = "Dein Urteil erscheint hier, bevor Stockfish antwortet.";
+    }
+    if (this.playMobileFeedbackEl) {
+      const tone = !session.liveFeedback
+        ? "disabled"
+        : latest?.tone || "waiting";
+      this.playMobileFeedbackEl.className = `play-mobile-feedback is-${tone}`;
+      this.playMobileFeedbackTitleEl.textContent = session.liveFeedback
+        ? this.playFeedbackTitleEl.textContent
+        : "Live-Feedback aus";
+      this.playMobileFeedbackDetailEl.textContent = session.liveFeedback
+        ? `${status} · ${this.playFeedbackDetailEl.textContent}`
+        : status;
+    }
+
+    this.playFeedbackHistoryEl.replaceChildren();
+    if (session.liveFeedback && session.feedbackHistory.length > 1) {
+      session.feedbackHistory.slice(1, 5).forEach((feedback) => {
+        const item = document.createElement("li");
+        const badge = document.createElement("span");
+        badge.className = `is-${feedback.tone}`;
+        badge.textContent = feedback.badge;
+        const move = document.createElement("span");
+        move.textContent = feedback.title;
+        item.append(badge, move);
+        this.playFeedbackHistoryEl.appendChild(item);
+      });
+    }
+
+    const hasMoves = this.getCurrentPath().length > 1;
+    const busy = ["preparing", "feedback", "engine-thinking"].includes(session.phase);
+    this.playSaveAction.disabled = !hasMoves || busy || this.reviewRunning;
+    this.playAnalyzeAction.disabled = !hasMoves || this.reviewRunning;
+    this.playAnalyzeAction.textContent = session.phase === "game-over"
+      ? "Vollständig analysieren"
+      : "Beenden & analysieren";
+    this.playResignAction.hidden = session.phase === "game-over";
+  }
+
+  setAppMode(mode, { force = false, silent = false } = {}) {
+    const nextMode = mode === "analysis" ? "analysis" : "play";
+    if (nextMode === this.appMode) {
+      this.updateModeUi();
+      return true;
+    }
+    if (this.reviewRunning) {
+      this.showToast("Beende zuerst die laufende Partieanalyse.");
+      return false;
+    }
+    if (
+      nextMode === "analysis"
+      && this.playSession.active
+      && this.playSession.phase !== "game-over"
+      && !force
+    ) {
+      const confirmed = window.confirm(
+        "Die laufende Engine-Partie wird beendet und die aktuelle Stellung im Analysebereich geöffnet. Fortfahren?",
+      );
+      if (!confirmed) return false;
+    }
+
+    this.stopSuggestionPreview();
+    this.engine?.cancelSearch?.();
+    if (nextMode === "analysis") {
+      this.cancelPlaySession();
+      this.appMode = "analysis";
+      this.engine?.setMultiPV?.(this.suggestionCount === 0 ? 1 : this.suggestionCount);
+    } else {
+      this.appMode = "play";
+      this.engine?.setMultiPV?.(1);
+      this.moveArrows?.clear();
+    }
+    this.updateModeUi();
+    if (nextMode === "analysis") this.evaluateCurrentPosition();
+    if (!silent) {
+      this.showToast(nextMode === "analysis" ? "Analysebereich geöffnet." : "Spielbereich geöffnet.");
+    }
+    return true;
+  }
+
+  updateModeUi() {
+    const isPlay = this.appMode === "play";
+    const setModeButton = (button, active) => {
+      if (!button) return;
+      button.classList.toggle("is-active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    };
+    setModeButton(this.playModeButton, isPlay);
+    setModeButton(this.analysisModeButton, !isPlay);
+    this.boardContainer?.classList.toggle("is-play-mode", isPlay);
+    if (this.boardStage) {
+      this.boardStage.setAttribute(
+        "aria-label",
+        isPlay ? "Partie gegen die Engine" : "Schachanalyse",
+      );
+    }
+    if (this.playPanel) this.playPanel.hidden = !isPlay;
+    if (this.suggestionsEl) this.suggestionsEl.hidden = isPlay;
+    if (this.chatWrapper) this.chatWrapper.hidden = isPlay;
+    if (this.evalBar?.container) this.evalBar.container.hidden = isPlay;
+    if (this.engineSettingsButton) this.engineSettingsButton.hidden = isPlay;
+    if (this.feedbackButton) this.feedbackButton.hidden = isPlay;
+    if (this.exportButton) this.exportButton.hidden = isPlay;
+    if (this.accuracyEl) {
+      this.accuracyEl.hidden = isPlay && !this.playSession.liveFeedback;
+    }
+    [this.gameStatusEl, this.accuracyEl, this.saveStatusEl].forEach((element) => {
+      element?.setAttribute("aria-live", isPlay ? "off" : "polite");
+    });
+    if (this.resetButton) {
+      this.resetButton.textContent = isPlay ? "Neue Engine-Partie" : "Neue Analyse";
+    }
+    if (this.moveListEyebrow) {
+      this.moveListEyebrow.textContent = isPlay ? "Partieverlauf" : "Variantenbaum";
+    }
+    if (this.moveListTitle) {
+      this.moveListTitle.textContent = isPlay ? "Gespielte Züge" : "Zugliste";
+    }
+    if (this.keyboardHint) this.keyboardHint.hidden = isPlay;
+    this.moveListSection?.classList.toggle("is-play-mode", isPlay);
+    if (isPlay) this.moveArrows?.clear();
+    else this.renderMoveArrows();
+    this.renderPlayPanel();
+    this.updateFeedbackAvailability();
+    this.updateSaveGameButton();
+    this.scheduleBoardResize();
+  }
+
+  cancelPlaySession() {
+    this.playSession.generation += 1;
+    this.playSession.active = false;
+    this.playSession.phase = "idle";
+    this.playSession.expectedFen = null;
+    this.playSession.expectedSearchId = null;
+    this.engine?.cancelSearch?.();
+    this.renderPlayPanel();
+  }
+
+  prepareNewEngineGame() {
+    this.openPlaySetupDialog(this.resetButton || this.playStartButton);
+  }
+
+  startEngineGame({ colorPreference = "random", level = "medium", liveFeedback = true } = {}) {
+    if (!this.engine || !this.engineReady || this.reviewRunning) {
+      this.showToast("Stockfish wird noch geladen. Bitte versuche es gleich erneut.");
+      return false;
+    }
+    if (!this.confirmDiscardUnsavedGame("eine neue Engine-Partie beginnen")) return false;
+
+    this.resetGame({ skipDiscardPrompt: true });
+    const normalizedLevel = normalizeEngineLevel(level);
+    const playerColor = resolvePlayerColor(colorPreference);
+    const generation = this.playSession.generation + 1;
+    this.playSession = {
+      active: true,
+      colorPreference: ["w", "b", "random"].includes(colorPreference)
+        ? colorPreference
+        : "random",
+      playerColor,
+      engineColor: playerColor === "w" ? "b" : "w",
+      level: normalizedLevel,
+      liveFeedback: Boolean(liveFeedback),
+      phase: playerColor === "w" ? "preparing" : "engine-thinking",
+      generation,
+      expectedFen: null,
+      expectedSearchId: null,
+      lastFeedbackPly: 0,
+      feedbackHistory: [],
+    };
+    this.declaredGameResult = null;
+    this.gameSaveDraft = {
+      ...createGameSaveDraft(),
+      playerColor,
+      opponent: engineOpponentLabel(normalizedLevel),
+      opponentType: "engine",
+      engineLevel: normalizedLevel,
+      timeFormat: "training",
+      platform: "Chess Coach",
+      event: "Training gegen die Engine",
+      rated: "no",
+      result: "*",
+    };
+    this.gameSaveDraftDirty = true;
+    this.board.orientation(playerColor === "w" ? "white" : "black");
+    this.moveArrows?.setOrientation(this.board.orientation());
+    this.resetBoardKeyboardCursor();
+    this.engine.setMultiPV(1);
+    this.updateModeUi();
+    this.updateGameStatus();
+    this.evaluateCurrentPosition();
+    this.showToast(`Engine-Partie gestartet · Du spielst ${playerColor === "w" ? "Weiß" : "Schwarz"}.`);
+    return true;
+  }
+
+  finishPlayAndAnalyze() {
+    if (!this.playSession.active || this.getCurrentPath().length < 2) return;
+    if (this.playSession.phase !== "game-over") {
+      const confirmed = window.confirm(
+        "Wenn du jetzt analysierst, wird die Engine-Partie beendet und kann nicht fortgesetzt werden.",
+      );
+      if (!confirmed) return;
+    }
+    if (!this.setAppMode("analysis", { force: true, silent: true })) return;
+    window.setTimeout(() => this.startFullGameReview(), 0);
+  }
+
+  resignEngineGame() {
+    if (!this.playSession.active || this.playSession.phase === "game-over") return;
+    if (!window.confirm("Möchtest du die Partie wirklich aufgeben?")) return;
+    this.engine?.cancelSearch?.();
+    this.playSession.generation += 1;
+    this.playSession.expectedFen = null;
+    this.playSession.expectedSearchId = null;
+    this.playSession.phase = "game-over";
+    this.declaredGameResult = this.playSession.playerColor === "w" ? "0-1" : "1-0";
+    this.currentNode.result = this.declaredGameResult;
+    this.gameSaveDraft.result = this.declaredGameResult;
+    this.gameSaveDraftDirty = true;
+    this.markGameDirty();
+    this.updateGameStatus();
+    this.renderPlayPanel();
+    this.updateSaveGameButton();
+  }
+
+  setupBoardKeyboard(boardEl, boardSurface) {
+    if (!boardEl || !boardSurface) return;
+    this.boardEl = boardEl;
+    boardEl.tabIndex = 0;
+    boardEl.setAttribute("role", "group");
+    boardEl.setAttribute("aria-roledescription", "interaktives Schachbrett");
+    boardEl.setAttribute("aria-describedby", "board-keyboard-instructions");
+
+    const instructions = document.createElement("p");
+    instructions.id = "board-keyboard-instructions";
+    instructions.className = "sr-only";
+    instructions.textContent = [
+      "Mit den Pfeiltasten ein Feld wählen.",
+      "Mit Enter oder Leertaste eine Figur aufnehmen und auf dem Zielfeld absetzen.",
+      "Escape hebt die Auswahl auf.",
+    ].join(" ");
+    this.boardKeyboardStatusEl = document.createElement("p");
+    this.boardKeyboardStatusEl.className = "sr-only";
+    this.boardKeyboardStatusEl.setAttribute("role", "status");
+    this.boardKeyboardStatusEl.setAttribute("aria-live", "polite");
+    this.boardKeyboardStatusEl.setAttribute("aria-atomic", "true");
+    boardSurface.append(instructions, this.boardKeyboardStatusEl);
+
+    this.boardKeyboardSquare = this.board.orientation() === "black" ? "h8" : "a1";
+    this.boardKeyboardSelectedSquare = null;
+    this._onBoardFocus = () => {
+      this.updateBoardKeyboardHighlights();
+      this.announceBoardKeyboardSquare("Pfeiltasten wählen ein Feld.");
+    };
+    this._onBoardBlur = () => boardEl.classList.remove("is-keyboard-navigation");
+    this._onBoardPointerDown = () => boardEl.classList.remove("is-keyboard-navigation");
+    this._onBoardKeyDown = (event) => this.handleBoardKeyDown(event);
+    boardEl.addEventListener("focus", this._onBoardFocus);
+    boardEl.addEventListener("blur", this._onBoardBlur);
+    boardEl.addEventListener("pointerdown", this._onBoardPointerDown);
+    boardEl.addEventListener("keydown", this._onBoardKeyDown);
+    this.skipLink = document.querySelector('.skip-link[href="#board"]');
+    this._onSkipLinkClick = (event) => {
+      event.preventDefault();
+      boardEl.focus({ preventScroll: true });
+      boardEl.scrollIntoView({ block: "start" });
+    };
+    this.skipLink?.addEventListener("click", this._onSkipLinkClick);
+
+    if (typeof MutationObserver === "function") {
+      this.boardKeyboardObserver = new MutationObserver(() => {
+        if (this.boardKeyboardFrame) cancelAnimationFrame(this.boardKeyboardFrame);
+        this.boardKeyboardFrame = requestAnimationFrame(() => {
+          this.boardKeyboardFrame = null;
+          this.updateBoardKeyboardHighlights();
+        });
+      });
+      this.boardKeyboardObserver.observe(boardEl, { childList: true, subtree: true });
+    }
+    this.updateBoardKeyboardHighlights();
+  }
+
+  resetBoardKeyboardCursor() {
+    this.boardKeyboardSquare = this.board?.orientation?.() === "black" ? "h8" : "a1";
+    this.boardKeyboardSelectedSquare = null;
+    this.updateBoardKeyboardHighlights();
+  }
+
+  updateBoardKeyboardHighlights() {
+    if (!this.boardEl) return;
+    this.boardEl
+      .querySelectorAll(".keyboard-board-cursor, .keyboard-board-selected")
+      .forEach((square) => {
+        square.classList.remove("keyboard-board-cursor", "keyboard-board-selected");
+      });
+    const cursor = this.boardKeyboardSquare
+      ? this.boardEl.querySelector(`.square-${this.boardKeyboardSquare}`)
+      : null;
+    cursor?.classList.add("keyboard-board-cursor");
+    const selected = this.boardKeyboardSelectedSquare
+      ? this.boardEl.querySelector(`.square-${this.boardKeyboardSelectedSquare}`)
+      : null;
+    selected?.classList.add("keyboard-board-selected");
+  }
+
+  describeBoardSquare(square) {
+    const piece = this.game?.get?.(square);
+    if (!piece) return `${square}, leeres Feld`;
+    const names = {
+      w: {
+        p: "weißer Bauer",
+        n: "weißer Springer",
+        b: "weißer Läufer",
+        r: "weißer Turm",
+        q: "weiße Dame",
+        k: "weißer König",
+      },
+      b: {
+        p: "schwarzer Bauer",
+        n: "schwarzer Springer",
+        b: "schwarzer Läufer",
+        r: "schwarzer Turm",
+        q: "schwarze Dame",
+        k: "schwarzer König",
+      },
+    };
+    return `${square}, ${names[piece.color]?.[piece.type] || "Figur"}`;
+  }
+
+  announceBoardKeyboardSquare(suffix = "") {
+    if (!this.boardKeyboardStatusEl || !this.boardKeyboardSquare) return;
+    const selected = this.boardKeyboardSelectedSquare
+      ? ` Ausgewählt: ${this.describeBoardSquare(this.boardKeyboardSelectedSquare)}.`
+      : "";
+    this.boardKeyboardStatusEl.textContent = [
+      this.describeBoardSquare(this.boardKeyboardSquare),
+      selected,
+      suffix,
+    ].filter(Boolean).join(" ");
+  }
+
+  moveBoardKeyboardCursor(key) {
+    const files = "abcdefgh";
+    const square = /^[a-h][1-8]$/.test(this.boardKeyboardSquare || "")
+      ? this.boardKeyboardSquare
+      : this.board?.orientation?.() === "black" ? "h8" : "a1";
+    let file = files.indexOf(square[0]);
+    let rank = Number.parseInt(square[1], 10);
+    const blackOrientation = this.board?.orientation?.() === "black";
+    if (key === "ArrowLeft") file += blackOrientation ? 1 : -1;
+    if (key === "ArrowRight") file += blackOrientation ? -1 : 1;
+    if (key === "ArrowUp") rank += blackOrientation ? -1 : 1;
+    if (key === "ArrowDown") rank += blackOrientation ? 1 : -1;
+    file = Math.max(0, Math.min(7, file));
+    rank = Math.max(1, Math.min(8, rank));
+    this.boardKeyboardSquare = `${files[file]}${rank}`;
+    this.updateBoardKeyboardHighlights();
+    this.announceBoardKeyboardSquare();
+  }
+
+  handleBoardKeyDown(event) {
+    if (!event || event.defaultPrevented) return;
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Enter", " "].includes(event.key)) {
+      this.boardEl?.classList.add("is-keyboard-navigation");
+    }
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.moveBoardKeyboardCursor(event.key);
+      return;
+    }
+    if (event.key === "Escape" && this.boardKeyboardSelectedSquare) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.boardKeyboardSelectedSquare = null;
+      this.updateBoardKeyboardHighlights();
+      this.announceBoardKeyboardSquare("Auswahl aufgehoben.");
+      return;
+    }
+    if (!["Enter", " "].includes(event.key)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const square = this.boardKeyboardSquare;
+    const piece = this.game?.get?.(square);
+
+    if (!this.boardKeyboardSelectedSquare) {
+      const pieceCode = piece ? `${piece.color}${piece.type.toUpperCase()}` : "";
+      if (
+        !piece
+        || piece.color !== this.game.turn()
+        || this.handleDragStart(square, pieceCode) === false
+      ) {
+        this.announceBoardKeyboardSquare("Diese Figur kannst du gerade nicht ziehen.");
+        return;
+      }
+      this.boardKeyboardSelectedSquare = square;
+      this.updateBoardKeyboardHighlights();
+      this.announceBoardKeyboardSquare("Figur ausgewählt. Wähle jetzt das Zielfeld.");
+      return;
+    }
+
+    const source = this.boardKeyboardSelectedSquare;
+    if (source === square) {
+      this.boardKeyboardSelectedSquare = null;
+      this.updateBoardKeyboardHighlights();
+      this.announceBoardKeyboardSquare("Auswahl aufgehoben.");
+      return;
+    }
+    const sourcePiece = this.game?.get?.(source);
+    if (
+      piece
+      && sourcePiece
+      && piece.color === sourcePiece.color
+      && piece.color === this.game.turn()
+    ) {
+      const pieceCode = `${piece.color}${piece.type.toUpperCase()}`;
+      if (this.handleDragStart(square, pieceCode) !== false) {
+        this.boardKeyboardSelectedSquare = square;
+        this.updateBoardKeyboardHighlights();
+        this.announceBoardKeyboardSquare("Andere Figur ausgewählt.");
+      }
+      return;
+    }
+
+    const result = this.handleMove(source, square);
+    if (result === "snapback") {
+      this.announceBoardKeyboardSquare("Dieser Zug ist nicht legal.");
+      return;
+    }
+    const san = this.currentNode?.move?.san || `${source} nach ${square}`;
+    this.boardKeyboardSelectedSquare = null;
+    this.updateBoardKeyboardHighlights();
+    this.announceBoardKeyboardSquare(`Zug ${san} gespielt.`);
+  }
+
+  handleDragStart(source, piece) {
+    if (this.previewState || this.reviewRunning) return false;
+    if (this.appMode === "play") {
+      if (
+        !this.playSession.active
+        || this.playSession.phase !== "player-turn"
+        || this.game.isGameOver()
+        || this.game.turn() !== this.playSession.playerColor
+      ) {
+        return false;
+      }
+      const pieceColor = typeof piece === "string" ? piece.slice(0, 1).toLowerCase() : "";
+      const boardPiece = this.game.get(source);
+      if (
+        !boardPiece
+        || boardPiece.color !== this.playSession.playerColor
+        || (pieceColor && pieceColor !== this.playSession.playerColor)
+      ) {
+        return false;
+      }
+    }
+    this.moveArrows?.setVisible(false);
+    return true;
+  }
+
+  applyMove(moveSpec, { actor = "analysis" } = {}) {
+    if (actor === "analysis") this.declaredGameResult = null;
     let move;
     try {
-      move = this.game.move({ from: source, to: target, promotion: "q" });
+      move = this.game.move(moveSpec);
     } catch {
-      setTimeout(() => this.board.position(this.game.fen()), 0);
-      return "snapback";
+      return null;
     }
-    if (move === null) {
-      setTimeout(() => this.board.position(this.game.fen()), 0);
-      return "snapback";
-    }
+    if (!move) return null;
 
     this.currentNode = addMoveToTree(this.currentNode, move, this.game.fen());
     this.currentNode.result = this.getGameResult();
     this.gameReviewReport = null;
     this.savedGameReview = null;
     this.markGameDirty();
-    setTimeout(() => this.board.position(this.game.fen()), 0);
+
+    if (this.appMode === "play" && this.playSession.active) {
+      this.playSession.expectedFen = null;
+      this.playSession.expectedSearchId = null;
+      if (this.game.isGameOver()) {
+        const result = this.getGameResult();
+        this.playSession.phase = "game-over";
+        this.currentNode.result = result;
+        this.gameSaveDraft.result = result;
+        this.gameSaveDraftDirty = true;
+      } else if (actor === "player") {
+        this.playSession.phase = this.playSession.liveFeedback
+          ? "feedback"
+          : "engine-thinking";
+      } else if (actor === "engine") {
+        this.playSession.phase = "preparing";
+      }
+    }
+
+    if (actor === "engine") {
+      this.board.position(this.game.fen());
+    } else {
+      window.setTimeout(() => this.board.position(this.game.fen()), 0);
+    }
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
+    this.renderPlayPanel();
     this.evaluateCurrentPosition();
+    return move;
+  }
+
+  handleMove(source, target) {
+    if (this.reviewRunning) return "snapback";
+    this.stopSuggestionPreview();
+    if (
+      this.appMode === "play"
+      && (
+        !this.playSession.active
+        || this.playSession.phase !== "player-turn"
+        || this.game.turn() !== this.playSession.playerColor
+      )
+    ) {
+      window.setTimeout(() => this.board.position(this.game.fen()), 0);
+      return "snapback";
+    }
+    const turn = this.game.turn();
+    const fromPiece = this.game.get(source);
+    if (!fromPiece || (turn === "w" && fromPiece.color !== "w") || (turn === "b" && fromPiece.color !== "b")) {
+      setTimeout(() => this.board.position(this.game.fen()), 0);
+      return "snapback";
+    }
+    if (this.appMode === "play" && fromPiece.color !== this.playSession.playerColor) {
+      setTimeout(() => this.board.position(this.game.fen()), 0);
+      return "snapback";
+    }
+    const move = this.applyMove(
+      { from: source, to: target, promotion: "q" },
+      { actor: this.appMode === "play" ? "player" : "analysis" },
+    );
+    if (!move) {
+      setTimeout(() => this.board.position(this.game.fen()), 0);
+      return "snapback";
+    }
+    return undefined;
   }
 
   goBackOnePly() {
-    if (this.reviewRunning) return;
+    if (this.reviewRunning || this.appMode === "play") return;
     this.stopSuggestionPreview();
     if (!this.currentNode.parent) return;
     this.currentNode = this.currentNode.parent;
@@ -599,7 +1530,7 @@ export class ChessApp {
   }
 
   goForwardOnePly() {
-    if (this.reviewRunning) return;
+    if (this.reviewRunning || this.appMode === "play") return;
     this.stopSuggestionPreview();
     const next = this.currentNode.mainline;
     if (!next) return;
@@ -615,7 +1546,7 @@ export class ChessApp {
   }
 
   cycleVariation(offset) {
-    if (this.reviewRunning) return;
+    if (this.reviewRunning || this.appMode === "play") return;
     this.stopSuggestionPreview();
     if (!this.currentNode || !this.currentNode.parent || !this.currentNode.move) return;
     const parent = this.currentNode.parent;
@@ -649,9 +1580,34 @@ export class ChessApp {
     this.evaluateCurrentPosition();
   }
 
+  getCurrentSearchPlan() {
+    if (this.appMode !== "play") {
+      return {
+        purpose: "analysis",
+        depth: this.engine?.depth || 15,
+        generation: null,
+      };
+    }
+    if (!this.playSession.active || this.playSession.phase === "game-over") return null;
+    const generation = this.playSession.generation;
+    if (this.playSession.phase === "preparing") {
+      return { purpose: "play-baseline", depth: 12, generation };
+    }
+    if (this.playSession.phase === "feedback") {
+      return { purpose: "play-feedback", depth: 12, generation };
+    }
+    if (this.playSession.phase === "engine-thinking") {
+      const level = ENGINE_LEVELS[normalizeEngineLevel(this.playSession.level)];
+      return { purpose: "play-move", depth: level.depth, generation };
+    }
+    return null;
+  }
+
   evaluateCurrentPosition() {
     if (this.previewState) this.stopSuggestionPreview();
     const fen = this.game.fen();
+    const searchPlan = this.getCurrentSearchPlan();
+    const targetDepth = searchPlan?.depth || this.engine?.depth || 15;
     this.analysisFen = fen;
     this.lastEvalPawns = null;
     this.evalBar?.setPending?.();
@@ -659,7 +1615,7 @@ export class ChessApp {
       fen,
       node: this.currentNode,
       searchId: null,
-      targetDepth: this.engine?.depth || 15,
+      targetDepth,
       depth: 0,
       lines: new Map(),
     };
@@ -670,18 +1626,46 @@ export class ChessApp {
     if (Number.isFinite(terminalCp)) {
       this.currentNode.analysis = {
         whiteCp: terminalCp,
-        depth: this.engine?.depth || 15,
+        depth: targetDepth,
         pv: [],
         complete: true,
       };
       this.refreshLiveAccuracy();
+      if (this.appMode === "play" && this.playSession.active) {
+        if (this.playSession.liveFeedback) this.recordLatestPlayFeedback();
+        this.playSession.phase = "game-over";
+        this.playSession.expectedFen = null;
+        this.playSession.expectedSearchId = null;
+        const result = this.getGameResult();
+        this.currentNode.result = result;
+        this.gameSaveDraft.result = result;
+        this.gameSaveDraftDirty = true;
+        this.renderPlayPanel();
+        this.updateSaveGameButton();
+      }
+      return;
+    }
+    if (!searchPlan) {
+      this.renderPlayPanel();
       return;
     }
     if (!this.engine) {
       this.renderEngineUnavailable();
       return;
     }
-    this.suggestionState.searchId = this.engine.evaluate(fen);
+    if (searchPlan.purpose === "play-move") {
+      const level = ENGINE_LEVELS[normalizeEngineLevel(this.playSession.level)];
+      this.engine.setPlayingStrength?.(level.elo);
+    } else {
+      this.engine.setAnalysisStrength?.();
+    }
+    this.suggestionState.searchId = this.engine.evaluate(fen, targetDepth, searchPlan);
+    if (this.appMode === "play" && this.playSession.active) {
+      this.playSession.expectedFen = fen;
+      this.playSession.expectedSearchId = this.suggestionState.searchId;
+      this.renderPlayPanel();
+      this.updateSaveGameButton();
+    }
   }
 
   setSuggestionCount(value) {
@@ -726,13 +1710,97 @@ export class ChessApp {
         this.refreshLiveAccuracy();
       }
     }
-    if (this.suggestionCount > 0) {
+    if (this.appMode === "analysis" && this.suggestionCount > 0) {
       if (this.previewState) {
         this.suggestionsDirtyDuringPreview = true;
       } else {
         this.renderSuggestions();
       }
     }
+  }
+
+  handleEngineBestMove(result) {
+    const context = result?.context;
+    if (
+      this.destroyed
+      ||
+      this.appMode !== "play"
+      || !this.playSession.active
+      || !context
+      || context.generation !== this.playSession.generation
+      || result.fen !== this.game.fen()
+      || result.fen !== this.playSession.expectedFen
+      || result.searchId !== this.playSession.expectedSearchId
+    ) {
+      return;
+    }
+
+    this.playSession.expectedFen = null;
+    this.playSession.expectedSearchId = null;
+    if (context.purpose === "play-baseline") {
+      if (this.game.turn() !== this.playSession.playerColor) return;
+      this.playSession.phase = "player-turn";
+      this.renderPlayPanel();
+      this.updateSaveGameButton();
+      return;
+    }
+
+    if (context.purpose === "play-feedback") {
+      this.recordLatestPlayFeedback();
+      if (this.game.isGameOver()) {
+        this.playSession.phase = "game-over";
+        this.renderPlayPanel();
+        return;
+      }
+      this.playSession.phase = "engine-thinking";
+      this.renderPlayPanel();
+      this.evaluateCurrentPosition();
+      return;
+    }
+
+    if (
+      context.purpose !== "play-move"
+      || this.game.turn() !== this.playSession.engineColor
+    ) {
+      return;
+    }
+    const uci = result.move;
+    const move = typeof uci === "string"
+      ? this.applyMove({
+        from: uci.slice(0, 2),
+        to: uci.slice(2, 4),
+        promotion: uci.length > 4 ? uci.slice(4, 5) : undefined,
+      }, { actor: "engine" })
+      : null;
+    if (!move) {
+      this.showToast("Stockfish konnte keinen legalen Zug ausführen. Die Stellung bleibt zur Analyse erhalten.");
+      this.cancelPlaySession();
+      this.updateModeUi();
+    }
+  }
+
+  recordLatestPlayFeedback() {
+    const session = this.playSession;
+    const path = this.getCurrentPath();
+    const ply = path.length - 1;
+    if (
+      !session.active
+      || !session.liveFeedback
+      || ply <= 0
+      || ply === session.lastFeedbackPly
+      || path.at(-1)?.move?.color !== session.playerColor
+    ) {
+      return null;
+    }
+    this.refreshLiveAccuracy();
+    const reportMove = this.liveAccuracyReport?.moves?.find((move) => move.ply === ply);
+    const feedback = describeLiveMove(reportMove);
+    if (!feedback) return null;
+    session.lastFeedbackPly = ply;
+    session.feedbackHistory.unshift({ ...feedback, ply });
+    session.feedbackHistory = session.feedbackHistory.slice(0, 12);
+    this.renderPlayPanel();
+    return feedback;
   }
 
   renderSuggestions() {
@@ -825,6 +1893,8 @@ export class ChessApp {
   renderMoveArrows() {
     if (!this.moveArrows) return;
     if (
+      this.appMode === "play"
+      ||
       this.suggestionCount === 0
       || !this.suggestionState
       || this.suggestionState.lines.size === 0
@@ -842,6 +1912,8 @@ export class ChessApp {
 
   startSuggestionPreview(data, row) {
     if (
+      this.appMode === "play"
+      ||
       this.reviewRunning
       || !data
       || data.fen !== this.analysisFen
@@ -961,7 +2033,9 @@ export class ChessApp {
 
   refreshLiveAccuracy() {
     const path = this.getCurrentPath();
-    const minimumDepth = this.engine?.depth || 1;
+    const minimumDepth = this.appMode === "play" && this.playSession.active
+      ? 12
+      : this.engine?.depth || 1;
     const evaluations = path.map((node) => (
       node.analysis?.complete
       && Number.isFinite(node.analysis.depth)
@@ -1183,6 +2257,10 @@ export class ChessApp {
 
   async startFullGameReview() {
     if (this.reviewRunning) return;
+    if (this.appMode === "play" && this.playSession.active) {
+      this.showToast("Beende die Engine-Partie zuerst über „Beenden & analysieren“.");
+      return;
+    }
     let path;
     try {
       path = pathToNode(this.currentNode);
@@ -1471,6 +2549,9 @@ export class ChessApp {
     if (!this.saveGameButton) return;
     const hasMoves = this.getCurrentPath().length > 1;
     const hasPendingChanges = this.gameDirty || this.gameSaveDraftDirty;
+    const playBusy = this.appMode === "play"
+      && this.playSession.active
+      && ["preparing", "feedback", "engine-thinking"].includes(this.playSession.phase);
     let buttonLabel = 'Partie speichern';
     let statusLabel = hasMoves ? 'Noch nicht gespeichert' : 'Noch nicht gespeichert';
     let statusClass = 'is-unsaved';
@@ -1490,19 +2571,22 @@ export class ChessApp {
     }
 
     this.saveGameButton.textContent = buttonLabel;
-    this.saveGameButton.disabled = this.reviewRunning;
+    this.saveGameButton.disabled = this.reviewRunning || playBusy;
     if (this.saveStatusEl) {
       this.saveStatusEl.textContent = statusLabel;
       this.saveStatusEl.className = `save-status ${statusClass}`;
     }
     if (this.saveGameSubmitButton) {
-      this.saveGameSubmitButton.disabled = !hasMoves || this.reviewRunning;
+      this.saveGameSubmitButton.disabled = !hasMoves || this.reviewRunning || playBusy;
     }
     if (this.saveGameAvailabilityEl) {
-      this.saveGameAvailabilityEl.textContent = hasMoves
-        ? 'Die Partie wird erst durch den Speicher-Klick deinem Account hinzugefügt.'
-        : 'Speichern ist nach dem ersten Zug möglich. Deine vorbereiteten Angaben bleiben erhalten.';
+      this.saveGameAvailabilityEl.textContent = playBusy
+        ? "Warte kurz, bis Stockfish seinen Zug beendet hat."
+        : hasMoves
+          ? 'Die Partie wird erst durch den Speicher-Klick deinem Account hinzugefügt.'
+          : 'Speichern ist nach dem ersten Zug möglich. Deine vorbereiteten Angaben bleiben erhalten.';
     }
+    this.renderPlayPanel();
   }
 
   confirmDiscardUnsavedGame(action) {
@@ -2348,6 +3432,8 @@ export class ChessApp {
           playerColor: draft.playerColor,
           playedAt: draft.playedAt,
           opponent: draft.opponent,
+          opponentType: draft.opponentType,
+          engineLevel: draft.engineLevel,
           opening: draft.opening,
           timeFormat: draft.timeFormat,
           timeControl: draft.timeControl,
@@ -2393,6 +3479,9 @@ export class ChessApp {
   openSavedGame(record) {
     if (!record?.tree) return false;
     if (!this.confirmDiscardUnsavedGame('eine andere Partie öffnen')) return false;
+    this.cancelPlaySession();
+    this.appMode = "analysis";
+    this.engine?.setMultiPV?.(this.suggestionCount === 0 ? 1 : this.suggestionCount);
     this.cancelFullGameReview();
     this.stopSuggestionPreview();
     try {
@@ -2408,6 +3497,10 @@ export class ChessApp {
       this.moveTree = root;
       this.currentNode = node;
       this.game = game;
+      this.declaredGameResult = !game.isGameOver()
+        && ["1-0", "0-1", "1/2-1/2"].includes(record.result)
+          ? record.result
+          : null;
       this.activeGameId = record.id;
       this.activeGameDeletedExternally = false;
       this.activeGamePersisted = true;
@@ -2423,6 +3516,7 @@ export class ChessApp {
       this.updateGameStatus();
       this.updateAccuracyDisplay();
       this.updateSaveGameButton();
+      this.updateModeUi();
       this.evaluateCurrentPosition();
       this.accountDialog?.close();
       this.showToast('Gespeicherte Partie geöffnet.');
@@ -2640,7 +3734,7 @@ export class ChessApp {
   }
 
   jumpToFen(fen) {
-    if (this.reviewRunning) return;
+    if (this.reviewRunning || this.appMode === "play") return;
     this.stopSuggestionPreview();
     if (!fen) return;
     const node = findNodeByFen(this.moveTree, fen);
@@ -2675,10 +3769,14 @@ export class ChessApp {
       this.board?.resize?.();
       this.evalBar?.resizeToBoard?.();
       this.moveArrows?.resize?.();
+      this.updateBoardKeyboardHighlights();
     });
   }
 
   getGameResult() {
+    if (["1-0", "0-1", "1/2-1/2"].includes(this.declaredGameResult)) {
+      return this.declaredGameResult;
+    }
     if (this.game.isCheckmate()) return this.game.turn() === "w" ? "0-1" : "1-0";
     if (this.game.isDraw()) return "1/2-1/2";
     return "*";
@@ -2687,7 +3785,11 @@ export class ChessApp {
   updateGameStatus() {
     if (!this.gameStatusEl) return;
     let label;
-    if (this.game.isCheckmate()) {
+    if (this.declaredGameResult) {
+      label = this.declaredGameResult === "1/2-1/2"
+        ? "Partie beendet · Remis"
+        : `Partie beendet · ${this.declaredGameResult === "1-0" ? "Weiß" : "Schwarz"} gewinnt`;
+    } else if (this.game.isCheckmate()) {
       label = `Schachmatt · ${this.game.turn() === "w" ? "Schwarz" : "Weiß"} gewinnt`;
     } else if (this.game.isDraw()) {
       label = "Remis";
@@ -2696,14 +3798,19 @@ export class ChessApp {
     }
     this.gameStatusEl.textContent = label;
     this.updateFeedbackAvailability();
+    this.renderPlayPanel();
   }
 
   resetGame({ skipDiscardPrompt = false } = {}) {
-    if (!skipDiscardPrompt && !this.confirmDiscardUnsavedGame('eine neue Partie beginnen')) return;
+    if (!skipDiscardPrompt && !this.confirmDiscardUnsavedGame('eine neue Partie beginnen')) {
+      return false;
+    }
+    this.cancelPlaySession();
     this.cancelFullGameReview();
     this.reviewCoachController?.abort();
     this.stopSuggestionPreview();
     this.game.reset();
+    this.declaredGameResult = null;
     this.moveTree = new MoveTreeNode({ fen: this.game.fen() });
     this.currentNode = this.moveTree;
     this.activeGameId = createGameId();
@@ -2717,11 +3824,14 @@ export class ChessApp {
     this.savedGameReview = null;
     this.liveAccuracyReport = null;
     this.board.start();
+    this.resetBoardKeyboardCursor();
     this.renderMoveList();
     this.updateGameStatus();
     this.updateAccuracyDisplay();
     this.updateSaveGameButton();
+    this.updateModeUi();
     this.evaluateCurrentPosition();
+    return true;
   }
 
   updateFeedbackAvailability() {
@@ -2731,17 +3841,33 @@ export class ChessApp {
     this.updateSaveGameButton();
   }
 
+  handleEngineReady() {
+    if (this.destroyed) return;
+    this.engineReady = true;
+    if (this.playStartButton) this.playStartButton.disabled = false;
+    if (this.playSetupSubmitButton) this.playSetupSubmitButton.disabled = false;
+    if (this.playEngineBadgeEl) this.playEngineBadgeEl.textContent = "Stockfish bereit";
+    this.renderPlayPanel();
+  }
+
   handleEngineError(error) {
     console.error("[ChessApp] Engine nicht verfügbar", error);
     this.stopSuggestionPreview();
     this.engineFailed = true;
+    this.engineReady = false;
     this.engine = null;
+    if (this.playSession.active) this.cancelPlaySession();
+    if (this.playStartButton) this.playStartButton.disabled = true;
+    if (this.playSetupSubmitButton) this.playSetupSubmitButton.disabled = true;
+    if (this.playEngineBadgeEl) this.playEngineBadgeEl.textContent = "Engine nicht verfügbar";
     this.moveArrows?.clear();
     this.renderEngineUnavailable();
     this.engineInputs?.forEach((input) => {
       input.disabled = true;
     });
     this.updateFeedbackAvailability();
+    this.renderPlayPanel();
+    this.showToast("Stockfish ist ausgefallen. Die aktuelle Stellung bleibt zur Analyse erhalten.");
   }
 
   renderEngineUnavailable() {
@@ -2770,10 +3896,27 @@ export class ChessApp {
     this.stopSuggestionPreview();
     this.destroyed = true;
     if (this.resizeFrame) cancelAnimationFrame(this.resizeFrame);
+    if (this.boardKeyboardFrame) cancelAnimationFrame(this.boardKeyboardFrame);
     if (this.toastTimer) window.clearTimeout(this.toastTimer);
     this.chatRequestController?.abort();
     this.reviewCoachController?.abort();
     try { this.detachKeys?.(); } catch {}
+    try { this.boardKeyboardObserver?.disconnect?.(); } catch {}
+    if (this._onBoardFocus) {
+      this.boardEl?.removeEventListener("focus", this._onBoardFocus);
+    }
+    if (this._onBoardBlur) {
+      this.boardEl?.removeEventListener("blur", this._onBoardBlur);
+    }
+    if (this._onBoardPointerDown) {
+      this.boardEl?.removeEventListener("pointerdown", this._onBoardPointerDown);
+    }
+    if (this._onBoardKeyDown) {
+      this.boardEl?.removeEventListener("keydown", this._onBoardKeyDown);
+    }
+    if (this._onSkipLinkClick) {
+      this.skipLink?.removeEventListener("click", this._onSkipLinkClick);
+    }
     try { this.engine?.quit(); } catch {}
     try { this.reviewEngine?.quit?.(); } catch {}
     try { this.moveArrows?.destroy?.(); } catch {}
@@ -2797,9 +3940,16 @@ export class ChessApp {
     if (this._onStorage) {
       window.removeEventListener("storage", this._onStorage);
     }
+    if (this._onPlayModeClick) {
+      this.playModeButton?.removeEventListener("click", this._onPlayModeClick);
+    }
+    if (this._onAnalysisModeClick) {
+      this.analysisModeButton?.removeEventListener("click", this._onAnalysisModeClick);
+    }
     this.engineSettingsDialog?.remove();
     this.feedbackDialog?.remove();
     this.saveGameDialog?.remove();
+    this.playSetupDialog?.remove();
     this.accountDialog?.remove();
     this.toastEl?.remove();
   }

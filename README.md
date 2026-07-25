@@ -1,8 +1,9 @@
 # Chess Coach
 
-Ein lokales Analysebrett für Schachvarianten. Stockfish 18 Lite läuft
-vollständig im Browser; der optionale Coach erklärt die aktuelle Stellung über
-die OpenAI Responses API.
+Ein persönlicher Schachcoach mit zwei Bereichen: gegen Stockfish spielen und
+direktes Live-Feedback erhalten oder Stellungen und ganze Partien analysieren.
+Stockfish 18 Lite läuft vollständig im Browser; der optionale Coach erklärt die
+aktuelle Stellung über die OpenAI Responses API.
 
 ## Schnellstart
 
@@ -39,6 +40,10 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 
 ## Bedienung
 
+- „Spielen“: Farbe und Schwierigkeit wählen, gegen Stockfish antreten und nach
+  jedem eigenen Zug ein lokales Live-Urteil erhalten
+- „Analyse“: frei ziehen, Varianten untersuchen, beste Züge anzeigen und den
+  Coach befragen
 - Figuren ziehen: neue Hauptlinie oder Variante anlegen
 - `←` / `→`: einen Halbzug zurück oder vor
 - `↑` / `↓`: zwischen Geschwistervarianten wechseln
@@ -61,6 +66,7 @@ Neuladen erhalten.
 - `app/`: Next.js-Oberfläche und serverseitige API-Routen
 - `app.js`: Anwendungszustand und UI-Steuerung
 - `engine.js`: serialisierter UCI-/Stockfish-Worker
+- `playMode.js`: Spielstufen, Farbauswahl und Texte für das Live-Feedback
 - `moveArrows.js`: responsive Pfeile für die besten Engine-Züge
 - `gameReview.js`: PV-Vorschau, Genauigkeit und vollständige Partieauswertung
 - `gameMetadata.js`: Speicherentwürfe, Zeitformate und lokale Eröffnungserkennung
