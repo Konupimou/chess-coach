@@ -37,7 +37,7 @@ export function scoreFromWhitePerspective(score, fen) {
 }
 
 export class Engine {
-  constructor({ onEvaluation, onInfo, onError, depth = 15, threads, hashMB, evalFile = 'nn-5af11540bbfe.nnue', multiPV = 1 } = {}) {
+  constructor({ onEvaluation, onInfo, onError, depth = 15, threads, hashMB, evalFile = null, multiPV = 1 } = {}) {
     this.onEvaluation = typeof onEvaluation === 'function' ? onEvaluation : () => {};
     this.onInfo = typeof onInfo === 'function' ? onInfo : null;
     this.onError = typeof onError === "function" ? onError : () => {};
@@ -94,26 +94,20 @@ export class Engine {
     // Prefer multi-threaded NNUE when cross-origin isolation allows it.
     this.workerCandidates = [
       {
-        path: "/libs/stockfish/stockfish-nnue-16.js",
-        name: "Stockfish NNUE 16 (multi-thread)",
+        path: "/libs/stockfish/stockfish-18-lite.js",
+        name: "Stockfish 18 Lite (multi-thread)",
         supported: () => allowMultiThread && hasWasm,
         requiresMultiThread: true
       },
       {
-        path: "/libs/stockfish/stockfish-nnue-16-no-simd.js",
-        name: "Stockfish NNUE 16 (multi-thread, no SIMD)",
-        supported: () => allowMultiThread && hasWasm,
-        requiresMultiThread: true
-      },
-      {
-        path: "/libs/stockfish/stockfish-nnue-16-single.js",
-        name: "Stockfish NNUE 16 (single-thread)",
+        path: "/libs/stockfish/stockfish-18-lite-single.js",
+        name: "Stockfish 18 Lite (single-thread)",
         supported: () => hasWasm,
         requiresMultiThread: false
       },
       {
-        path: "/libs/stockfish/stockfish.js",
-        name: "Stockfish asm.js",
+        path: "/libs/stockfish/stockfish-18-asm.js",
+        name: "Stockfish 18 (asm.js fallback)",
         supported: () => true,
         requiresMultiThread: false
       }

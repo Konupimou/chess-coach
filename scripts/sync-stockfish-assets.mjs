@@ -1,18 +1,28 @@
-import { copyFile, mkdir } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const source = path.join(
-  projectRoot,
-  "node_modules",
-  "stockfish",
-  "src",
-  "nn-5af11540bbfe.nnue",
-);
+const packageRoot = path.join(projectRoot, "node_modules", "stockfish");
 const destinationDirectory = path.join(projectRoot, "public", "libs", "stockfish");
-const destination = path.join(destinationDirectory, "nn-5af11540bbfe.nnue");
+const assetNames = [
+  "stockfish-18-lite.js",
+  "stockfish-18-lite.wasm",
+  "stockfish-18-lite-single.js",
+  "stockfish-18-lite-single.wasm",
+  "stockfish-18-asm.js",
+];
 
+await rm(destinationDirectory, { recursive: true, force: true });
 await mkdir(destinationDirectory, { recursive: true });
-await copyFile(source, destination);
-console.log("Stockfish-NNUE-Netzwerk synchronisiert.");
+await Promise.all([
+  ...assetNames.map((name) => copyFile(
+    path.join(packageRoot, "bin", name),
+    path.join(destinationDirectory, name),
+  )),
+  copyFile(
+    path.join(packageRoot, "Copying.txt"),
+    path.join(destinationDirectory, "COPYING.txt"),
+  ),
+]);
+console.log("Stockfish-18-Lite-Assets synchronisiert.");

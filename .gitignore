@@ -1,6 +1,8 @@
 # Dependencies and build output
 node_modules/
 .next/
+.open-next/
+.wrangler/
 out/
 coverage/
 
@@ -14,7 +16,7 @@ coverage/
 *.log
 
 # Generated from the stockfish npm package by `npm run assets`
-public/libs/stockfish/*.nnue
+public/libs/stockfish/
 
 # Local deployment artifacts
 *.tgz

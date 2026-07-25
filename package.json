@@ -11,21 +11,31 @@
     "prebuild": "npm run assets",
     "build": "next build",
     "start": "next start",
+    "site:build": "opennextjs-cloudflare build",
+    "site:package": "npm run site:build && node scripts/package-site.mjs",
+    "site:preview": "npm run site:build && opennextjs-cloudflare preview",
     "test": "node --test",
     "check": "npm run test && npm run build"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.2",
     "chess.js": "^1.0.0",
     "next": "^16.2.11",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "stockfish": "^16.0.0"
+    "stockfish": "^18.0.8"
   },
   "overrides": {
+    "@node-minify/core": {
+      "glob": "^13.0.6"
+    },
     "postcss": "^8.5.23",
     "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "wrangler": "^4.114.0"
   }
 }

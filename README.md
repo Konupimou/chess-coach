@@ -1,12 +1,12 @@
 # Chess Coach
 
-Ein lokales Analysebrett für Schachvarianten. Stockfish läuft vollständig im
-Browser; der optionale Coach erklärt die aktuelle Stellung über die OpenAI
-Responses API.
+Ein lokales Analysebrett für Schachvarianten. Stockfish 18 Lite läuft
+vollständig im Browser; der optionale Coach erklärt die aktuelle Stellung über
+die OpenAI Responses API.
 
 ## Schnellstart
 
-Voraussetzung: Node.js 20 oder neuer.
+Voraussetzung: Node.js 22 oder neuer.
 
 ```bash
 npm install
@@ -33,6 +33,8 @@ npm test          # automatisierte Tests
 npm run build     # Produktionsbuild
 npm start         # gebauten Produktionsserver starten
 npm run check     # Tests und Build nacheinander
+npm run site:build    # OpenNext-Artefakt für Sites erzeugen
+npm run site:package  # deploybares Sites-Archiv erzeugen
 ```
 
 ## Bedienung
@@ -55,6 +57,7 @@ npm run check     # Tests und Build nacheinander
 - `api/chat.js`: validierte, testbare OpenAI-Anfrage
 - `public/libs/`: lokale Chessboard- und Stockfish-Assets
 - `test/`: Tests mit dem eingebauten Node-Test-Runner
+- `open-next.config.ts` und `wrangler.jsonc`: reproduzierbarer Sites-Build
 
 Der OpenAI-Schlüssel bleibt ausschließlich auf dem Server. Chat-Anfragen
 werden größenbegrenzt und nicht bei OpenAI gespeichert (`store: false`).
