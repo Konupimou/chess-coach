@@ -275,15 +275,57 @@ textarea:focus-visible,
 .accuracy-chip {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 9px;
   min-height: 25px;
-  padding: 3px 9px;
+  padding: 5px 9px;
   border: 1px solid rgba(83, 224, 161, 0.35);
-  border-radius: 999px;
+  border-radius: 11px;
   background: rgba(83, 224, 161, 0.12);
   color: #8ff1c5;
   font-size: 0.74rem;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
+}
+
+.accuracy-chip-label {
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.accuracy-side {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.accuracy-side strong {
+  color: inherit;
+}
+
+.accuracy-side-marker {
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+}
+
+.accuracy-side-marker.is-white {
+  background: #f4f5f7;
+}
+
+.accuracy-side-marker.is-black {
+  background: #11151c;
+}
+
+.accuracy-mode {
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 650;
 }
 
 .accuracy-chip.is-pending {

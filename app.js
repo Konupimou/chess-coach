@@ -207,7 +207,35 @@ export class ChessApp {
     statusGroup.appendChild(this.gameStatusEl);
     this.accuracyEl = document.createElement("div");
     this.accuracyEl.className = "accuracy-chip is-pending";
-    this.accuracyEl.textContent = "Genauigkeit —";
+    this.accuracyEl.setAttribute("role", "status");
+    this.accuracyEl.setAttribute("aria-live", "polite");
+    const accuracyLabel = document.createElement("span");
+    accuracyLabel.className = "accuracy-chip-label";
+    accuracyLabel.textContent = "Genauigkeit";
+    this.accuracyEl.appendChild(accuracyLabel);
+    const createAccuracySide = (label, color) => {
+      const side = document.createElement("span");
+      side.className = "accuracy-side";
+      const marker = document.createElement("span");
+      marker.className = `accuracy-side-marker is-${color}`;
+      marker.setAttribute("aria-hidden", "true");
+      const name = document.createElement("span");
+      name.textContent = label;
+      const value = document.createElement("strong");
+      value.textContent = "—";
+      side.append(marker, name, value);
+      this.accuracyEl.appendChild(side);
+      return value;
+    };
+    this.whiteAccuracyEl = createAccuracySide("Weiß", "white");
+    this.blackAccuracyEl = createAccuracySide("Schwarz", "black");
+    this.accuracyModeEl = document.createElement("span");
+    this.accuracyModeEl.className = "accuracy-mode";
+    this.accuracyEl.appendChild(this.accuracyModeEl);
+    this.accuracyEl.setAttribute(
+      "aria-label",
+      "Genauigkeit: Weiß noch nicht berechnet, Schwarz noch nicht berechnet",
+    );
     this.accuracyEl.title = "Wird aus den Engine-Bewertungen der gespielten Züge berechnet.";
     statusGroup.appendChild(this.accuracyEl);
     boardToolbar.appendChild(statusGroup);
@@ -912,18 +940,35 @@ export class ChessApp {
   updateAccuracyDisplay() {
     if (!this.accuracyEl) return;
     const report = this.gameReviewReport || this.liveAccuracyReport;
-    const accuracy = report?.overallAccuracy;
-    if (!Number.isFinite(accuracy) || report?.analyzedMoves === 0) {
-      this.accuracyEl.textContent = 'Genauigkeit —';
+    const whiteAccuracy = report?.whiteAccuracy;
+    const blackAccuracy = report?.blackAccuracy;
+    const formatAccuracy = (value) => (
+      Number.isFinite(value) ? `${value.toFixed(1).replace('.', ',')} %` : '—'
+    );
+    const white = formatAccuracy(whiteAccuracy);
+    const black = formatAccuracy(blackAccuracy);
+    this.whiteAccuracyEl.textContent = white;
+    this.blackAccuracyEl.textContent = black;
+    if (
+      (!Number.isFinite(whiteAccuracy) && !Number.isFinite(blackAccuracy))
+      || report?.analyzedMoves === 0
+    ) {
       this.accuracyEl.classList.add('is-pending');
+      this.accuracyModeEl.textContent = '';
+      this.accuracyEl.setAttribute(
+        'aria-label',
+        'Genauigkeit: Weiß noch nicht berechnet, Schwarz noch nicht berechnet',
+      );
       this.accuracyEl.title = 'Nach den ersten vollständig bewerteten Zügen erscheint hier die Genauigkeit.';
       return;
     }
     const provisional = !report.final || report.analyzedMoves < report.totalMoves;
     this.accuracyEl.classList.toggle('is-pending', provisional);
-    this.accuracyEl.textContent = `${provisional ? 'Vorläufig ' : ''}${accuracy.toFixed(1)} %`;
-    const white = Number.isFinite(report.whiteAccuracy) ? `${report.whiteAccuracy.toFixed(1)} %` : '—';
-    const black = Number.isFinite(report.blackAccuracy) ? `${report.blackAccuracy.toFixed(1)} %` : '—';
+    this.accuracyModeEl.textContent = provisional ? 'vorläufig' : '';
+    this.accuracyEl.setAttribute(
+      'aria-label',
+      `${provisional ? 'Vorläufige ' : ''}Genauigkeit: Weiß ${white}, Schwarz ${black}`,
+    );
     this.accuracyEl.title = `Geschätzte Engine-Genauigkeit · Weiß ${white} · Schwarz ${black} · ${report.analyzedMoves}/${report.totalMoves} Züge`;
   }
 
@@ -1262,7 +1307,7 @@ export class ChessApp {
     const overall = document.createElement('div');
     overall.className = 'review-score';
     overall.textContent = Number.isFinite(report.overallAccuracy)
-      ? `${report.overallAccuracy.toFixed(1)} %`
+      ? `${report.overallAccuracy.toFixed(1).replace('.', ',')} %`
       : '—';
     lead.appendChild(overall);
     const leadCopy = document.createElement('div');
@@ -1288,13 +1333,13 @@ export class ChessApp {
       title.textContent = label;
       const value = document.createElement('strong');
       value.textContent = Number.isFinite(accuracy)
-        ? `${accuracy.toFixed(1)} %`
+        ? `${accuracy.toFixed(1).replace('.', ',')} %`
         : Number.isFinite(loss)
-          ? `${loss.toFixed(1)} cp`
+          ? `${loss.toFixed(1).replace('.', ',')} cp`
           : '—';
       const detail = document.createElement('small');
       detail.textContent = Number.isFinite(accuracy) && Number.isFinite(loss)
-        ? `Ø ${loss.toFixed(1)} cp Verlust`
+        ? `Ø ${loss.toFixed(1).replace('.', ',')} cp Verlust`
         : 'über alle analysierten Züge';
       card.append(title, value, detail);
       metrics.appendChild(card);

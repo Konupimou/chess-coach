@@ -67,6 +67,24 @@ test("Partiebericht aggregiert Farben, Verluste und kritische Momente", () => {
   assert.equal(report.moves[0].bestSan, "d4");
 });
 
+test("nach nur einem weißen Zug bleibt die Genauigkeit für Schwarz offen", () => {
+  const game = new Chess();
+  const root = new MoveTreeNode({ fen: game.fen() });
+  const e4 = addMoveToTree(root, game.move("e4"), game.fen());
+  const report = summarizeGameReview(
+    [root, e4],
+    [
+      { whiteCp: 20, pv: ["d2d4"] },
+      { whiteCp: 10, pv: ["c7c5"] },
+    ],
+    { depth: 12, final: false },
+  );
+
+  assert.equal(report.analyzedMoves, 1);
+  assert.ok(Number.isFinite(report.whiteAccuracy));
+  assert.equal(report.blackAccuracy, null);
+});
+
 test("Matt, Score-Normalisierung und adaptive Tiefe sind begrenzt", () => {
   assert.equal(scoreToWhiteCp({ unit: "mate", value: -2 }), -10_000);
   assert.equal(scoreToWhiteCp({ pawns: 0.42 }), 42);
