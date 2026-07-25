@@ -1,13 +1,63 @@
 import { MoveTreeNode } from "./moveTree.js";
 
-export const ACCOUNT_SCHEMA_VERSION = 1;
-export const ACCOUNT_STORAGE_PREFIX = "chess-coach.account.v1";
+export const ACCOUNT_SCHEMA_VERSION = 2;
+export const ACCOUNT_STORAGE_PREFIX = "chess-coach.account.v2";
+const LEGACY_ACCOUNT_STORAGE_PREFIX = "chess-coach.account.v1";
 export const MAX_SAVED_GAMES = 40;
 const MAX_DELETION_TOMBSTONES = 200;
 const MAX_TREE_NODES = 1_200;
 
 function cleanText(value, maximum = 120) {
   return typeof value === "string" ? value.trim().slice(0, maximum) : "";
+}
+
+function cleanRating(value) {
+  const rating = Number.parseInt(value, 10);
+  return Number.isInteger(rating) && rating >= 100 && rating <= 4_000 ? rating : null;
+}
+
+function cloneJsonObject(value) {
+  if (!value || typeof value !== "object") return null;
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return null;
+  }
+}
+
+function normalizeMetadata(metadata) {
+  if (!metadata || typeof metadata !== "object") return null;
+  const playerColor = metadata.playerColor === "w" || metadata.playerColor === "b"
+    ? metadata.playerColor
+    : null;
+  const playedAt = /^\d{4}-\d{2}-\d{2}$/.test(metadata.playedAt)
+    ? metadata.playedAt
+    : "";
+  const timeFormat = [
+    "bullet",
+    "blitz",
+    "rapid",
+    "classical",
+    "correspondence",
+    "training",
+  ].includes(metadata.timeFormat)
+    ? metadata.timeFormat
+    : "";
+  const rated = metadata.rated === true || metadata.rated === false ? metadata.rated : null;
+  return {
+    playerColor,
+    playedAt,
+    opponent: cleanText(metadata.opponent, 80),
+    opening: cleanText(metadata.opening, 100),
+    timeFormat,
+    timeControl: cleanText(metadata.timeControl, 30),
+    platform: cleanText(metadata.platform, 80),
+    event: cleanText(metadata.event, 100),
+    playerRating: cleanRating(metadata.playerRating),
+    opponentRating: cleanRating(metadata.opponentRating),
+    rated,
+    notes: cleanText(metadata.notes, 1_500),
+  };
 }
 
 export function storageKeyForIdentity(identity) {
@@ -51,6 +101,7 @@ function normalizeGameRecord(record) {
     title: cleanText(record.title, 100) || "Gespeicherte Partie",
     createdAt: cleanText(record.createdAt, 40) || new Date().toISOString(),
     updatedAt: cleanText(record.updatedAt, 40) || new Date().toISOString(),
+    manualSavedAt: cleanText(record.manualSavedAt, 40),
     result: ["1-0", "0-1", "1/2-1/2"].includes(record.result) ? record.result : "*",
     plyCount: Math.max(0, Math.min(300, Number.parseInt(record.plyCount, 10) || 0)),
     currentFen: cleanText(record.currentFen, 120),
@@ -62,7 +113,8 @@ function normalizeGameRecord(record) {
       : null,
     pgn: cleanText(record.pgn, 30_000),
     tree: record.tree,
-    review: record.review && typeof record.review === "object" ? record.review : null,
+    review: cloneJsonObject(record.review),
+    metadata: normalizeMetadata(record.metadata),
   };
 }
 
@@ -70,10 +122,16 @@ export function loadAccountState(storage, key, profile = {}) {
   const fallback = createAccountState(profile);
   if (!storage || typeof storage.getItem !== "function") return fallback;
   try {
-    const raw = storage.getItem(key);
+    let raw = storage.getItem(key);
+    if (!raw && key.startsWith(ACCOUNT_STORAGE_PREFIX)) {
+      const legacyKey = key.replace(ACCOUNT_STORAGE_PREFIX, LEGACY_ACCOUNT_STORAGE_PREFIX);
+      raw = storage.getItem(legacyKey);
+    }
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
-    if (parsed?.version !== ACCOUNT_SCHEMA_VERSION || !Array.isArray(parsed.games)) return fallback;
+    if (![1, ACCOUNT_SCHEMA_VERSION].includes(parsed?.version) || !Array.isArray(parsed.games)) {
+      return fallback;
+    }
     const storedProfile = parsed.profile && typeof parsed.profile === "object" ? parsed.profile : {};
     return {
       version: ACCOUNT_SCHEMA_VERSION,

@@ -31,6 +31,13 @@ import {
   storageKeyForIdentity,
   upsertSavedGame,
 } from "./gameStorage.js";
+import {
+  createGameSaveDraft,
+  inferOpeningFromPath,
+  RESULT_LABELS,
+  TIME_FORMAT_LABELS,
+} from "./gameMetadata.js";
+import { buildPlayerProfile } from "./playerProfile.js";
 
 export class ChessApp {
   ensureEngine() {
@@ -124,6 +131,11 @@ export class ChessApp {
     this.modalKeyHandler = null;
     this.activeGameId = createGameId();
     this.activeGameDeletedExternally = false;
+    this.activeGamePersisted = false;
+    this.gameDirty = false;
+    this.loadedRecordUpdatedAt = null;
+    this.gameSaveDraft = createGameSaveDraft();
+    this.gameSaveDraftDirty = false;
     this.accountIdentity = null;
     this.accountStorageKey = storageKeyForIdentity(null);
     try {
@@ -238,6 +250,12 @@ export class ChessApp {
     );
     this.accuracyEl.title = "Wird aus den Engine-Bewertungen der gespielten Züge berechnet.";
     statusGroup.appendChild(this.accuracyEl);
+    this.saveStatusEl = document.createElement("div");
+    this.saveStatusEl.className = "save-status is-unsaved";
+    this.saveStatusEl.setAttribute("role", "status");
+    this.saveStatusEl.setAttribute("aria-live", "polite");
+    this.saveStatusEl.textContent = "Noch nicht gespeichert";
+    statusGroup.appendChild(this.saveStatusEl);
     boardToolbar.appendChild(statusGroup);
 
     const boardActions = document.createElement("div");
@@ -263,6 +281,14 @@ export class ChessApp {
       this.scheduleBoardResize();
     });
     boardActions.appendChild(flipButton);
+
+    this.saveGameButton = document.createElement("button");
+    this.saveGameButton.type = "button";
+    this.saveGameButton.className = "primary-action-button save-game-button";
+    this.saveGameButton.textContent = "Partie speichern";
+    this.saveGameButton.setAttribute("aria-haspopup", "dialog");
+    this.saveGameButton.addEventListener("click", () => this.openSaveGameDialog());
+    boardActions.appendChild(this.saveGameButton);
 
     this.feedbackButton = document.createElement("button");
     this.feedbackButton.type = "button";
@@ -464,6 +490,7 @@ export class ChessApp {
     document.body.appendChild(controls);
 
     this.createFeedbackDialog();
+    this.createSaveGameDialog();
     this.createAccountPanel();
 
     this.detachKeys = attachKeyboard({
@@ -473,7 +500,12 @@ export class ChessApp {
       onDown: () => this.cycleVariation(1)
     });
 
-    this._onBeforeUnload = () => this.destroy();
+    this._onBeforeUnload = (event) => {
+      if (this.hasUnsavedGameChanges()) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
     this._onResize = () => this.scheduleBoardResize();
     this._onKeyDown = (event) => {
       if (event.key === 'Escape' && this.previewState) this.stopSuggestionPreview();
@@ -494,8 +526,11 @@ export class ChessApp {
       this.accountState = nextState;
       if (activeWasSaved && activeWasDeleted) {
         this.activeGameDeletedExternally = true;
+        this.activeGamePersisted = false;
+        this.gameDirty = this.getCurrentPath().length > 1;
+        this.updateSaveGameButton();
         this.showToast(
-          'Diese geöffnete Partie wurde in einem anderen Tab gelöscht. Weitere Änderungen werden nicht gespeichert.',
+          'Diese Partie wurde in einem anderen Tab gelöscht. Du kannst sie über „Partie speichern“ als neue Kopie sichern.',
         );
       }
       this.updateAccountButton();
@@ -509,6 +544,7 @@ export class ChessApp {
     this.renderMoveList();
     this.updateGameStatus();
     this.updateAccuracyDisplay();
+    this.updateSaveGameButton();
     this.evaluateCurrentPosition();
     this.initializeAccountIdentity();
   }
@@ -539,12 +575,12 @@ export class ChessApp {
     this.currentNode.result = this.getGameResult();
     this.gameReviewReport = null;
     this.savedGameReview = null;
+    this.markGameDirty();
     setTimeout(() => this.board.position(this.game.fen()), 0);
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
     this.evaluateCurrentPosition();
-    this.persistCurrentGame();
   }
 
   goBackOnePly() {
@@ -554,6 +590,7 @@ export class ChessApp {
     this.currentNode = this.currentNode.parent;
     this.game.load(this.currentNode.fen);
     this.gameReviewReport = null;
+    this.markGameDirty();
     this.board.position(this.currentNode.fen);
     this.renderMoveList();
     this.updateGameStatus();
@@ -569,6 +606,7 @@ export class ChessApp {
     this.currentNode = next;
     this.game.load(this.currentNode.fen);
     this.gameReviewReport = null;
+    this.markGameDirty();
     this.board.position(this.currentNode.fen);
     this.renderMoveList();
     this.updateGameStatus();
@@ -603,6 +641,7 @@ export class ChessApp {
     this.currentNode = target;
     this.game.load(this.currentNode.fen);
     this.gameReviewReport = null;
+    this.markGameDirty();
     this.board.position(this.currentNode.fen);
     this.renderMoveList();
     this.updateGameStatus();
@@ -1160,6 +1199,7 @@ export class ChessApp {
     this.engine?.cancelSearch?.();
     this.reviewCancelled = false;
     this.reviewRunning = true;
+    this.markGameDirty();
     this.feedbackButton.disabled = true;
     this.feedbackCancelButton.textContent = 'Abbrechen';
     if (!this.feedbackDialog.open) this.feedbackDialog.showModal();
@@ -1212,8 +1252,8 @@ export class ChessApp {
       this.gameReviewReport = report;
       this.savedGameReview = report;
       this.liveAccuracyReport = report;
+      this.markGameDirty();
       this.updateAccuracyDisplay();
-      this.persistCurrentGame();
     } catch (error) {
       if (error?.name === 'AbortError') {
         if (this.feedbackDialog.open) {
@@ -1243,7 +1283,7 @@ export class ChessApp {
       if (feedback && this.gameReviewReport === report) {
         report.feedback = feedback;
         this.savedGameReview = report;
-        this.persistCurrentGame();
+        this.markGameDirty();
         this.renderFeedbackReport(report, feedback);
       }
     } catch (error) {
@@ -1413,6 +1453,320 @@ export class ChessApp {
     }
   }
 
+  hasUnsavedGameChanges() {
+    return this.gameSaveDraftDirty
+      || (
+        this.getCurrentPath().length > 1
+        && (!this.activeGamePersisted || this.gameDirty)
+      );
+  }
+
+  markGameDirty() {
+    if (this.getCurrentPath().length < 2) return;
+    this.gameDirty = true;
+    this.updateSaveGameButton();
+  }
+
+  updateSaveGameButton() {
+    if (!this.saveGameButton) return;
+    const hasMoves = this.getCurrentPath().length > 1;
+    const hasPendingChanges = this.gameDirty || this.gameSaveDraftDirty;
+    let buttonLabel = 'Partie speichern';
+    let statusLabel = hasMoves ? 'Noch nicht gespeichert' : 'Noch nicht gespeichert';
+    let statusClass = 'is-unsaved';
+
+    if (!hasMoves && this.gameSaveDraftDirty) {
+      buttonLabel = 'Partiedaten';
+      statusLabel = 'Partiedaten vorgemerkt';
+      statusClass = 'is-dirty';
+    } else if (this.activeGamePersisted && !hasPendingChanges) {
+      buttonLabel = 'Partiedaten';
+      statusLabel = 'Gespeichert';
+      statusClass = 'is-saved';
+    } else if (this.activeGamePersisted && hasPendingChanges) {
+      buttonLabel = 'Änderungen speichern';
+      statusLabel = 'Ungespeicherte Änderungen';
+      statusClass = 'is-dirty';
+    }
+
+    this.saveGameButton.textContent = buttonLabel;
+    this.saveGameButton.disabled = this.reviewRunning;
+    if (this.saveStatusEl) {
+      this.saveStatusEl.textContent = statusLabel;
+      this.saveStatusEl.className = `save-status ${statusClass}`;
+    }
+    if (this.saveGameSubmitButton) {
+      this.saveGameSubmitButton.disabled = !hasMoves || this.reviewRunning;
+    }
+    if (this.saveGameAvailabilityEl) {
+      this.saveGameAvailabilityEl.textContent = hasMoves
+        ? 'Die Partie wird erst durch den Speicher-Klick deinem Account hinzugefügt.'
+        : 'Speichern ist nach dem ersten Zug möglich. Deine vorbereiteten Angaben bleiben erhalten.';
+    }
+  }
+
+  confirmDiscardUnsavedGame(action) {
+    if (!this.hasUnsavedGameChanges()) return true;
+    return window.confirm(
+      `Diese Partie enthält ungespeicherte Änderungen. Möchtest du wirklich ${action} und sie verwerfen?`,
+    );
+  }
+
+  createSaveGameDialog() {
+    const dialog = document.createElement('dialog');
+    dialog.id = 'save-game-dialog';
+    dialog.className = 'modal-dialog save-game-dialog';
+    dialog.setAttribute('aria-labelledby', 'save-game-dialog-title');
+    dialog.setAttribute('aria-describedby', 'save-game-dialog-description');
+    this.saveGameDialog = dialog;
+
+    const heading = document.createElement('div');
+    heading.className = 'dialog-heading';
+    const title = document.createElement('div');
+    title.id = 'save-game-dialog-title';
+    title.className = 'card-title';
+    title.textContent = 'Partie speichern';
+    heading.appendChild(title);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'dialog-close';
+    close.setAttribute('aria-label', 'Speicherdialog schließen');
+    close.textContent = '×';
+    close.addEventListener('click', () => dialog.close());
+    heading.appendChild(close);
+    dialog.appendChild(heading);
+
+    const description = document.createElement('p');
+    description.id = 'save-game-dialog-description';
+    description.className = 'dialog-description';
+    description.textContent = 'Ergänze die Partiedaten. Farbe, Datum, Ergebnis und Zeitformat werden für dein Spielerprofil benötigt.';
+    dialog.appendChild(description);
+
+    const requiredHint = document.createElement('p');
+    requiredHint.className = 'required-hint';
+    requiredHint.textContent = '* Pflichtfeld';
+    dialog.appendChild(requiredHint);
+
+    const form = document.createElement('form');
+    form.className = 'save-game-form';
+    this.saveGameForm = form;
+    this.saveGameInputs = {};
+
+    const addField = ({
+      key,
+      label,
+      type = 'text',
+      required = false,
+      options = null,
+      placeholder = '',
+      maxLength = null,
+      min = null,
+      max = null,
+      full = false,
+      textarea = false,
+    }) => {
+      const field = document.createElement('label');
+      field.className = `save-game-field${full ? ' is-full' : ''}`;
+      const labelText = document.createElement('span');
+      labelText.textContent = `${label}${required ? ' *' : ''}`;
+      field.appendChild(labelText);
+      let input;
+      if (textarea) {
+        input = document.createElement('textarea');
+        input.rows = 3;
+      } else if (options) {
+        input = document.createElement('select');
+        options.forEach(({ value, text, disabled = false }) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = text;
+          option.disabled = disabled;
+          input.appendChild(option);
+        });
+      } else {
+        input = document.createElement('input');
+        input.type = type;
+      }
+      input.name = key;
+      input.required = required;
+      input.placeholder = placeholder;
+      if (maxLength) input.maxLength = maxLength;
+      if (min !== null) input.min = String(min);
+      if (max !== null) input.max = String(max);
+      input.addEventListener('input', () => {
+        this.gameSaveDraft[key] = input.value;
+        this.gameSaveDraftDirty = true;
+        this.markGameDirty();
+        this.updateSaveGameButton();
+      });
+      input.addEventListener('change', () => {
+        this.gameSaveDraft[key] = input.value;
+        this.gameSaveDraftDirty = true;
+        this.markGameDirty();
+        this.updateSaveGameButton();
+      });
+      field.appendChild(input);
+      form.appendChild(field);
+      this.saveGameInputs[key] = input;
+      return input;
+    };
+
+    addField({
+      key: 'playerColor',
+      label: 'Deine Farbe',
+      required: true,
+      options: [
+        { value: '', text: 'Bitte wählen', disabled: true },
+        { value: 'w', text: 'Weiß' },
+        { value: 'b', text: 'Schwarz' },
+      ],
+    });
+    addField({
+      key: 'playedAt',
+      label: 'Partiedatum',
+      type: 'date',
+      required: true,
+    });
+    addField({
+      key: 'result',
+      label: 'Ergebnis',
+      required: true,
+      options: [
+        { value: '*', text: 'Noch nicht beendet' },
+        { value: '1-0', text: '1–0 · Weiß gewinnt' },
+        { value: '0-1', text: '0–1 · Schwarz gewinnt' },
+        { value: '1/2-1/2', text: 'Remis' },
+      ],
+    });
+    addField({
+      key: 'timeFormat',
+      label: 'Zeitformat',
+      required: true,
+      options: [
+        { value: '', text: 'Bitte wählen', disabled: true },
+        ...Object.entries(TIME_FORMAT_LABELS).map(([value, text]) => ({ value, text })),
+      ],
+    });
+    addField({
+      key: 'opponent',
+      label: 'Gegner',
+      placeholder: 'Name oder Benutzername',
+      maxLength: 80,
+    });
+    addField({
+      key: 'timeControl',
+      label: 'Genaue Bedenkzeit',
+      placeholder: 'z. B. 10+0 oder 15+10',
+      maxLength: 30,
+    });
+    addField({
+      key: 'opening',
+      label: 'Eröffnung (erkannt, editierbar)',
+      placeholder: 'Wird aus den ersten Zügen erkannt',
+      maxLength: 100,
+      full: true,
+    });
+    addField({
+      key: 'platform',
+      label: 'Plattform oder Ort',
+      placeholder: 'z. B. Lichess oder Schachverein',
+      maxLength: 80,
+    });
+    addField({
+      key: 'event',
+      label: 'Turnier / Event',
+      placeholder: 'Optional',
+      maxLength: 100,
+    });
+    addField({
+      key: 'playerRating',
+      label: 'Deine Wertungszahl',
+      type: 'number',
+      min: 100,
+      max: 4000,
+    });
+    addField({
+      key: 'opponentRating',
+      label: 'Wertungszahl des Gegners',
+      type: 'number',
+      min: 100,
+      max: 4000,
+    });
+    addField({
+      key: 'rated',
+      label: 'Wertung',
+      options: [
+        { value: '', text: 'Nicht angegeben' },
+        { value: 'yes', text: 'Gewertete Partie' },
+        { value: 'no', text: 'Ungewertete Partie' },
+      ],
+    });
+    addField({
+      key: 'title',
+      label: 'Eigener Titel',
+      placeholder: 'Leer lassen für automatischen Titel',
+      maxLength: 100,
+      full: true,
+    });
+    addField({
+      key: 'notes',
+      label: 'Notizen',
+      placeholder: 'Was möchtest du dir zu dieser Partie merken?',
+      maxLength: 1500,
+      full: true,
+      textarea: true,
+    });
+
+    this.saveGameAvailabilityEl = document.createElement('p');
+    this.saveGameAvailabilityEl.className = 'save-game-availability is-full';
+    form.appendChild(this.saveGameAvailabilityEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'dialog-actions save-game-actions is-full';
+    const remember = document.createElement('button');
+    remember.type = 'button';
+    remember.className = 'secondary-button';
+    remember.textContent = 'Daten vormerken & schließen';
+    remember.addEventListener('click', () => dialog.close());
+    this.saveGameSubmitButton = document.createElement('button');
+    this.saveGameSubmitButton.type = 'submit';
+    this.saveGameSubmitButton.className = 'primary-action-button';
+    this.saveGameSubmitButton.textContent = 'Partie speichern';
+    actions.append(remember, this.saveGameSubmitButton);
+    form.appendChild(actions);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      this.saveCurrentGame();
+    });
+    dialog.appendChild(form);
+    dialog.addEventListener('close', () => this.saveDialogReturnFocus?.focus?.());
+    document.body.appendChild(dialog);
+    this.updateSaveGameButton();
+  }
+
+  openSaveGameDialog(returnFocus = this.saveGameButton) {
+    if (!this.saveGameDialog || this.saveGameDialog.open) return;
+    this.stopSuggestionPreview();
+    const path = this.getCurrentPath();
+    if (!this.gameSaveDraft.opening) {
+      this.gameSaveDraft.opening = inferOpeningFromPath(path);
+    }
+    const boardResult = this.getGameResult();
+    if (boardResult !== '*' && this.gameSaveDraft.result === '*') {
+      this.gameSaveDraft.result = boardResult;
+    }
+    Object.entries(this.saveGameInputs || {}).forEach(([key, input]) => {
+      input.value = this.gameSaveDraft[key] ?? '';
+    });
+    this.saveDialogReturnFocus = returnFocus;
+    this.updateSaveGameButton();
+    this.saveGameDialog.showModal();
+    const firstMissing = ['playerColor', 'timeFormat']
+      .map((key) => this.saveGameInputs[key])
+      .find((input) => !input?.value);
+    (firstMissing || this.saveGameInputs.playerColor)?.focus();
+  }
+
   createAccountPanel() {
     const slot = document.getElementById('account-slot');
     if (!slot) return;
@@ -1475,17 +1829,30 @@ export class ChessApp {
         source: 'sites',
       };
       const nextKey = storageKeyForIdentity(profile);
-      const previousGames = this.accountState?.games || [];
       const nextState = loadAccountState(this.browserStorage, nextKey, profile);
-      if (nextState.games.length === 0 && previousGames.length > 0) {
-        nextState.games = previousGames;
-      }
+      const activeInNextAccount = nextState.games.find(
+        (game) => game.id === this.activeGameId,
+      );
+      const activeDeletedInNextAccount = nextState.deletedGames?.some(
+        (deletion) => deletion.id === this.activeGameId,
+      );
+      const wasPersistedInPreviousAccount = this.activeGamePersisted;
       this.accountIdentity = profile;
       this.accountStorageKey = nextKey;
       this.accountState = nextState;
-      this.activeGameDeletedExternally = false;
-      saveAccountState(this.browserStorage, this.accountStorageKey, this.accountState);
+      this.activeGameDeletedExternally = Boolean(activeDeletedInNextAccount);
+      this.activeGamePersisted = Boolean(activeInNextAccount);
+      this.loadedRecordUpdatedAt = activeInNextAccount?.updatedAt || null;
+      if (wasPersistedInPreviousAccount && !activeInNextAccount) {
+        this.gameDirty = this.getCurrentPath().length > 1;
+        if (this.gameDirty) {
+          this.showToast(
+            'Die laufende Partie ist in diesem Account noch nicht gespeichert. Nutze dafür „Partie speichern“.',
+          );
+        }
+      }
       this.updateAccountButton();
+      this.updateSaveGameButton();
       if (this.accountDialog?.open) this.renderAccountDialog();
     } catch {
       // Auf localhost bleibt das lokale Profil aktiv.
@@ -1507,6 +1874,10 @@ export class ChessApp {
     const detail = document.createElement('small');
     const count = this.accountState?.games?.length || 0;
     detail.textContent = `${count} ${count === 1 ? 'Partie' : 'Partien'}`;
+    this.accountButton.setAttribute(
+      'aria-label',
+      `Mein Account und Spielerprofil, ${count} ${count === 1 ? 'gespeicherte Partie' : 'gespeicherte Partien'}`,
+    );
     copy.append(label, detail);
     this.accountButton.append(avatar, copy);
   }
@@ -1563,30 +1934,244 @@ export class ChessApp {
     const storageNote = document.createElement('p');
     storageNote.className = 'account-storage-note';
     storageNote.textContent = profile.source === 'sites'
-      ? 'Du bist über Sites angemeldet. Partien werden in dieser Version automatisch in diesem Browser gespeichert.'
-      : 'Partien werden automatisch in diesem Browser gespeichert und bleiben nach dem Neuladen erhalten.';
+      ? 'Du bist über Sites angemeldet. Partien werden nur nach Klick auf „Partie speichern“ in diesem Browser abgelegt.'
+      : 'Partien werden nur nach Klick auf „Partie speichern“ in diesem Browser abgelegt und bleiben nach dem Neuladen erhalten.';
     this.accountBodyEl.appendChild(storageNote);
 
     const saveCurrent = document.createElement('button');
     saveCurrent.type = 'button';
     saveCurrent.className = 'primary-action-button account-save-button';
-    saveCurrent.textContent = 'Aktuelle Partie jetzt speichern';
-    saveCurrent.disabled = this.getCurrentPath().length < 2;
+    saveCurrent.textContent = this.activeGamePersisted
+      ? 'Partiedaten und Änderungen speichern'
+      : 'Aktuelle Partie speichern';
     saveCurrent.addEventListener('click', () => {
-      if (this.persistCurrentGame({ notify: true })) this.renderAccountDialog();
+      this.accountDialog.close();
+      this.openSaveGameDialog(this.saveGameButton);
     });
     this.accountBodyEl.appendChild(saveCurrent);
 
+    const games = this.accountState?.games || [];
+    const playerStats = buildPlayerProfile(games);
+    const analyzedGameIds = new Set(playerStats.analyzedGameIds);
+    const pendingAnalysisGames = games.filter((game) => !analyzedGameIds.has(game.id));
+    const analyzeSavedGame = (game) => {
+      if (!game || !this.openSavedGame(game)) return;
+      requestAnimationFrame(() => this.startFullGameReview());
+    };
+    const formatPercent = (value) => (
+      Number.isFinite(value) ? `${value.toFixed(1).replace('.', ',')} %` : '—'
+    );
+    const formatDecimal = (value, suffix = '') => (
+      Number.isFinite(value) ? `${value.toFixed(1).replace('.', ',')}${suffix}` : '—'
+    );
+    const gamesLabel = (count) => `${count} ${count === 1 ? 'Partie' : 'Partien'}`;
+
+    const profileHeading = document.createElement('div');
+    profileHeading.className = 'account-section-title profile-section-title';
+    const profileHeadingCopy = document.createElement('div');
+    const profileHeadingTitle = document.createElement('strong');
+    profileHeadingTitle.textContent = 'Spielerprofil';
+    const profileCoverage = document.createElement('span');
+    profileCoverage.textContent = `${playerStats.totalGames} gespeichert · ${playerStats.analyzedGames} analysiert`;
+    profileHeadingCopy.append(profileHeadingTitle, profileCoverage);
+    profileHeading.appendChild(profileHeadingCopy);
+    this.accountBodyEl.appendChild(profileHeading);
+
+    const overview = document.createElement('dl');
+    overview.className = 'profile-overview';
+    const appendMetric = (label, value, detail) => {
+      const metric = document.createElement('div');
+      const term = document.createElement('dt');
+      term.textContent = label;
+      const description = document.createElement('dd');
+      description.textContent = value;
+      const small = document.createElement('small');
+      small.textContent = detail;
+      metric.append(term, description, small);
+      overview.appendChild(metric);
+    };
+    appendMetric(
+      'Deine Genauigkeit',
+      formatPercent(playerStats.ownAccuracy),
+      'gewichtet nach deinen analysierten Zügen',
+    );
+    appendMetric(
+      'Bilanz',
+      `${playerStats.results.wins} S · ${playerStats.results.draws} R · ${playerStats.results.losses} N`,
+      `${gamesLabel(playerStats.results.unknown)} noch ohne Ergebnis`,
+    );
+    appendMetric(
+      'Punktquote',
+      formatPercent(playerStats.results.scoreRate),
+      'Siege plus halbe Remispunkte',
+    );
+    appendMetric(
+      'Analyseabdeckung',
+      `${playerStats.analyzedGames} / ${playerStats.totalGames}`,
+      'nur gespeicherte Partien',
+    );
+    this.accountBodyEl.appendChild(overview);
+
+    if (pendingAnalysisGames.length > 0) {
+      const analysisPending = document.createElement('div');
+      analysisPending.className = 'profile-analysis-pending';
+      const pendingCopy = document.createElement('div');
+      const pendingTitle = document.createElement('strong');
+      pendingTitle.textContent = `${gamesLabel(pendingAnalysisGames.length)} wartet auf vollständige Analyse`;
+      const pendingDetail = document.createElement('span');
+      pendingDetail.textContent = 'Analysiere die Partie und speichere danach die Änderungen, damit sie in Key Facts und Bestliste einfließt.';
+      pendingCopy.append(pendingTitle, pendingDetail);
+      const analyzeNext = document.createElement('button');
+      analyzeNext.type = 'button';
+      analyzeNext.className = 'secondary-button';
+      analyzeNext.textContent = 'Nächste analysieren';
+      analyzeNext.addEventListener('click', () => analyzeSavedGame(pendingAnalysisGames[0]));
+      analysisPending.append(pendingCopy, analyzeNext);
+      this.accountBodyEl.appendChild(analysisPending);
+    }
+
+    const factsHeading = document.createElement('div');
+    factsHeading.className = 'account-subsection-title';
+    factsHeading.textContent = 'Deine Key Facts';
+    this.accountBodyEl.appendChild(factsHeading);
+    const facts = document.createElement('div');
+    facts.className = 'profile-facts';
+    const appendFact = (label, value, detail = '') => {
+      const fact = document.createElement('div');
+      const factLabel = document.createElement('span');
+      factLabel.textContent = label;
+      const factValue = document.createElement('strong');
+      factValue.textContent = value;
+      fact.append(factLabel, factValue);
+      if (detail) {
+        const factDetail = document.createElement('small');
+        factDetail.textContent = detail;
+        fact.appendChild(factDetail);
+      }
+      facts.appendChild(fact);
+    };
+    let strongerColor = 'Noch offen';
+    if (Number.isFinite(playerStats.whiteAccuracy) && Number.isFinite(playerStats.blackAccuracy)) {
+      strongerColor = playerStats.whiteAccuracy === playerStats.blackAccuracy
+        ? 'Ausgeglichen'
+        : playerStats.whiteAccuracy > playerStats.blackAccuracy ? 'Weiß' : 'Schwarz';
+    }
+    appendFact(
+      'Stärkere Farbe',
+      strongerColor,
+      `Weiß ${formatPercent(playerStats.whiteAccuracy)} · Schwarz ${formatPercent(playerStats.blackAccuracy)}`,
+    );
+    appendFact(
+      'Lieblingseröffnung',
+      playerStats.favoriteOpening?.name || 'Noch offen',
+      playerStats.favoriteOpening ? gamesLabel(playerStats.favoriteOpening.games) : 'Eröffnung beim Speichern erfassen',
+    );
+    appendFact(
+      'Beste Eröffnung',
+      playerStats.bestOpening?.name || 'Mehr Partien nötig',
+      playerStats.bestOpening
+        ? `${formatPercent(playerStats.bestOpening.scoreRate)} Punktquote`
+        : 'wird ab zwei Partien verglichen',
+    );
+    appendFact(
+      'Häufigstes Zeitformat',
+      playerStats.mostCommonTimeFormat?.name || 'Noch offen',
+      playerStats.mostCommonTimeFormat
+        ? gamesLabel(playerStats.mostCommonTimeFormat.games)
+        : 'Zeitformat beim Speichern wählen',
+    );
+    appendFact(
+      'Ø Verlust pro Zug',
+      formatDecimal(playerStats.ownAverageCentipawnLoss, ' cp'),
+      'nur deine analysierten Züge',
+    );
+    appendFact(
+      'Letzte Form',
+      formatPercent(playerStats.currentForm.scoreRate),
+      playerStats.currentForm.sequence.length
+        ? playerStats.currentForm.sequence
+          .map((result) => ({ W: 'S', D: 'R', L: 'N' }[result] || '–'))
+          .join(' · ')
+        : 'Noch keine abgeschlossenen Partien',
+    );
+    appendFact(
+      'Ø Partielänge',
+      Number.isFinite(playerStats.averageMoves) ? `${playerStats.averageMoves} Züge` : '—',
+      playerStats.longestGame ? `längste: ${playerStats.longestGame.moves} Züge` : '',
+    );
+    appendFact(
+      'Eigene Fehler',
+      `${playerStats.ownMistakes} Fehler · ${playerStats.ownBlunders} Patzer`,
+      playerStats.ownQualityCounts.sourceGames === 1
+        ? 'aus 1 detaillierter Analyse'
+        : `aus ${playerStats.ownQualityCounts.sourceGames} detaillierten Analysen`,
+    );
+    this.accountBodyEl.appendChild(facts);
+
+    if (playerStats.openingStats.length > 0) {
+      const openingsHeading = document.createElement('div');
+      openingsHeading.className = 'account-subsection-title';
+      openingsHeading.textContent = 'Eröffnungsrepertoire';
+      this.accountBodyEl.appendChild(openingsHeading);
+      const openings = document.createElement('div');
+      openings.className = 'opening-profile-list';
+      playerStats.openingStats.slice(0, 4).forEach((opening) => {
+        const item = document.createElement('div');
+        const name = document.createElement('strong');
+        name.textContent = opening.name;
+        const detail = document.createElement('span');
+        detail.textContent = `${gamesLabel(opening.games)} · ${formatPercent(opening.scoreRate)} Punktquote · ${formatPercent(opening.ownAccuracy)} Genauigkeit`;
+        item.append(name, detail);
+        openings.appendChild(item);
+      });
+      this.accountBodyEl.appendChild(openings);
+    }
+
+    const bestHeading = document.createElement('div');
+    bestHeading.className = 'account-section-title';
+    bestHeading.textContent = 'Deine besten Partien';
+    this.accountBodyEl.appendChild(bestHeading);
+    if (playerStats.topGameIds.length === 0) {
+      const bestEmpty = document.createElement('p');
+      bestEmpty.className = 'muted';
+      bestEmpty.textContent = 'Nach der ersten analysierten und gespeicherten Partie erscheint hier dein Highlight.';
+      this.accountBodyEl.appendChild(bestEmpty);
+    } else {
+      const bestList = document.createElement('ol');
+      bestList.className = 'best-games-list';
+      playerStats.topGameIds.forEach((id, index) => {
+        const game = games.find((candidate) => candidate.id === id);
+        const ranking = playerStats.bestGames.find((candidate) => candidate.id === id);
+        if (!game || !ranking) return;
+        const item = document.createElement('li');
+        item.className = `best-game-card rank-${index + 1}`;
+        const badge = document.createElement('span');
+        badge.className = 'best-game-badge';
+        badge.textContent = index === 0 ? '#1 Bestpartie' : `#${index + 1} Top-Partie`;
+        const title = document.createElement('strong');
+        title.textContent = game.title;
+        const details = document.createElement('span');
+        details.textContent = `${formatPercent(ranking.accuracy)} Genauigkeit · ${ranking.blunders} Patzer · ${formatPercent(ranking.coverage)} analysiert`;
+        const open = document.createElement('button');
+        open.type = 'button';
+        open.className = 'secondary-button';
+        open.textContent = 'Öffnen';
+        open.addEventListener('click', () => this.openSavedGame(game));
+        item.append(badge, title, details, open);
+        bestList.appendChild(item);
+      });
+      this.accountBodyEl.appendChild(bestList);
+    }
+
     const gamesHeading = document.createElement('div');
     gamesHeading.className = 'account-section-title';
-    gamesHeading.textContent = 'Gespeicherte Partien';
+    gamesHeading.textContent = 'Alle gespeicherten Partien';
     this.accountBodyEl.appendChild(gamesHeading);
 
-    const games = this.accountState?.games || [];
     if (games.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'muted';
-      empty.textContent = 'Noch keine Partie gespeichert.';
+      empty.textContent = 'Noch keine gespeicherte Partie. Spiele mindestens einen Zug und wähle „Partie speichern“.';
       this.accountBodyEl.appendChild(empty);
       return;
     }
@@ -1596,19 +2181,43 @@ export class ChessApp {
     games.forEach((game) => {
       const item = document.createElement('div');
       item.className = 'saved-game';
+      const topRank = playerStats.topGameIds.indexOf(game.id);
+      if (topRank >= 0) item.classList.add('is-top-game', `rank-${topRank + 1}`);
       const copy = document.createElement('div');
+      if (topRank >= 0) {
+        const badge = document.createElement('span');
+        badge.className = 'saved-game-highlight';
+        badge.textContent = topRank === 0 ? '★ Bestpartie' : `Top ${topRank + 1}`;
+        copy.appendChild(badge);
+      }
       const title = document.createElement('strong');
       title.textContent = game.title;
       const detail = document.createElement('span');
-      let date = game.updatedAt;
+      let date = game.metadata?.playedAt || game.updatedAt;
       try {
-        date = new Intl.DateTimeFormat('de-DE', {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        }).format(new Date(game.updatedAt));
+        const parsed = game.metadata?.playedAt
+          ? new Date(`${game.metadata.playedAt}T12:00:00`)
+          : new Date(game.updatedAt);
+        date = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(parsed);
       } catch {}
-      detail.textContent = `${date} · ${game.plyCount} Halbzüge · ${game.result}`;
-      copy.append(title, detail);
+      const color = game.metadata?.playerColor === 'w'
+        ? 'als Weiß'
+        : game.metadata?.playerColor === 'b' ? 'als Schwarz' : 'Farbe fehlt';
+      const opponent = game.metadata?.opponent ? `gegen ${game.metadata.opponent}` : 'Gegner offen';
+      detail.textContent = `${date} · ${opponent} · ${color} · ${RESULT_LABELS[game.result] || game.result}`;
+      const analysis = document.createElement('span');
+      const opening = game.metadata?.opening || 'Eröffnung nicht erfasst';
+      const format = TIME_FORMAT_LABELS[game.metadata?.timeFormat] || 'Zeitformat fehlt';
+      if (analyzedGameIds.has(game.id)) {
+        const ownAccuracy = game.metadata?.playerColor === 'w'
+          ? game.review?.whiteAccuracy
+          : game.metadata?.playerColor === 'b' ? game.review?.blackAccuracy : game.review?.overallAccuracy;
+        analysis.textContent = `${opening} · ${format} · ${formatPercent(ownAccuracy)} Genauigkeit`;
+      } else {
+        analysis.textContent = `${opening} · ${format} · Analyse ausstehend`;
+        analysis.classList.add('analysis-pending-label');
+      }
+      copy.append(title, detail, analysis);
 
       const itemActions = document.createElement('div');
       const open = document.createElement('button');
@@ -1616,12 +2225,28 @@ export class ChessApp {
       open.className = 'secondary-button';
       open.textContent = 'Öffnen';
       open.addEventListener('click', () => this.openSavedGame(game));
+      itemActions.appendChild(open);
+      if (!analyzedGameIds.has(game.id)) {
+        const analyze = document.createElement('button');
+        analyze.type = 'button';
+        analyze.className = 'secondary-button';
+        analyze.textContent = 'Analysieren';
+        analyze.addEventListener('click', () => analyzeSavedGame(game));
+        itemActions.appendChild(analyze);
+      }
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'secondary-button';
+      edit.textContent = 'Partiedaten';
+      edit.addEventListener('click', () => {
+        if (this.openSavedGame(game)) this.openSaveGameDialog(this.saveGameButton);
+      });
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'danger-button';
       remove.textContent = 'Löschen';
       remove.addEventListener('click', () => this.deleteSavedGame(game));
-      itemActions.append(open, remove);
+      itemActions.append(edit, remove);
       item.append(copy, itemActions);
       list.appendChild(item);
     });
@@ -1630,82 +2255,144 @@ export class ChessApp {
 
   makeSavedGameTitle(path) {
     const moves = path.slice(1, 7).map((node) => node.move?.san).filter(Boolean).join(' ');
-    const date = new Intl.DateTimeFormat('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date());
-    return moves ? `${moves} · ${date}` : `Partie · ${date}`;
+    const opponent = this.gameSaveDraft?.opponent?.trim();
+    const opening = this.gameSaveDraft?.opening?.trim();
+    let date = this.gameSaveDraft?.playedAt || new Date().toISOString().slice(0, 10);
+    try {
+      date = new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' })
+        .format(new Date(`${date}T12:00:00`));
+    } catch {}
+    const subject = opponent
+      ? `Partie gegen ${opponent}`
+      : opening || moves || 'Schachpartie';
+    return `${subject} · ${date}`;
   }
 
-  persistCurrentGame({ notify = false } = {}) {
+  saveCurrentGame() {
     const path = this.getCurrentPath();
-    if (path.length < 2 || !this.moveTree) return false;
-    if (this.activeGameDeletedExternally) {
-      if (notify) {
-        this.showToast(
-          'Diese Partie wurde in einem anderen Tab gelöscht. Starte eine neue Partie, um wieder zu speichern.',
-        );
-      }
+    if (path.length < 2 || !this.moveTree) {
+      this.showToast('Spiele zuerst mindestens einen Zug.');
       return false;
     }
+    const draft = this.gameSaveDraft || createGameSaveDraft();
+    if (!draft.playerColor || !draft.playedAt || !draft.timeFormat || !draft.result) {
+      this.showToast('Bitte fülle alle Pflichtfelder aus.');
+      return false;
+    }
+
     const latestState = loadAccountState(
       this.browserStorage,
       this.accountStorageKey,
       this.accountState?.profile,
     );
+    let mergedState;
     try {
-      this.accountState = mergeAccountStates(this.accountState, latestState);
+      mergedState = mergeAccountStates(this.accountState, latestState);
     } catch (error) {
       this.showToast(error?.message || 'Die gespeicherten Partien konnten nicht zusammengeführt werden.');
       return false;
     }
-    if (this.accountState.deletedGames?.some(
-      (deletion) => deletion.id === this.activeGameId,
-    )) {
-      this.activeGameDeletedExternally = true;
-      this.showToast(
-        'Diese Partie wurde in einem anderen Tab gelöscht und wird nicht erneut gespeichert.',
+
+    const latestExisting = mergedState.games?.find((game) => game.id === this.activeGameId);
+    const externallyChanged = this.activeGamePersisted
+      && this.loadedRecordUpdatedAt
+      && latestExisting?.updatedAt
+      && latestExisting.updatedAt !== this.loadedRecordUpdatedAt;
+    if (externallyChanged) {
+      const saveCopy = window.confirm(
+        'Diese Partie wurde in einem anderen Tab verändert. Als neue Kopie speichern?',
       );
-      return false;
+      if (!saveCopy) return false;
+      this.activeGameId = createGameId();
+      this.activeGamePersisted = false;
+      this.loadedRecordUpdatedAt = null;
     }
-    const existing = this.accountState?.games?.find((game) => game.id === this.activeGameId);
+
+    if (
+      this.activeGameDeletedExternally
+      || mergedState.deletedGames?.some(
+      (deletion) => deletion.id === this.activeGameId,
+      )
+    ) {
+      this.activeGameId = createGameId();
+      this.activeGameDeletedExternally = false;
+      this.activeGamePersisted = false;
+      this.loadedRecordUpdatedAt = null;
+    }
+
+    const existing = mergedState.games?.find((game) => game.id === this.activeGameId);
     const now = new Date().toISOString();
+    const reviewCandidate = this.gameReviewReport || this.savedGameReview;
+    const completeReview = reviewCandidate?.final === true
+      && Number.isFinite(reviewCandidate.coverage)
+      && reviewCandidate.coverage >= 95
+      ? reviewCandidate
+      : null;
+    let nextState;
+    let record;
     try {
-      const record = {
+      record = {
         id: this.activeGameId,
-        title: existing?.title || this.makeSavedGameTitle(path),
+        title: draft.title.trim() || this.makeSavedGameTitle(path),
         createdAt: existing?.createdAt || now,
         updatedAt: now,
-        result: this.getGameResult(),
+        manualSavedAt: now,
+        result: draft.result,
         plyCount: path.length - 1,
         currentFen: this.currentNode.fen,
         currentPath: nodePathFromRoot(this.currentNode),
         pgn: moveTreeToPgn(this.moveTree),
         tree: serializeMoveTree(this.moveTree),
-        review: this.gameReviewReport || this.savedGameReview,
+        review: completeReview,
+        metadata: {
+          playerColor: draft.playerColor,
+          playedAt: draft.playedAt,
+          opponent: draft.opponent,
+          opening: draft.opening,
+          timeFormat: draft.timeFormat,
+          timeControl: draft.timeControl,
+          platform: draft.platform,
+          event: draft.event,
+          playerRating: draft.playerRating,
+          opponentRating: draft.opponentRating,
+          rated: draft.rated === 'yes' ? true : draft.rated === 'no' ? false : null,
+          notes: draft.notes,
+        },
       };
-      this.accountState = upsertSavedGame(this.accountState, record);
+      nextState = upsertSavedGame(mergedState, record);
     } catch (error) {
       this.showToast(error?.message || 'Die Partie konnte nicht gespeichert werden.');
       return false;
     }
-    const saved = saveAccountState(this.browserStorage, this.accountStorageKey, this.accountState);
-    this.updateAccountButton();
-    if (!saved && !this.storageWarningShown) {
+
+    const saved = saveAccountState(this.browserStorage, this.accountStorageKey, nextState);
+    if (!saved) {
       this.storageWarningShown = true;
-      this.showToast('Der Browser konnte die Partie nicht dauerhaft speichern.');
-    } else if (saved && notify) {
-      this.showToast('Partie gespeichert.');
+      this.showToast('Der Browser konnte die Partie nicht speichern. Der Entwurf bleibt erhalten.');
+      return false;
     }
-    return saved;
+
+    this.accountState = nextState;
+    this.activeGamePersisted = true;
+    this.gameDirty = false;
+    this.gameSaveDraftDirty = false;
+    this.loadedRecordUpdatedAt = now;
+    this.gameSaveDraft.title = record.title;
+    this.updateAccountButton();
+    this.updateSaveGameButton();
+    if (this.accountDialog?.open) this.renderAccountDialog();
+    this.saveGameDialog?.close();
+    this.showToast(
+      completeReview
+        ? 'Partie gespeichert und Spielerprofil aktualisiert.'
+        : 'Partie gespeichert. Die vollständige Profilanalyse steht noch aus.',
+    );
+    return true;
   }
 
   openSavedGame(record) {
-    if (!record?.tree) return;
-    this.persistCurrentGame();
+    if (!record?.tree) return false;
+    if (!this.confirmDiscardUnsavedGame('eine andere Partie öffnen')) return false;
     this.cancelFullGameReview();
     this.stopSuggestionPreview();
     try {
@@ -1723,6 +2410,11 @@ export class ChessApp {
       this.game = game;
       this.activeGameId = record.id;
       this.activeGameDeletedExternally = false;
+      this.activeGamePersisted = true;
+      this.gameDirty = false;
+      this.loadedRecordUpdatedAt = record.updatedAt || null;
+      this.gameSaveDraft = createGameSaveDraft(record);
+      this.gameSaveDraftDirty = false;
       this.gameReviewReport = record.review || null;
       this.savedGameReview = record.review || null;
       this.liveAccuracyReport = record.review || null;
@@ -1730,12 +2422,15 @@ export class ChessApp {
       this.renderMoveList();
       this.updateGameStatus();
       this.updateAccuracyDisplay();
+      this.updateSaveGameButton();
       this.evaluateCurrentPosition();
       this.accountDialog?.close();
       this.showToast('Gespeicherte Partie geöffnet.');
+      return true;
     } catch (error) {
       console.error('[ChessApp] Gespeicherte Partie ungültig', error);
       this.showToast('Diese gespeicherte Partie konnte nicht geöffnet werden.');
+      return false;
     }
   }
 
@@ -1750,7 +2445,14 @@ export class ChessApp {
     );
     this.accountState = removeSavedGame(this.accountState, record.id);
     saveAccountState(this.browserStorage, this.accountStorageKey, this.accountState);
-    if (record.id === this.activeGameId) this.resetGame({ skipPersist: true });
+    if (record.id === this.activeGameId) {
+      this.activeGameId = createGameId();
+      this.activeGameDeletedExternally = false;
+      this.activeGamePersisted = false;
+      this.loadedRecordUpdatedAt = null;
+      this.gameDirty = this.getCurrentPath().length > 1;
+      this.updateSaveGameButton();
+    }
     this.updateAccountButton();
     this.renderAccountDialog();
     this.showToast('Gespeicherte Partie gelöscht.');
@@ -1946,6 +2648,7 @@ export class ChessApp {
     this.currentNode = node;
     this.game.load(node.fen);
     this.gameReviewReport = null;
+    this.markGameDirty();
     this.board.position(node.fen);
     this.renderMoveList();
     this.updateGameStatus();
@@ -1995,16 +2698,21 @@ export class ChessApp {
     this.updateFeedbackAvailability();
   }
 
-  resetGame({ skipPersist = false } = {}) {
+  resetGame({ skipDiscardPrompt = false } = {}) {
+    if (!skipDiscardPrompt && !this.confirmDiscardUnsavedGame('eine neue Partie beginnen')) return;
     this.cancelFullGameReview();
     this.reviewCoachController?.abort();
     this.stopSuggestionPreview();
-    if (!skipPersist) this.persistCurrentGame();
     this.game.reset();
     this.moveTree = new MoveTreeNode({ fen: this.game.fen() });
     this.currentNode = this.moveTree;
     this.activeGameId = createGameId();
     this.activeGameDeletedExternally = false;
+    this.activeGamePersisted = false;
+    this.gameDirty = false;
+    this.loadedRecordUpdatedAt = null;
+    this.gameSaveDraft = createGameSaveDraft();
+    this.gameSaveDraftDirty = false;
     this.gameReviewReport = null;
     this.savedGameReview = null;
     this.liveAccuracyReport = null;
@@ -2012,6 +2720,7 @@ export class ChessApp {
     this.renderMoveList();
     this.updateGameStatus();
     this.updateAccuracyDisplay();
+    this.updateSaveGameButton();
     this.evaluateCurrentPosition();
   }
 
@@ -2019,6 +2728,7 @@ export class ChessApp {
     if (!this.feedbackButton) return;
     this.feedbackButton.disabled = this.reviewRunning || !this.currentNode?.parent || !this.engine;
     this.feedbackButton.textContent = this.reviewRunning ? 'Analysiere …' : 'Partie analysieren';
+    this.updateSaveGameButton();
   }
 
   handleEngineError(error) {
@@ -2056,7 +2766,6 @@ export class ChessApp {
 
   destroy() {
     if (this.destroyed) return;
-    this.persistCurrentGame();
     this.cancelFullGameReview();
     this.stopSuggestionPreview();
     this.destroyed = true;
@@ -2090,6 +2799,7 @@ export class ChessApp {
     }
     this.engineSettingsDialog?.remove();
     this.feedbackDialog?.remove();
+    this.saveGameDialog?.remove();
     this.accountDialog?.remove();
     this.toastEl?.remove();
   }

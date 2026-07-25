@@ -78,11 +78,68 @@ test("Account-Daten werden pro Identität gespeichert und Spiele aktualisiert", 
     title: "Testpartie",
     tree: { version: 1, root: { fen: "fen" } },
     plyCount: 2,
+    metadata: {
+      playerColor: "w",
+      playedAt: "2026-07-25",
+      opponent: "Lena",
+      timeFormat: "rapid",
+      playerRating: "1510",
+      rated: true,
+    },
   });
   assert.equal(saveAccountState(storage, key, state), true);
   const loaded = loadAccountState(storage, key, profile);
   assert.equal(loaded.profile.email, "paul@example.com");
   assert.equal(loaded.games[0].id, "game-1");
+  assert.deepEqual(loaded.games[0].metadata, {
+    playerColor: "w",
+    playedAt: "2026-07-25",
+    opponent: "Lena",
+    opening: "",
+    timeFormat: "rapid",
+    timeControl: "",
+    platform: "",
+    event: "",
+    playerRating: 1510,
+    opponentRating: null,
+    rated: true,
+    notes: "",
+  });
+});
+
+test("Schema 2 liest alte Schema-1-Partien, ohne sie automatisch umzuschreiben", () => {
+  const storage = memoryStorage();
+  const profile = { name: "Paul", source: "local" };
+  const currentKey = storageKeyForIdentity(profile);
+  const legacyKey = currentKey.replace("chess-coach.account.v2", "chess-coach.account.v1");
+  storage.setItem(legacyKey, JSON.stringify({
+    version: 1,
+    profile,
+    games: [{
+      id: "legacy",
+      title: "Alte Partie",
+      tree: { version: 1, root: { fen: "fen" } },
+      review: { final: true, feedback: "Alt" },
+    }],
+  }));
+
+  const loaded = loadAccountState(storage, currentKey, profile);
+  assert.equal(loaded.version, 2);
+  assert.equal(loaded.games[0].id, "legacy");
+  assert.equal(storage.getItem(currentKey), null);
+});
+
+test("gespeicherte Reviews teilen keine veränderliche Referenz mit dem Live-Bericht", () => {
+  const report = { final: true, feedback: "Vor dem Coach" };
+  const state = upsertSavedGame(createAccountState(), {
+    id: "review-copy",
+    title: "Review",
+    tree: { version: 1, root: { fen: "fen" } },
+    review: report,
+  });
+
+  report.feedback = "Späteres Coach-Feedback";
+  assert.equal(state.games[0].review.feedback, "Vor dem Coach");
 });
 
 test("Account-Zustände aus mehreren Tabs behalten unterschiedliche Partien", () => {

@@ -26,12 +26,14 @@ body {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
 [data-fen]:focus-visible {
   outline: 3px solid rgba(90, 162, 255, 0.55);
@@ -332,6 +334,39 @@ textarea:focus-visible,
   border-color: rgba(255, 255, 255, 0.13);
   background: rgba(255, 255, 255, 0.06);
   color: var(--text-secondary);
+}
+
+.save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.save-status::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8b9ab7;
+  content: "";
+}
+
+.save-status.is-saved {
+  color: #8ff1c5;
+}
+
+.save-status.is-saved::before {
+  background: #53e0a1;
+}
+
+.save-status.is-dirty {
+  color: #ffd37a;
+}
+
+.save-status.is-dirty::before {
+  background: #ffc857;
 }
 
 .board-actions {
@@ -764,8 +799,8 @@ textarea:focus-visible,
 .dialog-close {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
@@ -805,6 +840,73 @@ textarea:focus-visible,
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
+}
+
+.save-game-dialog {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.required-hint {
+  margin: -10px 0 12px;
+  color: #ffc857;
+  font-size: 0.72rem;
+}
+
+.save-game-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.save-game-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.save-game-field.is-full,
+.save-game-form .is-full {
+  grid-column: 1 / -1;
+}
+
+.save-game-field input,
+.save-game-field select,
+.save-game-field textarea {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.save-game-field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.save-game-field input::placeholder,
+.save-game-field textarea::placeholder {
+  color: rgba(147, 165, 200, 0.72);
+}
+
+.save-game-availability {
+  margin: 2px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(90, 162, 255, 0.18);
+  border-radius: 11px;
+  background: rgba(90, 162, 255, 0.07);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.save-game-actions {
+  margin-top: 2px;
 }
 
 .feedback-dialog {
@@ -981,6 +1083,15 @@ textarea:focus-visible,
   background: rgba(83, 224, 161, 0.08);
 }
 
+.account-dialog {
+  width: min(880px, calc(100vw - 32px));
+  max-height: min(90vh, 900px);
+}
+
+.account-body {
+  min-width: 0;
+}
+
 .account-profile-card span,
 .account-storage-note,
 .saved-game span {
@@ -1015,9 +1126,186 @@ textarea:focus-visible,
 }
 
 .account-section-title {
-  margin: 20px 0 9px;
+  margin: 24px 0 10px;
   font-size: 0.88rem;
   font-weight: 750;
+}
+
+.profile-section-title {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.profile-section-title > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-section-title span {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.account-subsection-title {
+  margin: 18px 0 9px;
+  color: #dce8ff;
+  font-size: 0.8rem;
+  font-weight: 750;
+}
+
+.profile-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+}
+
+.profile-overview > div,
+.profile-facts > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.profile-overview dt,
+.profile-facts span {
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+.profile-overview dd {
+  margin: 3px 0;
+  color: #f2f6ff;
+  font-size: 1.08rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.profile-overview small,
+.profile-facts small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+.profile-analysis-pending {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 200, 87, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 200, 87, 0.075);
+}
+
+.profile-analysis-pending > div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.profile-analysis-pending span,
+.analysis-pending-label {
+  color: #ffd98c !important;
+  font-size: 0.7rem;
+}
+
+.profile-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.profile-facts > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-facts strong {
+  margin: 2px 0;
+  overflow-wrap: anywhere;
+  font-size: 0.88rem;
+}
+
+.opening-profile-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.opening-profile-list > div {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border: 1px solid rgba(90, 162, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(90, 162, 255, 0.055);
+}
+
+.opening-profile-list span {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.best-games-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.best-game-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid rgba(90, 162, 255, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(90, 162, 255, 0.1), rgba(83, 224, 161, 0.04));
+}
+
+.best-game-card.rank-1 {
+  border-color: rgba(255, 200, 87, 0.48);
+  background: linear-gradient(145deg, rgba(255, 200, 87, 0.14), rgba(83, 224, 161, 0.05));
+}
+
+.best-game-card strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.best-game-card > span:not(.best-game-badge) {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.best-game-card button {
+  width: 100%;
+  margin-top: auto;
+}
+
+.best-game-badge,
+.saved-game-highlight {
+  align-self: flex-start;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 200, 87, 0.15);
+  color: #ffd77e !important;
+  font-size: 0.65rem !important;
+  font-weight: 800;
 }
 
 .saved-games-list {
@@ -1037,6 +1325,16 @@ textarea:focus-visible,
   background: rgba(255, 255, 255, 0.035);
 }
 
+.saved-game.is-top-game {
+  border-color: rgba(90, 162, 255, 0.34);
+  background: rgba(90, 162, 255, 0.075);
+}
+
+.saved-game.is-top-game.rank-1 {
+  border-color: rgba(255, 200, 87, 0.48);
+  box-shadow: inset 3px 0 0 #ffc857;
+}
+
 .saved-game > div:first-child {
   display: flex;
   flex-direction: column;
@@ -1051,6 +1349,7 @@ textarea:focus-visible,
 
 .saved-game > div:last-child {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   flex: 0 0 auto;
 }
@@ -1157,13 +1456,15 @@ textarea:focus-visible,
   }
 
   .board-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
-    justify-content: flex-start;
   }
 
   .board-actions button {
-    flex: 1 1 calc(33.333% - 8px);
+    width: 100%;
     min-width: 0;
+    min-height: 44px;
     font-size: 0.9rem;
   }
 
@@ -1177,6 +1478,51 @@ textarea:focus-visible,
   }
 
   .review-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 16px;
+  }
+
+  .save-game-form {
+    grid-template-columns: 1fr;
+  }
+
+  .save-game-field.is-full,
+  .save-game-form .is-full {
+    grid-column: 1;
+  }
+
+  .save-game-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .save-game-actions button {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .profile-overview,
+  .profile-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-analysis-pending {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .profile-analysis-pending button {
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .opening-profile-list,
+  .best-games-list {
     grid-template-columns: 1fr;
   }
 
@@ -1195,7 +1541,8 @@ textarea:focus-visible,
   }
 
   .saved-game > div:last-child button {
-    flex: 1;
+    flex: 1 1 calc(50% - 6px);
+    min-height: 40px;
   }
 
   .review-lead {

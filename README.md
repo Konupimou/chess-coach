@@ -46,13 +46,15 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 - Zugnummer anklicken: Varianten ein- oder ausklappen
 - Vorschlag fokussieren oder mit der Maus berühren: Engine-Variante auf dem Brett abspielen
 - „⚙ Engine“: Tiefe, Threads, Hash und Anzahl der Vorschläge kompakt einstellen
+- „Partie speichern“: Partiedaten ergänzen und den aktuellen Stand bewusst im Account sichern
 - „Partie analysieren“: alle Stellungen prüfen, Genauigkeit und Abschlussfeedback anzeigen
-- „Mein Account“: automatisch gespeicherte Partien dieses Browsers öffnen oder löschen
+- „Mein Account“: Spielerprofil, Key Facts, Eröffnungsrepertoire, Bestpartien und alle gespeicherten Partien anzeigen
 - „PGN“: Hauptlinie samt Varianten exportieren
 
 Die private Live-Seite erkennt den angemeldeten Sites-Nutzer. Bis eine
-Sites-Datenbank angebunden ist, werden die Partien transparent im jeweiligen
-Browser gespeichert; sie bleiben dort nach dem Neuladen erhalten.
+Sites-Datenbank angebunden ist, werden Partien erst nach dem ausdrücklichen
+Speicher-Klick im jeweiligen Browser abgelegt; sie bleiben dort nach dem
+Neuladen erhalten.
 
 ## Architektur
 
@@ -61,7 +63,9 @@ Browser gespeichert; sie bleiben dort nach dem Neuladen erhalten.
 - `engine.js`: serialisierter UCI-/Stockfish-Worker
 - `moveArrows.js`: responsive Pfeile für die besten Engine-Züge
 - `gameReview.js`: PV-Vorschau, Genauigkeit und vollständige Partieauswertung
+- `gameMetadata.js`: Speicherentwürfe, Zeitformate und lokale Eröffnungserkennung
 - `gameStorage.js`: zyklusfreie Spielstände und browserlokale Account-Persistenz
+- `playerProfile.js`: aggregierte Spielerstatistiken und Bestpartien-Ranking
 - `moveTree.js`: Variantenbaum
 - `MoveListView.js`: Darstellung des Variantenbaums
 - `moveTreeToPgn.js`: PGN-Export
