@@ -468,6 +468,17 @@ export class Engine {
     return search.id;
   }
 
+  cancelSearch() {
+    this.pendingSearch = null;
+    this.pendingFen = null;
+    this.pendingDepth = this.depth;
+    if (!this.sf || !this.searching || this.stopping) return;
+    this.stopping = true;
+    try {
+      this.sf.postMessage("stop");
+    } catch {}
+  }
+
   quit() {
     this.disposed = true;
     this._clearHandshakeTimeout();

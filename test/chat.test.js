@@ -14,10 +14,17 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
     history: ["e4", "e5"],
     suggestions: [{ score: "+0.42", moves: ["Nf3", "Nc6"] }],
     conversation: [{ role: "assistant", content: "Entwickle deine Figuren." }],
+    gameReview: {
+      overallAccuracy: 88.4,
+      analyzedMoves: 20,
+      totalMoves: 20,
+      criticalMoments: [{ move: "12. Qh5", lossCp: 180 }],
+    },
   });
   assert.equal(result.value.message, "Was ist mein Plan?");
   assert.equal(result.value.evalPawns, 0.42);
   assert.deepEqual(result.value.history, ["e4", "e5"]);
+  assert.equal(result.value.gameReview.overallAccuracy, 88.4);
   assert.equal(normalizeChatPayload({ message: "  " }).error, "Bitte gib eine Frage ein.");
 });
 
@@ -29,10 +36,12 @@ test("Prompt trennt vertrauenswürdige Anweisungen von Stellungsdaten", () => {
     suggestions: [{ score: "+0.20", moves: ["Nf3"] }],
     history: ["e4", "e5"],
     conversation: [],
+    gameReview: { overallAccuracy: 91.2, criticalMoments: [] },
   });
   assert.match(prompt, /<position_fen>\nfen\n<\/position_fen>/);
   assert.match(prompt, /<white_evaluation_pawns>0\.20/);
   assert.match(prompt, /<user_question>\nWarum ist Nf3 gut\?/);
+  assert.match(prompt, /<game_review_statistics>/);
 });
 
 test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen", async () => {

@@ -112,3 +112,16 @@ test("alte Info während stop wird ignoriert und PV 1 liefert den finalen Eval",
   engine._handleMessage("info depth 15 multipv 1 score cp 99 pv h1h2");
   assert.equal(infos.length, 2);
 });
+
+test("cancelSearch verwirft Warteschlange und stoppt nur eine laufende Suche", () => {
+  const { engine, messages } = createReadyEngine();
+  const fen = "8/8/8/8/8/8/8/K6k w - - 0 1";
+  engine.evaluate(fen, 12);
+  engine.pendingSearch = { id: 99, fen, depth: 12 };
+  engine.cancelSearch();
+  assert.equal(engine.pendingSearch, null);
+  assert.equal(engine.stopping, true);
+  assert.equal(messages.at(-1), "stop");
+  engine.cancelSearch();
+  assert.equal(messages.filter((message) => message === "stop").length, 1);
+});

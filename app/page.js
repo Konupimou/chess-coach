@@ -6,13 +6,16 @@ export default function HomePage() {
       <a className="skip-link" href="#board">Zum Schachbrett springen</a>
       <div className="page">
         <header className="site-header">
-          <div className="brand">
-            <div className="logo" aria-hidden="true">♞</div>
-            <div>
-              <p className="eyebrow">Dein Analysebrett</p>
-              <h1>Chess Coach</h1>
-              <p>Varianten erkunden, mit Stockfish prüfen und Pläne verstehen.</p>
+          <div className="header-inner">
+            <div className="brand">
+              <div className="logo" aria-hidden="true">♞</div>
+              <div>
+                <p className="eyebrow">Dein Analysebrett</p>
+                <h1>Chess Coach</h1>
+                <p>Varianten erkunden, mit Stockfish prüfen und Pläne verstehen.</p>
+              </div>
             </div>
+            <div id="account-slot" className="account-slot" />
           </div>
         </header>
 

@@ -82,3 +82,21 @@ test("Eingabefelder und Modifier behalten ihre Pfeiltasten", () => {
   detach();
   delete globalThis.window;
 });
+
+test("offene Dialoge sperren die Navigation im Hintergrund", () => {
+  const fakeWindow = installFakeWindow();
+  globalThis.document = {
+    querySelector(selector) {
+      return selector === "dialog[open]" ? {} : null;
+    },
+  };
+  let calls = 0;
+  const detach = attachKeyboard({ onLeft: () => { calls += 1; } });
+  const current = event("ArrowLeft");
+  fakeWindow.dispatch(current);
+  assert.equal(current.prevented, false);
+  assert.equal(calls, 0);
+  detach();
+  delete globalThis.document;
+  delete globalThis.window;
+});

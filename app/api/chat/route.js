@@ -71,6 +71,12 @@ export async function POST(request) {
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 35_000);
+  const abortFromClient = () => controller.abort();
+  if (request.signal.aborted) {
+    controller.abort();
+  } else {
+    request.signal.addEventListener("abort", abortFromClient, { once: true });
+  }
 
   try {
     const reply = await requestCoachResponse(normalized.value, {
@@ -92,5 +98,6 @@ export async function POST(request) {
     return json({ error: "Der Coach ist momentan nicht erreichbar." }, 502);
   } finally {
     clearTimeout(timeout);
+    request.signal.removeEventListener("abort", abortFromClient);
   }
 }

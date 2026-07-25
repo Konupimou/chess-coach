@@ -8,7 +8,8 @@ export function attachKeyboard({ onLeft, onRight, onUp, onDown } = {}) {
       target.isContentEditable
       || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
     );
-    if (isEditable || e.altKey || e.ctrlKey || e.metaKey) return;
+    const modalOpen = typeof document !== "undefined" && document.querySelector("dialog[open]");
+    if (isEditable || modalOpen || e.altKey || e.ctrlKey || e.metaKey) return;
 
     if (e.key === 'ArrowLeft' && onLeft) {
       e.preventDefault();

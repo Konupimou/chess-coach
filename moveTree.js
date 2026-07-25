@@ -2,13 +2,14 @@
 
 // Baumknoten
 export class MoveTreeNode {
-  constructor({ move = null, fen = null, parent = null, result = null } = {}) {
+  constructor({ move = null, fen = null, parent = null, result = null, analysis = null } = {}) {
     this.move = move;           // { san, color, ... } | null (Root)
     this.fen = fen || null;     // FEN der Stellung NACH diesem Zug (Root: Start-FEN)
     this.parent = parent || null;
     this.mainline = null;       // nächster „normaler“ Zug
     this.variations = [];       // Array alternativer Äste (Abzweigungen)
     this.result = result;        // Optionales Ergebnis nach diesem Zug
+    this.analysis = analysis;    // Optionale, serialisierbare Engine-Auswertung
   }
 }
 
