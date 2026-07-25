@@ -1,0 +1,21 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+coverage/
+
+# Local environment
+.env
+.env.*
+!.env.example
+
+# Editor and operating-system files
+.DS_Store
+*.log
+
+# Generated from the stockfish npm package by `npm run assets`
+public/libs/stockfish/*.nnue
+
+# Local deployment artifacts
+*.tgz
+*.tar.gz
