@@ -12,10 +12,13 @@ import {
   analysisEntryFromInfo,
   buildFallbackFeedback,
   buildPvFrames,
+  calculateMoveAccuracy,
+  explainMoveQuality,
   pathToNode,
   reviewDepthForPlies,
   summarizeGameReview,
   terminalWhiteCp,
+  uciToSan,
 } from "./gameReview.js";
 import {
   createAccountState,
@@ -42,6 +45,7 @@ import {
   describeLiveMove,
   engineOpponentLabel,
   ENGINE_LEVELS,
+  nextStrongMoveStreak,
   normalizeEngineLevel,
   resolvePlayerColor,
 } from "./playMode.js";
@@ -100,6 +104,8 @@ export class ChessApp {
       expectedSearchId: null,
       lastFeedbackPly: 0,
       feedbackHistory: [],
+      streak: 0,
+      bestStreak: 0,
     };
     this.game = new Chess();
     this.declaredGameResult = null;
@@ -258,6 +264,7 @@ export class ChessApp {
     const accuracyLabel = document.createElement("span");
     accuracyLabel.className = "accuracy-chip-label";
     accuracyLabel.textContent = "Genauigkeit";
+    this.accuracyLabelEl = accuracyLabel;
     this.accuracyEl.appendChild(accuracyLabel);
     const createAccuracySide = (label, color) => {
       const side = document.createElement("span");
@@ -271,6 +278,8 @@ export class ChessApp {
       value.textContent = "—";
       side.append(marker, name, value);
       this.accuracyEl.appendChild(side);
+      if (color === "white") this.whiteAccuracySideEl = side;
+      if (color === "black") this.blackAccuracySideEl = side;
       return value;
     };
     this.whiteAccuracyEl = createAccuracySide("Weiß", "white");
@@ -670,6 +679,27 @@ export class ChessApp {
     this.playTurnStatusEl.className = "play-turn-status";
     this.playActiveView.appendChild(this.playTurnStatusEl);
 
+    this.playStreakEl = document.createElement("section");
+    this.playStreakEl.className = "play-streak";
+    const streakHeading = document.createElement("div");
+    streakHeading.className = "play-streak-heading";
+    const streakTitle = document.createElement("strong");
+    streakTitle.textContent = "Präzisions-Streak";
+    this.playStreakValueEl = document.createElement("span");
+    streakHeading.append(streakTitle, this.playStreakValueEl);
+    this.playStreakTrackEl = document.createElement("div");
+    this.playStreakTrackEl.className = "play-streak-track";
+    this.playStreakTrackEl.setAttribute("role", "progressbar");
+    this.playStreakTrackEl.setAttribute("aria-label", "Starke Züge in Folge");
+    this.playStreakTrackEl.setAttribute("aria-valuemin", "0");
+    this.playStreakTrackEl.setAttribute("aria-valuemax", "5");
+    this.playStreakFillEl = document.createElement("span");
+    this.playStreakTrackEl.appendChild(this.playStreakFillEl);
+    const streakHint = document.createElement("small");
+    streakHint.textContent = "Beste und sehr gute Züge füllen den Balken.";
+    this.playStreakEl.append(streakHeading, this.playStreakTrackEl, streakHint);
+    this.playActiveView.appendChild(this.playStreakEl);
+
     const liveCoach = document.createElement("section");
     liveCoach.className = "live-coach";
     const liveHeading = document.createElement("div");
@@ -955,6 +985,22 @@ export class ChessApp {
     if (this.playLiveFeedbackInput) {
       this.playLiveFeedbackInput.checked = session.liveFeedback;
     }
+    if (this.playStreakEl) {
+      const streak = Math.max(0, Number.parseInt(session.streak, 10) || 0);
+      const goal = 5;
+      const visibleStreak = Math.min(goal, streak);
+      this.playStreakEl.hidden = !session.liveFeedback;
+      this.playStreakEl.classList.toggle("is-hot", streak >= goal);
+      this.playStreakValueEl.textContent = streak >= goal
+        ? `🔥 ${streak} in Folge`
+        : `${streak} / ${goal}`;
+      this.playStreakFillEl.style.width = `${visibleStreak / goal * 100}%`;
+      this.playStreakTrackEl.setAttribute("aria-valuenow", String(visibleStreak));
+      this.playStreakTrackEl.setAttribute(
+        "aria-valuetext",
+        `${streak} starke Züge in Folge`,
+      );
+    }
     const latest = session.feedbackHistory[0] || null;
     if (!session.liveFeedback) {
       this.playFeedbackEl.className = "live-feedback-state is-disabled";
@@ -1077,7 +1123,19 @@ export class ChessApp {
     if (this.feedbackButton) this.feedbackButton.hidden = isPlay;
     if (this.exportButton) this.exportButton.hidden = isPlay;
     if (this.accuracyEl) {
-      this.accuracyEl.hidden = isPlay && !this.playSession.liveFeedback;
+      this.accuracyEl.hidden = isPlay && (
+        !this.playSession.active
+        || !this.playSession.liveFeedback
+      );
+    }
+    if (this.accuracyLabelEl) {
+      this.accuracyLabelEl.textContent = isPlay ? "Deine Genauigkeit" : "Genauigkeit";
+    }
+    if (this.whiteAccuracySideEl) {
+      this.whiteAccuracySideEl.hidden = isPlay && this.playSession.playerColor !== "w";
+    }
+    if (this.blackAccuracySideEl) {
+      this.blackAccuracySideEl.hidden = isPlay && this.playSession.playerColor !== "b";
     }
     [this.gameStatusEl, this.accuracyEl, this.saveStatusEl].forEach((element) => {
       element?.setAttribute("aria-live", isPlay ? "off" : "polite");
@@ -1093,6 +1151,7 @@ export class ChessApp {
     }
     if (this.keyboardHint) this.keyboardHint.hidden = isPlay;
     this.moveListSection?.classList.toggle("is-play-mode", isPlay);
+    this.renderMoveList();
     if (isPlay) this.moveArrows?.clear();
     else this.renderMoveArrows();
     this.renderPlayPanel();
@@ -1108,6 +1167,7 @@ export class ChessApp {
     this.playSession.expectedFen = null;
     this.playSession.expectedSearchId = null;
     this.engine?.cancelSearch?.();
+    if (this.appMode === "play" && this.accuracyEl) this.accuracyEl.hidden = true;
     this.renderPlayPanel();
   }
 
@@ -1141,6 +1201,8 @@ export class ChessApp {
       expectedSearchId: null,
       lastFeedbackPly: 0,
       feedbackHistory: [],
+      streak: 0,
+      bestStreak: 0,
     };
     this.declaredGameResult = null;
     this.gameSaveDraft = {
@@ -1797,6 +1859,8 @@ export class ChessApp {
     const feedback = describeLiveMove(reportMove);
     if (!feedback) return null;
     session.lastFeedbackPly = ply;
+    session.streak = nextStrongMoveStreak(session.streak, reportMove.quality);
+    session.bestStreak = Math.max(session.bestStreak || 0, session.streak);
     session.feedbackHistory.unshift({ ...feedback, ply });
     session.feedbackHistory = session.feedbackHistory.slice(0, 12);
     this.renderPlayPanel();
@@ -2048,6 +2112,7 @@ export class ChessApp {
       final: false,
     });
     this.updateAccuracyDisplay();
+    this.renderMoveList();
   }
 
   updateAccuracyDisplay() {
@@ -2062,6 +2127,33 @@ export class ChessApp {
     const black = formatAccuracy(blackAccuracy);
     this.whiteAccuracyEl.textContent = white;
     this.blackAccuracyEl.textContent = black;
+    const ownOnly = this.appMode === "play" && this.playSession.active;
+    const ownAccuracy = this.playSession.playerColor === "b" ? blackAccuracy : whiteAccuracy;
+    const own = this.playSession.playerColor === "b" ? black : white;
+    if (ownOnly) {
+      this.accuracyEl.hidden = !this.playSession.liveFeedback;
+      this.accuracyLabelEl.textContent = "Deine Genauigkeit";
+      this.whiteAccuracySideEl.hidden = this.playSession.playerColor !== "w";
+      this.blackAccuracySideEl.hidden = this.playSession.playerColor !== "b";
+      const provisional = !report?.final || report?.analyzedMoves < report?.totalMoves;
+      this.accuracyEl.classList.toggle("is-pending", !Number.isFinite(ownAccuracy) || provisional);
+      this.accuracyModeEl.textContent = Number.isFinite(ownAccuracy) && provisional
+        ? "vorläufig"
+        : "";
+      this.accuracyEl.setAttribute(
+        "aria-label",
+        Number.isFinite(ownAccuracy)
+          ? `${provisional ? "Vorläufige " : ""}eigene Genauigkeit: ${own}`
+          : "Eigene Genauigkeit noch nicht berechnet",
+      );
+      this.accuracyEl.title = Number.isFinite(ownAccuracy)
+        ? `Geschätzte Genauigkeit deiner Züge · ${own}`
+        : "Nach deinem ersten vollständig bewerteten Zug erscheint hier deine Genauigkeit.";
+      return;
+    }
+    this.accuracyLabelEl.textContent = "Genauigkeit";
+    this.whiteAccuracySideEl.hidden = false;
+    this.blackAccuracySideEl.hidden = false;
     if (
       (!Number.isFinite(whiteAccuracy) && !Number.isFinite(blackAccuracy))
       || report?.analyzedMoves === 0
@@ -2332,6 +2424,7 @@ export class ChessApp {
       this.liveAccuracyReport = report;
       this.markGameDirty();
       this.updateAccuracyDisplay();
+      this.renderMoveList();
     } catch (error) {
       if (error?.name === 'AbortError') {
         if (this.feedbackDialog.open) {
@@ -2377,7 +2470,7 @@ export class ChessApp {
     this.reviewCoachController?.abort();
     this.reviewCoachController = new AbortController();
     const payload = {
-      message: 'Formuliere auf Basis der gelieferten Engine-Statistik eine abschließende, motivierende Partieanalyse mit Stärken, kritischen Momenten und einem konkreten Trainingsfokus.',
+      message: 'Formuliere eine kurze, motivierende Partieanalyse mit Stärken, kritischen Momenten und einem Trainingsfokus. Nenne höchstens einzelne kurze Varianten mit maximal zwei bis vier Halbzügen; erkläre vor allem die Idee.',
       fen: path.at(-1)?.fen || '',
       evalPawns: null,
       suggestions: [],
@@ -2480,6 +2573,37 @@ export class ChessApp {
       qualities.appendChild(item);
     });
     this.feedbackBodyEl.appendChild(qualities);
+
+    if (report.moves?.length > 0) {
+      const movesHeading = document.createElement("h3");
+      movesHeading.textContent = "Zug für Zug";
+      this.feedbackBodyEl.appendChild(movesHeading);
+      const moveExplanations = document.createElement("div");
+      moveExplanations.className = "review-move-explanations";
+      report.moves.forEach((move) => {
+        const quality = MOVE_QUALITY[move.quality];
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = `review-move-explanation quality-${quality?.tone || "good"}`;
+        const top = document.createElement("span");
+        top.className = "review-move-explanation-top";
+        const title = document.createElement("strong");
+        title.textContent = `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
+        const badge = document.createElement("span");
+        badge.textContent = quality?.label || "Bewertet";
+        top.append(title, badge);
+        const reason = document.createElement("span");
+        reason.className = "review-move-reason";
+        reason.textContent = move.explanation || explainMoveQuality(move);
+        item.append(top, reason);
+        item.addEventListener("click", () => {
+          this.feedbackDialog.close();
+          this.jumpToFen(move.fenAfter);
+        });
+        moveExplanations.appendChild(item);
+      });
+      this.feedbackBodyEl.appendChild(moveExplanations);
+    }
 
     if (report.criticalMoments?.length > 0) {
       const criticalHeading = document.createElement('h3');
@@ -3757,8 +3881,80 @@ export class ChessApp {
     return arr;
   }
 
+  buildMoveAnnotations() {
+    const annotations = new Map();
+    const path = this.getCurrentPath();
+    const report = this.gameReviewReport || this.liveAccuracyReport || this.savedGameReview;
+
+    if (Array.isArray(report?.moves)) {
+      report.moves.forEach((move) => {
+        const node = path[move?.ply];
+        if (!node?.move) return;
+        const quality = MOVE_QUALITY[move.quality];
+        annotations.set(node, {
+          ...move,
+          label: quality?.label || "",
+          explanation: move.explanation || explainMoveQuality(move),
+        });
+      });
+    }
+
+    const visited = new Set();
+    const visit = (node) => {
+      if (!node || visited.has(node)) return;
+      visited.add(node);
+      if (
+        node.parent?.analysis
+        && node.analysis
+        && node.move
+        && !annotations.has(node)
+      ) {
+        const metrics = calculateMoveAccuracy(
+          node.parent.analysis.whiteCp,
+          node.analysis.whiteCp,
+          node.move.color,
+        );
+        if (metrics) {
+          const bestUci = node.parent.analysis.pv?.[0] || "";
+          const move = {
+            color: node.move.color,
+            san: node.move.san,
+            bestSan: uciToSan(node.parent.fen, bestUci),
+            accuracy: metrics.accuracy,
+            lossCp: metrics.lossCp,
+            quality: metrics.quality,
+          };
+          annotations.set(node, {
+            ...move,
+            label: MOVE_QUALITY[metrics.quality]?.label || "",
+            explanation: explainMoveQuality(move),
+          });
+        }
+      }
+      visit(node.mainline);
+      node.variations?.forEach(visit);
+    };
+    visit(this.moveTree);
+
+    if (this.appMode === "analysis") {
+      visited.forEach((node) => {
+        if (node.move && !annotations.has(node)) {
+          annotations.set(node, {
+            quality: null,
+            label: "Analyse ausstehend",
+            explanation: "Bewertung wird berechnet …",
+          });
+        }
+      });
+    }
+    return annotations;
+  }
+
   renderMoveList() {
-    this.listView.render(this.moveTree, this.currentNode);
+    this.listView.render(this.moveTree, this.currentNode, {
+      annotations: this.buildMoveAnnotations(),
+      showExplanations: this.appMode === "analysis",
+    });
   }
 
   scheduleBoardResize() {

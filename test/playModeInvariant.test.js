@@ -52,3 +52,21 @@ test("Das Brett unterstützt Fokus, Pfeiltasten und Enter als alternativen Zugwe
   assert.match(keyboardSource, /"Enter"/);
   assert.match(keyboardSource, /this\.handleMove\(source, square\)/);
 });
+
+test("Spielmodus zeigt nur eigene Genauigkeit und aktualisiert den Streak nach Feedback", () => {
+  const accuracySource = methodSource("updateAccuracyDisplay", "openEngineSettings");
+  const feedbackSource = methodSource("recordLatestPlayFeedback", "renderSuggestions");
+  assert.match(accuracySource, /ownOnly/);
+  assert.match(accuracySource, /this\.whiteAccuracySideEl\.hidden/);
+  assert.match(accuracySource, /this\.blackAccuracySideEl\.hidden/);
+  assert.match(feedbackSource, /nextStrongMoveStreak/);
+  assert.match(appSource, /play-streak-track/);
+});
+
+test("Analyse übergibt farbige Kurzerklärungen an die Zugliste", () => {
+  const renderSource = methodSource("buildMoveAnnotations", "renderMoveList");
+  assert.match(renderSource, /explainMoveQuality/);
+  assert.match(renderSource, /MOVE_QUALITY/);
+  assert.match(appSource, /showExplanations: this\.appMode === "analysis"/);
+  assert.match(appSource, /Zug für Zug/);
+});

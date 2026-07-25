@@ -12,7 +12,7 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
     message: "  Was ist mein Plan?  ",
     evalPawns: 0.42,
     history: ["e4", "e5"],
-    suggestions: [{ score: "+0.42", moves: ["Nf3", "Nc6"] }],
+    suggestions: [{ score: "+0.42", moves: ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"] }],
     conversation: [{ role: "assistant", content: "Entwickle deine Figuren." }],
     gameReview: {
       overallAccuracy: 88.4,
@@ -24,6 +24,7 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
   assert.equal(result.value.message, "Was ist mein Plan?");
   assert.equal(result.value.evalPawns, 0.42);
   assert.deepEqual(result.value.history, ["e4", "e5"]);
+  assert.deepEqual(result.value.suggestions[0].moves, ["Nf3", "Nc6", "Bb5", "a6"]);
   assert.equal(result.value.gameReview.overallAccuracy, 88.4);
   assert.equal(normalizeChatPayload({ message: "  " }).error, "Bitte gib eine Frage ein.");
 });
@@ -76,6 +77,8 @@ test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen",
   assert.equal(request.body.model, "test-model");
   assert.equal(request.body.store, false);
   assert.equal(request.body.safety_identifier, "safe-user");
+  assert.match(request.body.instructions, /höchstens zwei Halbzüge/);
+  assert.equal(request.body.text.verbosity, "low");
   assert.equal(request.options.headers.Authorization, "Bearer test-key");
 });
 

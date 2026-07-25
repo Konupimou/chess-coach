@@ -3,11 +3,11 @@ const FILES = "abcdefgh";
 let overlaySequence = 0;
 
 export const MOVE_ARROW_STYLES = Object.freeze([
-  { color: "#53e0a1", opacity: 0.94, width: 2.15 },
+  { color: "#5aa2ff", opacity: 0.94, width: 2.15 },
   { color: "#5aa2ff", opacity: 0.82, width: 1.85 },
-  { color: "#c186ff", opacity: 0.74, width: 1.65 },
-  { color: "#ffc857", opacity: 0.68, width: 1.5 },
-  { color: "#ff7f6e", opacity: 0.64, width: 1.4 },
+  { color: "#5aa2ff", opacity: 0.74, width: 1.65 },
+  { color: "#5aa2ff", opacity: 0.68, width: 1.5 },
+  { color: "#5aa2ff", opacity: 0.64, width: 1.4 },
 ]);
 
 export function parseUciMove(value) {

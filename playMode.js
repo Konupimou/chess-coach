@@ -42,6 +42,13 @@ export function engineOpponentLabel(level) {
   return `Stockfish · ${ENGINE_LEVELS[normalized].label}`;
 }
 
+export function nextStrongMoveStreak(current, quality) {
+  const streak = Number.isInteger(current) && current > 0 ? current : 0;
+  return quality === "best" || quality === "excellent"
+    ? Math.min(99, streak + 1)
+    : 0;
+}
+
 function formattedAccuracy(value) {
   return Number.isFinite(value)
     ? `${value.toFixed(1).replace(".", ",")} % Genauigkeit`

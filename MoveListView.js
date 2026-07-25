@@ -90,6 +90,63 @@ export class MoveListView {
     return node.parent.variations.some(v => v !== node && v.move && v.move.color === color);
   }
 
+  annotationFor(node) {
+    return node && this._annotations instanceof Map
+      ? this._annotations.get(node) || null
+      : null;
+  }
+
+  qualityClass(node) {
+    const quality = this.annotationFor(node)?.quality;
+    return ["best", "excellent", "good", "inaccuracy", "mistake", "blunder"].includes(quality)
+      ? `move-quality-${quality}`
+      : "";
+  }
+
+  moveCell(node, currentNode) {
+    if (!node) return "<td></td>";
+    const annotation = this.annotationFor(node);
+    const classes = [
+      "move-cell",
+      node === currentNode ? "current-move" : "",
+      this.qualityClass(node),
+    ].filter(Boolean);
+    const explanation = typeof annotation?.explanation === "string"
+      ? annotation.explanation
+      : "";
+    const quality = typeof annotation?.label === "string" ? annotation.label : "";
+    const title = [quality, explanation].filter(Boolean).join(" · ");
+    const detail = this._showExplanations
+      ? `<small class="move-explanation${annotation?.quality ? "" : " is-pending"}">${escapeHtml(explanation || "Bewertung wird berechnet …")}</small>`
+      : "";
+    return [
+      `<td class="${classes.join(" ")}" data-fen="${escapeHtml(node.fen)}"`,
+      title ? ` title="${escapeHtml(title)}"` : "",
+      ">",
+      `<span class="move-san">${escapeHtml(node.move.san)}</span>`,
+      detail,
+      "</td>",
+    ].join("");
+  }
+
+  variantMove(node) {
+    const annotation = this.annotationFor(node);
+    const classes = [
+      "variant-move",
+      node === this._lastCurrent ? "current-move" : "",
+      this.qualityClass(node),
+    ].filter(Boolean);
+    const title = [
+      annotation?.label,
+      annotation?.explanation,
+    ].filter((value) => typeof value === "string" && value).join(" · ");
+    return [
+      `<span class="${classes.join(" ")}" data-fen="${escapeHtml(node.fen)}"`,
+      title ? ` title="${escapeHtml(title)}"` : "",
+      `>${escapeHtml(node.move.san)}</span>`,
+    ].join("");
+  }
+
   // Recursive: build clickable PGN snippet for a variation including sub-variations
   _variantSnippetFrom(node, startMoveNum, suppressParentOnce = null) {
     let html = "(";
@@ -100,8 +157,6 @@ export class MoveListView {
 
     while (cur && cur.move) {
       const color = cur.move.color; // 'w' or 'b'
-      const san = cur.move.san;
-      const fen = cur.fen;
 
       // numbering
       if (first) {
@@ -114,8 +169,7 @@ export class MoveListView {
       }
 
       // current SAN (clickable)
-      const currentClass = cur === this._lastCurrent ? " current-move" : "";
-      html += `<span class="variant-move${currentClass}" data-fen="${escapeHtml(fen)}">${escapeHtml(san)}</span>`;
+      html += this.variantMove(cur);
 
       // sub-variations at this ply (same-color siblings)
       const parent = cur.parent;
@@ -145,8 +199,6 @@ export class MoveListView {
     let first = true;
     while (cur && cur.move) {
       const color = cur.move.color;
-      const san = cur.move.san;
-      const fen = cur.fen;
       if (first) {
         html += color === "w" ? `${moveNum}. ` : `${moveNum}... `;
         first = false;
@@ -155,8 +207,7 @@ export class MoveListView {
       } else {
         html += " ";
       }
-      const currentClass = cur === this._lastCurrent ? " current-move" : "";
-      html += `<span class="variant-move${currentClass}" data-fen="${escapeHtml(fen)}">${escapeHtml(san)}</span>`;
+      html += this.variantMove(cur);
       if (color === "b") moveNum++;
       cur = cur.mainline;
     }
@@ -246,9 +297,11 @@ export class MoveListView {
     return out;
   }
 
-  render(root, currentNode) {
+  render(root, currentNode, { annotations = null, showExplanations = false } = {}) {
     this._lastRoot = root;
     this._lastCurrent = currentNode;
+    this._annotations = annotations instanceof Map ? annotations : new Map();
+    this._showExplanations = Boolean(showExplanations);
     if (!this.container || !root) return;
 
     const nodes = this.getMainlineNodes(root);
@@ -276,15 +329,8 @@ export class MoveListView {
     for (const row of rows) {
       const { white, black } = row;
       moveNum = row.moveNum;
-      const whiteClass = white === currentNode ? 'class="current-move"' : '';
-      const blackClass = black === currentNode ? 'class="current-move"' : '';
-
-      const whiteCell = white
-        ? `<td ${whiteClass} data-fen="${escapeHtml(white.fen)}">${escapeHtml(white.move.san)}</td>`
-        : '<td></td>';
-      const blackCell = black
-        ? `<td ${blackClass} data-fen="${escapeHtml(black.fen)}">${escapeHtml(black.move.san)}</td>`
-        : '<td></td>';
+      const whiteCell = this.moveCell(white, currentNode);
+      const blackCell = this.moveCell(black, currentNode);
 
       const hasVar = this.hasAlternatives(white) || this.hasAlternatives(black);
       if (hasVar) {

@@ -150,6 +150,47 @@ export function calculateMoveAccuracy(beforeWhiteCp, afterWhiteCp, color) {
   };
 }
 
+export function explainMoveQuality(move) {
+  if (!move || typeof move !== "object") return "Für diesen Zug liegt noch keine Bewertung vor.";
+  const san = typeof move.san === "string" ? move.san : "";
+  const bestSan = typeof move.bestSan === "string" && move.bestSan !== san
+    ? move.bestSan
+    : "";
+  const motif = /^O-O/.test(san)
+    ? "Bringt den König in Sicherheit"
+    : /[+#]$/.test(san)
+      ? "Erzeugt eine direkte Schachdrohung"
+      : san.includes("x")
+        ? "Klärt eine konkrete Materialfrage"
+        : "";
+
+  if (move.quality === "best") {
+    return `${motif || "Hält die Stellung optimal"}; kein messbarer Vorteil geht verloren.`;
+  }
+  if (move.quality === "excellent") {
+    return `${motif || "Setzt den richtigen Plan fort"}; die Abweichung zum besten Zug ist minimal.`;
+  }
+  if (move.quality === "good") {
+    return `${motif || "Bleibt solide"}; nur ein kleiner Teil des Vorteils geht verloren.`;
+  }
+  if (move.quality === "inaccuracy") {
+    return bestSan
+      ? `Gibt etwas Vorteil ab; genauer war ${bestSan}.`
+      : "Gibt etwas Vorteil ab und erlaubt dem Gegner mehr Gegenspiel.";
+  }
+  if (move.quality === "mistake") {
+    return bestSan
+      ? `Verschlechtert die Stellung deutlich; ${bestSan} hielt besser dagegen.`
+      : "Verschlechtert die Stellung deutlich und übersieht eine stärkere Fortsetzung.";
+  }
+  if (move.quality === "blunder") {
+    return bestSan
+      ? `Kippt die Stellung; ${bestSan} hätte den großen Verlust vermieden.`
+      : "Kippt die Stellung durch eine unmittelbare taktische oder positionelle Folge.";
+  }
+  return "Die Enginebewertung dieses Zuges ist noch nicht vollständig.";
+}
+
 export function analysisEntryFromInfo(info) {
   if (!info || typeof info !== "object") return null;
   const score = info.whiteScore || info.score;
@@ -206,7 +247,7 @@ export function summarizeGameReview(path, evaluations, { depth = null, final = t
     if (!metrics) continue;
     const bestUci = Array.isArray(before?.pv) ? before.pv[0] || "" : "";
 
-    moves.push({
+    const reportMove = {
       ply: index,
       moveNumber: Math.ceil(index / 2),
       color,
@@ -221,7 +262,9 @@ export function summarizeGameReview(path, evaluations, { depth = null, final = t
       lossCp: Math.round(metrics.lossCp),
       winPercentLoss: rounded(metrics.winPercentLoss, 2),
       quality: metrics.quality,
-    });
+    };
+    reportMove.explanation = explainMoveQuality(reportMove);
+    moves.push(reportMove);
   }
 
   const forColor = (color) => moves.filter((move) => move.color === color);

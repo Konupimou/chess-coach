@@ -41,9 +41,11 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 ## Bedienung
 
 - „Spielen“: Farbe und Schwierigkeit wählen, gegen Stockfish antreten und nach
-  jedem eigenen Zug ein lokales Live-Urteil erhalten
+  jedem eigenen Zug ein lokales Live-Urteil, die eigene Genauigkeit und einen
+  Präzisions-Streak erhalten
 - „Analyse“: frei ziehen, Varianten untersuchen, beste Züge anzeigen und den
-  Coach befragen
+  Coach befragen; die Zugliste färbt Bewertungen von Grün bis Rot und erklärt
+  jeden analysierten Zug kurz
 - Figuren ziehen: neue Hauptlinie oder Variante anlegen
 - `←` / `→`: einen Halbzug zurück oder vor
 - `↑` / `↓`: zwischen Geschwistervarianten wechseln
@@ -67,7 +69,7 @@ Neuladen erhalten.
 - `app.js`: Anwendungszustand und UI-Steuerung
 - `engine.js`: serialisierter UCI-/Stockfish-Worker
 - `playMode.js`: Spielstufen, Farbauswahl und Texte für das Live-Feedback
-- `moveArrows.js`: responsive Pfeile für die besten Engine-Züge
+- `moveArrows.js`: responsive, einheitlich gefärbte Pfeile für die besten Engine-Züge
 - `gameReview.js`: PV-Vorschau, Genauigkeit und vollständige Partieauswertung
 - `gameMetadata.js`: Speicherentwürfe, Zeitformate und lokale Eröffnungserkennung
 - `gameStorage.js`: zyklusfreie Spielstände und browserlokale Account-Persistenz

@@ -5,6 +5,7 @@ import { MoveTreeNode, addMoveToTree } from "../moveTree.js";
 import {
   buildPvFrames,
   calculateMoveAccuracy,
+  explainMoveQuality,
   pathToNode,
   reviewDepthForPlies,
   scoreToWhiteCp,
@@ -65,6 +66,7 @@ test("Partiebericht aggregiert Farben, Verluste und kritische Momente", () => {
   assert.ok(report.blackAccuracy < 100);
   assert.equal(report.criticalMoments.length, 2);
   assert.equal(report.moves[0].bestSan, "d4");
+  assert.match(report.moves[0].explanation, /genauer war d4|Verschlechtert|Gibt etwas Vorteil ab/);
 });
 
 test("nach nur einem weißen Zug bleibt die Genauigkeit für Schwarz offen", () => {
@@ -91,4 +93,19 @@ test("Matt, Score-Normalisierung und adaptive Tiefe sind begrenzt", () => {
   assert.equal(terminalWhiteCp("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"), 10_000);
   assert.equal(reviewDepthForPlies(20, 18), 14);
   assert.equal(reviewDepthForPlies(120, 15), 10);
+});
+
+test("jede Zugqualität erhält eine kurze Begründung", () => {
+  assert.match(
+    explainMoveQuality({ san: "O-O", quality: "best" }),
+    /König in Sicherheit/,
+  );
+  assert.match(
+    explainMoveQuality({ san: "Qh5", bestSan: "Nf3", quality: "mistake" }),
+    /Nf3/,
+  );
+  assert.match(
+    explainMoveQuality({ san: "Qh7+", quality: "excellent" }),
+    /Schachdrohung/,
+  );
 });

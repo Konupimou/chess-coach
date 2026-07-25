@@ -4,6 +4,7 @@ import {
   describeLiveMove,
   engineOpponentLabel,
   ENGINE_LEVELS,
+  nextStrongMoveStreak,
   normalizeEngineLevel,
   resolvePlayerColor,
 } from "../playMode.js";
@@ -21,6 +22,13 @@ test("Spielerfarbe unterstützt feste und zufällige Auswahl", () => {
   assert.equal(resolvePlayerColor("b", () => 0.1), "b");
   assert.equal(resolvePlayerColor("random", () => 0.1), "w");
   assert.equal(resolvePlayerColor("random", () => 0.9), "b");
+});
+
+test("nur beste und sehr gute Züge bauen den Präzisions-Streak auf", () => {
+  assert.equal(nextStrongMoveStreak(0, "best"), 1);
+  assert.equal(nextStrongMoveStreak(1, "excellent"), 2);
+  assert.equal(nextStrongMoveStreak(2, "good"), 0);
+  assert.equal(nextStrongMoveStreak(4, "blunder"), 0);
 });
 
 test("Live-Feedback nennt Qualität und bei Fehlern die bessere Fortsetzung", () => {

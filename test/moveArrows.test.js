@@ -1,11 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  MOVE_ARROW_STYLES,
   arrowGeometry,
   normalizeArrowMoves,
   parseUciMove,
   squareCenter,
 } from "../moveArrows.js";
+
+test("alle Vorschlagspfeile verwenden dieselbe Farbe", () => {
+  assert.equal(new Set(MOVE_ARROW_STYLES.map((style) => style.color)).size, 1);
+});
 
 test("UCI-Züge werden einschließlich Umwandlung validiert", () => {
   assert.deepEqual(parseUciMove("e7e8q"), {

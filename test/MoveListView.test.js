@@ -53,6 +53,28 @@ test("eine schwarze Ausgangsstellung beginnt in der Schwarz-Spalte", () => {
 
   assert.match(
     view.container.innerHTML,
-    /<tr class="main-row" data-movenum="23"><td>23<\/td><td><\/td><td class="current-move"/,
+    /<tr class="main-row" data-movenum="23"><td>23<\/td><td><\/td><td class="move-cell current-move"/,
   );
+});
+
+test("Zugqualität färbt Zellen und Erklärungen werden sicher ausgegeben", () => {
+  const game = new Chess();
+  const root = new MoveTreeNode({ fen: game.fen() });
+  const e4 = addMoveToTree(root, game.move("e4"), game.fen());
+  const view = createView();
+  const annotations = new Map([[
+    e4,
+    {
+      quality: "excellent",
+      label: "Sehr gut",
+      explanation: 'Hält die Initiative <ohne "Risiko">.',
+    },
+  ]]);
+
+  view.render(root, e4, { annotations, showExplanations: true });
+
+  assert.match(view.container.innerHTML, /move-quality-excellent/);
+  assert.match(view.container.innerHTML, /class="move-explanation"/);
+  assert.match(view.container.innerHTML, /&lt;ohne &quot;Risiko&quot;&gt;/);
+  assert.doesNotMatch(view.container.innerHTML, /<ohne/);
 });
