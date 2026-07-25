@@ -60,7 +60,9 @@ test("Spielmodus zeigt nur eigene Genauigkeit und aktualisiert den Streak nach F
   assert.match(accuracySource, /this\.whiteAccuracySideEl\.hidden/);
   assert.match(accuracySource, /this\.blackAccuracySideEl\.hidden/);
   assert.match(feedbackSource, /nextStrongMoveStreak/);
+  assert.match(feedbackSource, /celebratePlayedPiece/);
   assert.match(appSource, /play-streak-track/);
+  assert.match(appSource, /this\.boardRow\?\.appendChild\(this\.playStreakEl\)/);
 });
 
 test("Analyse übergibt farbige Kurzerklärungen an die Zugliste", () => {
@@ -69,4 +71,21 @@ test("Analyse übergibt farbige Kurzerklärungen an die Zugliste", () => {
   assert.match(renderSource, /MOVE_QUALITY/);
   assert.match(appSource, /showExplanations: this\.appMode === "analysis"/);
   assert.match(appSource, /Zug für Zug/);
+});
+
+test("Zuglisten-Hover zeigt nur eine temporäre Brettvorschau", () => {
+  const startSource = methodSource("startMoveListPreview", "stopMoveListPreview");
+  const stopSource = methodSource("stopMoveListPreview", "formatScore");
+  assert.match(appSource, /onPreview: \(fen, element\)/);
+  assert.match(startSource, /this\.board\?\.position\?\.\(fen, false\)/);
+  assert.doesNotMatch(startSource, /this\.game\.load|this\.currentNode\s*=/);
+  assert.match(stopSource, /this\.game\.fen\(\)/);
+});
+
+test("positive Spielzüge animieren die gesetzte Figur", () => {
+  const source = methodSource("celebratePlayedPiece", "renderSuggestions");
+  assert.match(source, /"best", "excellent", "good"/);
+  assert.match(source, /\.square-\$\{square\}/);
+  assert.match(source, /piece-success-pop/);
+  assert.match(source, /move-success-square/);
 });

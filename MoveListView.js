@@ -20,8 +20,15 @@ function escapeHtml(value) {
 }
 
 export class MoveListView {
-  constructor({ afterElementId = "board", onJump = () => {} } = {}) {
+  constructor({
+    afterElementId = "board",
+    onJump = () => {},
+    onPreview = () => {},
+    onPreviewEnd = () => {},
+  } = {}) {
     this.onJump = onJump;
+    this.onPreview = onPreview;
+    this.onPreviewEnd = onPreviewEnd;
     this.collapsed = new Set(); // remembers which move numbers are collapsed
     this._lastRoot = null;
     this._lastCurrent = null;
@@ -62,7 +69,10 @@ export class MoveListView {
         const n = numCell.getAttribute('data-movenum');
         if (n) {
           if (this.collapsed.has(n)) this.collapsed.delete(n); else this.collapsed.add(n);
-          this.render(this._lastRoot, this._lastCurrent);
+          this.render(this._lastRoot, this._lastCurrent, {
+            annotations: this._annotations,
+            showExplanations: this._showExplanations,
+          });
         }
         return;
       }
@@ -71,6 +81,34 @@ export class MoveListView {
       if (!hit) return;
       const fen = hit.getAttribute("data-fen");
       if (fen) this.onJump(fen);
+    });
+
+    const moveHit = (event) => event.target?.closest?.("[data-fen]") || null;
+    const entersHit = (hit, relatedTarget) => (
+      hit && !(relatedTarget instanceof Node && hit.contains(relatedTarget))
+    );
+    this.container.addEventListener("pointerover", (event) => {
+      const hit = moveHit(event);
+      if (!entersHit(hit, event.relatedTarget)) return;
+      const fen = hit.getAttribute("data-fen");
+      if (fen) this.onPreview(fen, hit);
+    });
+    this.container.addEventListener("pointerout", (event) => {
+      const hit = moveHit(event);
+      if (!entersHit(hit, event.relatedTarget)) return;
+      const fen = hit.getAttribute("data-fen");
+      if (fen) this.onPreviewEnd(fen, hit);
+    });
+    this.container.addEventListener("focusin", (event) => {
+      const hit = moveHit(event);
+      const fen = hit?.getAttribute("data-fen");
+      if (fen) this.onPreview(fen, hit);
+    });
+    this.container.addEventListener("focusout", (event) => {
+      const hit = moveHit(event);
+      if (!entersHit(hit, event.relatedTarget)) return;
+      const fen = hit.getAttribute("data-fen");
+      if (fen) this.onPreviewEnd(fen, hit);
     });
   }
 

@@ -128,7 +128,9 @@ export class ChessApp {
 
     this.listView = new MoveListView({
       afterElementId: "board",
-      onJump: (fen) => this.jumpToFen(fen)
+      onJump: (fen) => this.jumpToFen(fen),
+      onPreview: (fen, element) => this.startMoveListPreview(fen, element),
+      onPreviewEnd: (_fen, element) => this.stopMoveListPreview(element),
     });
 
     this.suggestionCount = 3;
@@ -146,6 +148,7 @@ export class ChessApp {
     this.lastEvalPawns = null;
     this.chatRequestController = null;
     this.previewState = null;
+    this.moveListPreviewState = null;
     this.previewTimer = null;
     this.previewToken = 0;
     this.suggestionsDirtyDuringPreview = false;
@@ -207,6 +210,7 @@ export class ChessApp {
       boardRow.className = "board-row";
       boardStack.appendChild(boardRow);
     }
+    this.boardRow = boardRow;
     let boardSurface = document.getElementById("board-surface");
     if (!boardSurface) {
       boardSurface = document.createElement("div");
@@ -680,11 +684,13 @@ export class ChessApp {
     this.playActiveView.appendChild(this.playTurnStatusEl);
 
     this.playStreakEl = document.createElement("section");
-    this.playStreakEl.className = "play-streak";
+    this.playStreakEl.className = "play-streak board-streak";
+    this.playStreakEl.hidden = true;
+    this.playStreakEl.title = "Beste und sehr gute Züge füllen den Streak.";
     const streakHeading = document.createElement("div");
     streakHeading.className = "play-streak-heading";
     const streakTitle = document.createElement("strong");
-    streakTitle.textContent = "Präzisions-Streak";
+    streakTitle.textContent = "Streak";
     this.playStreakValueEl = document.createElement("span");
     streakHeading.append(streakTitle, this.playStreakValueEl);
     this.playStreakTrackEl = document.createElement("div");
@@ -698,7 +704,7 @@ export class ChessApp {
     const streakHint = document.createElement("small");
     streakHint.textContent = "Beste und sehr gute Züge füllen den Balken.";
     this.playStreakEl.append(streakHeading, this.playStreakTrackEl, streakHint);
-    this.playActiveView.appendChild(this.playStreakEl);
+    this.boardRow?.appendChild(this.playStreakEl);
 
     const liveCoach = document.createElement("section");
     liveCoach.className = "live-coach";
@@ -948,6 +954,13 @@ export class ChessApp {
     const active = Boolean(session.active);
     this.playEmptyView.hidden = active;
     this.playActiveView.hidden = !active;
+    if (this.playStreakEl) {
+      this.playStreakEl.hidden = (
+        this.appMode !== "play"
+        || !active
+        || !session.liveFeedback
+      );
+    }
     if (this.playMobileFeedbackEl) {
       this.playMobileFeedbackEl.hidden = !active || this.appMode !== "play";
     }
@@ -989,12 +1002,11 @@ export class ChessApp {
       const streak = Math.max(0, Number.parseInt(session.streak, 10) || 0);
       const goal = 5;
       const visibleStreak = Math.min(goal, streak);
-      this.playStreakEl.hidden = !session.liveFeedback;
       this.playStreakEl.classList.toggle("is-hot", streak >= goal);
       this.playStreakValueEl.textContent = streak >= goal
         ? `🔥 ${streak} in Folge`
         : `${streak} / ${goal}`;
-      this.playStreakFillEl.style.width = `${visibleStreak / goal * 100}%`;
+      this.playStreakFillEl.style.height = `${visibleStreak / goal * 100}%`;
       this.playStreakTrackEl.setAttribute("aria-valuenow", String(visibleStreak));
       this.playStreakTrackEl.setAttribute(
         "aria-valuetext",
@@ -1470,7 +1482,7 @@ export class ChessApp {
   }
 
   handleDragStart(source, piece) {
-    if (this.previewState || this.reviewRunning) return false;
+    if (this.previewState || this.moveListPreviewState || this.reviewRunning) return false;
     if (this.appMode === "play") {
       if (
         !this.playSession.active
@@ -1544,6 +1556,7 @@ export class ChessApp {
   handleMove(source, target) {
     if (this.reviewRunning) return "snapback";
     this.stopSuggestionPreview();
+    this.stopMoveListPreview();
     if (
       this.appMode === "play"
       && (
@@ -1861,10 +1874,56 @@ export class ChessApp {
     session.lastFeedbackPly = ply;
     session.streak = nextStrongMoveStreak(session.streak, reportMove.quality);
     session.bestStreak = Math.max(session.bestStreak || 0, session.streak);
+    this.celebratePlayedPiece(path[ply]?.move?.to, reportMove.quality);
     session.feedbackHistory.unshift({ ...feedback, ply });
     session.feedbackHistory = session.feedbackHistory.slice(0, 12);
     this.renderPlayPanel();
     return feedback;
+  }
+
+  celebratePlayedPiece(square, quality) {
+    if (
+      !/^[a-h][1-8]$/.test(square || "")
+      || !["best", "excellent", "good"].includes(quality)
+      || !this.boardEl
+    ) return;
+    const squareEl = this.boardEl.querySelector(`.square-${square}`);
+    const pieceEl = squareEl?.querySelector(".piece-417db");
+    if (!squareEl || !pieceEl) return;
+
+    if (this.successAnimationTimer) {
+      window.clearTimeout(this.successAnimationTimer);
+    }
+    this.successAnimationElements?.forEach((element) => {
+      element?.classList.remove(
+        "move-success-square",
+        "piece-success-pop",
+        "is-brilliant",
+      );
+    });
+
+    const brilliant = quality === "best" || quality === "excellent";
+    squareEl.classList.remove("move-success-square", "is-brilliant");
+    pieceEl.classList.remove("piece-success-pop", "is-brilliant");
+    void pieceEl.offsetWidth;
+    squareEl.classList.add("move-success-square");
+    pieceEl.classList.add("piece-success-pop");
+    if (brilliant) {
+      squareEl.classList.add("is-brilliant");
+      pieceEl.classList.add("is-brilliant");
+    }
+    this.successAnimationElements = [squareEl, pieceEl];
+    this.successAnimationTimer = window.setTimeout(() => {
+      this.successAnimationElements?.forEach((element) => {
+        element?.classList.remove(
+          "move-success-square",
+          "piece-success-pop",
+          "is-brilliant",
+        );
+      });
+      this.successAnimationElements = null;
+      this.successAnimationTimer = null;
+    }, 900);
   }
 
   renderSuggestions() {
@@ -2049,6 +2108,55 @@ export class ChessApp {
         if (!this.previewState && !this.destroyed) this.renderSuggestions();
       });
     }
+  }
+
+  startMoveListPreview(fen, element) {
+    if (
+      this.destroyed
+      || this.reviewRunning
+      || typeof fen !== "string"
+      || !fen
+    ) return;
+    try {
+      const previewGame = new Chess();
+      previewGame.load(fen);
+    } catch {
+      return;
+    }
+    if (
+      this.moveListPreviewState?.fen === fen
+      && this.moveListPreviewState?.element === element
+    ) return;
+    this.stopSuggestionPreview();
+    this.stopMoveListPreview();
+    this.moveListPreviewState = { fen, element };
+    element?.classList.add("is-previewing");
+    this.moveArrows?.setVisible(false);
+    this.board?.position?.(fen, false);
+
+    const boardSurface = this.boardSurface || document.getElementById("board-surface");
+    if (!this.previewBadge && boardSurface) {
+      this.previewBadge = document.createElement("div");
+      this.previewBadge.className = "board-preview-badge";
+      boardSurface.appendChild(this.previewBadge);
+    }
+    if (this.previewBadge) {
+      this.previewBadge.hidden = false;
+      this.previewBadge.textContent = "Zugvorschau";
+    }
+  }
+
+  stopMoveListPreview(element = null) {
+    if (!this.moveListPreviewState) return;
+    if (element && this.moveListPreviewState.element !== element) return;
+    this.moveListPreviewState.element?.classList.remove("is-previewing");
+    this.moveListPreviewState = null;
+    if (!this.destroyed) {
+      this.board?.position?.(this.game.fen(), false);
+      this.moveArrows?.setVisible(true);
+      this.renderMoveArrows();
+    }
+    if (this.previewBadge) this.previewBadge.hidden = true;
   }
 
   formatScore(score) {
@@ -3951,6 +4059,7 @@ export class ChessApp {
   }
 
   renderMoveList() {
+    this.stopMoveListPreview();
     this.listView.render(this.moveTree, this.currentNode, {
       annotations: this.buildMoveAnnotations(),
       showExplanations: this.appMode === "analysis",
@@ -4090,10 +4199,12 @@ export class ChessApp {
     if (this.destroyed) return;
     this.cancelFullGameReview();
     this.stopSuggestionPreview();
+    this.stopMoveListPreview();
     this.destroyed = true;
     if (this.resizeFrame) cancelAnimationFrame(this.resizeFrame);
     if (this.boardKeyboardFrame) cancelAnimationFrame(this.boardKeyboardFrame);
     if (this.toastTimer) window.clearTimeout(this.toastTimer);
+    if (this.successAnimationTimer) window.clearTimeout(this.successAnimationTimer);
     this.chatRequestController?.abort();
     this.reviewCoachController?.abort();
     try { this.detachKeys?.(); } catch {}
