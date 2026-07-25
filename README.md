@@ -55,6 +55,7 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 - `MoveListView.js`: Darstellung des Variantenbaums
 - `moveTreeToPgn.js`: PGN-Export
 - `api/chat.js`: validierte, testbare OpenAI-Anfrage
+- `chatMarkup.js`: sichere Inline-Formatierung für Coach-Antworten
 - `public/libs/`: lokale Chessboard- und Stockfish-Assets
 - `test/`: Tests mit dem eingebauten Node-Test-Runner
 - `open-next.config.ts` und `wrangler.jsonc`: reproduzierbarer Sites-Build

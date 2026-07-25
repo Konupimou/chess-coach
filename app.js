@@ -5,6 +5,7 @@ import { attachKeyboard } from "./keyboard.js";
 import { Engine } from "./engine.js";
 import { EvalBar } from "./evalBar.js";
 import { moveTreeToPgn } from "./moveTreeToPgn.js";
+import { renderChatMarkup } from "./chatMarkup.js";
 
 export class ChessApp {
   ensureEngine() {
@@ -631,7 +632,7 @@ export class ChessApp {
         bubble.style.border = '1px solid rgba(255, 255, 255, 0.25)';
         bubble.style.color = '#fff';
       }
-      bubble.textContent = msg.content;
+      renderChatMarkup(bubble, msg.content);
       this.chatBodyEl.appendChild(bubble);
     });
     this.chatBodyEl.scrollTop = this.chatBodyEl.scrollHeight;
