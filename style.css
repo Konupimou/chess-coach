@@ -151,11 +151,36 @@ textarea:focus-visible,
   width: 100%;
 }
 
-#board {
+.board-surface {
+  position: relative;
+  isolation: isolate;
   flex: 1 1 auto;
   width: 100%;
   max-width: 560px;
   min-width: 0;
+}
+
+#board {
+  width: 100%;
+  min-width: 0;
+}
+
+.move-arrows {
+  position: absolute;
+  z-index: 4;
+  display: block;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.move-arrows *,
+.move-arrow-line,
+.move-arrow-outline {
+  pointer-events: none;
+}
+
+.move-arrow-outline {
+  stroke: rgba(8, 12, 22, 0.72);
 }
 
 #analysis-panel {
@@ -540,8 +565,8 @@ textarea:focus-visible,
     border-radius: 20px;
   }
 
-  #board {
-    width: calc(100% - 42px);
+  .board-surface {
+    width: calc(100% - 48px);
   }
 
   .analysis-column {

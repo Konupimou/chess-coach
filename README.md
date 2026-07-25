@@ -51,6 +51,7 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 - `app/`: Next.js-Oberfläche und serverseitige API-Routen
 - `app.js`: Anwendungszustand und UI-Steuerung
 - `engine.js`: serialisierter UCI-/Stockfish-Worker
+- `moveArrows.js`: responsive Pfeile für die besten Engine-Züge
 - `moveTree.js`: Variantenbaum
 - `MoveListView.js`: Darstellung des Variantenbaums
 - `moveTreeToPgn.js`: PGN-Export

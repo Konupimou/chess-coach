@@ -6,6 +6,7 @@ import { Engine } from "./engine.js";
 import { EvalBar } from "./evalBar.js";
 import { moveTreeToPgn } from "./moveTreeToPgn.js";
 import { renderChatMarkup } from "./chatMarkup.js";
+import { MOVE_ARROW_STYLES, MoveArrowOverlay } from "./moveArrows.js";
 
 export class ChessApp {
   ensureEngine() {
@@ -52,9 +53,14 @@ export class ChessApp {
       position: this.currentNode.fen,
       draggable: true,
       pieceTheme: "./libs/img/{piece}.png",
+      onDragStart: () => this.moveArrows?.setVisible(false),
       onDrop: this.handleMove.bind(this),
       dropOffBoard: "snapback",
-      onSnapbackEnd: () => this.board.position(this.game.fen())
+      onSnapEnd: () => this.moveArrows?.setVisible(true),
+      onSnapbackEnd: () => {
+        this.board.position(this.game.fen());
+        this.moveArrows?.setVisible(true);
+      }
     });
 
     this.listView = new MoveListView({
@@ -106,8 +112,20 @@ export class ChessApp {
       boardRow.className = "board-row";
       boardStack.appendChild(boardRow);
     }
-    boardRow.appendChild(boardEl);
+    let boardSurface = document.getElementById("board-surface");
+    if (!boardSurface) {
+      boardSurface = document.createElement("div");
+      boardSurface.id = "board-surface";
+      boardSurface.className = "board-surface";
+    }
+    boardSurface.appendChild(boardEl);
+    boardRow.appendChild(boardSurface);
     this.board.resize();
+    this.moveArrows = new MoveArrowOverlay({
+      hostEl: boardSurface,
+      boardEl,
+      orientation: this.board.orientation(),
+    });
 
     let analysisColumn = document.getElementById('analysis-column');
     if (!analysisColumn) {
@@ -138,7 +156,11 @@ export class ChessApp {
     flipButton.type = "button";
     flipButton.className = "secondary-button";
     flipButton.textContent = "Brett drehen";
-    flipButton.addEventListener("click", () => this.board.flip());
+    flipButton.addEventListener("click", () => {
+      const orientation = this.board.flip();
+      this.moveArrows?.setOrientation(orientation);
+      this.scheduleBoardResize();
+    });
     boardActions.appendChild(flipButton);
 
     const resetButton = document.createElement("button");
@@ -397,6 +419,7 @@ export class ChessApp {
     this.lastEvalPawns = null;
     this.evalBar?.setPending?.();
     this.suggestionState = { fen, searchId: null, depth: 0, lines: new Map() };
+    this.moveArrows?.clear();
     this.renderSuggestions();
     if (!this.engine) {
       this.renderEngineUnavailable();
@@ -421,12 +444,14 @@ export class ChessApp {
   handleEngineInfo(info) {
     if (!info || !Array.isArray(info.pv) || info.pv.length === 0) return;
     if (!this.suggestionState || info.fen !== this.suggestionState.fen) return;
-    if (
-      this.suggestionState.searchId
-      && info.searchId
-      && info.searchId !== this.suggestionState.searchId
-    ) return;
+    if (!this.suggestionState.searchId || info.searchId !== this.suggestionState.searchId) return;
     const index = info.multipv || 1;
+    const previous = this.suggestionState.lines.get(index);
+    if (
+      previous?.depth
+      && info.depth
+      && info.depth < previous.depth
+    ) return;
     this.suggestionState.lines.set(index, info);
     if (info.depth) {
       this.suggestionState.depth = Math.max(this.suggestionState.depth || 0, info.depth);
@@ -435,6 +460,7 @@ export class ChessApp {
   }
 
   renderSuggestions() {
+    this.renderMoveArrows();
     if (!this.suggestionsEl) return;
     const body = this.suggestionsEl.querySelector('.lines');
     if (!body) return;
@@ -461,7 +487,7 @@ export class ChessApp {
       return;
     }
 
-    body.style.color = '#222';
+    body.style.color = '#fff';
     body.innerHTML = '';
     lines.forEach(([idx, data]) => {
       const row = document.createElement('div');
@@ -478,6 +504,7 @@ export class ChessApp {
 
       const label = document.createElement('span');
       label.style.fontWeight = '600';
+      label.style.color = MOVE_ARROW_STYLES[Math.min(idx - 1, MOVE_ARROW_STYLES.length - 1)].color;
       label.textContent = `#${idx}`;
 
       const scoreSpan = document.createElement('span');
@@ -491,7 +518,7 @@ export class ChessApp {
         const depthSpan = document.createElement('span');
         depthSpan.style.marginLeft = '8px';
         depthSpan.style.fontSize = '11px';
-        depthSpan.style.color = '#666';
+        depthSpan.style.color = '#93a5c8';
         depthSpan.textContent = `d${data.depth}`;
         header.appendChild(depthSpan);
       }
@@ -499,7 +526,7 @@ export class ChessApp {
       const moves = document.createElement('div');
       moves.className = 'moves';
       moves.style.fontSize = '12px';
-      moves.style.color = '#333';
+      moves.style.color = '#c7d4ed';
       const sanMoves = this.pvToSanList(data.pv, data.fen);
       moves.textContent = sanMoves.length > 0 ? sanMoves.join(' ') : '(keine Züge)';
 
@@ -507,6 +534,24 @@ export class ChessApp {
       row.appendChild(moves);
       body.appendChild(row);
     });
+  }
+
+  renderMoveArrows() {
+    if (!this.moveArrows) return;
+    if (
+      this.suggestionCount === 0
+      || !this.suggestionState
+      || this.suggestionState.lines.size === 0
+    ) {
+      this.moveArrows.clear();
+      return;
+    }
+
+    const moves = Array.from(this.suggestionState.lines.entries())
+      .sort(([left], [right]) => left - right)
+      .slice(0, this.suggestionCount)
+      .map(([rank, data]) => ({ rank, move: data?.pv?.[0] }));
+    this.moveArrows.setMoves(moves);
   }
 
   formatScore(score) {
@@ -755,6 +800,7 @@ export class ChessApp {
       if (this.destroyed) return;
       this.board?.resize?.();
       this.evalBar?.resizeToBoard?.();
+      this.moveArrows?.resize?.();
     });
   }
 
@@ -791,6 +837,7 @@ export class ChessApp {
     console.error("[ChessApp] Engine nicht verfügbar", error);
     this.engineFailed = true;
     this.engine = null;
+    this.moveArrows?.clear();
     this.renderEngineUnavailable();
     this.engineInputs?.forEach((input) => {
       input.disabled = true;
@@ -824,6 +871,7 @@ export class ChessApp {
     this.chatRequestController?.abort();
     try { this.detachKeys?.(); } catch {}
     try { this.engine?.quit(); } catch {}
+    try { this.moveArrows?.destroy?.(); } catch {}
     try { this.board?.destroy?.(); } catch {}
     try { this.evalBar?.destroy?.(); } catch {}
     if (this._onEngineHashChanged) {
