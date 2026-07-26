@@ -11,7 +11,7 @@
     "prebuild": "npm run assets",
     "build": "next build",
     "start": "next start",
-    "site:build": "opennextjs-cloudflare build",
+    "site:build": "opennextjs-cloudflare build && node scripts/patch-opennext-worker.mjs",
     "site:package": "npm run site:build && node scripts/package-site.mjs",
     "site:preview": "npm run site:build && opennextjs-cloudflare preview",
     "test": "node --test",
