@@ -1,17 +1,28 @@
 import {
+  canonicalLocalOrigin,
   cookieHeader,
   createPkceChallenge,
   LICHESS_COOKIES,
   lichessAuthorizationUrl,
+  lichessRequestOrigin,
   randomUrlToken,
-  requestOrigin,
 } from "../../../../api/lichess.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
-  const origin = requestOrigin(request);
+  const origin = lichessRequestOrigin(request);
+  const canonicalOrigin = canonicalLocalOrigin(origin);
+  if (canonicalOrigin !== origin) {
+    return new Response(null, {
+      status: 307,
+      headers: {
+        "Cache-Control": "private, no-store",
+        Location: `${canonicalOrigin}/api/lichess/connect`,
+      },
+    });
+  }
   const verifier = randomUrlToken(48);
   const state = randomUrlToken(32);
   const challenge = await createPkceChallenge(verifier);

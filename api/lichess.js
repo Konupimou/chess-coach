@@ -52,6 +52,27 @@ export function requestOrigin(request) {
   return origin;
 }
 
+export function canonicalLocalOrigin(origin) {
+  const url = new URL(origin);
+  if (url.hostname === "0.0.0.0") {
+    url.hostname = "localhost";
+  }
+  return url.origin;
+}
+
+export function lichessRequestOrigin(request) {
+  const origin = requestOrigin(request);
+  const url = new URL(origin);
+  const requestHost = String(request.headers.get("host") || "").trim();
+  if (
+    url.hostname === "0.0.0.0"
+    && /^(?:localhost|127\.0\.0\.1)(?::\d+)?$/i.test(requestHost)
+  ) {
+    return `http://${requestHost}`;
+  }
+  return origin;
+}
+
 export function lichessClientId(origin) {
   const configured = typeof process.env.LICHESS_CLIENT_ID === "string"
     ? process.env.LICHESS_CLIENT_ID.trim()

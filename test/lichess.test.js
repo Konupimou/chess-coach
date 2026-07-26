@@ -1,14 +1,53 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  canonicalLocalOrigin,
   cookieHeader,
   createPkceChallenge,
   lichessAuthorizationUrl,
   lichessGamesUrl,
+  lichessRequestOrigin,
   normalizeGameFilters,
   parseCookies,
   sanitizeLichessGame,
 } from "../api/lichess.js";
+import { GET as startLichessConnect } from "../app/api/lichess/connect/route.js";
+
+test("Lokales OAuth startet auf localhost statt auf der Bind-Adresse", async () => {
+  assert.equal(
+    canonicalLocalOrigin("http://0.0.0.0:3000"),
+    "http://localhost:3000",
+  );
+  assert.equal(
+    canonicalLocalOrigin("http://localhost:3000"),
+    "http://localhost:3000",
+  );
+  assert.equal(
+    canonicalLocalOrigin("https://coach.example"),
+    "https://coach.example",
+  );
+
+  const response = await startLichessConnect(
+    new Request("http://0.0.0.0:3000/api/lichess/connect", {
+      headers: { Host: "0.0.0.0:3000" },
+    }),
+  );
+  assert.equal(response.status, 307);
+  assert.equal(response.headers.get("location"), "http://localhost:3000/api/lichess/connect");
+  assert.equal(response.headers.get("set-cookie"), null);
+
+  const localhostRequest = new Request("http://0.0.0.0:3000/api/lichess/connect", {
+    headers: { Host: "localhost:3000" },
+  });
+  assert.equal(lichessRequestOrigin(localhostRequest), "http://localhost:3000");
+  const localhostResponse = await startLichessConnect(localhostRequest);
+  assert.equal(localhostResponse.status, 302);
+  assert.match(
+    localhostResponse.headers.get("location"),
+    /^https:\/\/lichess\.org\/oauth\?/,
+  );
+  assert.match(localhostResponse.headers.get("set-cookie"), /chess_coach_lichess_state=/);
+});
 
 test("Lichess OAuth verwendet PKCE S256 ohne zusätzliche Berechtigungen", async () => {
   const verifier = "a".repeat(64);
