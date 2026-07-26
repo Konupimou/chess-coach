@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 const root = resolve(process.cwd());
@@ -9,6 +9,10 @@ const consoleFilePath = resolve(
 const fileLoggerPath = resolve(
   root,
   ".open-next/server-functions/default/node_modules/next/dist/server/dev/browser-logs/file-logger.js",
+);
+const handlerPath = resolve(
+  root,
+  ".open-next/server-functions/default/handler.mjs",
 );
 
 const consoleFileStub = `"use strict";
@@ -47,4 +51,21 @@ for (const [target, content] of [
   writeFileSync(target, content);
 }
 
-console.log("Patched OpenNext worker logging shims.");
+// OpenNext bundles the Next.js files into handler.mjs before this script runs.
+// Patching only the copied files is therefore not enough: remove the bundled
+// file logger as well so Cloudflare never evaluates its Node-only require("fs").
+const bundledFileLoggerPattern =
+  /var require_file_logger=__commonJS\(\{".open-next\/server-functions\/default\/node_modules\/next\/dist\/server\/dev\/browser-logs\/file-logger\.js"\(exports\)\{[\s\S]*?\}\}\);var require_interop_require_default=/;
+const bundledFileLoggerStub =
+  'var require_file_logger=__commonJS({".open-next/server-functions/default/node_modules/next/dist/server/dev/browser-logs/file-logger.js"(exports){"use strict";Object.defineProperty(exports,"__esModule",{value:!0});class FileLogger{initialize(){}getLogQueue(){return[]}flush(){}enqueueLog(){}log(){}logServer(){}logBrowser(){}forceFlush(){}destroy(){}}function getFileLogger(){return new FileLogger}function test__resetFileLogger(){}Object.assign(exports,{FileLogger,getFileLogger,test__resetFileLogger})}});var require_interop_require_default=';
+
+const handler = readFileSync(handlerPath, "utf8");
+if (!bundledFileLoggerPattern.test(handler)) {
+  throw new Error("Bundled Next.js file logger was not found in handler.mjs");
+}
+writeFileSync(
+  handlerPath,
+  handler.replace(bundledFileLoggerPattern, bundledFileLoggerStub),
+);
+
+console.log("Patched OpenNext worker logging shims and bundled handler.");
