@@ -74,7 +74,7 @@ let handler = readFileSync(handlerPath, "utf8");
 const createRequireImport =
   'import { createRequire as __createNodeRequire } from "node:module";\n';
 const createRequireBinding =
-  'const require = __createNodeRequire(import.meta.url);\n';
+  'const require = __createNodeRequire("/worker/handler.mjs");\n';
 if (!handler.includes(createRequireImport)) {
   handler = `${createRequireImport}${createRequireBinding}${handler}`;
 }

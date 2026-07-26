@@ -9,5 +9,5 @@ const patchSource = readFileSync(
 
 test("Produktionsbundle erhält eine explizite CommonJS-Brücke", () => {
   assert.match(patchSource, /createRequire as __createNodeRequire/);
-  assert.match(patchSource, /const require = __createNodeRequire\(import\.meta\.url\)/);
+  assert.match(patchSource, /const require = __createNodeRequire\("\/worker\/handler\.mjs"\)/);
 });
