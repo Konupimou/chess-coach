@@ -23,3 +23,22 @@ test("Accountwechsel und frühe Partiedaten respektieren den manuellen Entwurf",
   assert.match(appSource, /hasUnsavedGameChanges\(\)[\s\S]{0,180}this\.gameSaveDraftDirty/);
   assert.match(appSource, /this\.gameSaveDraftDirty = true/);
 });
+
+test("Lichess-Partien werden nur über den ausdrücklichen Import-Button gespeichert", () => {
+  const importCall = appSource.indexOf(
+    'this.lichessImportButton.addEventListener("click", () => this.importSelectedLichessGames())',
+  );
+  assert.ok(importCall >= 0);
+  const importMethod = appSource.slice(
+    appSource.indexOf("  importSelectedLichessGames()"),
+    appSource.indexOf("  async initializeAccountIdentity()", importCall),
+  );
+  assert.match(importMethod, /saveAccountState\(/);
+  assert.doesNotMatch(
+    appSource.slice(
+      appSource.indexOf("  loadLichessGames()"),
+      appSource.indexOf("  renderLichessImportResults"),
+    ),
+    /saveAccountState\(/,
+  );
+});

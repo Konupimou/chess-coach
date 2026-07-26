@@ -50,12 +50,14 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 - `←` / `→`: einen Halbzug zurück oder vor
 - `↑` / `↓`: zwischen Geschwistervarianten wechseln
 - Zug in der Liste anklicken: direkt zur Stellung springen
+- Zug in der Liste berühren: zugehörige Stellung vorübergehend auf dem Brett ansehen
 - Zugnummer anklicken: Varianten ein- oder ausklappen
 - Vorschlag fokussieren oder mit der Maus berühren: Engine-Variante auf dem Brett abspielen
 - „⚙ Engine“: Tiefe, Threads, Hash und Anzahl der Vorschläge kompakt einstellen
 - „Partie speichern“: Partiedaten ergänzen und den aktuellen Stand bewusst im Account sichern
 - „Partie analysieren“: alle Stellungen prüfen, Genauigkeit und Abschlussfeedback anzeigen
 - „Mein Account“: Spielerprofil, Key Facts, Eröffnungsrepertoire, Bestpartien und alle gespeicherten Partien anzeigen
+- „Mit Lichess verbinden“: per OAuth ohne Zusatzrechte abgeschlossene Standardpartien filtern, auswählen und bewusst importieren
 - „PGN“: Hauptlinie samt Varianten exportieren
 
 Die private Live-Seite erkennt den angemeldeten Sites-Nutzer. Bis eine
@@ -79,12 +81,16 @@ Neuladen erhalten.
 - `moveTreeToPgn.js`: PGN-Export
 - `api/chat.js`: validierte, testbare OpenAI-Anfrage
 - `api/siteIdentity.js`: serverseitige Sites-Identität für den Account-Bereich
+- `api/lichess.js`: OAuth-PKCE, sichere Cookies und begrenzte Lichess-API-Anfragen
+- `lichessImport.js`: validierte Umwandlung von Lichess-Partien in analysierbare Spielstände
 - `chatMarkup.js`: sichere Inline-Formatierung für Coach-Antworten
 - `public/libs/`: lokale Chessboard- und Stockfish-Assets
 - `test/`: Tests mit dem eingebauten Node-Test-Runner
 - `open-next.config.ts` und `wrangler.jsonc`: reproduzierbarer Sites-Build
 
-Der OpenAI-Schlüssel bleibt ausschließlich auf dem Server. Chat-Anfragen
+Der Lichess-Zugriff verwendet einen sicheren HTTP-only-Cookie, fordert keine
+Spiel- oder Schreibrechte an und importiert ausschließlich abgeschlossene
+Partien. Der OpenAI-Schlüssel bleibt ausschließlich auf dem Server. Chat-Anfragen
 werden größenbegrenzt und nicht bei OpenAI gespeichert (`store: false`).
 Das Standardmodell `gpt-5.6-luna` kann über `OPENAI_MODEL` überschrieben
 werden.

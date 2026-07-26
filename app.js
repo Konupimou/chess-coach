@@ -26,6 +26,7 @@ import {
   deserializeMoveTree,
   findNodeByPath,
   loadAccountState,
+  MAX_SAVED_GAMES,
   mergeAccountStates,
   nodePathFromRoot,
   removeSavedGame,
@@ -34,6 +35,10 @@ import {
   storageKeyForIdentity,
   upsertSavedGame,
 } from "./gameStorage.js";
+import {
+  lichessGameToSavedRecord,
+  lichessImportability,
+} from "./lichessImport.js";
 import {
   createGameSaveDraft,
   inferOpeningFromPath,
@@ -179,6 +184,14 @@ export class ChessApp {
       this.accountStorageKey,
       { name: "Lokales Profil", source: "local" },
     );
+    this.lichessConnection = {
+      loading: true,
+      connected: false,
+      user: null,
+      error: "",
+    };
+    this.lichessFetchedGames = [];
+    this.lichessImportBusy = false;
 
     const boardEl = document.getElementById("board");
     let wrap = document.getElementById("board-container");
@@ -609,6 +622,7 @@ export class ChessApp {
     this.updateModeUi();
     this.evaluateCurrentPosition();
     this.initializeAccountIdentity();
+    this.initializeLichessConnection();
   }
 
   createPlayPanel(engineAvailable) {
@@ -3130,7 +3144,410 @@ export class ChessApp {
     dialog.appendChild(actions);
     dialog.addEventListener('close', () => this.accountButton?.focus());
     document.body.appendChild(dialog);
+    this.createLichessImportDialog();
     this.updateAccountButton();
+  }
+
+  createLichessImportDialog() {
+    const dialog = document.createElement("dialog");
+    dialog.id = "lichess-import-dialog";
+    dialog.className = "modal-dialog lichess-import-dialog";
+    dialog.setAttribute("aria-labelledby", "lichess-import-title");
+    this.lichessImportDialog = dialog;
+
+    const heading = document.createElement("div");
+    heading.className = "dialog-heading";
+    const title = document.createElement("div");
+    title.id = "lichess-import-title";
+    title.className = "card-title";
+    title.textContent = "Lichess-Partien importieren";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "dialog-close";
+    close.setAttribute("aria-label", "Lichess-Import schließen");
+    close.textContent = "×";
+    close.addEventListener("click", () => dialog.close());
+    heading.append(title, close);
+    dialog.appendChild(heading);
+
+    const description = document.createElement("p");
+    description.className = "dialog-description";
+    description.textContent = "Es werden ausschließlich abgeschlossene Standardschach-Partien geladen. Erst dein Import-Klick speichert eine Auswahl im Spielerprofil.";
+    dialog.appendChild(description);
+
+    const form = document.createElement("form");
+    form.className = "lichess-filter-form";
+    this.lichessImportForm = form;
+    const addSelect = (labelText, name, options) => {
+      const label = document.createElement("label");
+      const text = document.createElement("span");
+      text.textContent = labelText;
+      const select = document.createElement("select");
+      select.name = name;
+      options.forEach(({ value, label: optionLabel }) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = optionLabel;
+        select.appendChild(option);
+      });
+      label.append(text, select);
+      form.appendChild(label);
+      return select;
+    };
+    this.lichessMaxInput = addSelect("Anzahl", "max", [
+      { value: "5", label: "5 neueste" },
+      { value: "10", label: "10 neueste" },
+      { value: "20", label: "20 neueste" },
+      { value: "40", label: "40 neueste" },
+    ]);
+    this.lichessMaxInput.value = "10";
+    this.lichessPerfInput = addSelect("Zeitformat", "perfType", [
+      { value: "", label: "Alle Formate" },
+      { value: "bullet", label: "Bullet" },
+      { value: "blitz", label: "Blitz" },
+      { value: "rapid", label: "Rapid" },
+      { value: "classical", label: "Klassisch" },
+      { value: "correspondence", label: "Korrespondenz" },
+    ]);
+    this.lichessRatedInput = addSelect("Wertung", "rated", [
+      { value: "", label: "Gewertet und ungewertet" },
+      { value: "true", label: "Nur gewertet" },
+      { value: "false", label: "Nur ungewertet" },
+    ]);
+    this.lichessColorInput = addSelect("Deine Farbe", "color", [
+      { value: "", label: "Weiß und Schwarz" },
+      { value: "white", label: "Nur Weiß" },
+      { value: "black", label: "Nur Schwarz" },
+    ]);
+    const dateLabel = document.createElement("label");
+    const dateText = document.createElement("span");
+    dateText.textContent = "Gespielt seit";
+    this.lichessSinceInput = document.createElement("input");
+    this.lichessSinceInput.type = "date";
+    this.lichessSinceInput.name = "since";
+    dateLabel.append(dateText, this.lichessSinceInput);
+    form.appendChild(dateLabel);
+    this.lichessLoadButton = document.createElement("button");
+    this.lichessLoadButton.type = "submit";
+    this.lichessLoadButton.className = "primary-action-button";
+    this.lichessLoadButton.textContent = "Partien laden";
+    form.appendChild(this.lichessLoadButton);
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      this.loadLichessGames();
+    });
+    dialog.appendChild(form);
+
+    this.lichessImportStatusEl = document.createElement("p");
+    this.lichessImportStatusEl.className = "lichess-import-status";
+    this.lichessImportStatusEl.setAttribute("role", "status");
+    this.lichessImportStatusEl.setAttribute("aria-live", "polite");
+    dialog.appendChild(this.lichessImportStatusEl);
+
+    this.lichessImportResultsEl = document.createElement("div");
+    this.lichessImportResultsEl.className = "lichess-import-results";
+    dialog.appendChild(this.lichessImportResultsEl);
+
+    const actions = document.createElement("div");
+    actions.className = "dialog-actions lichess-import-actions";
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "secondary-button";
+    back.textContent = "Zurück zum Profil";
+    back.addEventListener("click", () => dialog.close());
+    this.lichessImportButton = document.createElement("button");
+    this.lichessImportButton.type = "button";
+    this.lichessImportButton.className = "primary-action-button";
+    this.lichessImportButton.textContent = "Ausgewählte importieren";
+    this.lichessImportButton.disabled = true;
+    this.lichessImportButton.addEventListener("click", () => this.importSelectedLichessGames());
+    actions.append(back, this.lichessImportButton);
+    dialog.appendChild(actions);
+    dialog.addEventListener("close", () => {
+      if (this.lichessReturnToAccount) {
+        this.lichessReturnToAccount = false;
+        requestAnimationFrame(() => this.openAccountDialog());
+      }
+    });
+    document.body.appendChild(dialog);
+  }
+
+  async initializeLichessConnection() {
+    this.lichessConnection = {
+      loading: true,
+      connected: false,
+      user: null,
+      error: "",
+    };
+    if (this.accountDialog?.open) this.renderAccountDialog();
+    try {
+      const response = await fetch("/api/lichess/status", { cache: "no-store" });
+      const status = await response.json().catch(() => ({}));
+      this.lichessConnection = response.ok && status.connected
+        ? { loading: false, connected: true, user: status.user, error: "" }
+        : {
+          loading: false,
+          connected: false,
+          user: null,
+          error: status.expired ? "Die Verbindung ist abgelaufen." : "",
+        };
+    } catch {
+      this.lichessConnection = {
+        loading: false,
+        connected: false,
+        user: null,
+        error: "Lichess ist gerade nicht erreichbar.",
+      };
+    }
+
+    const url = new URL(window.location.href);
+    const outcome = url.searchParams.get("lichess");
+    if (outcome) {
+      url.searchParams.delete("lichess");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      if (outcome === "connected") {
+        this.showToast("Lichess erfolgreich verbunden.");
+      } else if (outcome === "cancelled") {
+        this.showToast("Lichess-Verbindung abgebrochen.");
+      } else {
+        this.showToast("Lichess konnte nicht verbunden werden.");
+      }
+      requestAnimationFrame(() => this.openAccountDialog());
+    } else if (this.accountDialog?.open) {
+      this.renderAccountDialog();
+    }
+  }
+
+  renderLichessConnectionCard(parent) {
+    const card = document.createElement("section");
+    card.className = "lichess-connection-card";
+    const brand = document.createElement("div");
+    brand.className = "lichess-connection-brand";
+    const mark = document.createElement("span");
+    mark.className = "lichess-mark";
+    mark.textContent = "♞";
+    mark.setAttribute("aria-hidden", "true");
+    const copy = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = "Lichess";
+    const detail = document.createElement("span");
+    copy.append(title, detail);
+    brand.append(mark, copy);
+    const actions = document.createElement("div");
+    actions.className = "lichess-connection-actions";
+
+    if (this.lichessConnection.loading) {
+      detail.textContent = "Verbindung wird geprüft …";
+    } else if (this.lichessConnection.connected) {
+      const username = this.lichessConnection.user?.username || "Verbunden";
+      detail.textContent = `${username} · nur Lesen und Import`;
+      const importButton = document.createElement("button");
+      importButton.type = "button";
+      importButton.className = "primary-action-button";
+      importButton.textContent = "Partien importieren";
+      importButton.addEventListener("click", () => this.openLichessImportDialog());
+      const disconnect = document.createElement("button");
+      disconnect.type = "button";
+      disconnect.className = "secondary-button";
+      disconnect.textContent = "Trennen";
+      disconnect.addEventListener("click", () => this.disconnectLichess());
+      actions.append(importButton, disconnect);
+    } else {
+      detail.textContent = this.lichessConnection.error
+        || "Sicher verbinden – keine Spiel- oder Schreibrechte";
+      const connect = document.createElement("button");
+      connect.type = "button";
+      connect.className = "primary-action-button";
+      connect.textContent = "Mit Lichess verbinden";
+      connect.addEventListener("click", () => {
+        window.location.assign("/api/lichess/connect");
+      });
+      actions.appendChild(connect);
+    }
+    card.append(brand, actions);
+    parent.appendChild(card);
+  }
+
+  async disconnectLichess() {
+    if (this.lichessImportBusy) return;
+    const confirmed = window.confirm(
+      "Lichess-Verbindung trennen? Bereits importierte Partien bleiben erhalten.",
+    );
+    if (!confirmed) return;
+    this.lichessImportBusy = true;
+    try {
+      await fetch("/api/lichess/disconnect", { method: "POST" });
+      this.lichessConnection = {
+        loading: false,
+        connected: false,
+        user: null,
+        error: "",
+      };
+      this.showToast("Lichess-Verbindung getrennt.");
+    } catch {
+      this.showToast("Lichess konnte nicht getrennt werden.");
+    } finally {
+      this.lichessImportBusy = false;
+      if (this.accountDialog?.open) this.renderAccountDialog();
+    }
+  }
+
+  openLichessImportDialog() {
+    if (!this.lichessConnection.connected || !this.lichessImportDialog) return;
+    this.lichessFetchedGames = [];
+    this.lichessImportResultsEl.replaceChildren();
+    this.lichessImportStatusEl.textContent = "Wähle Filter und lade deine abgeschlossenen Partien.";
+    this.lichessImportButton.disabled = true;
+    this.lichessReturnToAccount = true;
+    this.accountDialog?.close();
+    this.lichessImportDialog.showModal();
+    this.lichessLoadButton?.focus();
+  }
+
+  async loadLichessGames() {
+    if (this.lichessImportBusy || !this.lichessConnection.connected) return;
+    this.lichessImportBusy = true;
+    this.lichessLoadButton.disabled = true;
+    this.lichessImportButton.disabled = true;
+    this.lichessImportStatusEl.textContent = "Lichess-Partien werden geladen …";
+    this.lichessImportResultsEl.replaceChildren();
+    const params = new URLSearchParams();
+    params.set("max", this.lichessMaxInput.value || "10");
+    if (this.lichessPerfInput.value) params.set("perfType", this.lichessPerfInput.value);
+    if (this.lichessRatedInput.value) params.set("rated", this.lichessRatedInput.value);
+    if (this.lichessColorInput.value) params.set("color", this.lichessColorInput.value);
+    if (this.lichessSinceInput.value) {
+      const since = new Date(`${this.lichessSinceInput.value}T00:00:00`).getTime();
+      if (Number.isFinite(since)) params.set("since", String(since));
+    }
+    try {
+      const response = await fetch(`/api/lichess/games?${params}`, { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Partien konnten nicht geladen werden.");
+      this.lichessFetchedGames = Array.isArray(payload.games) ? payload.games : [];
+      this.renderLichessImportResults(payload.username);
+    } catch (error) {
+      this.lichessImportStatusEl.textContent = error?.message || "Lichess ist gerade nicht erreichbar.";
+    } finally {
+      this.lichessImportBusy = false;
+      this.lichessLoadButton.disabled = false;
+    }
+  }
+
+  renderLichessImportResults(username = this.lichessConnection.user?.username) {
+    this.lichessImportResultsEl.replaceChildren();
+    const existingIds = new Set((this.accountState?.games || []).map((game) => game.id));
+    const deletedIds = new Set((this.accountState?.deletedGames || []).map((game) => game.id));
+    let selectable = 0;
+    this.lichessFetchedGames.forEach((game) => {
+      const recordId = `lichess:${game.id}`;
+      const importError = lichessImportability(game, username);
+      const alreadyImported = existingIds.has(recordId);
+      const previouslyDeleted = deletedIds.has(recordId);
+      const disabledReason = alreadyImported
+        ? "Bereits importiert"
+        : previouslyDeleted
+          ? "Zuvor gelöscht"
+          : importError;
+      const label = document.createElement("label");
+      label.className = `lichess-game-option${disabledReason ? " is-disabled" : ""}`;
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = game.id;
+      checkbox.checked = !disabledReason;
+      checkbox.disabled = Boolean(disabledReason);
+      checkbox.addEventListener("change", () => {
+        this.lichessImportButton.disabled = !this.lichessImportResultsEl
+          .querySelector('input[type="checkbox"]:checked:not(:disabled)');
+      });
+      const copy = document.createElement("span");
+      const players = document.createElement("strong");
+      const white = game.players?.white?.user?.name || "Gast";
+      const black = game.players?.black?.user?.name || "Gast";
+      players.textContent = `${white} – ${black}`;
+      const details = document.createElement("span");
+      let date = "Datum unbekannt";
+      try {
+        date = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" })
+          .format(new Date(game.createdAt));
+      } catch {}
+      const result = game.winner === "white"
+        ? "1–0"
+        : game.winner === "black" ? "0–1" : "Remis";
+      const format = TIME_FORMAT_LABELS[{
+        ultraBullet: "bullet",
+        bullet: "bullet",
+        blitz: "blitz",
+        rapid: "rapid",
+        classical: "classical",
+        correspondence: "correspondence",
+      }[game.speed]] || game.speed || "Unbekannt";
+      details.textContent = `${date} · ${format} · ${result}${game.rated ? " · gewertet" : ""}`;
+      const opening = document.createElement("small");
+      opening.textContent = disabledReason || game.opening?.name || "Eröffnung nicht angegeben";
+      copy.append(players, details, opening);
+      label.append(checkbox, copy);
+      this.lichessImportResultsEl.appendChild(label);
+      if (!disabledReason) selectable += 1;
+    });
+    if (this.lichessFetchedGames.length === 0) {
+      this.lichessImportStatusEl.textContent = "Für diese Filter wurden keine Partien gefunden.";
+    } else {
+      this.lichessImportStatusEl.textContent = selectable > 0
+        ? `${this.lichessFetchedGames.length} gefunden · ${selectable} noch nicht importiert`
+        : `${this.lichessFetchedGames.length} gefunden · keine neue importierbare Partie`;
+    }
+    this.lichessImportButton.disabled = selectable === 0;
+  }
+
+  importSelectedLichessGames() {
+    if (this.lichessImportBusy) return;
+    const selectedIds = new Set(
+      Array.from(
+        this.lichessImportResultsEl.querySelectorAll(
+          'input[type="checkbox"]:checked:not(:disabled)',
+        ),
+      ).map((input) => input.value),
+    );
+    if (selectedIds.size === 0) {
+      this.showToast("Wähle mindestens eine neue Partie aus.");
+      return;
+    }
+    const username = this.lichessConnection.user?.username;
+    const selectedGames = this.lichessFetchedGames.filter((game) => selectedIds.has(game.id));
+    const latestState = loadAccountState(
+      this.browserStorage,
+      this.accountStorageKey,
+      this.accountState?.profile,
+    );
+    let nextState;
+    try {
+      nextState = mergeAccountStates(this.accountState, latestState);
+      const records = selectedGames.map((game) => (
+        lichessGameToSavedRecord(game, username)
+      ));
+      if (nextState.games.length + records.length > MAX_SAVED_GAMES) {
+        throw new Error(
+          `Es passen noch ${Math.max(0, MAX_SAVED_GAMES - nextState.games.length)} Partien in dein Profil.`,
+        );
+      }
+      records.forEach((record) => {
+        nextState = upsertSavedGame(nextState, record);
+      });
+    } catch (error) {
+      this.showToast(error?.message || "Die Auswahl konnte nicht importiert werden.");
+      return;
+    }
+    if (!saveAccountState(this.browserStorage, this.accountStorageKey, nextState)) {
+      this.showToast("Der Browser konnte die importierten Partien nicht speichern.");
+      return;
+    }
+    this.accountState = nextState;
+    this.updateAccountButton();
+    this.showToast(
+      `${selectedGames.length} ${selectedGames.length === 1 ? "Partie" : "Partien"} importiert. Die Analyse kann jetzt gestartet werden.`,
+    );
+    this.lichessImportDialog.close();
   }
 
   async initializeAccountIdentity() {
@@ -3250,9 +3667,10 @@ export class ChessApp {
     const storageNote = document.createElement('p');
     storageNote.className = 'account-storage-note';
     storageNote.textContent = profile.source === 'sites'
-      ? 'Du bist über Sites angemeldet. Partien werden nur nach Klick auf „Partie speichern“ in diesem Browser abgelegt.'
-      : 'Partien werden nur nach Klick auf „Partie speichern“ in diesem Browser abgelegt und bleiben nach dem Neuladen erhalten.';
+      ? 'Du bist über Sites angemeldet. Partien werden nur nach deinem Speicher- oder Import-Klick in diesem Browser abgelegt.'
+      : 'Partien werden nur nach deinem Speicher- oder Import-Klick in diesem Browser abgelegt und bleiben nach dem Neuladen erhalten.';
     this.accountBodyEl.appendChild(storageNote);
+    this.renderLichessConnectionCard(this.accountBodyEl);
 
     const saveCurrent = document.createElement('button');
     saveCurrent.type = 'button';
@@ -4258,6 +4676,7 @@ export class ChessApp {
     this.saveGameDialog?.remove();
     this.playSetupDialog?.remove();
     this.accountDialog?.remove();
+    this.lichessImportDialog?.remove();
     this.toastEl?.remove();
   }
   
