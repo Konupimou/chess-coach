@@ -20,7 +20,19 @@ test("Live-Coach bewertet jeden Spielerzug und erlaubt Nachfragen", () => {
 
 test("Account bietet Gesamtanalyse und Lichess-Massenimport als ausdrückliche Aktionen", () => {
   assert.match(appSource, /analyzeAllSavedGames/);
-  assert.match(appSource, /Alle \$\{pendingAnalysisGames\.length\} analysieren/);
+  assert.match(appSource, /Alle \$\{pendingAnalysisGames\.length\} parallel analysieren/);
+  assert.match(appSource, /analyzeSavedRecordInBackground/);
+  assert.match(appSource, /Promise\.all/);
   assert.match(appSource, /Alle neuen importieren/);
   assert.match(appSource, /importAllLichessGames/);
+});
+
+test("Gesamtanalyse verändert weder Brett noch geöffnete Partie", () => {
+  const start = appSource.indexOf("  async analyzeAllSavedGames()");
+  const end = appSource.indexOf("  makeSavedGameTitle(", start);
+  const batchSource = appSource.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.doesNotMatch(batchSource, /openSavedGame\(/);
+  assert.doesNotMatch(batchSource, /startFullGameReview\(/);
+  assert.doesNotMatch(batchSource, /board\.position/);
 });

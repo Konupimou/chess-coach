@@ -177,6 +177,10 @@ export class ChessApp {
     this.reviewCancelled = false;
     this.batchReviewRunning = false;
     this.batchReviewCancelled = false;
+    this.batchReviewProgress = null;
+    this.batchReviewSummary = null;
+    this.batchReviewEngines = new Set();
+    this.batchCoachControllers = new Set();
     this.gameReviewReport = null;
     this.savedGameReview = null;
     this.engineSettingsOpen = false;
@@ -2902,9 +2906,11 @@ export class ChessApp {
     return report;
   }
 
-  async requestCoachGameFeedback(report, path) {
-    this.reviewCoachController?.abort();
-    this.reviewCoachController = new AbortController();
+  async requestCoachGameFeedback(report, path, { signal = null } = {}) {
+    if (!signal) {
+      this.reviewCoachController?.abort();
+      this.reviewCoachController = new AbortController();
+    }
     const payload = {
       message: 'Formuliere fünf kurze, motivierende Abschnitte: Spielverlauf, Hauptmotive, besonders starke Entscheidungen, wichtigste Verbesserung und konkreter Trainingsfokus. Arbeite die aussagekräftigsten Punkte heraus. Nenne höchstens einzelne kurze Varianten mit maximal zwei bis vier Halbzügen; erkläre vor allem die Idee.',
       fen: path.at(-1)?.fen || '',
@@ -2935,7 +2941,7 @@ export class ChessApp {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      signal: this.reviewCoachController.signal,
+      signal: signal || this.reviewCoachController.signal,
     });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -4080,29 +4086,76 @@ export class ChessApp {
     );
     this.accountBodyEl.appendChild(overview);
 
+    if (this.batchReviewRunning && this.batchReviewProgress) {
+      const processed = this.batchReviewProgress.completed + this.batchReviewProgress.failed;
+      const progressCard = document.createElement('section');
+      progressCard.className = 'batch-analysis-card is-running';
+      const progressTop = document.createElement('div');
+      const progressTitle = document.createElement('strong');
+      progressTitle.textContent = 'Gesamtanalyse läuft im Hintergrund';
+      const progressValue = document.createElement('span');
+      progressValue.textContent = `${processed}/${this.batchReviewProgress.total} verarbeitet · ${this.batchReviewProgress.completed} erfolgreich`;
+      progressTop.append(progressTitle, progressValue);
+      const progress = document.createElement('progress');
+      progress.max = Math.max(1, this.batchReviewProgress.total);
+      progress.value = processed;
+      progress.setAttribute('aria-label', 'Fortschritt der Gesamtanalyse');
+      const active = document.createElement('small');
+      active.textContent = this.batchReviewProgress.activeTitles.length
+        ? `Parallel aktiv: ${this.batchReviewProgress.activeTitles.join(' · ')}`
+        : 'Die nächsten Partien werden vorbereitet …';
+      progressCard.append(progressTop, progress, active);
+      this.accountBodyEl.appendChild(progressCard);
+    } else if (this.batchReviewSummary) {
+      const summary = this.batchReviewSummary;
+      const summaryCard = document.createElement('section');
+      summaryCard.className = 'batch-analysis-card is-complete';
+      const title = document.createElement('strong');
+      title.textContent = 'Gesamtanalyse abgeschlossen';
+      const lead = document.createElement('p');
+      lead.textContent = `${summary.completed} Partien neu analysiert${summary.failed ? ` · ${summary.failed} nicht abgeschlossen` : ''}. Deine Gesamtgenauigkeit liegt bei ${formatPercent(summary.ownAccuracy)}.`;
+      const facts = document.createElement('div');
+      facts.className = 'batch-analysis-summary-facts';
+      [
+        ['Punktquote', formatPercent(summary.scoreRate)],
+        ['Stärkere Farbe', summary.strongerColor],
+        ['Lieblingseröffnung', summary.favoriteOpening],
+        ['Trainingssignal', summary.trainingSignal],
+      ].forEach(([label, value]) => {
+        const item = document.createElement('div');
+        const itemLabel = document.createElement('span');
+        itemLabel.textContent = label;
+        const itemValue = document.createElement('strong');
+        itemValue.textContent = value;
+        item.append(itemLabel, itemValue);
+        facts.appendChild(item);
+      });
+      summaryCard.append(title, lead, facts);
+      this.accountBodyEl.appendChild(summaryCard);
+    }
+
     if (pendingAnalysisGames.length > 0) {
       const analysisPending = document.createElement('div');
       analysisPending.className = 'profile-analysis-pending';
       const pendingCopy = document.createElement('div');
       const pendingTitle = document.createElement('strong');
-      pendingTitle.textContent = `${gamesLabel(pendingAnalysisGames.length)} wartet auf vollständige Analyse`;
+      pendingTitle.textContent = this.batchReviewRunning
+        ? `${gamesLabel(pendingAnalysisGames.length)} wird im Hintergrund analysiert`
+        : `${gamesLabel(pendingAnalysisGames.length)} wartet auf vollständige Analyse`;
       const pendingDetail = document.createElement('span');
-      pendingDetail.textContent = 'Analysiere die Partie und speichere danach die Änderungen, damit sie in Key Facts und Bestliste einfließt.';
+      pendingDetail.textContent = this.batchReviewRunning
+        ? 'Du kannst im Profil bleiben oder weiterarbeiten. Das Brett wird nicht gewechselt.'
+        : 'Ein Klick analysiert alle ausstehenden Partien parallel, ohne sie einzeln zu öffnen.';
       pendingCopy.append(pendingTitle, pendingDetail);
-      const analyzeNext = document.createElement('button');
-      analyzeNext.type = 'button';
-      analyzeNext.className = 'secondary-button';
-      analyzeNext.textContent = 'Nächste analysieren';
-      analyzeNext.addEventListener('click', () => analyzeSavedGame(pendingAnalysisGames[0]));
       const analyzeAll = document.createElement('button');
       analyzeAll.type = 'button';
       analyzeAll.className = 'primary-action-button';
-      analyzeAll.textContent = `Alle ${pendingAnalysisGames.length} analysieren`;
+      analyzeAll.textContent = `Alle ${pendingAnalysisGames.length} parallel analysieren`;
       analyzeAll.disabled = this.batchReviewRunning;
       analyzeAll.addEventListener('click', () => this.analyzeAllSavedGames());
       const pendingActions = document.createElement('div');
       pendingActions.className = 'profile-analysis-actions';
-      pendingActions.append(analyzeNext, analyzeAll);
+      pendingActions.append(analyzeAll);
       analysisPending.append(pendingCopy, pendingActions);
       this.accountBodyEl.appendChild(analysisPending);
     }
@@ -4317,7 +4370,7 @@ export class ChessApp {
         const analyze = document.createElement('button');
         analyze.type = 'button';
         analyze.className = 'secondary-button';
-        analyze.textContent = 'Analysieren';
+        analyze.textContent = 'Einzeln analysieren';
         analyze.addEventListener('click', () => analyzeSavedGame(game));
         itemActions.appendChild(analyze);
       }
@@ -4340,59 +4393,221 @@ export class ChessApp {
     this.accountBodyEl.appendChild(list);
   }
 
+  async analyzeSavedPathInBackground(path, depth) {
+    let pending = null;
+    const engine = new Engine({
+      depth,
+      threads: 1,
+      hashMB: 32,
+      multiPV: 1,
+      onInfo: (info) => {
+        if (
+          !pending
+          || info?.searchId !== pending.searchId
+          || info?.fen !== pending.fen
+          || (info?.multipv || 1) !== 1
+        ) return;
+        const entry = analysisEntryFromInfo(info);
+        if (entry && (!info.depth || info.depth >= pending.depth)) pending.resolve(entry);
+      },
+      onError: (error) => pending?.reject(error),
+    });
+    this.batchReviewEngines.add(engine);
+    const cache = new Map();
+    const evaluations = [];
+    const analyzeFen = (fen) => new Promise((resolve, reject) => {
+      const searchId = engine.evaluate(fen, depth);
+      if (!searchId) {
+        reject(new Error("Stockfish konnte eine Hintergrundanalyse nicht starten."));
+        return;
+      }
+      const timeout = window.setTimeout(() => {
+        if (pending?.searchId === searchId) pending = null;
+        reject(new Error("Eine Partieanalyse hat zu lange gedauert."));
+      }, 30_000);
+      pending = {
+        fen,
+        depth,
+        searchId,
+        resolve: (entry) => {
+          window.clearTimeout(timeout);
+          if (pending?.searchId === searchId) pending = null;
+          resolve(entry);
+        },
+        reject: (error) => {
+          window.clearTimeout(timeout);
+          if (pending?.searchId === searchId) pending = null;
+          reject(error);
+        },
+      };
+    });
+
+    try {
+      for (const node of path) {
+        const terminal = terminalWhiteCp(node.fen);
+        let entry;
+        if (Number.isFinite(terminal)) {
+          entry = { whiteCp: terminal, depth, pv: [], complete: true };
+        } else if (cache.has(node.fen)) {
+          entry = cache.get(node.fen);
+        } else {
+          entry = await analyzeFen(node.fen);
+          cache.set(node.fen, entry);
+        }
+        evaluations.push(entry);
+        if (!node.analysis?.depth || !entry.depth || entry.depth >= node.analysis.depth) {
+          node.analysis = entry;
+        }
+      }
+      return evaluations;
+    } finally {
+      pending?.reject?.(new DOMException("Analyse beendet.", "AbortError"));
+      try { engine.quit?.(); } catch {}
+      this.batchReviewEngines.delete(engine);
+    }
+  }
+
+  async analyzeSavedRecordInBackground(record) {
+    const root = deserializeMoveTree(record?.tree);
+    if (!root) throw new Error(`„${record?.title || "Partie"}“ enthält keinen gültigen Spielstand.`);
+    const node = (Array.isArray(record.currentPath)
+      ? findNodeByPath(root, record.currentPath)
+      : null)
+      || findNodeByFen(root, record.currentFen)
+      || root;
+    const path = pathToNode(node);
+    if (path.length < 2) throw new Error(`„${record.title}“ enthält noch keinen Zug.`);
+    const depth = reviewDepthForPlies(path.length - 1, this.engine?.depth || 15);
+    const evaluations = await this.analyzeSavedPathInBackground(path, depth);
+    const report = summarizeGameReview(path, evaluations, { depth, final: true });
+    report.result = record.result;
+    report.feedback = buildFallbackFeedback(report);
+
+    const coachController = new AbortController();
+    this.batchCoachControllers.add(coachController);
+    try {
+      const feedback = await this.requestCoachGameFeedback(report, path, {
+        signal: coachController.signal,
+      });
+      if (feedback) report.feedback = feedback;
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+    } finally {
+      this.batchCoachControllers.delete(coachController);
+    }
+
+    return {
+      ...record,
+      updatedAt: new Date().toISOString(),
+      tree: serializeMoveTree(root),
+      review: report,
+    };
+  }
+
+  persistBackgroundReview(record) {
+    const latestState = loadAccountState(
+      this.browserStorage,
+      this.accountStorageKey,
+      this.accountState?.profile,
+    );
+    let nextState = mergeAccountStates(this.accountState, latestState);
+    nextState = upsertSavedGame(nextState, record);
+    if (!saveAccountState(this.browserStorage, this.accountStorageKey, nextState)) {
+      throw new Error("Eine fertige Hintergrundanalyse konnte nicht gespeichert werden.");
+    }
+    this.accountState = nextState;
+    if (record.id === this.activeGameId) {
+      this.savedGameReview = record.review;
+      this.gameReviewReport = record.review;
+      this.loadedRecordUpdatedAt = record.updatedAt;
+      this.updateAccuracyDisplay();
+    }
+  }
+
+  updateBatchReviewUi() {
+    if (this.accountDialog?.open) this.renderAccountDialog();
+    this.updateAccountButton();
+  }
+
   async analyzeAllSavedGames() {
     if (this.batchReviewRunning || this.reviewRunning) return;
     const playerStats = buildPlayerProfile(this.accountState?.games || []);
     const analyzedIds = new Set(playerStats.analyzedGameIds);
-    const pendingIds = (this.accountState?.games || [])
-      .filter((game) => !analyzedIds.has(game.id))
-      .map((game) => game.id);
-    if (pendingIds.length === 0) {
+    const pendingGames = (this.accountState?.games || [])
+      .filter((game) => !analyzedIds.has(game.id));
+    if (pendingGames.length === 0) {
       this.showToast("Alle gespeicherten Partien sind bereits analysiert.");
       return;
     }
     const confirmed = window.confirm(
-      `${pendingIds.length} gespeicherte ${pendingIds.length === 1 ? "Partie" : "Partien"} jetzt nacheinander vollständig mit Stockfish und Coach analysieren? Das kann einige Minuten dauern.`,
+      `${pendingGames.length} gespeicherte ${pendingGames.length === 1 ? "Partie" : "Partien"} im Hintergrund analysieren? Zwei Partien werden parallel verarbeitet; dein aktuelles Brett bleibt unverändert.`,
     );
     if (!confirmed) return;
 
     this.batchReviewRunning = true;
     this.batchReviewCancelled = false;
-    this.accountDialog?.close();
-    let completed = 0;
-    try {
-      for (let index = 0; index < pendingIds.length; index += 1) {
-        if (this.batchReviewCancelled) break;
-        const latestState = loadAccountState(
-          this.browserStorage,
-          this.accountStorageKey,
-          this.accountState?.profile,
-        );
-        this.accountState = mergeAccountStates(this.accountState, latestState);
-        const record = this.accountState.games.find((game) => game.id === pendingIds[index]);
-        if (!record || !this.openSavedGame(record)) break;
-        const report = await this.startFullGameReview({
-          batchLabel: `Gesamtanalyse ${index + 1}/${pendingIds.length}: ${record.title}`,
-        });
-        if (!report?.final || this.batchReviewCancelled) break;
-        if (!this.saveCurrentGame({ silent: true })) break;
-        completed += 1;
+    this.batchReviewSummary = null;
+    this.batchReviewProgress = {
+      total: pendingGames.length,
+      completed: 0,
+      failed: 0,
+      activeTitles: [],
+    };
+    this.updateBatchReviewUi();
+
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < pendingGames.length && !this.batchReviewCancelled) {
+        const index = cursor;
+        cursor += 1;
+        const record = pendingGames[index];
+        this.batchReviewProgress.activeTitles.push(record.title);
+        this.updateBatchReviewUi();
+        try {
+          const analyzedRecord = await this.analyzeSavedRecordInBackground(record);
+          this.persistBackgroundReview(analyzedRecord);
+          this.batchReviewProgress.completed += 1;
+        } catch (error) {
+          if (error?.name !== "AbortError") {
+            console.error("[ChessApp] Hintergrundanalyse fehlgeschlagen", record.title, error);
+            this.batchReviewProgress.failed += 1;
+          }
+        } finally {
+          this.batchReviewProgress.activeTitles = this.batchReviewProgress.activeTitles
+            .filter((title) => title !== record.title);
+          this.updateBatchReviewUi();
+        }
       }
-    } catch (error) {
-      console.error("[ChessApp] Gesamtanalyse fehlgeschlagen", error);
-      this.showToast(error?.message || "Die Gesamtanalyse konnte nicht abgeschlossen werden.");
+    };
+
+    try {
+      const concurrency = Math.min(2, pendingGames.length);
+      await Promise.all(Array.from({ length: concurrency }, () => worker()));
     } finally {
       this.batchReviewRunning = false;
-      const cancelled = this.batchReviewCancelled;
       this.batchReviewCancelled = false;
-      if (this.feedbackDialog?.open) this.feedbackDialog.close();
-      this.updateAccountButton();
-      this.renderAccountDialog();
-      requestAnimationFrame(() => this.openAccountDialog());
+      const stats = buildPlayerProfile(this.accountState?.games || []);
+      const strongerColor = Number.isFinite(stats.whiteAccuracy)
+        && Number.isFinite(stats.blackAccuracy)
+        ? stats.whiteAccuracy === stats.blackAccuracy
+          ? "Ausgeglichen"
+          : stats.whiteAccuracy > stats.blackAccuracy ? "Weiß" : "Schwarz"
+        : "Noch offen";
+      const mistakes = (stats.ownMistakes || 0) + (stats.ownBlunders || 0);
+      this.batchReviewSummary = {
+        completed: this.batchReviewProgress.completed,
+        failed: this.batchReviewProgress.failed,
+        ownAccuracy: stats.ownAccuracy,
+        scoreRate: stats.results.scoreRate,
+        strongerColor,
+        favoriteOpening: stats.favoriteOpening?.name || "Noch offen",
+        trainingSignal: mistakes > 0
+          ? `${mistakes} kritische Fehler gezielt nachtrainieren`
+          : "Starke Konstanz – anspruchsvollere Stellungen trainieren",
+      };
+      this.updateBatchReviewUi();
       this.showToast(
-        cancelled
-          ? `Gesamtanalyse beendet · ${completed}/${pendingIds.length} abgeschlossen.`
-          : `${completed}/${pendingIds.length} Partien vollständig analysiert und gespeichert.`,
+        `${this.batchReviewSummary.completed}/${pendingGames.length} Partien im Hintergrund analysiert.`,
       );
     }
   }
@@ -5042,6 +5257,11 @@ export class ChessApp {
     this.suggestionCoachController?.abort();
     if (this.suggestionCoachTimer) window.clearTimeout(this.suggestionCoachTimer);
     this.reviewCoachController?.abort();
+    this.batchReviewCancelled = true;
+    this.batchCoachControllers?.forEach((controller) => controller.abort());
+    this.batchReviewEngines?.forEach((engine) => {
+      try { engine.quit?.(); } catch {}
+    });
     try { this.detachKeys?.(); } catch {}
     try { this.boardKeyboardObserver?.disconnect?.(); } catch {}
     if (this._onBoardFocus) {
