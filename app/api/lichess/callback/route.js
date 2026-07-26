@@ -5,8 +5,8 @@ import {
   LICHESS_COOKIES,
   lichessCallbackUrl,
   lichessClientId,
+  lichessRequestOrigin,
   parseCookies,
-  requestOrigin,
 } from "../../../../api/lichess.js";
 
 export const runtime = "nodejs";
@@ -29,7 +29,7 @@ function redirectWithClearedHandshake(origin, secure, outcome) {
 }
 
 export async function GET(request) {
-  const origin = requestOrigin(request);
+  const origin = lichessRequestOrigin(request);
   const secure = origin.startsWith("https://");
   const url = new URL(request.url);
   const code = url.searchParams.get("code") || "";

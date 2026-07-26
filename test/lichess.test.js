@@ -11,6 +11,7 @@ import {
   parseCookies,
   sanitizeLichessGame,
 } from "../api/lichess.js";
+import { GET as finishLichessConnect } from "../app/api/lichess/callback/route.js";
 import { GET as startLichessConnect } from "../app/api/lichess/connect/route.js";
 
 test("Lokales OAuth startet auf localhost statt auf der Bind-Adresse", async () => {
@@ -47,6 +48,61 @@ test("Lokales OAuth startet auf localhost statt auf der Bind-Adresse", async () 
     /^https:\/\/lichess\.org\/oauth\?/,
   );
   assert.match(localhostResponse.headers.get("set-cookie"), /chess_coach_lichess_state=/);
+});
+
+test("Lokaler OAuth-Callback verwendet localhost für Fehler und Token-Austausch", async () => {
+  const errorResponse = await finishLichessConnect(
+    new Request("http://0.0.0.0:3000/api/lichess/callback?error=access_denied", {
+      headers: { Host: "localhost:3000" },
+    }),
+  );
+  assert.equal(errorResponse.status, 302);
+  assert.equal(errorResponse.headers.get("location"), "http://localhost:3000/?lichess=cancelled");
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, options = {}) => {
+    const url = String(input);
+    if (url === "https://lichess.org/api/token") {
+      const body = new URLSearchParams(options.body);
+      assert.equal(body.get("redirect_uri"), "http://localhost:3000/api/lichess/callback");
+      assert.equal(body.get("client_id"), "localhost:3000");
+      return Response.json({ access_token: "valid_token_123", expires_in: 3600 });
+    }
+    if (url === "https://lichess.org/api/account") {
+      assert.equal(options.headers.Authorization, "Bearer valid_token_123");
+      return Response.json({ id: "paul", username: "Paul" });
+    }
+    throw new Error(`Unerwartete Test-Anfrage: ${url}`);
+  };
+
+  try {
+    const verifier = "v".repeat(64);
+    const connectedResponse = await finishLichessConnect(
+      new Request(
+        "http://0.0.0.0:3000/api/lichess/callback?code=fresh_code&state=fresh_state",
+        {
+          headers: {
+            Host: "localhost:3000",
+            Cookie: [
+              "chess_coach_lichess_state=fresh_state",
+              `chess_coach_lichess_verifier=${verifier}`,
+            ].join("; "),
+          },
+        },
+      ),
+    );
+    assert.equal(connectedResponse.status, 302);
+    assert.equal(
+      connectedResponse.headers.get("location"),
+      "http://localhost:3000/?lichess=connected",
+    );
+    assert.match(
+      connectedResponse.headers.get("set-cookie"),
+      /chess_coach_lichess_token=valid_token_123/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("Lichess OAuth verwendet PKCE S256 ohne zusätzliche Berechtigungen", async () => {
