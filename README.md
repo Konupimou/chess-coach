@@ -2,8 +2,9 @@
 
 Ein persönlicher Schachcoach mit zwei Bereichen: gegen Stockfish spielen und
 direktes Live-Feedback erhalten oder Stellungen und ganze Partien analysieren.
-Stockfish 18 Lite läuft vollständig im Browser; der optionale Coach erklärt die
-aktuelle Stellung über die OpenAI Responses API.
+Stockfish 18 Lite läuft vollständig im Browser. Stockfish ist die einzige Quelle
+für Züge, Varianten und Bewertungen; der optionale Coach übersetzt ausschließlich
+die bereits berechneten Engine-Daten über die OpenAI Responses API.
 
 ## Schnellstart
 
@@ -46,8 +47,8 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
   jedem eigenen Zug ein verständliches Live-Urteil, ein Lernprinzip, die eigene
   Genauigkeit und einen Präzisions-Streak erhalten
 - „Analyse“: frei ziehen, Varianten untersuchen, beste Züge anzeigen und den
-  hervorgehobenen Coach befragen; die Zugliste färbt Bewertungen von Grün bis
-  Rot und erklärt jeden analysierten Zug kurz
+  hervorgehobenen Stockfish-Erklärer befragen; die Zugliste färbt Bewertungen
+  von Grün bis Rot und erklärt jeden analysierten Zug kurz
 - vollständige Partieanalyse: geführte Schlüsselmomente, persönliches
   Abschlussfeedback, vorsichtig abgeleitetes Lernziel und konkrete nächste Übung
 - Figuren ziehen: neue Hauptlinie oder Variante anlegen
@@ -77,6 +78,8 @@ Neuladen erhalten.
 - `playMode.js`: Spielstufen, Farbauswahl und Texte für das Live-Feedback
 - `moveArrows.js`: responsive, einheitlich gefärbte Pfeile für die besten Engine-Züge
 - `gameReview.js`: PV-Vorschau, Genauigkeit und vollständige Partieauswertung
+- `coachEngineContext.js`: validierter Stockfish-Kontext und Schutz vor nicht
+  durch Engine-PV oder Engine-Bewertung belegten Coach-Angaben
 - `gameMetadata.js`: Speicherentwürfe, Zeitformate und lokale Eröffnungserkennung
 - `gameStorage.js`: zyklusfreie Spielstände und browserlokale Account-Persistenz
 - `playerProfile.js`: aggregierte Spielerstatistiken und Bestpartien-Ranking
@@ -91,6 +94,12 @@ Neuladen erhalten.
 - `public/libs/`: lokale Chessboard- und Stockfish-Assets
 - `test/`: Tests mit dem eingebauten Node-Test-Runner
 - `open-next.config.ts` und `wrangler.jsonc`: reproduzierbarer Sites-Build
+
+Der Coach erhält FEN, Tiefe, Centipawn- oder Mattbewertung, exakten besten Zug,
+vollständige PV, MultiPV sowie bei Zugreviews die Vorher-/Nachher-Werte und die
+vorhandene Klassifizierung. Ohne vollständige Stockfish-Daten antwortet er
+bewusst ohne Zugempfehlung. Antworten mit nicht gelieferten Zügen oder
+Bewertungszahlen werden serverseitig verworfen.
 
 Der Lichess-Zugriff verwendet einen sicheren HTTP-only-Cookie, fordert keine
 Spiel- oder Schreibrechte an und importiert ausschließlich abgeschlossene

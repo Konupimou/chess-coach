@@ -18,7 +18,7 @@ test("Einstieg führt semantisch zu Spielen, Partieanalyse und Stellungsanalyse"
 
 test("Coach steht in der Analyse vor technischen Zugideen", () => {
   assert.match(appSource, /analysisColumn\.insertBefore\(chatWrapper, this\.suggestionsEl\)/);
-  assert.match(appSource, /Coach-Blick/);
+  assert.match(appSource, /Stockfish erklärt/);
   assert.match(appSource, /Lernprinzip/);
   assert.match(appSource, /Ausführlicher erklären/);
   assert.match(appSource, /review-technical-details/);
@@ -31,4 +31,3 @@ test("Mobile Hierarchie nutzt große Ziele und einspaltige Coach-Bereiche", () =
   assert.match(styleSource, /\.learning-summary-grid[\s\S]*grid-template-columns: 1fr/);
   assert.match(styleSource, /\.coach-form[\s\S]*grid-template-columns: 1fr/);
 });
-

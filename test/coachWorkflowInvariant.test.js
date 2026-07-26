@@ -6,9 +6,10 @@ const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 
 test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /requestSuggestionCoachReasons/);
-  assert.match(appSource, /Coach-Idee:/);
+  assert.match(appSource, /Stockfish erklärt:/);
   assert.match(appSource, /Coach-Vorschau/);
   assert.match(appSource, /selectImpactArrowMoves/);
+  assert.match(appSource, /engineContext: this\.buildPositionCoachEngineContext\(\)/);
 });
 
 test("Live-Coach bewertet neben der Genauigkeit, erlaubt Nachfragen und verrät keinen Zug", () => {
@@ -17,10 +18,12 @@ test("Live-Coach bewertet neben der Genauigkeit, erlaubt Nachfragen und verrät 
   assert.match(appSource, /Nenne keinen nächsten Zug/);
   const feedbackStart = appSource.indexOf("  recordLatestPlayFeedback()");
   const feedbackEnd = appSource.indexOf("  handlePlayCoachReply()", feedbackStart);
-  assert.doesNotMatch(
+  assert.match(
     appSource.slice(feedbackStart, feedbackEnd),
     /requestAutomaticPlayCoachFeedback/,
   );
+  assert.match(appSource, /buildMoveCoachEngineContext/);
+  assert.match(appSource, /Nenne keinen nächsten Zug/);
 });
 
 test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett", () => {

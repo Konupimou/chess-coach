@@ -156,22 +156,19 @@ export function explainMoveQuality(move) {
   const bestSan = typeof move.bestSan === "string" && move.bestSan !== san
     ? move.bestSan
     : "";
-  const motif = /^O-O/.test(san)
-    ? "Bringt den König in Sicherheit"
-    : /[+#]$/.test(san)
-      ? "Erzeugt eine direkte Schachdrohung"
-      : san.includes("x")
-        ? "Klärt eine konkrete Materialfrage"
-        : "";
 
   if (move.quality === "best") {
-    return `${motif || "Hält die Stellung optimal"}; kein messbarer Vorteil geht verloren.`;
+    return "Entspricht der ersten Stockfish-Wahl; laut Bewertung geht kein messbarer Vorteil verloren.";
   }
   if (move.quality === "excellent") {
-    return `${motif || "Setzt den richtigen Plan fort"}; die Abweichung zum besten Zug ist minimal.`;
+    return bestSan
+      ? `Weicht nur wenig von Stockfishs erster Wahl ${bestSan} ab.`
+      : "Weicht laut Stockfish-Bewertung nur minimal von der besten Fortsetzung ab.";
   }
   if (move.quality === "good") {
-    return `${motif || "Bleibt solide"}; nur ein kleiner Teil des Vorteils geht verloren.`;
+    return bestSan
+      ? `Bleibt nah an Stockfishs erster Wahl ${bestSan}; der Bewertungsverlust ist klein.`
+      : "Der Stockfish-Bewertungsverlust bleibt klein.";
   }
   if (move.quality === "inaccuracy") {
     return bestSan
@@ -186,7 +183,7 @@ export function explainMoveQuality(move) {
   if (move.quality === "blunder") {
     return bestSan
       ? `Kippt die Stellung; ${bestSan} hätte den großen Verlust vermieden.`
-      : "Kippt die Stellung durch eine unmittelbare taktische oder positionelle Folge.";
+      : "Kippt die Stockfish-Bewertung deutlich; eine Motiv-Erklärung benötigt die zugehörige Engine-Variante.";
   }
   return "Die Enginebewertung dieses Zuges ist noch nicht vollständig.";
 }
@@ -198,8 +195,19 @@ export function analysisEntryFromInfo(info) {
   if (!Number.isFinite(whiteCp)) return null;
   return {
     whiteCp,
+    evaluation: score?.unit && Number.isFinite(score?.value)
+      ? {
+        unit: score.unit,
+        value: Math.round(score.value),
+        perspective: "white",
+      }
+      : {
+        unit: "cp",
+        value: whiteCp,
+        perspective: "white",
+      },
     depth: Number.isFinite(info.depth) ? info.depth : null,
-    pv: Array.isArray(info.pv) ? info.pv.slice(0, 12) : [],
+    pv: Array.isArray(info.pv) ? info.pv.slice(0, 20) : [],
     complete: true,
   };
 }
@@ -259,8 +267,26 @@ export function summarizeGameReview(path, evaluations, { depth = null, final = t
       fenAfter: node?.fen || "",
       beforeCp,
       afterCp,
+      evaluationBefore: before?.evaluation || {
+        unit: "cp",
+        value: Math.round(beforeCp),
+        perspective: "white",
+      },
+      evaluationAfter: after?.evaluation || {
+        unit: "cp",
+        value: Math.round(afterCp),
+        perspective: "white",
+      },
+      evaluationDeltaCp: Math.round(afterCp - beforeCp),
       bestUci,
       bestSan: uciToSan(nodes[index - 1]?.fen, bestUci),
+      bestPvUci: Array.isArray(before?.pv) ? before.pv.slice(0, 20) : [],
+      bestPvSan: buildPvFrames(
+        nodes[index - 1]?.fen || "",
+        Array.isArray(before?.pv) ? before.pv : [],
+        20,
+      ).map((frame) => frame.san),
+      engineDepth: Number.isFinite(before?.depth) ? before.depth : null,
       accuracy: rounded(metrics.accuracy),
       lossCp: Math.round(metrics.lossCp),
       winPercentLoss: rounded(metrics.winPercentLoss, 2),
@@ -347,21 +373,21 @@ export function buildLearningSummary(report) {
   let learningGoal;
   let exercise;
   if (serious.length >= 2) {
-    recurringPattern = `${serious.length} deutliche Bewertungseinbrüche sprechen dafür, dass konkrete gegnerische Antworten zu spät geprüft wurden.`;
-    learningGoal = "Prüfe vor jedem Zug gegnerische Schachs, Schlagzüge und direkte Drohungen.";
-    exercise = "Nimm die zwei größten Fehler erneut am Brett durch und nenne vor deinem Zug jeweils drei gegnerische Zwangszüge.";
+    recurringPattern = `${serious.length} deutliche Stockfish-Bewertungseinbrüche zeigen wiederholt kritische Entscheidungen; ein gemeinsames Schachmotiv lässt sich daraus allein noch nicht sicher ableiten.`;
+    learningGoal = "Vergleiche bei kritischen Entscheidungen deinen Zug mit Stockfishs erster Wahl und der zugehörigen Hauptvariante.";
+    exercise = "Nimm die zwei größten Bewertungseinbrüche erneut am Brett durch und spiele jeweils ausschließlich die gespeicherte Stockfish-PV nach.";
   } else if (inaccuracies.length >= 2) {
     recurringPattern = `${inaccuracies.length} Ungenauigkeiten zeigen eher mehrere kleine Planungsverluste als einen einzelnen großen Einbruch.`;
-    learningGoal = "Vergleiche vor der Entscheidung mindestens zwei sinnvolle Kandidatenzüge.";
-    exercise = "Gehe drei ungenaue Stellungen erneut durch und notiere pro Stellung zwei Kandidaten samt kurzer Begründung.";
+    learningGoal = "Vergleiche die kleinen Abweichungen gezielt mit Stockfishs erster Wahl.";
+    exercise = "Gehe drei ungenaue Stellungen erneut durch und erkläre nur anhand der gespeicherten Engine-PV, worin sich dein Zug unterscheidet.";
   } else if (strong.length >= Math.max(2, Math.ceil(moves.length * 0.6))) {
     recurringPattern = "Die vorhandenen Bewertungen zeigen überwiegend stabile Entscheidungen ohne häufige klare Einbrüche.";
-    learningGoal = "Mache deinen guten Entscheidungsprozess bewusst wiederholbar.";
-    exercise = "Wähle zwei starke Züge und erkläre jeweils: gegnerische Drohung, eigener Plan und verbesserte Figur.";
+    learningGoal = "Untersuche, bei welchen Entscheidungen dein Zug mit Stockfishs erster Wahl übereinstimmte.";
+    exercise = "Wähle zwei starke Züge und vergleiche sie mit der jeweils gespeicherten Stockfish-Hauptvariante.";
   } else {
     recurringPattern = "Die vorhandenen Daten zeigen noch kein eindeutiges wiederkehrendes Fehlermuster.";
-    learningGoal = "Nutze an kritischen Stellen eine feste Reihenfolge für deine Zugentscheidung.";
-    exercise = "Übe an drei Schlüsselmomenten: Gefahr erkennen, zwei Kandidaten vergleichen, erst dann ziehen.";
+    learningGoal = "Arbeite zunächst mit den konkret gespeicherten Stockfish-Schlüsselmomenten.";
+    exercise = "Gehe drei Schlüsselmomente erneut durch und vergleiche deinen Zug jeweils mit der gespeicherten Engine-Linie.";
   }
 
   const biggestLesson = biggest
@@ -397,7 +423,7 @@ export function buildFallbackFeedback(report) {
     ? "Du hast sehr konstant gespielt."
     : report.overallAccuracy >= 75
       ? "Die Partie war insgesamt solide, mit einigen konkreten Verbesserungsmöglichkeiten."
-      : "Die größten Fortschritte liegen darin, vor jedem Zug gegnerische Schachs, Schlagzüge und direkte Drohungen zu prüfen.";
+      : "Die größten Fortschritte liegen laut Auswertung in den Stellungen mit den stärksten Bewertungsabfällen.";
   const strongest = [...(report.moves || [])]
     .filter((move) => move.quality === "best" || move.quality === "excellent")
     .sort((left, right) => (right.accuracy || 0) - (left.accuracy || 0))[0];
@@ -407,9 +433,9 @@ export function buildFallbackFeedback(report) {
 
   return [
     `**Spielverlauf:** ${accuracy} geschätzte Engine-Genauigkeit. ${verdict}`,
-    `**Hauptmotive:** ${serious} Fehler oder Patzer bei ${report.analyzedMoves} analysierten Zügen; entscheidend waren konkrete Drohungen und die Präzision an den kritischen Stellen.`,
+    `**Engine-Muster:** ${serious} Fehler oder Patzer bei ${report.analyzedMoves} analysierten Zügen. Ein gemeinsames taktisches Motiv wird ohne passende Stockfish-PV bewusst nicht behauptet.`,
     `**Das war stark:** ${strength}`,
     `**Das kannst du verbessern:** ${focus}`,
-    "**Trainingsfokus:** Prüfe vor der Zugentscheidung immer Schachs, Schlagzüge und direkte Drohungen – zuerst für den Gegner, dann für dich.",
+    "**Trainingsfokus:** Spiele die gespeicherten Stockfish-Hauptvarianten der größten Bewertungseinbrüche nach und vergleiche sie mit deinen Partiezügen.",
   ].join("\n\n");
 }

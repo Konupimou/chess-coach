@@ -51,6 +51,7 @@ import {
   TIME_FORMAT_LABELS,
 } from "./gameMetadata.js";
 import { buildPlayerProfile } from "./playerProfile.js";
+import { ENGINE_CONTEXT_MISSING_REPLY } from "./coachEngineContext.js";
 import {
   describeLiveMove,
   engineOpponentLabel,
@@ -780,7 +781,7 @@ export class ChessApp {
     const liveHeading = document.createElement("div");
     liveHeading.className = "live-coach-heading";
     const liveTitle = document.createElement("h3");
-    liveTitle.textContent = "Live-Coach";
+    liveTitle.textContent = "Live-Erklärung von Stockfish";
     const liveSwitch = document.createElement("label");
     liveSwitch.className = "live-feedback-switch";
     this.playLiveFeedbackInput = document.createElement("input");
@@ -850,7 +851,7 @@ export class ChessApp {
     replyForm.className = "play-coach-reply";
     this.playCoachInputEl = document.createElement("textarea");
     this.playCoachInputEl.rows = 2;
-    this.playCoachInputEl.placeholder = "Frag nach: Warum war der Zug gut? Was sollte ich sehen?";
+    this.playCoachInputEl.placeholder = "Frag nach: Was zeigt Stockfishs Hauptvariante?";
     this.playCoachInputEl.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
@@ -860,7 +861,7 @@ export class ChessApp {
     this.playCoachSendButton = document.createElement("button");
     this.playCoachSendButton.type = "button";
     this.playCoachSendButton.className = "secondary-button";
-    this.playCoachSendButton.textContent = "Coach fragen";
+    this.playCoachSendButton.textContent = "Engine-Erklärung fragen";
     this.playCoachSendButton.addEventListener("click", () => this.handlePlayCoachReply());
     replyForm.append(this.playCoachInputEl, this.playCoachSendButton);
     liveCoach.appendChild(replyForm);
@@ -1200,35 +1201,18 @@ export class ChessApp {
         || latest.bestUci === latest.playedUci;
     }
     if (this.playLearningPrincipleEl && this.playNextStepEl) {
-      const lesson = {
-        best: [
-          "Gute Züge lösen das wichtigste Problem der Stellung.",
-          "Welche gegnerische Antwort hast du mit diesem Zug verhindert?",
-        ],
-        excellent: [
-          "Ein klarer Plan ist stärker, wenn deine Figuren sich gegenseitig unterstützen.",
-          "Welche deiner Figuren arbeitet jetzt besser als vor dem Zug?",
-        ],
-        good: [
-          "Solide Züge halten Optionen offen und vermeiden neue Schwächen.",
-          "Gibt es noch eine Figur, die du verbessern kannst?",
-        ],
-        inaccuracy: [
-          "Prüfe vor deinem Plan, welche Felder oder Figuren danach weniger geschützt sind.",
-          "Welche gegnerische Drohung ist jetzt leichter geworden?",
-        ],
-        mistake: [
-          "Kontrolliere vor jedem Zug zuerst gegnerische Schachs, Schlagzüge und Drohungen.",
-          "Was konnte der Gegner unmittelbar nach deinem Zug erzwingen?",
-        ],
-        blunder: [
-          "Bei einer konkreten Gefahr zählt Sicherheit vor dem eigenen Plan.",
-          "Welche deiner Figuren oder Bauern war nach dem Zug nicht mehr ausreichend geschützt?",
-        ],
-      }[latest?.quality] || [
-        "Verstehe zuerst die Aufgabe der Stellung, bevor du nach einem Zug suchst.",
-        "Was möchte dein Gegner als Nächstes erreichen?",
-      ];
+      const hasPv = latest?.engineContext?.moveReview?.pv?.uci?.length > 0;
+      const lesson = hasPv
+        ? [
+          "Die Erklärung bezieht sich ausschließlich auf Stockfishs gespeicherte Hauptvariante.",
+          latest?.bestSan
+            ? `Was unterscheidet deinen Zug von Stockfishs erster Wahl ${latest.bestSan}?`
+            : "Was unterscheidet deinen Zug von der gespeicherten Stockfish-PV?",
+        ]
+        : [
+          "Ohne vollständige Stockfish-PV wird bewusst kein Schachmotiv behauptet.",
+          "Warte auf die vollständige Engine-Analyse, bevor du nach dem Warum fragst.",
+        ];
       this.playLearningPrincipleEl.textContent = lesson[0];
       this.playNextStepEl.textContent = lesson[1];
     }
@@ -1270,7 +1254,7 @@ export class ChessApp {
       if (session.coachBusy) {
         const thinking = document.createElement("div");
         thinking.className = "play-coach-message is-assistant is-thinking";
-        thinking.textContent = "Coach denkt nach …";
+        thinking.textContent = "Coach übersetzt die Stockfish-Daten …";
         this.playCoachConversationEl.appendChild(thinking);
       }
       this.playCoachConversationEl.scrollTop = this.playCoachConversationEl.scrollHeight;
@@ -2114,6 +2098,16 @@ export class ChessApp {
   handleEngineBestMove(result) {
     const context = result?.context;
     if (
+      result?.move
+      && this.suggestionState
+      && result.fen === this.suggestionState.fen
+      && result.searchId === this.suggestionState.searchId
+    ) {
+      this.suggestionState.bestMoveUci = result.move;
+      this.suggestionState.ponderUci = result.ponder || "";
+      if (this.appMode === "analysis") this.renderSuggestions();
+    }
+    if (
       this.destroyed
       ||
       this.appMode !== "play"
@@ -2205,10 +2199,12 @@ export class ChessApp {
       bestSan: reportMove.bestSan || "",
       playedUci,
       beforeFen: beforeNode?.fen || "",
+      engineContext: this.buildMoveCoachEngineContext(reportMove),
     };
     session.feedbackHistory.unshift(feedbackEntry);
     session.feedbackHistory = session.feedbackHistory.slice(0, 12);
     this.renderPlayPanel();
+    this.requestAutomaticPlayCoachFeedback(feedbackEntry, reportMove);
     return feedback;
   }
 
@@ -2217,7 +2213,9 @@ export class ChessApp {
     if (!text || this.playSession.coachBusy) return;
     this.playCoachInputEl.value = "";
     this.playSession.coachMessages.push({ role: "user", content: text });
-    this.requestPlayCoachMessage(text);
+    this.requestPlayCoachMessage(text, {
+      engineContext: this.playSession.feedbackHistory[0]?.engineContext || null,
+    });
   }
 
   async requestAutomaticPlayCoachFeedback(feedback, reportMove) {
@@ -2230,9 +2228,10 @@ export class ChessApp {
         `Gib zu ${feedback.title} genau ein kurzes Live-Coaching in ein bis zwei Sätzen.`,
         feedback.detail,
         alternative,
-        "Erkläre das wichtigste Motiv oder den nächsten Denk-Schritt ohne lange Zugfolge.",
+        "Erkläre nur das Motiv, das sich aus der gelieferten Stockfish-PV ablesen lässt. Falls die PV dafür nicht reicht, sage das offen.",
       ].filter(Boolean).join(" "),
       ply: feedback.ply,
+      engineContext: this.buildMoveCoachEngineContext(reportMove),
     });
     this.playSession.coachQueue = this.playSession.coachQueue.slice(-6);
     this.drainPlayCoachQueue();
@@ -2245,10 +2244,14 @@ export class ChessApp {
     await this.requestPlayCoachMessage(next.message, {
       automatic: true,
       ply: next.ply,
+      engineContext: next.engineContext,
     });
   }
 
-  async requestPlayCoachMessage(message, { automatic = false, ply = null } = {}) {
+  async requestPlayCoachMessage(
+    message,
+    { automatic = false, ply = null, engineContext = null } = {},
+  ) {
     const session = this.playSession;
     if (!session.active || session.coachBusy) return;
     session.coachBusy = true;
@@ -2263,9 +2266,7 @@ export class ChessApp {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: `${message}\nAntworte nur zum bereits gespielten Zug und zum Schachmotiv. Nenne keinen nächsten Zug, keine Variante und keine konkrete Zugempfehlung.`,
-          fen: this.game.fen(),
-          evalPawns: this.lastEvalPawns,
-          suggestions: [],
+          engineContext,
           history: this.game.history(),
           conversation,
         }),
@@ -2449,10 +2450,10 @@ export class ChessApp {
       coachReason.className = 'suggestion-coach-reason';
       const reason = this.suggestionCoachReasons.get(idx);
       coachReason.textContent = reason
-        ? `Coach-Idee: ${reason}`
+        ? `Stockfish erklärt: ${reason}`
         : this.suggestionCoachBusy
-          ? 'Coach ordnet den Zug kurz ein …'
-          : 'Coach-Erklärung wird vorbereitet …';
+          ? 'Coach übersetzt die Engine-Linie …'
+          : 'Erklärung der Engine-Linie wird vorbereitet …';
       row.setAttribute(
         'aria-label',
         `Zugidee ${idx} am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
@@ -2480,9 +2481,9 @@ export class ChessApp {
     ) return;
     const first = Array.isArray(lines) ? lines[0] : null;
     if (!first) {
-      this.analysisCoachFocusTitle.textContent = "Die Stellung wird eingeordnet";
-      this.analysisCoachFocusExplanation.textContent = "Sobald die Berechnung stabil ist, erscheint hier die wichtigste Idee in verständlicher Form.";
-      this.analysisCoachFocusPrinciple.textContent = "Prüfe zuerst gegnerische Schachs, Schlagzüge und direkte Drohungen.";
+      this.analysisCoachFocusTitle.textContent = "Stockfish-Analyse noch unvollständig";
+      this.analysisCoachFocusExplanation.textContent = ENGINE_CONTEXT_MISSING_REPLY;
+      this.analysisCoachFocusPrinciple.textContent = "Der Coach erklärt nur Züge und Varianten, die Stockfish tatsächlich geliefert hat.";
       return;
     }
 
@@ -2497,9 +2498,9 @@ export class ChessApp {
       : "Die Stellung wird noch genauer eingeordnet.";
     this.analysisCoachFocusTitle.textContent = evaluation;
     this.analysisCoachFocusExplanation.textContent = reason
-      ? `${firstMove} ist interessant, weil ${reason.replace(/^[A-ZÄÖÜ]/, (letter) => letter.toLowerCase())}`
-      : `Die stärkste berechnete Idee beginnt mit ${firstMove}. Prüfe dabei, welche Figur aktiver wird und welche gegnerische Antwort eingeschränkt wird.`;
-    this.analysisCoachFocusPrinciple.textContent = "Ein guter Kandidatenzug löst zuerst das dringendste Problem der Stellung.";
+      ? `Stockfish bevorzugt ${firstMove}, weil ${reason.replace(/^[A-ZÄÖÜ]/, (letter) => letter.toLowerCase())}`
+      : `Stockfishs erste Variante beginnt mit ${firstMove}. Eine weitergehende Motiv-Erklärung erscheint erst, wenn sie an diese Engine-Linie gebunden ist.`;
+    this.analysisCoachFocusPrinciple.textContent = "Jede genannte Zugfolge stammt ausschließlich aus der angezeigten Stockfish-PV.";
   }
 
   scheduleSuggestionCoachReasons(lines) {
@@ -2540,11 +2541,9 @@ export class ChessApp {
         body: JSON.stringify({
           message: [
             `Erkläre jeden der ${suggestions.length} Engine-Kandidaten in genau einem kurzen deutschen Satz.`,
-            "Antworte zeilenweise im Format „1: Begründung“. Beschreibe Plan, Motiv oder konkrete Wirkung und verwende keine lange Zugfolge.",
+            "Antworte zeilenweise im Format „1: Begründung“. Erkläre nur, was aus der jeweils gelieferten Stockfish-PV hervorgeht, und ergänze keine Züge.",
           ].join(" "),
-          fen: this.suggestionState?.fen || "",
-          evalPawns: this.lastEvalPawns,
-          suggestions,
+          engineContext: this.buildPositionCoachEngineContext(),
           history: this.game.history(),
           conversation: [],
         }),
@@ -3169,10 +3168,8 @@ export class ChessApp {
       this.reviewCoachController = new AbortController();
     }
     const payload = {
-      message: 'Formuliere fünf kurze, motivierende Abschnitte: Spielverlauf, Hauptmotive, besonders starke Entscheidungen, wichtigste Verbesserung und konkreter Trainingsfokus. Arbeite die aussagekräftigsten Punkte heraus. Nenne höchstens einzelne kurze Varianten mit maximal zwei bis vier Halbzügen; erkläre vor allem die Idee.',
-      fen: path.at(-1)?.fen || '',
-      evalPawns: null,
-      suggestions: [],
+      message: 'Formuliere fünf kurze Abschnitte: Spielverlauf, durch Stockfish belegte Hauptmotive, besonders starke Entscheidungen, wichtigste Verbesserung und konkreter Trainingsfokus. Beziehe jede konkrete Zug- oder Motivaussage ausschließlich auf die gelieferten Stockfish-PVs. Wenn die Daten kein gemeinsames Motiv belegen, sage das offen.',
+      engineContext: this.buildGameReviewCoachEngineContext(report),
       history: path.slice(1).map((node) => node.move?.san).filter(Boolean),
       conversation: [],
       gameReview: {
@@ -3525,11 +3522,9 @@ export class ChessApp {
             move.bestSan && move.bestSan !== move.san
               ? `Die stärkere Idee war ${move.bestSan}.`
               : "",
-            "Erkläre in höchstens drei kurzen Sätzen: Was ist hier passiert, welches Motiv zählt und welchen einfachen Denk-Check soll ich daraus lernen? Keine lange Zugfolge.",
+            "Erkläre in höchstens drei kurzen Sätzen ausschließlich anhand der gelieferten Stockfish-PV: Was zeigt die Bewertung, welche belegte Idee verfolgt die PV und was kann ich aus dem Vergleich lernen? Ergänze keine Zugfolge.",
           ].filter(Boolean).join(" "),
-          fen,
-          evalPawns: null,
-          suggestions: [],
+          engineContext: this.buildMoveCoachEngineContext(move),
           history: [],
           conversation: [],
         }),
@@ -4479,18 +4474,18 @@ export class ChessApp {
       .sort((left, right) => (ownAccuracy(left) || 100) - (ownAccuracy(right) || 100))[0];
     const seriousErrors = (stats.ownMistakes || 0) + (stats.ownBlunders || 0);
     const type = Number.isFinite(stats.ownAccuracy) && stats.ownAccuracy >= 88
-      ? "Der präzise Kontrolleur"
+      ? "Hohe Engine-Übereinstimmung"
       : seriousErrors <= Math.max(2, stats.analyzedGames)
-        ? "Der solide Stratege"
-        : "Der mutige Kämpfer";
+        ? "Stabile Engine-Werte"
+        : "Klare Lernmomente";
     const strength = Number.isFinite(stats.whiteAccuracy) && Number.isFinite(stats.blackAccuracy)
       ? stats.whiteAccuracy >= stats.blackAccuracy
-        ? "Mit Weiß findest du deine Pläne etwas sicherer und setzt früher den Ton."
-        : "Mit Schwarz verteidigst du dich besonders verlässlich und nutzt gegnerische Lücken."
-      : "Deine guten Partien zeigen: Wenn du einen klaren Plan hast, hältst du die Stellung stabil.";
+        ? "Deine gemessene Genauigkeit ist mit Weiß höher als mit Schwarz."
+        : "Deine gemessene Genauigkeit ist mit Schwarz höher als mit Weiß."
+      : "Für einen Farbvergleich liegen noch nicht genügend getrennte Engine-Werte vor.";
     const growth = seriousErrors > 0
-      ? `Dein größter Hebel sind die ${seriousErrors} kritischen Momente: Vor dem Ziehen kurz gegnerische Drohungen, Schachs und Schlagzüge prüfen.`
-      : "Deine Partien sind bereits sehr sauber. Dein nächster Schritt sind bewusst komplexere Stellungen.";
+      ? `Dein größter messbarer Hebel sind die ${seriousErrors} von Stockfish als Fehler oder Patzer klassifizierten Momente. Spiele dort die gespeicherten Hauptvarianten nach.`
+      : "Die analysierten Partien enthalten derzeit kaum deutliche Engine-Einbrüche.";
 
     const dialog = document.createElement("dialog");
     dialog.className = "modal-dialog player-story-dialog";
@@ -4516,7 +4511,7 @@ export class ChessApp {
     const story = document.createElement("div");
     story.className = "player-story-copy";
     const lead = document.createElement("p");
-    lead.textContent = `Über ${stats.analyzedGames} analysierte ${stats.analyzedGames === 1 ? "Partie" : "Partien"} entsteht ein klares Bild: Du spielst am besten, wenn die Stellung verständlich bleibt und du deinem Plan vertraust. ${strength}`;
+    lead.textContent = `Aus ${stats.analyzedGames} analysierten ${stats.analyzedGames === 1 ? "Partie" : "Partien"} ergibt sich ein rein datenbasiertes Bild. ${strength}`;
     const opening = document.createElement("p");
     opening.textContent = stats.favoriteOpening?.name
       ? `${stats.favoriteOpening.name} ist deine vertrauteste Eröffnungswelt. Dort lohnt es sich, typische Ideen statt langer Varianten zu lernen.`
@@ -4931,10 +4926,10 @@ export class ChessApp {
             ? game.review.blackAccuracy
             : game.review.overallAccuracy;
         coachSummary.textContent = ownAccuracy >= 88
-          ? "Starke Partie · weiter so präzise bleiben."
+          ? "Hohe Stockfish-Übereinstimmung."
           : ownAccuracy >= 75
-            ? "Solide Partie · kritische Momente ruhiger prüfen."
-            : "Schwierige Partie · Drohungen vor jedem Zug kontrollieren.";
+            ? "Solide Engine-Werte · kritische Momente vergleichen."
+            : "Mehrere Engine-Abweichungen · Hauptvarianten nachspielen.";
         copy.appendChild(coachSummary);
       }
 
@@ -5420,13 +5415,13 @@ export class ChessApp {
     const heading = document.createElement("div");
     const eyebrow = document.createElement("p");
     eyebrow.className = "eyebrow";
-    eyebrow.textContent = "Dein persönlicher Coach";
+    eyebrow.textContent = "Dein Stockfish-Erklärer";
     const title = document.createElement('h2');
     title.id = "coach-chat-title";
     title.className = 'card-title';
     title.textContent = 'Was sagt dir diese Stellung?';
     const subtitle = document.createElement("p");
-    subtitle.textContent = "Verständliche Pläne zuerst, technische Werte nur als Hintergrund.";
+    subtitle.textContent = "Stockfish rechnet. Der Coach übersetzt ausschließlich die gelieferten Engine-Daten.";
     heading.append(eyebrow, title, subtitle);
     header.append(avatar, heading);
     panel.appendChild(header);
@@ -5436,16 +5431,16 @@ export class ChessApp {
     focus.setAttribute("role", "region");
     focus.setAttribute("aria-label", "Aktuelle Coach-Einschätzung");
     const focusLabel = document.createElement("span");
-    focusLabel.textContent = "Coach-Blick";
+    focusLabel.textContent = "Stockfish erklärt";
     this.analysisCoachFocusTitle = document.createElement("strong");
     this.analysisCoachFocusTitle.textContent = "Bereit für deine Stellung";
     this.analysisCoachFocusExplanation = document.createElement("p");
-    this.analysisCoachFocusExplanation.textContent = "Ziehe eine Figur oder warte kurz auf die erste Stellungsbewertung.";
+    this.analysisCoachFocusExplanation.textContent = ENGINE_CONTEXT_MISSING_REPLY;
     const focusPrinciple = document.createElement("div");
     const focusPrincipleLabel = document.createElement("span");
     focusPrincipleLabel.textContent = "Lernprinzip";
     this.analysisCoachFocusPrinciple = document.createElement("p");
-    this.analysisCoachFocusPrinciple.textContent = "Erst die Aufgabe der Stellung verstehen, dann Kandidatenzüge vergleichen.";
+    this.analysisCoachFocusPrinciple.textContent = "Jede Zug- und Variantenangabe stammt ausschließlich von Stockfish.";
     focusPrinciple.append(focusPrincipleLabel, this.analysisCoachFocusPrinciple);
     this.analysisCoachExplainButton = document.createElement("button");
     this.analysisCoachExplainButton.type = "button";
@@ -5520,9 +5515,9 @@ export class ChessApp {
       {
         role: 'assistant',
         content: [
-          "**Aktuelle Einschätzung:** Das Brett ist bereit für deine Analyse.",
-          "**Lernprinzip:** Suche zuerst nach gegnerischen Schachs, Schlagzügen und direkten Drohungen.",
-          "**Nächster Schritt:** Ziehe eine Variante auf dem Brett oder frage mich nach einem verständlichen Plan.",
+          "**Aktuelle Einschätzung:** Stockfish hat für diese Stellung noch keine vollständige Hauptvariante geliefert.",
+          "**Meine Rolle:** Ich erkläre ausschließlich Stockfish-Daten und berechne keine eigenen Züge.",
+          "**Nächster Schritt:** Warte auf die Engine-Analyse und frage anschließend nach der angezeigten Hauptvariante.",
         ].join("\n\n"),
       }
     ];
@@ -5568,9 +5563,7 @@ export class ChessApp {
     this.chatRequestController = new AbortController();
     const payload = {
       message: text,
-      fen: this.analysisFen,
-      evalPawns: typeof this.lastEvalPawns === 'number' ? this.lastEvalPawns : null,
-      suggestions: this.buildSuggestionPayload(),
+      engineContext: this.buildPositionCoachEngineContext(),
       history: this.game.history(),
       conversation,
     };
@@ -5610,7 +5603,7 @@ export class ChessApp {
       button.disabled = Boolean(state);
     });
     if (this.chatStatusEl) {
-      this.chatStatusEl.textContent = state ? 'Coach denkt nach…' : '';
+      this.chatStatusEl.textContent = state ? 'Coach übersetzt die Stockfish-Daten …' : '';
     }
   }
 
@@ -5622,6 +5615,136 @@ export class ChessApp {
         score: this.formatScore(data.whiteScore || data.score),
         moves: this.pvToSanList(data.pv, data.fen),
       }));
+  }
+
+  coachEvaluation(score, fallbackCp = null) {
+    if (
+      score
+      && (score.unit === "cp" || score.unit === "mate")
+      && Number.isFinite(score.value)
+    ) {
+      return {
+        unit: score.unit,
+        value: Math.round(score.value),
+        perspective: "white",
+      };
+    }
+    if (Number.isFinite(fallbackCp)) {
+      return {
+        unit: "cp",
+        value: Math.round(fallbackCp),
+        perspective: "white",
+      };
+    }
+    return null;
+  }
+
+  buildPositionCoachEngineContext() {
+    const state = this.suggestionState;
+    if (!state?.lines) return null;
+    const lines = Array.from(state.lines.entries())
+      .sort(([left], [right]) => left - right)
+      .map(([rank, data]) => {
+        const pvUci = Array.isArray(data?.pv) ? data.pv.slice(0, 20) : [];
+        const pvSan = this.pvToSanList(pvUci, data?.fen || state.fen).slice(0, 20);
+        return {
+          rank,
+          depth: data?.depth || 0,
+          evaluation: this.coachEvaluation(data?.whiteScore || data?.score),
+          bestMove: pvUci[0]
+            ? { uci: pvUci[0], san: pvSan[0] || "" }
+            : null,
+          pv: { uci: pvUci, san: pvSan },
+        };
+      })
+      .filter((line) => line.pv.uci.length > 0);
+    const primary = lines.find((line) => line.rank === 1) || lines[0];
+    if (!primary) return null;
+    const exactBestUci = state.bestMoveUci || primary.bestMove?.uci || "";
+    return {
+      source: "stockfish",
+      kind: "position",
+      fen: state.fen || this.analysisFen,
+      depth: primary.depth,
+      evaluation: primary.evaluation,
+      bestMove: exactBestUci
+        ? {
+          uci: exactBestUci,
+          san: uciToSan(state.fen || this.analysisFen, exactBestUci),
+        }
+        : primary.bestMove,
+      primaryVariation: primary.pv,
+      lines,
+    };
+  }
+
+  buildMoveCoachEngineContext(move) {
+    if (!move || typeof move !== "object") return null;
+    const pvUci = Array.isArray(move.bestPvUci) ? move.bestPvUci.slice(0, 20) : [];
+    const pvSan = Array.isArray(move.bestPvSan)
+      ? move.bestPvSan.slice(0, pvUci.length)
+      : this.pvToSanList(pvUci, move.fenBefore).slice(0, 20);
+    const bestMove = move.bestUci
+      ? { uci: move.bestUci, san: move.bestSan || pvSan[0] || "" }
+      : null;
+    const moveReview = {
+      playedMove: {
+        uci: move.playedUci || "",
+        san: move.san || "",
+      },
+      bestMove,
+      depth: move.engineDepth || 0,
+      evaluationBefore: this.coachEvaluation(move.evaluationBefore, move.beforeCp),
+      evaluationAfter: this.coachEvaluation(move.evaluationAfter, move.afterCp),
+      evaluationDeltaCp: Number.isFinite(move.evaluationDeltaCp)
+        ? move.evaluationDeltaCp
+        : Number.isFinite(move.afterCp) && Number.isFinite(move.beforeCp)
+          ? Math.round(move.afterCp - move.beforeCp)
+          : null,
+      classification: MOVE_QUALITY[move.quality]?.label || move.quality || "",
+      pv: { uci: pvUci, san: pvSan },
+    };
+    return {
+      source: "stockfish",
+      kind: "move_review",
+      fen: move.fenBefore || "",
+      depth: moveReview.depth,
+      evaluation: moveReview.evaluationBefore,
+      bestMove,
+      primaryVariation: moveReview.pv,
+      lines: pvUci.length > 0 ? [{
+        rank: 1,
+        depth: moveReview.depth,
+        evaluation: moveReview.evaluationBefore,
+        bestMove,
+        pv: moveReview.pv,
+      }] : [],
+      moveReview,
+    };
+  }
+
+  buildGameReviewCoachEngineContext(report) {
+    const moments = Array.isArray(report?.criticalMoments)
+      ? report.criticalMoments.slice(0, 8)
+      : [];
+    return {
+      source: "stockfish",
+      kind: "game_review",
+      fen: moments[0]?.fenBefore || "",
+      depth: report?.depth || 0,
+      evaluation: null,
+      bestMove: null,
+      primaryVariation: { uci: [], san: [] },
+      lines: [],
+      reviewMoments: moments.map((move) => {
+        const context = this.buildMoveCoachEngineContext(move);
+        return {
+          label: `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`,
+          fen: move.fenBefore || "",
+          ...context?.moveReview,
+        };
+      }),
+    };
   }
 
   exportPgn() {

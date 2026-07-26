@@ -59,17 +59,17 @@ export function describeLiveMove(move) {
     : move.san || "Dein Zug";
   let message;
   if (quality === "best") {
-    message = "War super, weil du die Stellung präzise getroffen hast.";
+    message = "Stockfish bewertet ihn als erste Wahl; es ist kein messbarer Bewertungsverlust entstanden.";
   } else if (quality === "excellent") {
-    message = "War sehr gut, weil dein Plan die Stellung unter Kontrolle hält.";
+    message = "Stockfish misst nur eine minimale Abweichung von seiner ersten Wahl.";
   } else if (quality === "good") {
-    message = "War gut, weil deine Stellung stabil bleibt.";
+    message = "Der Bewertungsverlust gegenüber Stockfishs erster Wahl bleibt klein.";
   } else if (quality === "inaccuracy") {
-    message = "War ungenau, weil du etwas Kontrolle abgegeben hast.";
+    message = "Die Stockfish-Bewertung fällt gegenüber der besten Engine-Fortsetzung erkennbar ab.";
   } else if (quality === "mistake") {
-    message = "War schlecht, weil dein Vorteil spürbar kleiner wurde.";
+    message = "Die Stockfish-Bewertung verschlechtert sich gegenüber der Engine-Hauptvariante deutlich.";
   } else {
-    message = "War kritisch, weil eine unmittelbare Gefahr übersehen wurde.";
+    message = "Die Stockfish-Bewertung bricht stark ein; das konkrete Motiv muss aus der gespeicherten PV erklärt werden.";
   }
 
   return {

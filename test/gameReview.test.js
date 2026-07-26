@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Chess } from "chess.js";
 import { MoveTreeNode, addMoveToTree } from "../moveTree.js";
 import {
+  analysisEntryFromInfo,
   buildFallbackFeedback,
   buildLearningSummary,
   buildPvFrames,
@@ -14,6 +15,26 @@ import {
   summarizeGameReview,
   terminalWhiteCp,
 } from "../gameReview.js";
+
+test("Engine-Eintrag bewahrt Mattwert, Tiefe und vollständige Hauptvariante", () => {
+  const pv = [
+    "h5h7", "g8f8", "h7h8", "f8e7", "h8e5",
+    "e7d7", "e5d5", "d7c8", "d5c6", "c8b8",
+    "c6b6", "b8a8", "b6a6",
+  ];
+  const entry = analysisEntryFromInfo({
+    depth: 23,
+    whiteScore: { unit: "mate", value: 5, pawns: 100 },
+    pv,
+  });
+  assert.deepEqual(entry.evaluation, {
+    unit: "mate",
+    value: 5,
+    perspective: "white",
+  });
+  assert.equal(entry.depth, 23);
+  assert.deepEqual(entry.pv, pv);
+});
 
 test("PV-Vorschau erzeugt legale Frames, ohne die Ausgangsstellung zu verändern", () => {
   const game = new Chess();
@@ -100,7 +121,7 @@ test("Matt, Score-Normalisierung und adaptive Tiefe sind begrenzt", () => {
 test("jede Zugqualität erhält eine kurze Begründung", () => {
   assert.match(
     explainMoveQuality({ san: "O-O", quality: "best" }),
-    /König in Sicherheit/,
+    /Stockfish-Wahl/,
   );
   assert.match(
     explainMoveQuality({ san: "Qh5", bestSan: "Nf3", quality: "mistake" }),
@@ -108,7 +129,7 @@ test("jede Zugqualität erhält eine kurze Begründung", () => {
   );
   assert.match(
     explainMoveQuality({ san: "Qh7+", quality: "excellent" }),
-    /Schachdrohung/,
+    /Stockfish-Bewertung/,
   );
 });
 
@@ -128,7 +149,7 @@ test("Fallback-Coach fasst Verlauf, Motive, Stärke, Verbesserung und Training z
     }],
   });
   assert.match(feedback, /\*\*Spielverlauf:\*\*/);
-  assert.match(feedback, /\*\*Hauptmotive:\*\*/);
+  assert.match(feedback, /\*\*Engine-Muster:\*\*/);
   assert.match(feedback, /\*\*Das war stark:\*\*/);
   assert.match(feedback, /\*\*Das kannst du verbessern:\*\*/);
   assert.match(feedback, /\*\*Trainingsfokus:\*\*/);
@@ -146,9 +167,9 @@ test("Lernzusammenfassung leitet vorsichtige, konkrete Trainingsschritte aus vor
 
   assert.ok(["Eröffnung", "Mittelspiel", "Endphase"].includes(summary.strongestPhase));
   assert.match(summary.biggestLesson, /Qxf7\+/);
-  assert.match(summary.recurringPattern, /2 deutliche Bewertungseinbrüche/);
-  assert.match(summary.learningGoal, /Schachs, Schlagzüge und direkte Drohungen/);
-  assert.match(summary.exercise, /zwei größten Fehler/);
+  assert.match(summary.recurringPattern, /2 deutliche Stockfish-Bewertungseinbrüche/);
+  assert.match(summary.learningGoal, /Stockfishs erster Wahl/);
+  assert.match(summary.exercise, /zwei größten Bewertungseinbrüche/);
 });
 
 test("Lernzusammenfassung behauptet bei fehlenden Daten kein präzises Muster", () => {

@@ -7,12 +7,34 @@ import {
   requestCoachResponse,
 } from "../api/chat.js";
 
+const engineContext = {
+  source: "stockfish",
+  kind: "position",
+  fen: "start",
+  depth: 18,
+  evaluation: { unit: "cp", value: 42 },
+  bestMove: { uci: "g1f3", san: "Nf3" },
+  primaryVariation: {
+    uci: ["g1f3", "b8c6", "f1b5"],
+    san: ["Nf3", "Nc6", "Bb5"],
+  },
+  lines: [{
+    rank: 1,
+    depth: 18,
+    evaluation: { unit: "cp", value: 42 },
+    bestMove: { uci: "g1f3", san: "Nf3" },
+    pv: {
+      uci: ["g1f3", "b8c6", "f1b5"],
+      san: ["Nf3", "Nc6", "Bb5"],
+    },
+  }],
+};
+
 test("Chat-Payload wird begrenzt und normalisiert", () => {
   const result = normalizeChatPayload({
     message: "  Was ist mein Plan?  ",
-    evalPawns: 0.42,
+    engineContext,
     history: ["e4", "e5"],
-    suggestions: [{ score: "+0.42", moves: ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"] }],
     conversation: [{ role: "assistant", content: "Entwickle deine Figuren." }],
     gameReview: {
       overallAccuracy: 88.4,
@@ -22,9 +44,10 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
     },
   });
   assert.equal(result.value.message, "Was ist mein Plan?");
-  assert.equal(result.value.evalPawns, 0.42);
+  assert.equal(result.value.engineContext.source, "stockfish");
+  assert.equal(result.value.engineContext.bestMove.uci, "g1f3");
   assert.deepEqual(result.value.history, ["e4", "e5"]);
-  assert.deepEqual(result.value.suggestions[0].moves, ["Nf3", "Nc6", "Bb5", "a6"]);
+  assert.deepEqual(result.value.engineContext.primaryVariation.san, ["Nf3", "Nc6", "Bb5"]);
   assert.equal(result.value.gameReview.overallAccuracy, 88.4);
   assert.equal(normalizeChatPayload({ message: "  " }).error, "Bitte gib eine Frage ein.");
 });
@@ -32,15 +55,13 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
 test("Prompt trennt vertrauenswürdige Anweisungen von Stellungsdaten", () => {
   const prompt = buildPrompt({
     message: "Warum ist Nf3 gut?",
-    fen: "fen",
-    evalPawns: 0.2,
-    suggestions: [{ score: "+0.20", moves: ["Nf3"] }],
+    engineContext,
     history: ["e4", "e5"],
     conversation: [],
     gameReview: { overallAccuracy: 91.2, criticalMoments: [] },
   });
-  assert.match(prompt, /<position_fen>\nfen\n<\/position_fen>/);
-  assert.match(prompt, /<white_evaluation_pawns>0\.20/);
+  assert.match(prompt, /<stockfish_analysis>/);
+  assert.match(prompt, /"bestMove":\{"uci":"g1f3","san":"Nf3"\}/);
   assert.match(prompt, /<user_question>\nWarum ist Nf3 gut\?/);
   assert.match(prompt, /<game_review_statistics>/);
 });
@@ -50,9 +71,7 @@ test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen",
   const reply = await requestCoachResponse(
     {
       message: "Plan?",
-      fen: "",
-      evalPawns: null,
-      suggestions: [],
+      engineContext,
       history: [],
       conversation: [],
     },
@@ -77,9 +96,51 @@ test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen",
   assert.equal(request.body.model, "test-model");
   assert.equal(request.body.store, false);
   assert.equal(request.body.safety_identifier, "safe-user");
-  assert.match(request.body.instructions, /höchstens zwei Halbzüge/);
+  assert.match(request.body.instructions, /kein Schachspieler/);
+  assert.match(request.body.instructions, /Stockfish ist die einzige Quelle/);
+  assert.match(request.body.instructions, /Erfinde keine Alternative/);
   assert.equal(request.body.text.verbosity, "low");
   assert.equal(request.options.headers.Authorization, "Bearer test-key");
+});
+
+test("Coach rät ohne vollständige Engine-PV nicht und verwirft erfundene Züge", async () => {
+  let calls = 0;
+  const missing = await requestCoachResponse(
+    {
+      message: "Was soll ich spielen?",
+      engineContext: null,
+      history: [],
+      conversation: [],
+    },
+    {
+      apiKey: "test-key",
+      fetchImpl: async () => {
+        calls += 1;
+        throw new Error("darf nicht aufgerufen werden");
+      },
+    },
+  );
+  assert.match(missing, /keine vollständige Stockfish-Analyse/);
+  assert.equal(calls, 0);
+
+  const rejected = await requestCoachResponse(
+    {
+      message: "Erkläre die PV.",
+      engineContext,
+      history: [],
+      conversation: [],
+    },
+    {
+      apiKey: "test-key",
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return { output_text: "Ich würde stattdessen d4 spielen." };
+        },
+      }),
+    },
+  );
+  assert.match(rejected, /verworfen/);
 });
 
 test("Text kann aus Responses-Output-Items gelesen werden", () => {
