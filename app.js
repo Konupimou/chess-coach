@@ -117,6 +117,7 @@ export class ChessApp {
       feedbackHistory: [],
       coachMessages: [],
       coachBusy: false,
+      coachAutomaticBusy: false,
       coachQueue: [],
       streak: 0,
       bestStreak: 0,
@@ -698,15 +699,15 @@ export class ChessApp {
     title.id = "play-mode-title";
     title.textContent = "Deine Partie";
     const description = document.createElement("p");
-    description.textContent = "Spiele gegen den Schachcomputer Stockfish und erhalte direkt nach deinen Zügen ein klares Feedback.";
+    description.textContent = "Spiele eine Trainingspartie und erhalte nach jedem eigenen Zug eine kurze, verständliche Rückmeldung.";
     headingCopy.append(eyebrow, title, description);
     const engineBadge = document.createElement("span");
     engineBadge.className = "play-engine-badge";
     engineBadge.textContent = !engineAvailable
-      ? "Engine nicht verfügbar"
+      ? "Nicht verfügbar"
       : this.engineReady
-        ? "Stockfish bereit"
-        : "Stockfish wird geladen …";
+        ? "Bereit"
+        : "Wird geladen …";
     this.playEngineBadgeEl = engineBadge;
     heading.append(headingCopy, engineBadge);
     panel.appendChild(heading);
@@ -781,7 +782,7 @@ export class ChessApp {
     const liveHeading = document.createElement("div");
     liveHeading.className = "live-coach-heading";
     const liveTitle = document.createElement("h3");
-    liveTitle.textContent = "Live-Erklärung von Stockfish";
+    liveTitle.textContent = "Dein letzter Zug";
     const liveSwitch = document.createElement("label");
     liveSwitch.className = "live-feedback-switch";
     this.playLiveFeedbackInput = document.createElement("input");
@@ -815,18 +816,18 @@ export class ChessApp {
     this.playFeedbackPreviewButton = document.createElement("button");
     this.playFeedbackPreviewButton.type = "button";
     this.playFeedbackPreviewButton.className = "secondary-button live-feedback-preview";
-    this.playFeedbackPreviewButton.textContent = "Stärkere Idee am Brett ansehen";
+    this.playFeedbackPreviewButton.textContent = "Besseren Zug ansehen";
     this.playFeedbackPreviewButton.hidden = true;
     this.playFeedbackPreviewButton.addEventListener("click", () => {
       const latest = this.playSession.feedbackHistory[0];
       if (latest) this.previewCoachMove(latest);
     });
     this.playFeedbackEl.appendChild(this.playFeedbackPreviewButton);
-    this.playFeedbackEl.classList.add("is-inline");
-    this.accuracyFeedbackRowEl?.appendChild(this.playFeedbackEl);
+    liveCoach.appendChild(this.playFeedbackEl);
 
     this.playFeedbackHistoryEl = document.createElement("ol");
     this.playFeedbackHistoryEl.className = "live-feedback-history";
+    this.playFeedbackHistoryEl.hidden = true;
     liveCoach.appendChild(this.playFeedbackHistoryEl);
 
     const lesson = document.createElement("div");
@@ -842,6 +843,7 @@ export class ChessApp {
     this.playNextStepEl = document.createElement("p");
     nextStep.append(nextStepLabel, this.playNextStepEl);
     lesson.append(principle, nextStep);
+    lesson.hidden = true;
     liveCoach.appendChild(lesson);
 
     this.playCoachConversationEl = document.createElement("div");
@@ -851,7 +853,8 @@ export class ChessApp {
     replyForm.className = "play-coach-reply";
     this.playCoachInputEl = document.createElement("textarea");
     this.playCoachInputEl.rows = 2;
-    this.playCoachInputEl.placeholder = "Frag nach: Was zeigt Stockfishs Hauptvariante?";
+    this.playCoachInputEl.placeholder = "Hast du eine Frage zu deinem letzten Zug?";
+    this.playCoachInputEl.setAttribute("aria-label", "Frage an den Coach zum letzten Zug");
     this.playCoachInputEl.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
@@ -861,7 +864,7 @@ export class ChessApp {
     this.playCoachSendButton = document.createElement("button");
     this.playCoachSendButton.type = "button";
     this.playCoachSendButton.className = "secondary-button";
-    this.playCoachSendButton.textContent = "Engine-Erklärung fragen";
+    this.playCoachSendButton.textContent = "Fragen";
     this.playCoachSendButton.addEventListener("click", () => this.handlePlayCoachReply());
     replyForm.append(this.playCoachInputEl, this.playCoachSendButton);
     liveCoach.appendChild(replyForm);
@@ -1061,7 +1064,7 @@ export class ChessApp {
     if (!engineAvailable) {
       const unavailable = document.createElement("p");
       unavailable.className = "error-text";
-      unavailable.textContent = "Stockfish konnte nicht gestartet werden. Bitte lade die Seite neu.";
+      unavailable.textContent = "Der Schachcomputer konnte nicht gestartet werden. Bitte lade die Seite neu.";
       form.appendChild(unavailable);
     }
 
@@ -1154,7 +1157,7 @@ export class ChessApp {
         : playerWon
           ? "Partie beendet · Du gewinnst"
           : engineWon
-            ? "Partie beendet · Stockfish gewinnt"
+            ? "Partie beendet · Der Computer gewinnt"
             : "Partie beendet";
     }
     this.playTurnStatusEl.textContent = status;
@@ -1187,14 +1190,20 @@ export class ChessApp {
       this.playFeedbackEl.className = `live-feedback-state is-${latest.tone}`;
       this.playFeedbackBadgeEl.textContent = latest.badge;
       this.playFeedbackTitleEl.textContent = latest.title;
-      this.playFeedbackDetailEl.textContent = latest.detail;
+      const hasBetterMove = latest.bestUci
+        && latest.bestUci !== latest.playedUci
+        && latest.bestSan;
+      const simpleFallback = hasBetterMove
+        ? `Besser wäre ${latest.bestSan}. Die kurze Erklärung wird gerade vorbereitet …`
+        : latest.detail;
+      renderChatMarkup(this.playFeedbackDetailEl, latest.coachText || simpleFallback);
     } else {
       this.playFeedbackEl.className = "live-feedback-state is-waiting";
       this.playFeedbackBadgeEl.textContent = "Bereit";
       this.playFeedbackTitleEl.textContent = session.phase === "player-turn"
         ? "Spiele deinen Zug"
-        : "Der Live-Coach bereitet die Bewertung vor";
-      this.playFeedbackDetailEl.textContent = "Dein Urteil erscheint hier, bevor Stockfish antwortet.";
+        : "Die Bewertung wird vorbereitet";
+      this.playFeedbackDetailEl.textContent = "Danach siehst du hier sofort, ob dein Zug gut war.";
     }
     if (this.playFeedbackPreviewButton) {
       this.playFeedbackPreviewButton.hidden = !latest?.bestUci
@@ -1230,18 +1239,6 @@ export class ChessApp {
     }
 
     this.playFeedbackHistoryEl.replaceChildren();
-    if (session.liveFeedback && session.feedbackHistory.length > 1) {
-      session.feedbackHistory.slice(1, 5).forEach((feedback) => {
-        const item = document.createElement("li");
-        const badge = document.createElement("span");
-        badge.className = `is-${feedback.tone}`;
-        badge.textContent = feedback.badge;
-        const move = document.createElement("span");
-        move.textContent = feedback.title;
-        item.append(badge, move);
-        this.playFeedbackHistoryEl.appendChild(item);
-      });
-    }
 
     if (this.playCoachConversationEl) {
       this.playCoachConversationEl.replaceChildren();
@@ -1251,12 +1248,16 @@ export class ChessApp {
         renderChatMarkup(bubble, message.content);
         this.playCoachConversationEl.appendChild(bubble);
       });
-      if (session.coachBusy) {
+      if (session.coachBusy && !session.coachAutomaticBusy) {
         const thinking = document.createElement("div");
         thinking.className = "play-coach-message is-assistant is-thinking";
-        thinking.textContent = "Coach übersetzt die Stockfish-Daten …";
+        thinking.textContent = "Der Coach formuliert eine einfache Antwort …";
         this.playCoachConversationEl.appendChild(thinking);
       }
+      this.playCoachConversationEl.hidden = (
+        session.coachMessages.length === 0
+        && (!session.coachBusy || session.coachAutomaticBusy)
+      );
       this.playCoachConversationEl.scrollTop = this.playCoachConversationEl.scrollHeight;
     }
     if (this.playCoachInputEl) {
@@ -1334,6 +1335,7 @@ export class ChessApp {
   updateModeContext() {
     if (!this.modeContextTitle || !this.modeContextDescription || !this.modePrimaryAction) return;
     const hasMoves = this.getCurrentPath().length > 1;
+    this.modeContext.hidden = this.appMode === "play" && this.playSession.active;
     this.modePrimaryAction.disabled = false;
     if (this.appMode === "play") {
       this.modeContextEyebrow.textContent = this.playSession.active
@@ -1487,10 +1489,10 @@ export class ChessApp {
 
   startEngineGame({ colorPreference = "random", level = "medium", liveFeedback = true } = {}) {
     if (!this.engine || !this.engineReady || this.reviewRunning) {
-      this.showToast("Stockfish wird noch geladen. Bitte versuche es gleich erneut.");
+      this.showToast("Der Schachcomputer wird noch geladen. Bitte versuche es gleich erneut.");
       return false;
     }
-    if (!this.confirmDiscardUnsavedGame("eine neue Engine-Partie beginnen")) return false;
+    if (!this.confirmDiscardUnsavedGame("eine neue Trainingspartie beginnen")) return false;
 
     this.resetGame({ skipDiscardPrompt: true });
     const normalizedLevel = normalizeEngineLevel(level);
@@ -1513,6 +1515,7 @@ export class ChessApp {
       feedbackHistory: [],
       coachMessages: [],
       coachBusy: false,
+      coachAutomaticBusy: false,
       coachQueue: [],
       streak: 0,
       bestStreak: 0,
@@ -1538,7 +1541,7 @@ export class ChessApp {
     this.updateModeUi();
     this.updateGameStatus();
     this.evaluateCurrentPosition();
-    this.showToast(`Engine-Partie gestartet · Du spielst ${playerColor === "w" ? "Weiß" : "Schwarz"}.`);
+    this.showToast(`Trainingspartie gestartet · Du spielst ${playerColor === "w" ? "Weiß" : "Schwarz"}.`);
     return true;
   }
 
@@ -1546,7 +1549,7 @@ export class ChessApp {
     if (!this.playSession.active || this.getCurrentPath().length < 2) return;
     if (this.playSession.phase !== "game-over") {
       const confirmed = window.confirm(
-        "Wenn du jetzt analysierst, wird die Engine-Partie beendet und kann nicht fortgesetzt werden.",
+        "Wenn du jetzt analysierst, wird die Trainingspartie beendet und kann nicht fortgesetzt werden.",
       );
       if (!confirmed) return;
     }
@@ -2220,15 +2223,19 @@ export class ChessApp {
 
   async requestAutomaticPlayCoachFeedback(feedback, reportMove) {
     if (!feedback || !this.playSession.liveFeedback || this.coachConfigured === false) return;
-    const alternative = reportMove?.bestSan && reportMove.bestSan !== reportMove.san
-      ? `Die stärkere Engine-Alternative ist ${reportMove.bestSan}.`
-      : "";
+    const alternative = reportMove?.bestSan && reportMove.bestSan !== reportMove.san;
+    const opening = alternative
+      ? `Beginne genau mit „Besser wäre ${reportMove.bestSan}, weil …“.`
+      : feedback.quality === "best" || feedback.quality === "excellent"
+        ? "Beginne mit „Das war sehr gut, weil …“."
+        : "Beginne mit „Das war gut, weil …“.";
     this.playSession.coachQueue.push({
       message: [
-        `Gib zu ${feedback.title} genau ein kurzes Live-Coaching in ein bis zwei Sätzen.`,
-        feedback.detail,
-        alternative,
-        "Erkläre nur das Motiv, das sich aus der gelieferten Stockfish-PV ablesen lässt. Falls die PV dafür nicht reicht, sage das offen.",
+        `Bewerte ${feedback.title} für einen Schachanfänger in höchstens zwei kurzen Sätzen.`,
+        opening,
+        "Erkläre nur, was sich sicher aus den gelieferten Analysedaten ablesen lässt.",
+        "Verwende einfache Wörter und keine Begriffe wie Engine, Stockfish, PV, Centipawn, Initiative oder Kandidatenzug.",
+        "Nenne keine Zugfolge und keinen Zug für die jetzt entstandene Stellung.",
       ].filter(Boolean).join(" "),
       ply: feedback.ply,
       engineContext: this.buildMoveCoachEngineContext(reportMove),
@@ -2255,17 +2262,25 @@ export class ChessApp {
     const session = this.playSession;
     if (!session.active || session.coachBusy) return;
     session.coachBusy = true;
+    session.coachAutomaticBusy = automatic;
     this.renderPlayPanel();
     this.playCoachController?.abort();
     this.playCoachController = new AbortController();
     const generation = session.generation;
     const conversation = session.coachMessages.slice(-8);
+    if (
+      !automatic
+      && conversation.at(-1)?.role === "user"
+      && conversation.at(-1)?.content === message
+    ) {
+      conversation.pop();
+    }
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: `${message}\nAntworte nur zum bereits gespielten Zug und zum Schachmotiv. Nenne keinen nächsten Zug, keine Variante und keine konkrete Zugempfehlung.`,
+          message: `${message}\nAntworte nur zum bereits gespielten Zug. Eine bessere rückblickende Wahl darfst du nur nennen, wenn sie ausdrücklich in den gelieferten Daten steht. Nenne keinen Zug für die jetzt entstandene Stellung und keine Zugfolge.`,
           engineContext,
           history: this.game.history(),
           conversation,
@@ -2277,11 +2292,12 @@ export class ChessApp {
       if (this.playSession.generation !== generation) return;
       const reply = String(payload.reply || "").trim();
       if (!reply) return;
-      session.coachMessages.push({ role: "assistant", content: reply, ply });
-      session.coachMessages = session.coachMessages.slice(-12);
       if (automatic && Number.isInteger(ply)) {
         const item = session.feedbackHistory.find((entry) => entry.ply === ply);
         if (item) item.coachText = reply;
+      } else {
+        session.coachMessages.push({ role: "assistant", content: reply, ply });
+        session.coachMessages = session.coachMessages.slice(-12);
       }
     } catch (error) {
       if (error?.name !== "AbortError" && !automatic) {
@@ -2293,6 +2309,7 @@ export class ChessApp {
     } finally {
       if (this.playSession.generation === generation) {
         session.coachBusy = false;
+        session.coachAutomaticBusy = false;
         this.playCoachController = null;
         this.renderPlayPanel();
         this.drainPlayCoachQueue();
@@ -2450,10 +2467,10 @@ export class ChessApp {
       coachReason.className = 'suggestion-coach-reason';
       const reason = this.suggestionCoachReasons.get(idx);
       coachReason.textContent = reason
-        ? `Stockfish erklärt: ${reason}`
+        ? `Warum dieser Zug? ${reason}`
         : this.suggestionCoachBusy
-          ? 'Coach übersetzt die Engine-Linie …'
-          : 'Erklärung der Engine-Linie wird vorbereitet …';
+          ? 'Eine einfache Erklärung wird vorbereitet …'
+          : 'Die Erklärung folgt gleich …';
       row.setAttribute(
         'aria-label',
         `Zugidee ${idx} am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
@@ -2481,9 +2498,9 @@ export class ChessApp {
     ) return;
     const first = Array.isArray(lines) ? lines[0] : null;
     if (!first) {
-      this.analysisCoachFocusTitle.textContent = "Stockfish-Analyse noch unvollständig";
+      this.analysisCoachFocusTitle.textContent = "Die Analyse läuft noch";
       this.analysisCoachFocusExplanation.textContent = ENGINE_CONTEXT_MISSING_REPLY;
-      this.analysisCoachFocusPrinciple.textContent = "Der Coach erklärt nur Züge und Varianten, die Stockfish tatsächlich geliefert hat.";
+      this.analysisCoachFocusPrinciple.textContent = "Konkrete Züge erscheinen erst, wenn die Analyse vollständig ist.";
       return;
     }
 
@@ -2498,9 +2515,9 @@ export class ChessApp {
       : "Die Stellung wird noch genauer eingeordnet.";
     this.analysisCoachFocusTitle.textContent = evaluation;
     this.analysisCoachFocusExplanation.textContent = reason
-      ? `Stockfish bevorzugt ${firstMove}, weil ${reason.replace(/^[A-ZÄÖÜ]/, (letter) => letter.toLowerCase())}`
-      : `Stockfishs erste Variante beginnt mit ${firstMove}. Eine weitergehende Motiv-Erklärung erscheint erst, wenn sie an diese Engine-Linie gebunden ist.`;
-    this.analysisCoachFocusPrinciple.textContent = "Jede genannte Zugfolge stammt ausschließlich aus der angezeigten Stockfish-PV.";
+      ? `Besser ist ${firstMove}, weil ${reason.replace(/^[A-ZÄÖÜ]/, (letter) => letter.toLowerCase())}`
+      : `Besser ist ${firstMove}. Die kurze Erklärung wird noch vorbereitet.`;
+    this.analysisCoachFocusPrinciple.textContent = "Der Coach nennt nur Züge, die zuvor vollständig geprüft wurden.";
   }
 
   scheduleSuggestionCoachReasons(lines) {
@@ -5415,13 +5432,13 @@ export class ChessApp {
     const heading = document.createElement("div");
     const eyebrow = document.createElement("p");
     eyebrow.className = "eyebrow";
-    eyebrow.textContent = "Dein Stockfish-Erklärer";
+    eyebrow.textContent = "Dein Coach";
     const title = document.createElement('h2');
     title.id = "coach-chat-title";
     title.className = 'card-title';
-    title.textContent = 'Was sagt dir diese Stellung?';
+    title.textContent = 'Fragen zum Brett';
     const subtitle = document.createElement("p");
-    subtitle.textContent = "Stockfish rechnet. Der Coach übersetzt ausschließlich die gelieferten Engine-Daten.";
+    subtitle.textContent = "Frag nach dem Plan, einer Gefahr oder einer einfacheren Erklärung.";
     heading.append(eyebrow, title, subtitle);
     header.append(avatar, heading);
     panel.appendChild(header);
@@ -5431,7 +5448,7 @@ export class ChessApp {
     focus.setAttribute("role", "region");
     focus.setAttribute("aria-label", "Aktuelle Coach-Einschätzung");
     const focusLabel = document.createElement("span");
-    focusLabel.textContent = "Stockfish erklärt";
+    focusLabel.textContent = "Aktuelle Einschätzung";
     this.analysisCoachFocusTitle = document.createElement("strong");
     this.analysisCoachFocusTitle.textContent = "Bereit für deine Stellung";
     this.analysisCoachFocusExplanation = document.createElement("p");
@@ -5440,7 +5457,7 @@ export class ChessApp {
     const focusPrincipleLabel = document.createElement("span");
     focusPrincipleLabel.textContent = "Lernprinzip";
     this.analysisCoachFocusPrinciple = document.createElement("p");
-    this.analysisCoachFocusPrinciple.textContent = "Jede Zug- und Variantenangabe stammt ausschließlich von Stockfish.";
+    this.analysisCoachFocusPrinciple.textContent = "Konkrete Züge erscheinen erst nach vollständiger Prüfung.";
     focusPrinciple.append(focusPrincipleLabel, this.analysisCoachFocusPrinciple);
     this.analysisCoachExplainButton = document.createElement("button");
     this.analysisCoachExplainButton.type = "button";
@@ -5511,16 +5528,8 @@ export class ChessApp {
     panel.appendChild(form);
     container.appendChild(panel);
 
-    this.chatMessages = [
-      {
-        role: 'assistant',
-        content: [
-          "**Aktuelle Einschätzung:** Stockfish hat für diese Stellung noch keine vollständige Hauptvariante geliefert.",
-          "**Meine Rolle:** Ich erkläre ausschließlich Stockfish-Daten und berechne keine eigenen Züge.",
-          "**Nächster Schritt:** Warte auf die Engine-Analyse und frage anschließend nach der angezeigten Hauptvariante.",
-        ].join("\n\n"),
-      }
-    ];
+    this.coachPromptsEl = prompts;
+    this.chatMessages = [];
     this.renderChat();
     this.checkCoachHealth();
   }
@@ -5549,6 +5558,10 @@ export class ChessApp {
       renderChatMarkup(bubble, msg.content);
       this.chatBodyEl.appendChild(bubble);
     });
+    this.chatBodyEl.hidden = this.chatMessages.length === 0;
+    if (this.coachPromptsEl) {
+      this.coachPromptsEl.hidden = !this.chatMessages.some((message) => message.role === "user");
+    }
     this.chatBodyEl.scrollTop = this.chatBodyEl.scrollHeight;
   }
 
@@ -5603,7 +5616,7 @@ export class ChessApp {
       button.disabled = Boolean(state);
     });
     if (this.chatStatusEl) {
-      this.chatStatusEl.textContent = state ? 'Coach übersetzt die Stockfish-Daten …' : '';
+      this.chatStatusEl.textContent = state ? 'Der Coach formuliert eine einfache Antwort …' : '';
     }
   }
 
@@ -5960,7 +5973,7 @@ export class ChessApp {
     this.engineReady = true;
     if (this.playStartButton) this.playStartButton.disabled = false;
     if (this.playSetupSubmitButton) this.playSetupSubmitButton.disabled = false;
-    if (this.playEngineBadgeEl) this.playEngineBadgeEl.textContent = "Stockfish bereit";
+    if (this.playEngineBadgeEl) this.playEngineBadgeEl.textContent = "Bereit";
     this.renderPlayPanel();
   }
 

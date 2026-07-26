@@ -54,7 +54,8 @@ test("Coach-Zugwächter akzeptiert nur Stockfish-PV und deutsche Figurenkürzel"
     findUnsupportedMoveTokens("Ich würde stattdessen d4 und später Qh5 spielen.", context),
     ["d4", "Qh5"],
   );
-  assert.match(ENGINE_CONTEXT_MISSING_REPLY, /keine konkrete Zugempfehlung/);
+  assert.match(ENGINE_CONTEXT_MISSING_REPLY, /keinen konkreten Zug/);
+  assert.doesNotMatch(ENGINE_CONTEXT_MISSING_REPLY, /Stockfish|Engine|PV|Centipawn/i);
 });
 
 test("Unvollständige oder fremde Analysedaten gelten nicht als Engine-Wahrheit", () => {

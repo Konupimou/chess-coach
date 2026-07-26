@@ -771,12 +771,12 @@ textarea:focus-visible,
 .play-mode-card {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   min-height: 100%;
-  padding: 20px;
-  background:
-    radial-gradient(circle at top right, rgba(90, 162, 255, 0.14), transparent 42%),
-    rgba(14, 21, 38, 0.94);
+  padding: 18px;
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(14, 21, 38, 0.96);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
 }
 
 .play-mode-heading {
@@ -798,7 +798,8 @@ textarea:focus-visible,
 .play-mode-heading p:last-child {
   margin-top: 4px;
   color: var(--text-secondary);
-  font-size: 0.78rem;
+  font-size: 0.74rem;
+  line-height: 1.4;
 }
 
 .play-engine-badge {
@@ -866,7 +867,7 @@ textarea:focus-visible,
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 13px;
+  gap: 11px;
 }
 
 .play-session-summary {
@@ -886,12 +887,13 @@ textarea:focus-visible,
 }
 
 .play-turn-status {
-  padding: 12px 14px;
-  border: 1px solid rgba(90, 162, 255, 0.25);
-  border-radius: 13px;
-  background: linear-gradient(135deg, rgba(90, 162, 255, 0.12), rgba(111, 98, 255, 0.09));
+  padding: 10px 12px;
+  border: 1px solid rgba(90, 162, 255, 0.18);
+  border-radius: 11px;
+  background: rgba(90, 162, 255, 0.075);
   color: #edf4ff;
-  font-weight: 780;
+  font-size: 0.9rem;
+  font-weight: 750;
 }
 
 .play-streak {
@@ -1026,8 +1028,8 @@ textarea:focus-visible,
 .live-coach {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-top: 3px;
+  gap: 9px;
+  padding-top: 2px;
 }
 
 .live-coach-heading {
@@ -1039,15 +1041,16 @@ textarea:focus-visible,
 
 .live-coach-heading h3 {
   margin: 0;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
+  font-weight: 750;
 }
 
 .live-feedback-preview {
   grid-column: 2;
   width: fit-content;
   margin-top: 5px;
-  padding: 5px 8px;
-  font-size: 0.67rem;
+  padding: 6px 9px;
+  font-size: 0.7rem;
 }
 
 .coach-lesson {
@@ -1082,10 +1085,10 @@ textarea:focus-visible,
 
 .play-coach-conversation {
   display: grid;
-  max-height: 180px;
+  max-height: 150px;
   gap: 7px;
   overflow-y: auto;
-  margin-top: 10px;
+  margin-top: 4px;
 }
 
 .play-coach-message {
@@ -1115,7 +1118,8 @@ textarea:focus-visible,
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 7px;
-  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .play-coach-reply textarea {
@@ -1144,10 +1148,10 @@ textarea:focus-visible,
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 3px 9px;
-  padding: 13px;
+  padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.045);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .live-feedback-badge {
@@ -1169,8 +1173,9 @@ textarea:focus-visible,
 
 .live-feedback-state p {
   margin: 0;
-  color: var(--text-secondary);
-  font-size: 0.72rem;
+  color: #d5dfed;
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .live-feedback-state.is-best,
@@ -1528,7 +1533,6 @@ textarea:focus-visible,
 
 #coach-chat .chat-body {
   display: grid;
-  min-height: 126px;
   max-height: 280px;
   gap: 8px;
   overflow-y: auto;
@@ -1566,6 +1570,11 @@ textarea:focus-visible,
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 11px;
+}
+
+#coach-chat .chat-body:empty,
+.play-coach-conversation:empty {
+  display: none;
 }
 
 .coach-card .coach-prompt-button {
@@ -3161,6 +3170,10 @@ textarea:focus-visible,
   .analysis-column {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #board-container.is-play-mode .analysis-column {
+    grid-template-columns: 1fr;
   }
 
   .chat-wrapper {

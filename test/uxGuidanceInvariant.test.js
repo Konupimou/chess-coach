@@ -18,7 +18,7 @@ test("Einstieg führt semantisch zu Spielen, Partieanalyse und Stellungsanalyse"
 
 test("Coach steht in der Analyse vor technischen Zugideen", () => {
   assert.match(appSource, /analysisColumn\.insertBefore\(chatWrapper, this\.suggestionsEl\)/);
-  assert.match(appSource, /Stockfish erklärt/);
+  assert.match(appSource, /Aktuelle Einschätzung/);
   assert.match(appSource, /Lernprinzip/);
   assert.match(appSource, /Ausführlicher erklären/);
   assert.match(appSource, /review-technical-details/);

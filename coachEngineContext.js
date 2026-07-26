@@ -268,7 +268,7 @@ export function findUnsupportedEvaluationTokens(reply, context) {
 }
 
 export const ENGINE_CONTEXT_MISSING_REPLY =
-  "Für diese Stellung liegt derzeit keine vollständige Stockfish-Analyse vor. Deshalb gebe ich bewusst keine konkrete Zugempfehlung.";
+  "Die Analyse ist noch nicht vollständig. Deshalb zeige ich lieber noch keinen konkreten Zug.";
 
 export const ENGINE_CONTEXT_REJECTED_REPLY =
-  "Die Coach-Erklärung wurde verworfen, weil sie nicht vollständig durch die vorliegenden Stockfish-Daten belegt war. Es wird bewusst keine alternative Zugempfehlung ergänzt.";
+  "Die Erklärung war nicht sicher genug belegt. Deshalb zeige ich lieber keinen zusätzlichen Zug.";

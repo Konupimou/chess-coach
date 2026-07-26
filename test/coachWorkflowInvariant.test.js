@@ -6,16 +6,16 @@ const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 
 test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /requestSuggestionCoachReasons/);
-  assert.match(appSource, /Stockfish erklärt:/);
+  assert.match(appSource, /Warum dieser Zug\?/);
   assert.match(appSource, /Coach-Vorschau/);
   assert.match(appSource, /selectImpactArrowMoves/);
   assert.match(appSource, /engineContext: this\.buildPositionCoachEngineContext\(\)/);
 });
 
-test("Live-Coach bewertet neben der Genauigkeit, erlaubt Nachfragen und verrät keinen Zug", () => {
-  assert.match(appSource, /accuracyFeedbackRowEl/);
+test("Live-Coach bewertet rechts oben, erlaubt Nachfragen und hält automatische Antworten aus dem Chat", () => {
+  assert.match(appSource, /liveCoach\.appendChild\(this\.playFeedbackEl\)/);
   assert.match(appSource, /handlePlayCoachReply/);
-  assert.match(appSource, /Nenne keinen nächsten Zug/);
+  assert.match(appSource, /Nenne keinen Zug für die jetzt entstandene Stellung/);
   const feedbackStart = appSource.indexOf("  recordLatestPlayFeedback()");
   const feedbackEnd = appSource.indexOf("  handlePlayCoachReply()", feedbackStart);
   assert.match(
@@ -23,7 +23,10 @@ test("Live-Coach bewertet neben der Genauigkeit, erlaubt Nachfragen und verrät 
     /requestAutomaticPlayCoachFeedback/,
   );
   assert.match(appSource, /buildMoveCoachEngineContext/);
-  assert.match(appSource, /Nenne keinen nächsten Zug/);
+  assert.match(appSource, /if \(automatic && Number\.isInteger\(ply\)\)/);
+  assert.match(appSource, /item\.coachText = reply/);
+  assert.match(appSource, /this\.chatMessages = \[\];/);
+  assert.doesNotMatch(appSource, /accuracyFeedbackRowEl\?\.appendChild\(this\.playFeedbackEl\)/);
 });
 
 test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett", () => {

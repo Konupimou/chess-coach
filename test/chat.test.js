@@ -99,6 +99,8 @@ test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen",
   assert.match(request.body.instructions, /kein Schachspieler/);
   assert.match(request.body.instructions, /Stockfish ist die einzige Quelle/);
   assert.match(request.body.instructions, /Erfinde keine Alternative/);
+  assert.match(request.body.instructions, /Besser wäre/);
+  assert.match(request.body.instructions, /Schachanfänger/);
   assert.equal(request.body.text.verbosity, "low");
   assert.equal(request.options.headers.Authorization, "Bearer test-key");
 });
@@ -120,7 +122,8 @@ test("Coach rät ohne vollständige Engine-PV nicht und verwirft erfundene Züge
       },
     },
   );
-  assert.match(missing, /keine vollständige Stockfish-Analyse/);
+  assert.match(missing, /Analyse ist noch nicht vollständig/);
+  assert.doesNotMatch(missing, /Stockfish|Engine|PV|Centipawn/i);
   assert.equal(calls, 0);
 
   const rejected = await requestCoachResponse(
@@ -140,7 +143,7 @@ test("Coach rät ohne vollständige Engine-PV nicht und verwirft erfundene Züge
       }),
     },
   );
-  assert.match(rejected, /verworfen/);
+  assert.match(rejected, /nicht sicher genug belegt/);
 });
 
 test("Text kann aus Responses-Output-Items gelesen werden", () => {
