@@ -215,11 +215,19 @@ export function allowedEngineMoveTokens(context) {
 const MOVE_TOKEN_PATTERN =
   /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|O-O(?:-O)?[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
 
-export function findUnsupportedMoveTokens(reply, context) {
+export function findUnsupportedMoveTokens(reply, context, openingContext = null) {
   if (typeof reply !== "string") return [];
   const allowed = allowedEngineMoveTokens(context);
+  let checkedReply = reply;
+  if (openingContext?.matched === true) {
+    [openingContext.sourceName, openingContext.displayName]
+      .filter((name) => typeof name === "string" && name.trim())
+      .forEach((name) => {
+        checkedReply = checkedReply.split(name.trim()).join("");
+      });
+  }
   return [...new Set(
-    [...reply.matchAll(MOVE_TOKEN_PATTERN)]
+    [...checkedReply.matchAll(MOVE_TOKEN_PATTERN)]
       .map((match) => match[0])
       .filter((token) => !allowed.has(token) && !allowed.has(token.toLowerCase())),
   )];

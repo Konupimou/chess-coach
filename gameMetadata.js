@@ -1,3 +1,5 @@
+import { detectOpeningFromPath } from "./openingRecognition.js";
+
 export const TIME_FORMAT_LABELS = Object.freeze({
   bullet: "Bullet",
   blitz: "Blitz",
@@ -53,42 +55,6 @@ export function createGameSaveDraft(record = null, now = new Date()) {
   };
 }
 
-function normalizedSanMoves(path) {
-  return (Array.isArray(path) ? path : [])
-    .slice(1, 9)
-    .map((node) => node?.move?.san)
-    .filter((san) => typeof san === "string")
-    .map((san) => san.replace(/[+#?!]/g, ""));
-}
-
-export function inferOpeningFromPath(path) {
-  const moves = normalizedSanMoves(path);
-  const begins = (...sequence) => sequence.every((move, index) => moves[index] === move);
-
-  if (begins("e4", "e5", "Nf3", "Nc6", "Bb5")) return "Spanische Partie";
-  if (begins("e4", "e5", "Nf3", "Nc6", "Bc4")) return "Italienische Partie";
-  if (begins("e4", "e5", "Nf3", "Nc6", "d4")) return "Schottische Partie";
-  if (begins("e4", "e5", "f4")) return "Königsgambit";
-  if (begins("e4", "c5")) return "Sizilianische Verteidigung";
-  if (begins("e4", "e6")) return "Französische Verteidigung";
-  if (begins("e4", "c6")) return "Caro-Kann-Verteidigung";
-  if (begins("e4", "d5")) return "Skandinavische Verteidigung";
-  if (begins("e4", "d6")) return "Pirc-Verteidigung";
-  if (begins("e4", "g6")) return "Moderne Verteidigung";
-  if (begins("e4", "Nf6")) return "Aljechin-Verteidigung";
-  if (begins("d4", "Nf6", "c4", "e6", "Nc3", "Bb4")) return "Nimzo-Indische Verteidigung";
-  if (begins("d4", "Nf6", "c4", "g6")) return "Königsindische Verteidigung";
-  if (begins("d4", "Nf6", "c4", "e6", "Nf3", "b6")) return "Damenindische Verteidigung";
-  if (begins("d4", "d5", "c4")) return "Damengambit";
-  if (begins("d4", "d5", "Nf3", "Nf6", "Bf4")) return "London-System";
-  if (begins("d4", "f5")) return "Holländische Verteidigung";
-  if (begins("c4")) return "Englische Eröffnung";
-  if (begins("Nf3")) return "Réti-Eröffnung";
-  if (begins("f4")) return "Bird-Eröffnung";
-  if (begins("d4", "Nf6")) return "Indische Verteidigung";
-  if (begins("d4", "d5")) return "Geschlossenes Spiel";
-  if (begins("e4", "e5")) return "Offenes Spiel";
-  if (begins("e4")) return "Königsbauernspiel";
-  if (begins("d4")) return "Damenbauernspiel";
-  return "";
+export function inferOpeningFromPath(path, openingBook) {
+  return detectOpeningFromPath(path, openingBook).displayName || "";
 }

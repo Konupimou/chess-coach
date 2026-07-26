@@ -27,6 +27,15 @@ test("Coach steht in der Analyse vor technischen Zugideen", () => {
   assert.match(appSource, /Technische Auswertung anzeigen/);
 });
 
+test("Eröffnungskarte bleibt kompakt, lokal und nennt Abweichungen vorsichtig", () => {
+  assert.match(appSource, /createOpeningCard/);
+  assert.match(appSource, /loadOpeningBook/);
+  assert.match(appSource, /Lichess Chess Openings · lokal gespeichert/);
+  assert.match(appSource, /Diese Stellung wurde über eine abweichende Zugfolge erreicht/);
+  assert.match(appSource, /Der Zug kann trotzdem gut sein/);
+  assert.match(styleSource, /\.opening-card > summary/);
+});
+
 test("Mobile Hierarchie nutzt große Ziele und einspaltige Coach-Bereiche", () => {
   assert.match(styleSource, /@media \(max-width: 768px\)/);
   assert.match(styleSource, /\.mode-context > button[\s\S]*min-height: 44px/);

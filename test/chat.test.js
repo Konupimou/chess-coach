@@ -30,10 +30,26 @@ const engineContext = {
   }],
 };
 
+const openingContext = {
+  matched: true,
+  eco: "B90",
+  sourceName: "Sicilian Defense: Najdorf Variation",
+  displayName: "Sizilianische Verteidigung: Najdorf-Variante",
+  family: "Sicilian Defense",
+  variation: "Najdorf Variation",
+  subvariation: null,
+  matchedPly: 10,
+  currentPly: 10,
+  matchedBy: "exact-sequence",
+  inKnownSequence: true,
+  source: "lichess-chess-openings",
+};
+
 test("Chat-Payload wird begrenzt und normalisiert", () => {
   const result = normalizeChatPayload({
     message: "  Was ist mein Plan?  ",
     engineContext,
+    openingContext,
     history: ["e4", "e5"],
     conversation: [{ role: "assistant", content: "Entwickle deine Figuren." }],
     gameReview: {
@@ -48,6 +64,9 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
   assert.equal(result.value.engineContext.bestMove.uci, "g1f3");
   assert.deepEqual(result.value.history, ["e4", "e5"]);
   assert.deepEqual(result.value.engineContext.primaryVariation.san, ["Nf3", "Nc6", "Bb5"]);
+  assert.equal(result.value.openingContext.eco, "B90");
+  assert.equal(result.value.openingContext.sourceName, "Sicilian Defense: Najdorf Variation");
+  assert.equal("entries" in result.value.openingContext, false);
   assert.equal(result.value.gameReview.overallAccuracy, 88.4);
   assert.equal(normalizeChatPayload({ message: "  " }).error, "Bitte gib eine Frage ein.");
 });
@@ -56,11 +75,14 @@ test("Prompt trennt vertrauenswürdige Anweisungen von Stellungsdaten", () => {
   const prompt = buildPrompt({
     message: "Warum ist Nf3 gut?",
     engineContext,
+    openingContext,
     history: ["e4", "e5"],
     conversation: [],
     gameReview: { overallAccuracy: 91.2, criticalMoments: [] },
   });
   assert.match(prompt, /<stockfish_analysis>/);
+  assert.match(prompt, /<opening_context>/);
+  assert.match(prompt, /"eco":"B90"/);
   assert.match(prompt, /"bestMove":\{"uci":"g1f3","san":"Nf3"\}/);
   assert.match(prompt, /<user_question>\nWarum ist Nf3 gut\?/);
   assert.match(prompt, /<game_review_statistics>/);
@@ -72,6 +94,7 @@ test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen",
     {
       message: "Plan?",
       engineContext,
+      openingContext,
       history: [],
       conversation: [],
     },
@@ -101,6 +124,8 @@ test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen",
   assert.match(request.body.instructions, /Erfinde keine Alternative/);
   assert.match(request.body.instructions, /Besser wäre/);
   assert.match(request.body.instructions, /Schachanfänger/);
+  assert.match(request.body.instructions, /Eröffnungsnamen ausschließlich/);
+  assert.match(request.body.instructions, /keine typischen Pläne/);
   assert.equal(request.body.text.verbosity, "low");
   assert.equal(request.options.headers.Authorization, "Bearer test-key");
 });
@@ -144,6 +169,33 @@ test("Coach rät ohne vollständige Engine-PV nicht und verwirft erfundene Züge
     },
   );
   assert.match(rejected, /nicht sicher genug belegt/);
+});
+
+test("ein Zugkürzel im exakten Eröffnungsnamen gilt nicht als erfundene Variante", async () => {
+  const contextualName = {
+    ...openingContext,
+    sourceName: "King's Gambit Accepted: Schurig Gambit, with Bb5",
+    displayName: "King's Gambit Accepted: Schurig Gambit, with Bb5",
+  };
+  const reply = await requestCoachResponse(
+    {
+      message: "Welche Eröffnung ist das?",
+      engineContext,
+      openingContext: contextualName,
+      history: [],
+      conversation: [],
+    },
+    {
+      apiKey: "test-key",
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return { output_text: contextualName.sourceName };
+        },
+      }),
+    },
+  );
+  assert.equal(reply, contextualName.sourceName);
 });
 
 test("Text kann aus Responses-Output-Items gelesen werden", () => {

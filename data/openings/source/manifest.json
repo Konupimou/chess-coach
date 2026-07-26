@@ -1,0 +1,15 @@
+{
+  "dataset": "Lichess Chess Openings",
+  "repository": "https://github.com/lichess-org/chess-openings",
+  "commit": "51b886249b9e418498d25b6e39b926c3de99c29a",
+  "date": "2026-07-22",
+  "license": "CC0-1.0",
+  "files": {
+    "a.tsv": "41722fa3d44f294357326fe2ca1b956d9e56490b30efcfa68db61114c9df7e10",
+    "b.tsv": "28d5c2dfc3329d70e85be2a149d001a59e47c2176c9d2c6594eb3be88128a3fc",
+    "c.tsv": "b2e64f32e42e6418b327d03a55af65f3a18e762f7cbc0efffc7e9d1ed3aa7343",
+    "d.tsv": "58cad40b886bd499717eabcce281d4bfcf00eeadbdc00552f42042cf4aac50d2",
+    "e.tsv": "f1f8494f488f660e284f23527d5acfbeccdbbc3acc76e74f05d125f39d2f8a74",
+    "COPYING.txt": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+  }
+}

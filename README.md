@@ -37,6 +37,8 @@ npm start         # gebauten Produktionsserver starten
 npm run check     # Tests und Build nacheinander
 npm run site:build    # OpenNext-Artefakt für Sites erzeugen
 npm run site:package  # deploybares Sites-Archiv erzeugen
+npm run openings:check   # eingecheckten lokalen ECO-Index prüfen
+npm run openings:import  # Index bewusst aus den gepinnten TSV-Dateien neu erzeugen
 ```
 
 ## Bedienung
@@ -44,7 +46,7 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 - Einstieg: „Eine Partie spielen“, „Eine eigene Partie analysieren“ oder
   „Eine Stellung untersuchen“ führt direkt in den passenden Arbeitsablauf
 - „Spielen“: Farbe und Schwierigkeit wählen, gegen Stockfish antreten und nach
-  jedem eigenen Zug ein verständliches Live-Urteil, ein Lernprinzip, die eigene
+  jedem eigenen Zug ein verständliches Live-Urteil, die eigene
   Genauigkeit und einen Präzisions-Streak erhalten
 - „Analyse“: frei ziehen, Varianten untersuchen, beste Züge anzeigen und den
   hervorgehobenen Stockfish-Erklärer befragen; die Zugliste färbt Bewertungen
@@ -80,7 +82,12 @@ Neuladen erhalten.
 - `gameReview.js`: PV-Vorschau, Genauigkeit und vollständige Partieauswertung
 - `coachEngineContext.js`: validierter Stockfish-Kontext und Schutz vor nicht
   durch Engine-PV oder Engine-Bewertung belegten Coach-Angaben
-- `gameMetadata.js`: Speicherentwürfe, Zeitformate und lokale Eröffnungserkennung
+- `gameMetadata.js`: Speicherentwürfe und Zeitformate
+- `openingRecognition.js`: normalisierte EPD-/Zugfolgen-Erkennung,
+  Zugumstellungen und deutsche Darstellung
+- `scripts/import-lichess-openings.mjs`: reproduzierbarer TSV-Import
+- `data/openings/source/`: gepinnte Originaldaten und CC0-Lizenz
+- `public/data/openings/`: verzögert geladener kompakter Laufzeitindex
 - `gameStorage.js`: zyklusfreie Spielstände und browserlokale Account-Persistenz
 - `playerProfile.js`: aggregierte Spielerstatistiken und Bestpartien-Ranking
 - `moveTree.js`: Variantenbaum
@@ -100,6 +107,40 @@ vollständige PV, MultiPV sowie bei Zugreviews die Vorher-/Nachher-Werte und die
 vorhandene Klassifizierung. Ohne vollständige Stockfish-Daten antwortet er
 bewusst ohne Zugempfehlung. Antworten mit nicht gelieferten Zügen oder
 Bewertungszahlen werden serverseitig verworfen.
+
+## Lokale Eröffnungserkennung
+
+Die Anwendung verwendet den offiziellen Datensatz
+[lichess-org/chess-openings](https://github.com/lichess-org/chess-openings)
+am fest angehefteten Commit
+`51b886249b9e418498d25b6e39b926c3de99c29a` vom 22. Juli 2026. Der Datensatz
+der Lichess-Beitragenden ist unter **CC0 1.0** veröffentlicht. Details stehen
+in `THIRD_PARTY_NOTICES.md`; der vollständige Lizenztext liegt unter
+`data/openings/source/COPYING.txt`.
+
+Der normale Build benötigt weder Netzwerkzugriff noch eine externe
+Eröffnungs-API. Die fünf eingecheckten TSV-Dateien werden nur durch den
+ausdrücklichen Befehl `npm run openings:import` mit `chess.js` geprüft und in
+einen vorberechneten Positions- und Zugfolgenindex umgewandelt. Anschließend
+prüft `npm run openings:check` alle legalen UCI-Folgen, EPD-Schlüssel und
+Indexverweise. Für ein Update werden die fünf Quelldateien bewusst auf einen
+neuen geprüften Upstream-Commit gesetzt, Commit und Datum im Importskript sowie
+in den Hinweisen aktualisiert und beide Befehle erneut ausgeführt.
+
+Zur Erkennung wird die aktuelle Hauptlinie legal nachgespielt. Nach jedem Zug
+wird ein EPD aus Stellung, Zugrecht, Rochaderechten und einem nur bei legaler
+En-passant-Möglichkeit erhaltenen Zielfeld gebildet. Der tiefste benannte
+Positionstreffer gewinnt. Ein separater UCI-Index unterscheidet die gespeicherte
+Zugfolge von einer Zugumstellung. Deutsche Namen stammen aus einer kleinen,
+kuratierten Darstellungsschicht; unbekannte Bestandteile bleiben absichtlich
+im englischen Original.
+
+Der Datensatz benennt Eröffnungspositionen, ist aber kein vollständiges
+Repertoire aller guten Züge. Wenn nach einer Fortsetzung keine tiefere Position
+gefunden wird, ist der Zug deshalb nicht automatisch schlecht. Stockfish
+bewertet die konkrete Stellung; die ECO-Daten liefern ausschließlich Name,
+Code, Variante, Untervariante und den Erkennungsweg. An den Coach wird nur
+dieser einzelne erkannte Kontext übergeben, niemals die gesamte Datenbank.
 
 Der Lichess-Zugriff verwendet einen sicheren HTTP-only-Cookie, fordert keine
 Spiel- oder Schreibrechte an und importiert ausschließlich abgeschlossene

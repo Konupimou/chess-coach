@@ -58,6 +58,8 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
+[role="button"]:focus-visible,
+summary:focus-visible,
 [data-fen]:focus-visible {
   outline: 3px solid rgba(90, 162, 255, 0.55);
   outline-offset: 2px;
@@ -1571,6 +1573,97 @@ textarea:focus-visible,
   background: transparent;
   color: #fff;
   font-size: 0.82rem;
+}
+
+.opening-card {
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(124, 151, 194, 0.2);
+  background: rgba(14, 24, 42, 0.72);
+}
+
+.opening-card > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.opening-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.opening-card > summary::after {
+  content: "⌄";
+  color: var(--muted);
+  font-size: 1rem;
+  transition: transform 160ms ease;
+}
+
+.opening-card[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.opening-card > summary > span:first-child {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.opening-card > summary strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.95rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opening-eco {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 1px solid rgba(120, 165, 255, 0.3);
+  border-radius: 999px;
+  color: #a9c7ff;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.opening-card-body {
+  display: grid;
+  gap: 7px;
+  padding: 0 16px 15px;
+  border-top: 1px solid rgba(124, 151, 194, 0.13);
+}
+
+.opening-card-body > :first-child {
+  padding-top: 12px;
+  color: var(--muted);
+}
+
+.opening-card-body p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+  .opening-card > summary {
+    min-height: 48px;
+    padding: 13px 14px;
+  }
+
+  .opening-card > summary strong {
+    max-width: min(64vw, 360px);
+  }
+
+  .opening-card-body {
+    padding-inline: 14px;
+  }
 }
 
 .coach-message {

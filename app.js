@@ -50,6 +50,11 @@ import {
   RESULT_LABELS,
   TIME_FORMAT_LABELS,
 } from "./gameMetadata.js";
+import {
+  detectOpeningFromPath,
+  loadOpeningBook,
+  openingCoachContext,
+} from "./openingRecognition.js";
 import { buildPlayerProfile } from "./playerProfile.js";
 import { ENGINE_CONTEXT_MISSING_REPLY } from "./coachEngineContext.js";
 import {
@@ -203,6 +208,9 @@ export class ChessApp {
     this.analysisMoveCoachBusy = false;
     this.analysisMoveCoachController = null;
     this.analysisCoachLines = [];
+    this.openingBook = null;
+    this.openingRecognition = null;
+    this.openingBookError = "";
     this.accountIdentity = null;
     this.accountStorageKey = storageKeyForIdentity(null);
     try {
@@ -452,6 +460,7 @@ export class ChessApp {
     this.chatWrapper = chatWrapper;
     this.createChatPanel(chatWrapper);
     analysisColumn.insertBefore(chatWrapper, this.suggestionsEl);
+    this.createOpeningCard(analysisColumn);
 
     const controls = document.createElement('dialog');
     controls.id = 'engine-settings-dialog';
@@ -691,6 +700,7 @@ export class ChessApp {
     this.evaluateCurrentPosition();
     this.initializeAccountIdentity();
     this.initializeLichessConnection();
+    this.initializeOpeningBook();
   }
 
   createPlayPanel(engineAvailable) {
@@ -1414,6 +1424,7 @@ export class ChessApp {
     if (this.playPanel) this.playPanel.hidden = !isPlay;
     if (this.suggestionsEl) this.suggestionsEl.hidden = isPlay;
     if (this.chatWrapper) this.chatWrapper.hidden = isPlay;
+    if (this.openingCard) this.openingCard.hidden = isPlay;
     if (this.evalBar?.container) this.evalBar.container.hidden = isPlay;
     if (this.engineSettingsButton) this.engineSettingsButton.hidden = isPlay;
     if (this.feedbackButton) this.feedbackButton.hidden = isPlay;
@@ -1842,6 +1853,7 @@ export class ChessApp {
     this.refreshLiveAccuracy();
     this.renderPlayPanel();
     this.evaluateCurrentPosition();
+    this.refreshOpeningRecognition();
     return move;
   }
 
@@ -1893,6 +1905,7 @@ export class ChessApp {
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
+    this.refreshOpeningRecognition();
     this.evaluateCurrentPosition();
   }
 
@@ -1909,6 +1922,7 @@ export class ChessApp {
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
+    this.refreshOpeningRecognition();
     this.evaluateCurrentPosition();
   }
 
@@ -1944,6 +1958,7 @@ export class ChessApp {
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
+    this.refreshOpeningRecognition();
     this.evaluateCurrentPosition();
   }
 
@@ -2270,6 +2285,7 @@ export class ChessApp {
         body: JSON.stringify({
           message: `${message}\nAntworte nur zum bereits gespielten Zug. Eine bessere rückblickende Wahl darfst du nur nennen, wenn sie ausdrücklich in den gelieferten Daten steht. Nenne keinen Zug für die jetzt entstandene Stellung und keine Zugfolge.`,
           engineContext,
+          openingContext: this.buildOpeningCoachContext(),
           history: this.game.history(),
           conversation,
         }),
@@ -2695,6 +2711,7 @@ export class ChessApp {
             "Nenne keine Zugfolge und keinen Zug für die jetzt entstandene Stellung.",
           ].join(" "),
           engineContext,
+          openingContext: this.buildOpeningCoachContext(),
           history: this.game.history(),
           conversation: [],
         }),
@@ -2759,6 +2776,7 @@ export class ChessApp {
             "Antworte zeilenweise im Format „1: Begründung“. Erkläre nur, was aus der jeweils gelieferten Stockfish-PV hervorgeht, und ergänze keine Züge.",
           ].join(" "),
           engineContext: this.buildPositionCoachEngineContext(),
+          openingContext: this.buildOpeningCoachContext(),
           history: this.game.history(),
           conversation: [],
         }),
@@ -3388,6 +3406,7 @@ export class ChessApp {
     const payload = {
       message: 'Formuliere fünf kurze Abschnitte: Spielverlauf, durch Stockfish belegte Hauptmotive, besonders starke Entscheidungen, wichtigste Verbesserung und konkreter Trainingsfokus. Beziehe jede konkrete Zug- oder Motivaussage ausschließlich auf die gelieferten Stockfish-PVs. Wenn die Daten kein gemeinsames Motiv belegen, sage das offen.',
       engineContext: this.buildGameReviewCoachEngineContext(report),
+      openingContext: this.buildOpeningCoachContext(path),
       history: path.slice(1).map((node) => node.move?.san).filter(Boolean),
       conversation: [],
       gameReview: {
@@ -3743,6 +3762,7 @@ export class ChessApp {
             "Erkläre in höchstens drei kurzen Sätzen ausschließlich anhand der gelieferten Stockfish-PV: Was zeigt die Bewertung, welche belegte Idee verfolgt die PV und was kann ich aus dem Vergleich lernen? Ergänze keine Zugfolge.",
           ].filter(Boolean).join(" "),
           engineContext: this.buildMoveCoachEngineContext(move),
+          openingContext: this.buildOpeningCoachContext(),
           history: [],
           conversation: [],
         }),
@@ -4116,7 +4136,7 @@ export class ChessApp {
     this.stopSuggestionPreview();
     const path = this.getCurrentPath();
     if (!this.gameSaveDraft.opening) {
-      this.gameSaveDraft.opening = inferOpeningFromPath(path);
+      this.gameSaveDraft.opening = inferOpeningFromPath(path, this.openingBook);
     }
     const boardResult = this.getGameResult();
     if (boardResult !== '*' && this.gameSaveDraft.result === '*') {
@@ -5593,6 +5613,7 @@ export class ChessApp {
       this.updateAccuracyDisplay();
       this.updateSaveGameButton();
       this.updateModeUi();
+      this.refreshOpeningRecognition();
       this.evaluateCurrentPosition();
       this.accountDialog?.close();
       this.showToast('Gespeicherte Partie geöffnet.');
@@ -5626,6 +5647,144 @@ export class ChessApp {
     this.updateAccountButton();
     this.renderAccountDialog();
     this.showToast('Gespeicherte Partie gelöscht.');
+  }
+
+  createOpeningCard(container) {
+    const details = document.createElement("details");
+    details.id = "opening-card";
+    details.className = "card opening-card";
+    details.setAttribute("aria-label", "Erkannte Eröffnung");
+
+    const summary = document.createElement("summary");
+    const summaryCopy = document.createElement("span");
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "Eröffnung";
+    this.openingCardTitleEl = document.createElement("strong");
+    this.openingCardTitleEl.textContent = "Lokale Erkennung wird geladen";
+    summaryCopy.append(eyebrow, this.openingCardTitleEl);
+    this.openingCardEcoEl = document.createElement("span");
+    this.openingCardEcoEl.className = "opening-eco";
+    this.openingCardEcoEl.hidden = true;
+    summary.append(summaryCopy, this.openingCardEcoEl);
+    details.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "opening-card-body";
+    this.openingCardOriginalEl = document.createElement("small");
+    this.openingCardStatusEl = document.createElement("p");
+    this.openingCardSequenceEl = document.createElement("p");
+    const source = document.createElement("small");
+    source.className = "muted";
+    source.textContent = "Quelle: Lichess Chess Openings · lokal gespeichert";
+    body.append(
+      this.openingCardOriginalEl,
+      this.openingCardStatusEl,
+      this.openingCardSequenceEl,
+      source,
+    );
+    details.appendChild(body);
+    this.openingCard = details;
+    container.insertBefore(details, this.suggestionsEl);
+    this.renderOpeningCard();
+  }
+
+  async initializeOpeningBook() {
+    try {
+      this.openingBook = await loadOpeningBook();
+      if (this.destroyed) return;
+      this.openingBookError = "";
+      this.refreshOpeningRecognition();
+    } catch (error) {
+      if (this.destroyed) return;
+      this.openingBookError = error?.message || "Lokale Eröffnungsdaten nicht verfügbar.";
+      this.renderOpeningCard();
+    }
+  }
+
+  refreshOpeningRecognition() {
+    if (!this.openingBook) {
+      this.renderOpeningCard();
+      return this.openingRecognition;
+    }
+    this.openingRecognition = detectOpeningFromPath(this.getCurrentPath(), this.openingBook);
+    if (
+      this.openingRecognition?.matched
+      && !this.gameSaveDraft?.opening
+    ) {
+      this.gameSaveDraft.opening = this.openingRecognition.displayName || "";
+      if (this.saveGameInputs?.opening && !this.saveGameInputs.opening.value) {
+        this.saveGameInputs.opening.value = this.gameSaveDraft.opening;
+      }
+    }
+    this.renderOpeningCard();
+    return this.openingRecognition;
+  }
+
+  buildOpeningCoachContext(path = null) {
+    const selectedPath = Array.isArray(path) ? path : this.getCurrentPath();
+    return openingCoachContext(
+      this.openingBook
+        ? detectOpeningFromPath(selectedPath, this.openingBook)
+        : this.openingRecognition,
+    );
+  }
+
+  openingMoveLabel(ply) {
+    if (!Number.isInteger(ply) || ply < 1) return "";
+    const node = this.getCurrentPath()[ply];
+    const san = node?.move?.san || "";
+    const moveNumber = Math.ceil(ply / 2);
+    return `${moveNumber}${ply % 2 === 0 ? "…" : "."}${san ? ` ${san}` : ""}`;
+  }
+
+  renderOpeningCard() {
+    if (!this.openingCardTitleEl) return;
+    if (!this.openingBook) {
+      this.openingCardTitleEl.textContent = this.openingBookError
+        ? "Eröffnungsdaten nicht verfügbar"
+        : "Lokale Erkennung wird geladen";
+      this.openingCardEcoEl.hidden = true;
+      this.openingCardOriginalEl.textContent = "";
+      this.openingCardStatusEl.textContent = this.openingBookError
+        || "Die kompakte Datenbank wird einmalig aus der Website geladen.";
+      this.openingCardSequenceEl.textContent = "";
+      return;
+    }
+
+    const result = this.openingRecognition
+      || detectOpeningFromPath(this.getCurrentPath(), this.openingBook);
+    if (!result.matched) {
+      this.openingCardTitleEl.textContent = "Keine benannte Eröffnungsposition erkannt";
+      this.openingCardEcoEl.hidden = true;
+      this.openingCardOriginalEl.textContent = "";
+      this.openingCardStatusEl.textContent = result.sequenceExitPly
+        ? "Für diese Zugfolge wurde im lokalen ECO-Datensatz noch kein Name gefunden."
+        : "Spiele Züge, um die Eröffnung lokal zu erkennen.";
+      this.openingCardSequenceEl.textContent = result.sequenceExitPly
+        ? "Das sagt nichts darüber aus, ob die Fortsetzung gut oder schlecht ist."
+        : "";
+      return;
+    }
+
+    this.openingCardTitleEl.textContent = result.displayName;
+    this.openingCardEcoEl.textContent = `ECO ${result.eco}`;
+    this.openingCardEcoEl.hidden = false;
+    this.openingCardOriginalEl.textContent = result.displayName !== result.sourceName
+      ? `Original: ${result.sourceName}`
+      : "";
+    this.openingCardStatusEl.textContent =
+      `Benannte Eröffnungsposition bis ${this.openingMoveLabel(result.matchedPly)}.`;
+    if (result.matchedBy === "transposition-position") {
+      this.openingCardSequenceEl.textContent =
+        "Diese Stellung wurde über eine abweichende Zugfolge erreicht.";
+    } else if (!result.inKnownSequence && result.sequenceExitPly) {
+      this.openingCardSequenceEl.textContent =
+        `Nach ${this.openingMoveLabel(result.sequenceExitPly)} wurde keine tiefere benannte Position in der gespeicherten Zugfolge erkannt. Der Zug kann trotzdem gut sein.`;
+    } else {
+      this.openingCardSequenceEl.textContent =
+        "Die bisherige Zugfolge stimmt mit einer gespeicherten Eröffnungsfolge überein.";
+    }
   }
 
   createChatPanel(container) {
@@ -5811,6 +5970,7 @@ export class ChessApp {
     const payload = {
       message: text,
       engineContext: this.buildAnalysisCoachEngineContext(),
+      openingContext: this.buildOpeningCoachContext(),
       history: this.game.history(),
       conversation,
     };
@@ -6031,6 +6191,7 @@ export class ChessApp {
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
+    this.refreshOpeningRecognition();
     this.evaluateCurrentPosition();
   }
 
@@ -6191,6 +6352,7 @@ export class ChessApp {
     this.updateAccuracyDisplay();
     this.updateSaveGameButton();
     this.updateModeUi();
+    this.refreshOpeningRecognition();
     this.evaluateCurrentPosition();
     return true;
   }

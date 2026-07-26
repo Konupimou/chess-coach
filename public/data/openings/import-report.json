@@ -1,0 +1,21 @@
+{
+  "generatedForSourceDate": "2026-07-22",
+  "sourceCommit": "51b886249b9e418498d25b6e39b926c3de99c29a",
+  "sourceDate": "2026-07-22",
+  "sourceRows": 3807,
+  "imported": 3807,
+  "rejected": 0,
+  "duplicates": 0,
+  "uniquePositions": 3807,
+  "uniqueSequences": 3807,
+  "sequencePrefixes": 8649,
+  "perFile": {
+    "a.tsv": 817,
+    "b.tsv": 769,
+    "c.tsv": 1250,
+    "d.tsv": 614,
+    "e.tsv": 357
+  },
+  "rejectedRows": [],
+  "duplicateRows": []
+}

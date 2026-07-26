@@ -14,6 +14,8 @@
     "site:build": "opennextjs-cloudflare build && node scripts/patch-opennext-worker.mjs",
     "site:package": "npm run site:build && node scripts/package-site.mjs",
     "site:preview": "npm run site:build && opennextjs-cloudflare preview",
+    "openings:import": "node scripts/import-lichess-openings.mjs",
+    "openings:check": "node scripts/check-opening-data.mjs",
     "test": "node --test",
     "check": "npm run test && npm run build"
   },

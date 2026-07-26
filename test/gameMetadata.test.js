@@ -1,11 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { Chess } from "chess.js";
 import { MoveTreeNode, addMoveToTree } from "../moveTree.js";
+import { createOpeningBook } from "../openingRecognition.js";
 import {
   createGameSaveDraft,
   inferOpeningFromPath,
 } from "../gameMetadata.js";
+
+const openingBook = createOpeningBook(JSON.parse(
+  await readFile(new URL("../public/data/openings/openings.runtime.json", import.meta.url), "utf8"),
+));
 
 function pathForMoves(moves) {
   const game = new Chess();
@@ -21,15 +27,15 @@ function pathForMoves(moves) {
 
 test("häufige Eröffnungen werden aus der gespielten Zugfolge vorgeschlagen", () => {
   assert.equal(
-    inferOpeningFromPath(pathForMoves(["e4", "e5", "Nf3", "Nc6", "Bb5"])),
+    inferOpeningFromPath(pathForMoves(["e4", "e5", "Nf3", "Nc6", "Bb5"]), openingBook),
     "Spanische Partie",
   );
   assert.equal(
-    inferOpeningFromPath(pathForMoves(["d4", "d5", "c4"])),
+    inferOpeningFromPath(pathForMoves(["d4", "d5", "c4"]), openingBook),
     "Damengambit",
   );
   assert.equal(
-    inferOpeningFromPath(pathForMoves(["c4"])),
+    inferOpeningFromPath(pathForMoves(["c4"]), openingBook),
     "Englische Eröffnung",
   );
 });
