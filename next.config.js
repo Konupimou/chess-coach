@@ -2,6 +2,7 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
+const consoleFileStub = `${projectRoot}/stubs/next-console-file.js`;
 
 const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
@@ -15,6 +16,15 @@ const nextConfig = {
   poweredByHeader: false,
   turbopack: {
     root: projectRoot,
+  },
+  webpack(config, { isServer }) {
+    if (isServer) {
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        "next/dist/server/node-environment-extensions/console-file.js": consoleFileStub,
+      };
+    }
+    return config;
   },
   async headers() {
     return [
