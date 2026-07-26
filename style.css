@@ -1053,36 +1053,6 @@ textarea:focus-visible,
   font-size: 0.7rem;
 }
 
-.coach-lesson {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-  border-left: 3px solid var(--learning);
-  border-radius: 0 12px 12px 0;
-  background: var(--learning-soft);
-}
-
-.coach-lesson > div {
-  display: grid;
-  gap: 2px;
-}
-
-.coach-lesson span {
-  color: #f4c98e;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.coach-lesson strong,
-.coach-lesson p {
-  margin: 0;
-  color: #f5f0e7;
-  font-size: 0.76rem;
-  line-height: 1.45;
-}
-
 .play-coach-conversation {
   display: grid;
   max-height: 150px;
@@ -1493,13 +1463,58 @@ textarea:focus-visible,
   background: rgba(240, 184, 106, 0.075);
 }
 
-.analysis-coach-focus > span,
-.analysis-coach-focus > div > span {
+.analysis-coach-focus-top > span {
   color: #efbf7c;
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.analysis-coach-focus-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 3px;
+}
+
+.analysis-perspective {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(240, 184, 106, 0.17);
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.34);
+}
+
+.analysis-perspective > span {
+  margin-inline: 5px 3px;
+  color: var(--text-secondary);
+  font-size: 0.58rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.coach-card .analysis-perspective-button {
+  min-height: 26px;
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+  font-size: 0.62rem;
+}
+
+.coach-card .analysis-perspective-button.is-active {
+  background: rgba(240, 184, 106, 0.17);
+  color: #ffe0b3;
+}
+
+.coach-card .analysis-perspective-button:hover {
+  box-shadow: none;
 }
 
 .analysis-coach-focus > strong {
@@ -1513,12 +1528,27 @@ textarea:focus-visible,
   line-height: 1.45;
 }
 
-.analysis-coach-focus > div {
-  display: grid;
-  gap: 2px;
-  margin-top: 4px;
-  padding-top: 8px;
-  border-top: 1px solid rgba(240, 184, 106, 0.15);
+.analysis-coach-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.analysis-coach-options span {
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd6e8;
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.analysis-coach-options span.is-best {
+  border-color: rgba(240, 184, 106, 0.28);
+  background: rgba(240, 184, 106, 0.1);
+  color: #ffe0b3;
 }
 
 .coach-card .analysis-coach-focus > button {
@@ -3338,6 +3368,11 @@ textarea:focus-visible,
 
   .coach-card {
     order: -2;
+  }
+
+  .analysis-coach-focus-top {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .play-mode-card {

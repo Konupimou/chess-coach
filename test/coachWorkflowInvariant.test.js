@@ -29,6 +29,16 @@ test("Live-Coach bewertet rechts oben, erlaubt Nachfragen und hält automatische
   assert.doesNotMatch(appSource, /accuracyFeedbackRowEl\?\.appendChild\(this\.playFeedbackEl\)/);
 });
 
+test("Analyseperspektive trennt eigene Zugoptionen von der Bewertung des letzten eigenen Zuges", () => {
+  assert.match(appSource, /setAnalysisPerspective/);
+  assert.match(appSource, /this\.game\.turn\(\) === this\.getAnalysisPerspective\(\)/);
+  assert.match(appSource, /this\.buildPositionCoachEngineContext\(\)/);
+  assert.match(appSource, /this\.buildMoveCoachEngineContext\(this\.getLastPerspectiveMoveReview\(\)\)/);
+  assert.match(appSource, /Das sind deine \$\{optionCount\} besten Möglichkeiten/);
+  assert.match(appSource, /Besser wäre \$\{move\.bestSan\}, weil/);
+  assert.match(appSource, /engineContext: this\.buildAnalysisCoachEngineContext\(\)/);
+});
+
 test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett", () => {
   assert.match(appSource, /startReviewJourney/);
   assert.match(appSource, /navigateReviewJourney/);
