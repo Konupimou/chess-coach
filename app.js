@@ -6,7 +6,11 @@ import { Engine } from "./engine.js";
 import { EvalBar } from "./evalBar.js";
 import { moveTreeToPgn } from "./moveTreeToPgn.js";
 import { renderChatMarkup } from "./chatMarkup.js";
-import { MOVE_ARROW_STYLES, MoveArrowOverlay } from "./moveArrows.js";
+import {
+  MOVE_ARROW_STYLES,
+  MoveArrowOverlay,
+  selectImpactArrowMoves,
+} from "./moveArrows.js";
 import {
   MOVE_QUALITY,
   analysisEntryFromInfo,
@@ -109,6 +113,9 @@ export class ChessApp {
       expectedSearchId: null,
       lastFeedbackPly: 0,
       feedbackHistory: [],
+      coachMessages: [],
+      coachBusy: false,
+      coachQueue: [],
       streak: 0,
       bestStreak: 0,
     };
@@ -150,8 +157,15 @@ export class ChessApp {
     this.chatSendBtn = null;
     this.chatStatusEl = null;
     this.chatBusy = false;
+    this.coachConfigured = null;
     this.lastEvalPawns = null;
     this.chatRequestController = null;
+    this.playCoachController = null;
+    this.suggestionCoachController = null;
+    this.suggestionCoachTimer = null;
+    this.suggestionCoachKey = "";
+    this.suggestionCoachReasons = new Map();
+    this.suggestionCoachBusy = false;
     this.previewState = null;
     this.moveListPreviewState = null;
     this.previewTimer = null;
@@ -161,6 +175,8 @@ export class ChessApp {
     this.reviewEngine = null;
     this.reviewPendingSearch = null;
     this.reviewCancelled = false;
+    this.batchReviewRunning = false;
+    this.batchReviewCancelled = false;
     this.gameReviewReport = null;
     this.savedGameReview = null;
     this.engineSettingsOpen = false;
@@ -756,11 +772,43 @@ export class ChessApp {
       this.playFeedbackTitleEl,
       this.playFeedbackDetailEl,
     );
+    this.playFeedbackPreviewButton = document.createElement("button");
+    this.playFeedbackPreviewButton.type = "button";
+    this.playFeedbackPreviewButton.className = "secondary-button live-feedback-preview";
+    this.playFeedbackPreviewButton.textContent = "Coach-Zug am Brett zeigen";
+    this.playFeedbackPreviewButton.hidden = true;
+    this.playFeedbackPreviewButton.addEventListener("click", () => {
+      const latest = this.playSession.feedbackHistory[0];
+      if (latest) this.previewCoachMove(latest);
+    });
+    this.playFeedbackEl.appendChild(this.playFeedbackPreviewButton);
     liveCoach.appendChild(this.playFeedbackEl);
 
     this.playFeedbackHistoryEl = document.createElement("ol");
     this.playFeedbackHistoryEl.className = "live-feedback-history";
     liveCoach.appendChild(this.playFeedbackHistoryEl);
+
+    this.playCoachConversationEl = document.createElement("div");
+    this.playCoachConversationEl.className = "play-coach-conversation";
+    liveCoach.appendChild(this.playCoachConversationEl);
+    const replyForm = document.createElement("div");
+    replyForm.className = "play-coach-reply";
+    this.playCoachInputEl = document.createElement("textarea");
+    this.playCoachInputEl.rows = 2;
+    this.playCoachInputEl.placeholder = "Frag nach: Warum war der Zug gut? Was sollte ich sehen?";
+    this.playCoachInputEl.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        this.handlePlayCoachReply();
+      }
+    });
+    this.playCoachSendButton = document.createElement("button");
+    this.playCoachSendButton.type = "button";
+    this.playCoachSendButton.className = "secondary-button";
+    this.playCoachSendButton.textContent = "Coach fragen";
+    this.playCoachSendButton.addEventListener("click", () => this.handlePlayCoachReply());
+    replyForm.append(this.playCoachInputEl, this.playCoachSendButton);
+    liveCoach.appendChild(replyForm);
     this.playActiveView.appendChild(liveCoach);
 
     const actions = document.createElement("div");
@@ -1046,6 +1094,10 @@ export class ChessApp {
         : "Der Live-Coach bereitet die Bewertung vor";
       this.playFeedbackDetailEl.textContent = "Dein Urteil erscheint hier, bevor Stockfish antwortet.";
     }
+    if (this.playFeedbackPreviewButton) {
+      this.playFeedbackPreviewButton.hidden = !latest?.bestUci
+        || latest.bestUci === latest.playedUci;
+    }
     if (this.playMobileFeedbackEl) {
       const tone = !session.liveFeedback
         ? "disabled"
@@ -1071,6 +1123,29 @@ export class ChessApp {
         item.append(badge, move);
         this.playFeedbackHistoryEl.appendChild(item);
       });
+    }
+
+    if (this.playCoachConversationEl) {
+      this.playCoachConversationEl.replaceChildren();
+      session.coachMessages.slice(-6).forEach((message) => {
+        const bubble = document.createElement("div");
+        bubble.className = `play-coach-message is-${message.role}`;
+        renderChatMarkup(bubble, message.content);
+        this.playCoachConversationEl.appendChild(bubble);
+      });
+      if (session.coachBusy) {
+        const thinking = document.createElement("div");
+        thinking.className = "play-coach-message is-assistant is-thinking";
+        thinking.textContent = "Coach denkt nach …";
+        this.playCoachConversationEl.appendChild(thinking);
+      }
+      this.playCoachConversationEl.scrollTop = this.playCoachConversationEl.scrollHeight;
+    }
+    if (this.playCoachInputEl) {
+      this.playCoachInputEl.disabled = !session.active || !session.liveFeedback || session.coachBusy;
+    }
+    if (this.playCoachSendButton) {
+      this.playCoachSendButton.disabled = !session.active || !session.liveFeedback || session.coachBusy;
     }
 
     const hasMoves = this.getCurrentPath().length > 1;
@@ -1188,6 +1263,8 @@ export class ChessApp {
 
   cancelPlaySession() {
     this.playSession.generation += 1;
+    this.playCoachController?.abort();
+    this.playCoachController = null;
     this.playSession.active = false;
     this.playSession.phase = "idle";
     this.playSession.expectedFen = null;
@@ -1227,6 +1304,9 @@ export class ChessApp {
       expectedSearchId: null,
       lastFeedbackPly: 0,
       feedbackHistory: [],
+      coachMessages: [],
+      coachBusy: false,
+      coachQueue: [],
       streak: 0,
       bestStreak: 0,
     };
@@ -1889,10 +1969,137 @@ export class ChessApp {
     session.streak = nextStrongMoveStreak(session.streak, reportMove.quality);
     session.bestStreak = Math.max(session.bestStreak || 0, session.streak);
     this.celebratePlayedPiece(path[ply]?.move?.to, reportMove.quality);
-    session.feedbackHistory.unshift({ ...feedback, ply });
+    const node = path[ply];
+    const beforeNode = path[ply - 1];
+    const playedUci = node?.move
+      ? `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}`
+      : "";
+    const feedbackEntry = {
+      ...feedback,
+      ply,
+      bestUci: reportMove.bestUci || "",
+      bestSan: reportMove.bestSan || "",
+      playedUci,
+      beforeFen: beforeNode?.fen || "",
+    };
+    session.feedbackHistory.unshift(feedbackEntry);
     session.feedbackHistory = session.feedbackHistory.slice(0, 12);
     this.renderPlayPanel();
+    this.requestAutomaticPlayCoachFeedback(feedbackEntry, reportMove);
     return feedback;
+  }
+
+  handlePlayCoachReply() {
+    const text = this.playCoachInputEl?.value?.trim();
+    if (!text || this.playSession.coachBusy) return;
+    this.playCoachInputEl.value = "";
+    this.playSession.coachMessages.push({ role: "user", content: text });
+    this.requestPlayCoachMessage(text);
+  }
+
+  async requestAutomaticPlayCoachFeedback(feedback, reportMove) {
+    if (!feedback || !this.playSession.liveFeedback || this.coachConfigured === false) return;
+    const alternative = reportMove?.bestSan && reportMove.bestSan !== reportMove.san
+      ? `Die stärkere Engine-Alternative ist ${reportMove.bestSan}.`
+      : "";
+    this.playSession.coachQueue.push({
+      message: [
+        `Gib zu ${feedback.title} genau ein kurzes Live-Coaching in ein bis zwei Sätzen.`,
+        feedback.detail,
+        alternative,
+        "Erkläre das wichtigste Motiv oder den nächsten Denk-Schritt ohne lange Zugfolge.",
+      ].filter(Boolean).join(" "),
+      ply: feedback.ply,
+    });
+    this.playSession.coachQueue = this.playSession.coachQueue.slice(-6);
+    this.drainPlayCoachQueue();
+  }
+
+  async drainPlayCoachQueue() {
+    const session = this.playSession;
+    if (!session.active || session.coachBusy || session.coachQueue.length === 0) return;
+    const next = session.coachQueue.shift();
+    await this.requestPlayCoachMessage(next.message, {
+      automatic: true,
+      ply: next.ply,
+    });
+  }
+
+  async requestPlayCoachMessage(message, { automatic = false, ply = null } = {}) {
+    const session = this.playSession;
+    if (!session.active || session.coachBusy) return;
+    session.coachBusy = true;
+    this.renderPlayPanel();
+    this.playCoachController?.abort();
+    this.playCoachController = new AbortController();
+    const generation = session.generation;
+    const conversation = session.coachMessages.slice(-8);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          fen: this.game.fen(),
+          evalPawns: this.lastEvalPawns,
+          suggestions: [],
+          history: this.game.history(),
+          conversation,
+        }),
+        signal: this.playCoachController.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      if (this.playSession.generation !== generation) return;
+      const reply = String(payload.reply || "").trim();
+      if (!reply) return;
+      session.coachMessages.push({ role: "assistant", content: reply, ply });
+      session.coachMessages = session.coachMessages.slice(-12);
+      if (automatic && Number.isInteger(ply)) {
+        const item = session.feedbackHistory.find((entry) => entry.ply === ply);
+        if (item) item.coachText = reply;
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError" && !automatic) {
+        session.coachMessages.push({
+          role: "assistant",
+          content: error?.message || "Der Coach ist gerade nicht erreichbar.",
+        });
+      }
+    } finally {
+      if (this.playSession.generation === generation) {
+        session.coachBusy = false;
+        this.playCoachController = null;
+        this.renderPlayPanel();
+        this.drainPlayCoachQueue();
+      }
+    }
+  }
+
+  previewCoachMove(feedback) {
+    if (!feedback?.beforeFen || !feedback?.bestUci || this.reviewRunning) return;
+    this.stopSuggestionPreview();
+    const frames = buildPvFrames(feedback.beforeFen, [feedback.bestUci], 1);
+    if (frames.length === 0) return;
+    const token = ++this.previewToken;
+    this.previewState = { token, row: null, frames, index: -1, coach: true };
+    this.board.position(feedback.beforeFen, false);
+    this.moveArrows?.setMoves([{ rank: 1, move: feedback.bestUci, impact: 1 }]);
+    const boardSurface = this.boardSurface || document.getElementById("board-surface");
+    if (!this.previewBadge && boardSurface) {
+      this.previewBadge = document.createElement("div");
+      this.previewBadge.className = "board-preview-badge";
+      boardSurface.appendChild(this.previewBadge);
+    }
+    if (this.previewBadge) {
+      this.previewBadge.hidden = false;
+      this.previewBadge.textContent = `Coach-Zug · ${feedback.bestSan || frames[0].san} · ${feedback.detail}`;
+    }
+    this.previewTimer = window.setTimeout(() => {
+      if (this.previewState?.token !== token) return;
+      this.board.position(frames[0].fen, true);
+      this.previewTimer = window.setTimeout(() => this.stopSuggestionPreview(), 1400);
+    }, 650);
   }
 
   celebratePlayedPiece(square, quality) {
@@ -2011,6 +2218,15 @@ export class ChessApp {
       moves.style.color = '#c7d4ed';
       const sanMoves = this.pvToSanList(data.pv, data.fen);
       moves.textContent = sanMoves.length > 0 ? sanMoves.join(' ') : '(keine Züge)';
+
+      const coachReason = document.createElement('div');
+      coachReason.className = 'suggestion-coach-reason';
+      const reason = this.suggestionCoachReasons.get(idx);
+      coachReason.textContent = reason
+        ? `Coach-Idee: ${reason}`
+        : this.suggestionCoachBusy
+          ? 'Coach ordnet den Zug kurz ein …'
+          : 'Coach-Erklärung wird vorbereitet …';
       row.setAttribute(
         'aria-label',
         `Variante ${idx} vorführen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
@@ -2023,8 +2239,83 @@ export class ChessApp {
 
       row.appendChild(header);
       row.appendChild(moves);
+      row.appendChild(coachReason);
       body.appendChild(row);
     });
+    this.scheduleSuggestionCoachReasons(lines);
+  }
+
+  scheduleSuggestionCoachReasons(lines) {
+    if (
+      this.appMode !== "analysis"
+      || this.coachConfigured === false
+      || !Array.isArray(lines)
+      || lines.length === 0
+      || (this.suggestionState?.depth || 0) < Math.min(10, this.suggestionState?.targetDepth || 10)
+    ) return;
+    const key = [
+      this.suggestionState?.fen || "",
+      ...lines.map(([, data]) => data?.pv?.[0] || ""),
+    ].join("|");
+    if (!key || key === this.suggestionCoachKey) return;
+    if (this.suggestionCoachTimer) window.clearTimeout(this.suggestionCoachTimer);
+    this.suggestionCoachTimer = window.setTimeout(() => {
+      this.suggestionCoachTimer = null;
+      this.requestSuggestionCoachReasons(lines, key);
+    }, 550);
+  }
+
+  async requestSuggestionCoachReasons(lines, key) {
+    this.suggestionCoachController?.abort();
+    this.suggestionCoachController = new AbortController();
+    this.suggestionCoachKey = key;
+    this.suggestionCoachReasons = new Map();
+    this.suggestionCoachBusy = true;
+    this.renderSuggestions();
+    const suggestions = lines.map(([, data]) => ({
+      score: this.formatScore(data.whiteScore || data.score),
+      moves: this.pvToSanList(data.pv, data.fen).slice(0, 4),
+    }));
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: [
+            `Erkläre jeden der ${suggestions.length} Engine-Kandidaten in genau einem kurzen deutschen Satz.`,
+            "Antworte zeilenweise im Format „1: Begründung“. Beschreibe Plan, Motiv oder konkrete Wirkung und verwende keine lange Zugfolge.",
+          ].join(" "),
+          fen: this.suggestionState?.fen || "",
+          evalPawns: this.lastEvalPawns,
+          suggestions,
+          history: this.game.history(),
+          conversation: [],
+        }),
+        signal: this.suggestionCoachController.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      const reply = String(payload.reply || "").trim();
+      const reasons = new Map();
+      reply.split(/\r?\n/).forEach((line) => {
+        const match = line.match(/^\s*(\d+)\s*[:.)-]\s*(.+?)\s*$/);
+        if (!match) return;
+        const rank = Number.parseInt(match[1], 10);
+        if (rank >= 1 && rank <= lines.length) reasons.set(rank, match[2]);
+      });
+      if (reasons.size === 0 && reply) reasons.set(1, reply);
+      if (this.suggestionCoachKey === key) this.suggestionCoachReasons = reasons;
+    } catch (error) {
+      if (error?.name !== "AbortError" && this.suggestionCoachKey === key) {
+        this.suggestionCoachReasons = new Map();
+      }
+    } finally {
+      if (this.suggestionCoachKey === key) {
+        this.suggestionCoachBusy = false;
+        this.suggestionCoachController = null;
+        if (!this.previewState) this.renderSuggestions();
+      }
+    }
   }
 
   renderMoveArrows() {
@@ -2040,10 +2331,10 @@ export class ChessApp {
       return;
     }
 
-    const moves = Array.from(this.suggestionState.lines.entries())
+    const lines = Array.from(this.suggestionState.lines.entries())
       .sort(([left], [right]) => left - right)
-      .slice(0, this.suggestionCount)
-      .map(([rank, data]) => ({ rank, move: data?.pv?.[0] }));
+      .slice(0, this.suggestionCount);
+    const moves = selectImpactArrowMoves(lines, this.suggestionCount);
     this.moveArrows.setMoves(moves);
   }
 
@@ -2071,11 +2362,17 @@ export class ChessApp {
     }
     this.previewState = { token, row, frames, index: -1 };
     row?.classList.add('is-previewing');
-    this.moveArrows?.setVisible(false);
+    this.moveArrows?.setMoves([
+      { rank: 1, move: data.pv?.[0], impact: 1 },
+    ]);
     this.board.position(data.fen, false);
     if (this.previewBadge) {
       this.previewBadge.hidden = false;
-      this.previewBadge.textContent = 'Varianten-Vorschau';
+      const rank = data.multipv || 1;
+      const reason = this.suggestionCoachReasons.get(rank);
+      this.previewBadge.textContent = reason
+        ? `Coach-Vorschau · ${reason}`
+        : 'Coach-Vorschau';
     }
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
@@ -2365,6 +2662,7 @@ export class ChessApp {
     this.feedbackCancelButton.textContent = 'Schließen';
     this.feedbackCancelButton.addEventListener('click', () => {
       if (this.reviewRunning) {
+        if (this.batchReviewRunning) this.batchReviewCancelled = true;
         this.cancelFullGameReview();
       } else {
         dialog.close();
@@ -2374,7 +2672,10 @@ export class ChessApp {
     dialog.appendChild(actions);
 
     dialog.addEventListener('close', () => {
-      if (this.reviewRunning) this.cancelFullGameReview();
+      if (this.reviewRunning) {
+        if (this.batchReviewRunning) this.batchReviewCancelled = true;
+        this.cancelFullGameReview();
+      }
       this.reviewCoachController?.abort();
       this.reviewCoachController = null;
       this.feedbackButton?.focus();
@@ -2469,8 +2770,8 @@ export class ChessApp {
     this.reviewCoachController = null;
   }
 
-  async startFullGameReview() {
-    if (this.reviewRunning) return;
+  async startFullGameReview({ batchLabel = "" } = {}) {
+    if (this.reviewRunning) return null;
     if (this.appMode === "play" && this.playSession.active) {
       this.showToast("Beende die Engine-Partie zuerst über „Beenden & analysieren“.");
       return;
@@ -2500,7 +2801,12 @@ export class ChessApp {
     const evaluations = [];
     const cache = new Map();
     let report = null;
-    this.renderReviewProgress(0, path.length, depth);
+    this.renderReviewProgress(
+      0,
+      path.length,
+      depth,
+      batchLabel || 'Stockfish prüft jede Stellung …',
+    );
 
     try {
       this.reviewEngine = new Engine({
@@ -2568,7 +2874,7 @@ export class ChessApp {
       if (!this.destroyed) this.evaluateCurrentPosition();
     }
 
-    if (!report || this.reviewCancelled) return;
+    if (!report || this.reviewCancelled) return null;
     this.renderFeedbackReport(report, report.feedback, { coachPending: true });
 
     try {
@@ -2586,13 +2892,21 @@ export class ChessApp {
         });
       }
     }
+    if (
+      !this.batchReviewRunning
+      && this.activeGamePersisted
+      && this.gameReviewReport === report
+    ) {
+      this.saveCurrentGame({ silent: true });
+    }
+    return report;
   }
 
   async requestCoachGameFeedback(report, path) {
     this.reviewCoachController?.abort();
     this.reviewCoachController = new AbortController();
     const payload = {
-      message: 'Formuliere eine kurze, motivierende Partieanalyse mit Stärken, kritischen Momenten und einem Trainingsfokus. Nenne höchstens einzelne kurze Varianten mit maximal zwei bis vier Halbzügen; erkläre vor allem die Idee.',
+      message: 'Formuliere fünf kurze, motivierende Abschnitte: Spielverlauf, Hauptmotive, besonders starke Entscheidungen, wichtigste Verbesserung und konkreter Trainingsfokus. Arbeite die aussagekräftigsten Punkte heraus. Nenne höchstens einzelne kurze Varianten mit maximal zwei bis vier Halbzügen; erkläre vor allem die Idee.',
       fen: path.at(-1)?.fen || '',
       evalPawns: null,
       suggestions: [],
@@ -3198,7 +3512,7 @@ export class ChessApp {
       { value: "5", label: "5 neueste" },
       { value: "10", label: "10 neueste" },
       { value: "20", label: "20 neueste" },
-      { value: "40", label: "40 neueste" },
+      { value: "40", label: "Alle verfügbaren (max. 40)" },
     ]);
     this.lichessMaxInput.value = "10";
     this.lichessPerfInput = addSelect("Zeitformat", "perfType", [
@@ -3261,7 +3575,13 @@ export class ChessApp {
     this.lichessImportButton.textContent = "Ausgewählte importieren";
     this.lichessImportButton.disabled = true;
     this.lichessImportButton.addEventListener("click", () => this.importSelectedLichessGames());
-    actions.append(back, this.lichessImportButton);
+    this.lichessImportAllButton = document.createElement("button");
+    this.lichessImportAllButton.type = "button";
+    this.lichessImportAllButton.className = "primary-action-button";
+    this.lichessImportAllButton.textContent = "Alle neuen importieren";
+    this.lichessImportAllButton.disabled = true;
+    this.lichessImportAllButton.addEventListener("click", () => this.importAllLichessGames());
+    actions.append(back, this.lichessImportButton, this.lichessImportAllButton);
     dialog.appendChild(actions);
     dialog.addEventListener("close", () => {
       if (this.lichessReturnToAccount) {
@@ -3398,6 +3718,7 @@ export class ChessApp {
     this.lichessImportResultsEl.replaceChildren();
     this.lichessImportStatusEl.textContent = "Wähle Filter und lade deine abgeschlossenen Partien.";
     this.lichessImportButton.disabled = true;
+    this.lichessImportAllButton.disabled = true;
     this.lichessReturnToAccount = true;
     this.accountDialog?.close();
     this.lichessImportDialog.showModal();
@@ -3409,6 +3730,7 @@ export class ChessApp {
     this.lichessImportBusy = true;
     this.lichessLoadButton.disabled = true;
     this.lichessImportButton.disabled = true;
+    this.lichessImportAllButton.disabled = true;
     this.lichessImportStatusEl.textContent = "Lichess-Partien werden geladen …";
     this.lichessImportResultsEl.replaceChildren();
     const params = new URLSearchParams();
@@ -3457,8 +3779,9 @@ export class ChessApp {
       checkbox.checked = !disabledReason;
       checkbox.disabled = Boolean(disabledReason);
       checkbox.addEventListener("change", () => {
-        this.lichessImportButton.disabled = !this.lichessImportResultsEl
-          .querySelector('input[type="checkbox"]:checked:not(:disabled)');
+        const hasSelected = Boolean(this.lichessImportResultsEl
+          .querySelector('input[type="checkbox"]:checked:not(:disabled)'));
+        this.lichessImportButton.disabled = !hasSelected;
       });
       const copy = document.createElement("span");
       const players = document.createElement("strong");
@@ -3498,6 +3821,17 @@ export class ChessApp {
         : `${this.lichessFetchedGames.length} gefunden · keine neue importierbare Partie`;
     }
     this.lichessImportButton.disabled = selectable === 0;
+    this.lichessImportAllButton.disabled = selectable === 0;
+  }
+
+  importAllLichessGames() {
+    if (this.lichessImportBusy) return;
+    this.lichessImportResultsEl
+      .querySelectorAll('input[type="checkbox"]:not(:disabled)')
+      .forEach((input) => {
+        input.checked = true;
+      });
+    this.importSelectedLichessGames();
   }
 
   importSelectedLichessGames() {
@@ -3760,7 +4094,16 @@ export class ChessApp {
       analyzeNext.className = 'secondary-button';
       analyzeNext.textContent = 'Nächste analysieren';
       analyzeNext.addEventListener('click', () => analyzeSavedGame(pendingAnalysisGames[0]));
-      analysisPending.append(pendingCopy, analyzeNext);
+      const analyzeAll = document.createElement('button');
+      analyzeAll.type = 'button';
+      analyzeAll.className = 'primary-action-button';
+      analyzeAll.textContent = `Alle ${pendingAnalysisGames.length} analysieren`;
+      analyzeAll.disabled = this.batchReviewRunning;
+      analyzeAll.addEventListener('click', () => this.analyzeAllSavedGames());
+      const pendingActions = document.createElement('div');
+      pendingActions.className = 'profile-analysis-actions';
+      pendingActions.append(analyzeNext, analyzeAll);
+      analysisPending.append(pendingCopy, pendingActions);
       this.accountBodyEl.appendChild(analysisPending);
     }
 
@@ -3952,6 +4295,16 @@ export class ChessApp {
         analysis.classList.add('analysis-pending-label');
       }
       copy.append(title, detail, analysis);
+      if (analyzedGameIds.has(game.id) && game.review?.feedback) {
+        const coachSummary = document.createElement('span');
+        coachSummary.className = 'saved-game-coach-summary';
+        coachSummary.textContent = String(game.review.feedback)
+          .replace(/[*#_`]/g, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 190);
+        copy.appendChild(coachSummary);
+      }
 
       const itemActions = document.createElement('div');
       const open = document.createElement('button');
@@ -3987,6 +4340,63 @@ export class ChessApp {
     this.accountBodyEl.appendChild(list);
   }
 
+  async analyzeAllSavedGames() {
+    if (this.batchReviewRunning || this.reviewRunning) return;
+    const playerStats = buildPlayerProfile(this.accountState?.games || []);
+    const analyzedIds = new Set(playerStats.analyzedGameIds);
+    const pendingIds = (this.accountState?.games || [])
+      .filter((game) => !analyzedIds.has(game.id))
+      .map((game) => game.id);
+    if (pendingIds.length === 0) {
+      this.showToast("Alle gespeicherten Partien sind bereits analysiert.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `${pendingIds.length} gespeicherte ${pendingIds.length === 1 ? "Partie" : "Partien"} jetzt nacheinander vollständig mit Stockfish und Coach analysieren? Das kann einige Minuten dauern.`,
+    );
+    if (!confirmed) return;
+
+    this.batchReviewRunning = true;
+    this.batchReviewCancelled = false;
+    this.accountDialog?.close();
+    let completed = 0;
+    try {
+      for (let index = 0; index < pendingIds.length; index += 1) {
+        if (this.batchReviewCancelled) break;
+        const latestState = loadAccountState(
+          this.browserStorage,
+          this.accountStorageKey,
+          this.accountState?.profile,
+        );
+        this.accountState = mergeAccountStates(this.accountState, latestState);
+        const record = this.accountState.games.find((game) => game.id === pendingIds[index]);
+        if (!record || !this.openSavedGame(record)) break;
+        const report = await this.startFullGameReview({
+          batchLabel: `Gesamtanalyse ${index + 1}/${pendingIds.length}: ${record.title}`,
+        });
+        if (!report?.final || this.batchReviewCancelled) break;
+        if (!this.saveCurrentGame({ silent: true })) break;
+        completed += 1;
+      }
+    } catch (error) {
+      console.error("[ChessApp] Gesamtanalyse fehlgeschlagen", error);
+      this.showToast(error?.message || "Die Gesamtanalyse konnte nicht abgeschlossen werden.");
+    } finally {
+      this.batchReviewRunning = false;
+      const cancelled = this.batchReviewCancelled;
+      this.batchReviewCancelled = false;
+      if (this.feedbackDialog?.open) this.feedbackDialog.close();
+      this.updateAccountButton();
+      this.renderAccountDialog();
+      requestAnimationFrame(() => this.openAccountDialog());
+      this.showToast(
+        cancelled
+          ? `Gesamtanalyse beendet · ${completed}/${pendingIds.length} abgeschlossen.`
+          : `${completed}/${pendingIds.length} Partien vollständig analysiert und gespeichert.`,
+      );
+    }
+  }
+
   makeSavedGameTitle(path) {
     const moves = path.slice(1, 7).map((node) => node.move?.san).filter(Boolean).join(' ');
     const opponent = this.gameSaveDraft?.opponent?.trim();
@@ -4002,7 +4412,7 @@ export class ChessApp {
     return `${subject} · ${date}`;
   }
 
-  saveCurrentGame() {
+  saveCurrentGame({ silent = false } = {}) {
     const path = this.getCurrentPath();
     if (path.length < 2 || !this.moveTree) {
       this.showToast('Spiele zuerst mindestens einen Zug.');
@@ -4118,11 +4528,13 @@ export class ChessApp {
     this.updateSaveGameButton();
     if (this.accountDialog?.open) this.renderAccountDialog();
     this.saveGameDialog?.close();
-    this.showToast(
-      completeReview
-        ? 'Partie gespeichert und Spielerprofil aktualisiert.'
-        : 'Partie gespeichert. Die vollständige Profilanalyse steht noch aus.',
-    );
+    if (!silent) {
+      this.showToast(
+        completeReview
+          ? 'Partie gespeichert und Spielerprofil aktualisiert.'
+          : 'Partie gespeichert. Die vollständige Profilanalyse steht noch aus.',
+      );
+    }
     return true;
   }
 
@@ -4605,9 +5017,11 @@ export class ChessApp {
       const response = await fetch("/api/health");
       if (!response.ok) return;
       const status = await response.json();
+      this.coachConfigured = Boolean(status.coachConfigured);
       if (!status.coachConfigured && this.chatStatusEl) {
         this.chatStatusEl.textContent = "Für den Coach fehlt noch OPENAI_API_KEY.";
       }
+      if (status.coachConfigured && this.appMode === "analysis") this.renderSuggestions();
     } catch {
       // Die Schachanalyse funktioniert auch ohne Coach-Backend.
     }
@@ -4624,6 +5038,9 @@ export class ChessApp {
     if (this.toastTimer) window.clearTimeout(this.toastTimer);
     if (this.successAnimationTimer) window.clearTimeout(this.successAnimationTimer);
     this.chatRequestController?.abort();
+    this.playCoachController?.abort();
+    this.suggestionCoachController?.abort();
+    if (this.suggestionCoachTimer) window.clearTimeout(this.suggestionCoachTimer);
     this.reviewCoachController?.abort();
     try { this.detachKeys?.(); } catch {}
     try { this.boardKeyboardObserver?.disconnect?.(); } catch {}

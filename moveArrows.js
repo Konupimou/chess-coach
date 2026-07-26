@@ -3,12 +3,70 @@ const FILES = "abcdefgh";
 let overlaySequence = 0;
 
 export const MOVE_ARROW_STYLES = Object.freeze([
-  { color: "#5aa2ff", opacity: 0.94, width: 2.15 },
-  { color: "#5aa2ff", opacity: 0.82, width: 1.85 },
-  { color: "#5aa2ff", opacity: 0.74, width: 1.65 },
-  { color: "#5aa2ff", opacity: 0.68, width: 1.5 },
-  { color: "#5aa2ff", opacity: 0.64, width: 1.4 },
+  { color: "#5aa2ff", opacity: 0.96, width: 3.15 },
+  { color: "#5aa2ff", opacity: 0.84, width: 2.45 },
+  { color: "#5aa2ff", opacity: 0.74, width: 1.95 },
+  { color: "#5aa2ff", opacity: 0.68, width: 1.65 },
+  { color: "#5aa2ff", opacity: 0.62, width: 1.45 },
 ]);
+
+const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
+
+function scoreToCentipawns(score) {
+  if (!score || typeof score !== "object") return null;
+  if (score.unit === "mate" && Number.isFinite(score.value)) {
+    return score.value === 0 ? 0 : score.value > 0 ? 10_000 : -10_000;
+  }
+  if (Number.isFinite(score.pawns)) return Math.round(score.pawns * 100);
+  if (score.unit === "cp" && Number.isFinite(score.value)) return Math.round(score.value);
+  return null;
+}
+
+export function selectImpactArrowMoves(entries, limit = 5) {
+  if (!Array.isArray(entries) || limit <= 0) return [];
+  const candidates = entries
+    .map((entry, index) => {
+      const data = Array.isArray(entry) ? entry[1] : entry?.data || entry;
+      const rankValue = Array.isArray(entry) ? entry[0] : entry?.rank;
+      const rank = Math.max(1, Number.parseInt(rankValue, 10) || index + 1);
+      const move = data?.pv?.[0] || entry?.move;
+      const parsed = parseUciMove(move);
+      if (!parsed) return null;
+      const sideToMove = String(data?.fen || "").split(" ")[1] === "b" ? "b" : "w";
+      const whiteCp = scoreToCentipawns(data?.whiteScore || data?.score);
+      const moverCp = Number.isFinite(whiteCp)
+        ? whiteCp * (sideToMove === "b" ? -1 : 1)
+        : null;
+      return { rank, move: parsed.uci, moverCp };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.rank - right.rank)
+    .slice(0, Math.min(limit, MOVE_ARROW_STYLES.length));
+
+  if (candidates.length < 2 || !candidates.every((entry) => Number.isFinite(entry.moverCp))) {
+    return candidates.map(({ rank, move }, index) => ({
+      rank,
+      move,
+      impact: clamp(1 - index * 0.17, 0.32, 1),
+    }));
+  }
+
+  const bestScore = Math.max(...candidates.map((entry) => entry.moverCp));
+  const withGap = candidates.map((entry) => ({
+    ...entry,
+    gap: Math.max(0, bestScore - entry.moverCp),
+  }));
+  const topTier = withGap.filter((entry) => entry.gap <= 35);
+  const visible = topTier.length === 1
+    ? [topTier[0]]
+    : withGap.filter((entry) => entry.gap <= 110);
+
+  return visible.map(({ rank, move, gap }) => ({
+    rank,
+    move,
+    impact: clamp(1 - gap / 125, 0.28, 1),
+  }));
+}
 
 export function parseUciMove(value) {
   if (typeof value !== "string") return null;
@@ -71,6 +129,9 @@ export function normalizeArrowMoves(entries, limit = 5) {
       rank: Number.isInteger(requestedRank) && requestedRank > 0
         ? Math.min(requestedRank, MOVE_ARROW_STYLES.length)
         : Math.min(index + 1, MOVE_ARROW_STYLES.length),
+      ...(Number.isFinite(entry?.impact)
+        ? { impact: clamp(entry.impact, 0.2, 1) }
+        : {}),
     };
     const existing = normalized.get(key);
     if (!existing || candidate.rank < existing.rank) {
@@ -183,8 +244,8 @@ export class MoveArrowOverlay {
       marker.setAttribute("viewBox", "0 0 5 5");
       marker.setAttribute("refX", "4.15");
       marker.setAttribute("refY", "2.5");
-      marker.setAttribute("markerWidth", "4.4");
-      marker.setAttribute("markerHeight", "4.4");
+      marker.setAttribute("markerWidth", String(3.7 + style.width * 0.34));
+      marker.setAttribute("markerHeight", String(3.7 + style.width * 0.34));
       marker.setAttribute("orient", "auto-start-reverse");
       const tip = documentRef.createElementNS(SVG_NAMESPACE, "path");
       tip.setAttribute("d", "M 0 0 L 5 2.5 L 0 5 z");
@@ -199,12 +260,15 @@ export class MoveArrowOverlay {
       if (!geometry) return;
       const styleIndex = Math.max(0, Math.min(move.rank - 1, MOVE_ARROW_STYLES.length - 1));
       const style = MOVE_ARROW_STYLES[styleIndex];
+      const impact = Number.isFinite(move.impact) ? move.impact : 1;
+      const width = Math.max(1.35, style.width * (0.72 + impact * 0.28));
+      const opacity = Math.max(0.58, style.opacity * (0.78 + impact * 0.22));
 
       const outline = documentRef.createElementNS(SVG_NAMESPACE, "line");
       this.applyLineGeometry(outline, geometry);
       outline.classList.add("move-arrow-outline");
-      outline.setAttribute("stroke-width", String(style.width + 1.05));
-      outline.setAttribute("opacity", String(Math.min(0.66, style.opacity)));
+      outline.setAttribute("stroke-width", String(width + 1.1));
+      outline.setAttribute("opacity", String(Math.min(0.68, opacity)));
       this.svg.appendChild(outline);
 
       const arrow = documentRef.createElementNS(SVG_NAMESPACE, "line");
@@ -213,8 +277,8 @@ export class MoveArrowOverlay {
       arrow.dataset.rank = String(move.rank);
       arrow.dataset.move = move.uci;
       arrow.setAttribute("stroke", style.color);
-      arrow.setAttribute("stroke-width", String(style.width));
-      arrow.setAttribute("opacity", String(style.opacity));
+      arrow.setAttribute("stroke-width", String(width));
+      arrow.setAttribute("opacity", String(opacity));
       arrow.setAttribute("marker-end", `url(#${this.markerPrefix}-${styleIndex})`);
       this.svg.appendChild(arrow);
     });

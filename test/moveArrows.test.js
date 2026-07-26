@@ -5,11 +5,35 @@ import {
   arrowGeometry,
   normalizeArrowMoves,
   parseUciMove,
+  selectImpactArrowMoves,
   squareCenter,
 } from "../moveArrows.js";
 
 test("alle Vorschlagspfeile verwenden dieselbe Farbe", () => {
   assert.equal(new Set(MOVE_ARROW_STYLES.map((style) => style.color)).size, 1);
+});
+
+test("Impact-Pfeile zeigen nur den klaren Topzug oder ähnlich starke Alternativen", () => {
+  const line = (rank, move, pawns) => [
+    rank,
+    { fen: "start w - - 0 1", pv: [move], whiteScore: { unit: "cp", value: pawns * 100, pawns } },
+  ];
+  assert.deepEqual(
+    selectImpactArrowMoves([
+      line(1, "e2e4", 0.8),
+      line(2, "d2d4", 0.2),
+      line(3, "g1f3", 0.1),
+    ]),
+    [{ rank: 1, move: "e2e4", impact: 1 }],
+  );
+  const close = selectImpactArrowMoves([
+    line(1, "e2e4", 0.8),
+    line(2, "d2d4", 0.62),
+    line(3, "g1f3", 0.1),
+  ]);
+  assert.equal(close.length, 3);
+  assert.ok(close[0].impact > close[1].impact);
+  assert.ok(close[1].impact > close[2].impact);
 });
 
 test("UCI-Züge werden einschließlich Umwandlung validiert", () => {

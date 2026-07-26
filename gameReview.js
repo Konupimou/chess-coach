@@ -323,11 +323,18 @@ export function buildFallbackFeedback(report) {
     : report.overallAccuracy >= 75
       ? "Die Partie war insgesamt solide, mit einigen konkreten Verbesserungsmöglichkeiten."
       : "Die größten Fortschritte liegen darin, vor jedem Zug gegnerische Drohungen und forcing moves zu prüfen.";
+  const strongest = [...(report.moves || [])]
+    .filter((move) => move.quality === "best" || move.quality === "excellent")
+    .sort((left, right) => (right.accuracy || 0) - (left.accuracy || 0))[0];
+  const strength = strongest
+    ? `Besonders gelungen war **${strongest.moveNumber}${strongest.color === "b" ? "…" : "."} ${strongest.san}**: ${strongest.explanation || "Der Zug hielt die Stellung präzise zusammen."}`
+    : "Die Partie hatte solide Phasen, auch wenn noch kein einzelner Zug deutlich herausragte.";
 
   return [
-    `**Gesamteindruck:** ${accuracy} geschätzte Engine-Genauigkeit. ${verdict}`,
-    `**Statistik:** ${serious} Fehler oder Patzer bei ${report.analyzedMoves} analysierten Zügen.`,
-    `**Wichtigster Lernmoment:** ${focus}`,
-    "**Nächster Fokus:** Prüfe vor der Zugentscheidung immer Schachs, Schlagzüge und direkte Drohungen – zuerst für den Gegner, dann für dich.",
+    `**Spielverlauf:** ${accuracy} geschätzte Engine-Genauigkeit. ${verdict}`,
+    `**Hauptmotive:** ${serious} Fehler oder Patzer bei ${report.analyzedMoves} analysierten Zügen; entscheidend waren konkrete Drohungen und die Präzision an den kritischen Stellen.`,
+    `**Das war stark:** ${strength}`,
+    `**Das kannst du verbessern:** ${focus}`,
+    "**Trainingsfokus:** Prüfe vor der Zugentscheidung immer Schachs, Schlagzüge und direkte Drohungen – zuerst für den Gegner, dann für dich.",
   ].join("\n\n");
 }

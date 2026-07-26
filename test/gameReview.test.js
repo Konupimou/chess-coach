@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Chess } from "chess.js";
 import { MoveTreeNode, addMoveToTree } from "../moveTree.js";
 import {
+  buildFallbackFeedback,
   buildPvFrames,
   calculateMoveAccuracy,
   explainMoveQuality,
@@ -108,4 +109,26 @@ test("jede Zugqualität erhält eine kurze Begründung", () => {
     explainMoveQuality({ san: "Qh7+", quality: "excellent" }),
     /Schachdrohung/,
   );
+});
+
+test("Fallback-Coach fasst Verlauf, Motive, Stärke, Verbesserung und Training zusammen", () => {
+  const feedback = buildFallbackFeedback({
+    overallAccuracy: 88,
+    analyzedMoves: 2,
+    counts: { mistake: 0, blunder: 0 },
+    criticalMoments: [],
+    moves: [{
+      moveNumber: 1,
+      color: "w",
+      san: "e4",
+      quality: "best",
+      accuracy: 100,
+      explanation: "Besetzt das Zentrum.",
+    }],
+  });
+  assert.match(feedback, /\*\*Spielverlauf:\*\*/);
+  assert.match(feedback, /\*\*Hauptmotive:\*\*/);
+  assert.match(feedback, /\*\*Das war stark:\*\*/);
+  assert.match(feedback, /\*\*Das kannst du verbessern:\*\*/);
+  assert.match(feedback, /\*\*Trainingsfokus:\*\*/);
 });

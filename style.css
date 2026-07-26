@@ -829,6 +829,54 @@ textarea:focus-visible,
   font-size: 0.92rem;
 }
 
+.live-feedback-preview {
+  width: fit-content;
+  margin-top: 8px;
+}
+
+.play-coach-conversation {
+  display: grid;
+  max-height: 180px;
+  gap: 7px;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.play-coach-message {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.play-coach-message.is-assistant {
+  border: 1px solid rgba(90, 162, 255, 0.28);
+  background: rgba(90, 162, 255, 0.1);
+}
+
+.play-coach-message.is-user {
+  margin-left: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.play-coach-message.is-thinking {
+  color: var(--text-secondary);
+}
+
+.play-coach-reply {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.play-coach-reply textarea {
+  min-width: 0;
+  resize: vertical;
+}
+
 .live-feedback-switch {
   display: inline-flex;
   align-items: center;
@@ -1110,6 +1158,13 @@ textarea:focus-visible,
 .suggestion-line span,
 .suggestion-line .moves {
   color: #fff;
+}
+
+.suggestion-coach-reason {
+  margin-top: 3px;
+  color: #a9c9ff !important;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 #coach-chat textarea {
@@ -2135,6 +2190,12 @@ textarea:focus-visible,
   min-width: 0;
 }
 
+.profile-analysis-pending .profile-analysis-actions {
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 7px;
+}
+
 .profile-analysis-pending span,
 .analysis-pending-label {
   color: #ffd98c !important;
@@ -2263,6 +2324,16 @@ textarea:focus-visible,
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.saved-game .saved-game-coach-summary {
+  display: -webkit-box;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #a9c9ff;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.35;
 }
 
 .saved-game strong {
@@ -2580,6 +2651,10 @@ textarea:focus-visible,
   .profile-analysis-pending button {
     min-height: 44px;
     width: 100%;
+  }
+
+  .profile-analysis-pending .profile-analysis-actions {
+    flex-direction: column;
   }
 
   .opening-profile-list,
