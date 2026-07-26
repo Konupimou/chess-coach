@@ -59,13 +59,22 @@ const bundledFileLoggerPattern =
 const bundledFileLoggerStub =
   'var require_file_logger=__commonJS({".open-next/server-functions/default/node_modules/next/dist/server/dev/browser-logs/file-logger.js"(exports){"use strict";Object.defineProperty(exports,"__esModule",{value:!0});class FileLogger{initialize(){}getLogQueue(){return[]}flush(){}enqueueLog(){}log(){}logServer(){}logBrowser(){}forceFlush(){}destroy(){}}function getFileLogger(){return new FileLogger}function test__resetFileLogger(){}Object.assign(exports,{FileLogger,getFileLogger,test__resetFileLogger})}});var require_interop_require_default=';
 
-const handler = readFileSync(handlerPath, "utf8");
+const bundledConsoleDimPattern =
+  /var require_console_dim_external=__commonJS\(\{".open-next\/server-functions\/default\/node_modules\/next\/dist\/server\/node-environment-extensions\/console-dim\.external\.js"\(exports\)\{[\s\S]*?\}\}\);var require_unhandled_rejection_external=/;
+const bundledConsoleDimStub =
+  'var require_console_dim_external=__commonJS({".open-next/server-functions/default/node_modules/next/dist/server/node-environment-extensions/console-dim.external.js"(exports){"use strict";Object.defineProperty(exports,"__esModule",{value:!0});function setAbortedLogsStyle(){}Object.defineProperty(exports,"setAbortedLogsStyle",{enumerable:!0,get:function(){return setAbortedLogsStyle}})}});var require_unhandled_rejection_external=';
+
+let handler = readFileSync(handlerPath, "utf8");
 if (!bundledFileLoggerPattern.test(handler)) {
   throw new Error("Bundled Next.js file logger was not found in handler.mjs");
 }
-writeFileSync(
-  handlerPath,
-  handler.replace(bundledFileLoggerPattern, bundledFileLoggerStub),
-);
+handler = handler.replace(bundledFileLoggerPattern, bundledFileLoggerStub);
 
-console.log("Patched OpenNext worker logging shims and bundled handler.");
+if (!bundledConsoleDimPattern.test(handler)) {
+  throw new Error("Bundled Next.js console dimmer was not found in handler.mjs");
+}
+handler = handler.replace(bundledConsoleDimPattern, bundledConsoleDimStub);
+
+writeFileSync(handlerPath, handler);
+
+console.log("Patched OpenNext worker logging shims and Node-only console modules.");
