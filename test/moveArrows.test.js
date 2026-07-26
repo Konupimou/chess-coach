@@ -59,15 +59,15 @@ test("Feldmittelpunkte folgen der Brettorientierung", () => {
 test("Pfeile enden vor der Mitte des Zielfelds", () => {
   assert.deepEqual(arrowGeometry("e2e4", "white"), {
     x1: 56.25,
-    y1: 81.25,
+    y1: 80.1,
     x2: 56.25,
-    y2: 59.65,
+    y2: 57.9,
   });
   assert.deepEqual(arrowGeometry("e2e4", "black"), {
     x1: 43.75,
-    y1: 18.75,
+    y1: 19.9,
     x2: 43.75,
-    y2: 40.35,
+    y2: 42.1,
   });
 });
 

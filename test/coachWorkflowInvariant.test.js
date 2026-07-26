@@ -11,11 +11,23 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /selectImpactArrowMoves/);
 });
 
-test("Live-Coach bewertet jeden Spielerzug und erlaubt Nachfragen", () => {
-  assert.match(appSource, /requestAutomaticPlayCoachFeedback/);
+test("Live-Coach bewertet neben der Genauigkeit, erlaubt Nachfragen und verrät keinen Zug", () => {
+  assert.match(appSource, /accuracyFeedbackRowEl/);
   assert.match(appSource, /handlePlayCoachReply/);
-  assert.match(appSource, /Coach-Zug am Brett zeigen/);
-  assert.match(appSource, /previewCoachMove/);
+  assert.match(appSource, /Nenne keinen nächsten Zug/);
+  const feedbackStart = appSource.indexOf("  recordLatestPlayFeedback()");
+  const feedbackEnd = appSource.indexOf("  handlePlayCoachReply()", feedbackStart);
+  assert.doesNotMatch(
+    appSource.slice(feedbackStart, feedbackEnd),
+    /requestAutomaticPlayCoachFeedback/,
+  );
+});
+
+test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett", () => {
+  assert.match(appSource, /startReviewJourney/);
+  assert.match(appSource, /navigateReviewJourney/);
+  assert.match(appSource, /analysis-key-piece/);
+  assert.match(appSource, /analysis-danger-square/);
 });
 
 test("Account bietet Gesamtanalyse und Lichess-Massenimport als ausdrückliche Aktionen", () => {

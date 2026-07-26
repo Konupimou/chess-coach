@@ -252,6 +252,9 @@ export function summarizeGameReview(path, evaluations, { depth = null, final = t
       moveNumber: Math.ceil(index / 2),
       color,
       san: node?.move?.san || "?",
+      playedUci: node?.move
+        ? `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}`
+        : "",
       fenBefore: nodes[index - 1]?.fen || "",
       fenAfter: node?.fen || "",
       beforeCp,

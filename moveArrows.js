@@ -3,11 +3,11 @@ const FILES = "abcdefgh";
 let overlaySequence = 0;
 
 export const MOVE_ARROW_STYLES = Object.freeze([
-  { color: "#5aa2ff", opacity: 0.96, width: 3.15 },
-  { color: "#5aa2ff", opacity: 0.84, width: 2.45 },
-  { color: "#5aa2ff", opacity: 0.74, width: 1.95 },
-  { color: "#5aa2ff", opacity: 0.68, width: 1.65 },
-  { color: "#5aa2ff", opacity: 0.62, width: 1.45 },
+  { color: "#6aa9ef", opacity: 0.92, width: 1.72 },
+  { color: "#6aa9ef", opacity: 0.78, width: 1.42 },
+  { color: "#6aa9ef", opacity: 0.68, width: 1.2 },
+  { color: "#6aa9ef", opacity: 0.6, width: 1.04 },
+  { color: "#6aa9ef", opacity: 0.54, width: 0.94 },
 ]);
 
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
@@ -95,7 +95,7 @@ export function squareCenter(square, orientation = "white") {
   };
 }
 
-export function arrowGeometry(value, orientation = "white", endInset = 3.4) {
+export function arrowGeometry(value, orientation = "white", endInset = 1.65, startInset = 1.15) {
   const move = typeof value === "string" ? parseUciMove(value) : value;
   if (!move?.from || !move?.to) return null;
   const from = squareCenter(move.from, orientation);
@@ -108,8 +108,8 @@ export function arrowGeometry(value, orientation = "white", endInset = 3.4) {
   if (!distance) return null;
 
   return {
-    x1: from.x,
-    y1: from.y,
+    x1: from.x + (deltaX / distance) * startInset,
+    y1: from.y + (deltaY / distance) * startInset,
     x2: target.x - (deltaX / distance) * endInset,
     y2: target.y - (deltaY / distance) * endInset,
   };
@@ -241,14 +241,15 @@ export class MoveArrowOverlay {
     MOVE_ARROW_STYLES.forEach((style, index) => {
       const marker = documentRef.createElementNS(SVG_NAMESPACE, "marker");
       marker.id = `${this.markerPrefix}-${index}`;
-      marker.setAttribute("viewBox", "0 0 5 5");
-      marker.setAttribute("refX", "4.15");
-      marker.setAttribute("refY", "2.5");
-      marker.setAttribute("markerWidth", String(3.7 + style.width * 0.34));
-      marker.setAttribute("markerHeight", String(3.7 + style.width * 0.34));
+      marker.setAttribute("viewBox", "0 0 10 10");
+      marker.setAttribute("refX", "8.6");
+      marker.setAttribute("refY", "5");
+      marker.setAttribute("markerUnits", "userSpaceOnUse");
+      marker.setAttribute("markerWidth", String(4.5 + style.width * 0.35));
+      marker.setAttribute("markerHeight", String(4.5 + style.width * 0.35));
       marker.setAttribute("orient", "auto-start-reverse");
       const tip = documentRef.createElementNS(SVG_NAMESPACE, "path");
-      tip.setAttribute("d", "M 0 0 L 5 2.5 L 0 5 z");
+      tip.setAttribute("d", "M 0.8 1.1 L 9.2 5 L 0.8 8.9 L 3 5 z");
       tip.setAttribute("fill", style.color);
       marker.appendChild(tip);
       definitions.appendChild(marker);
@@ -261,14 +262,14 @@ export class MoveArrowOverlay {
       const styleIndex = Math.max(0, Math.min(move.rank - 1, MOVE_ARROW_STYLES.length - 1));
       const style = MOVE_ARROW_STYLES[styleIndex];
       const impact = Number.isFinite(move.impact) ? move.impact : 1;
-      const width = Math.max(1.35, style.width * (0.72 + impact * 0.28));
-      const opacity = Math.max(0.58, style.opacity * (0.78 + impact * 0.22));
+      const width = Math.max(0.86, style.width * (0.76 + impact * 0.24));
+      const opacity = Math.max(0.48, style.opacity * (0.8 + impact * 0.2));
 
       const outline = documentRef.createElementNS(SVG_NAMESPACE, "line");
       this.applyLineGeometry(outline, geometry);
       outline.classList.add("move-arrow-outline");
-      outline.setAttribute("stroke-width", String(width + 1.1));
-      outline.setAttribute("opacity", String(Math.min(0.68, opacity)));
+      outline.setAttribute("stroke-width", String(width + 0.48));
+      outline.setAttribute("opacity", String(Math.min(0.42, opacity)));
       this.svg.appendChild(outline);
 
       const arrow = documentRef.createElementNS(SVG_NAMESPACE, "line");

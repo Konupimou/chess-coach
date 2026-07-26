@@ -49,12 +49,6 @@ export function nextStrongMoveStreak(current, quality) {
     : 0;
 }
 
-function formattedAccuracy(value) {
-  return Number.isFinite(value)
-    ? `${value.toFixed(1).replace(".", ",")} % Genauigkeit`
-    : "";
-}
-
 export function describeLiveMove(move) {
   if (!move || typeof move !== "object") return null;
   const quality = Object.hasOwn(MOVE_QUALITY, move.quality) ? move.quality : "good";
@@ -63,38 +57,25 @@ export function describeLiveMove(move) {
   const prefix = moveNumber
     ? `${moveNumber}${move.color === "b" ? "…" : "."} ${move.san || "dein Zug"}`
     : move.san || "Dein Zug";
-  const accuracy = formattedAccuracy(move.accuracy);
-  const alternative = typeof move.bestSan === "string"
-    && move.bestSan
-    && move.bestSan !== move.san
-      ? move.bestSan
-      : "";
-
   let message;
   if (quality === "best") {
-    message = "Du hast die stärkste Fortsetzung gefunden.";
+    message = "War super, weil du die Stellung präzise getroffen hast.";
   } else if (quality === "excellent") {
-    message = "Sehr präzise – die Stellung bleibt voll unter Kontrolle.";
+    message = "War sehr gut, weil dein Plan die Stellung unter Kontrolle hält.";
   } else if (quality === "good") {
-    message = "Ein solider Zug, der deine Stellung zusammenhält.";
+    message = "War gut, weil deine Stellung stabil bleibt.";
   } else if (quality === "inaccuracy") {
-    message = alternative
-      ? `Etwas genauer war ${alternative}.`
-      : "Eine kleine Ungenauigkeit, aber die Partie bleibt gut spielbar.";
+    message = "War ungenau, weil du etwas Kontrolle abgegeben hast.";
   } else if (quality === "mistake") {
-    message = alternative
-      ? `Das gibt etwas Vorteil ab. Besser war ${alternative}.`
-      : "Der Zug gibt spürbar Vorteil ab.";
+    message = "War schlecht, weil dein Vorteil spürbar kleiner wurde.";
   } else {
-    message = alternative
-      ? `Das war ein kritischer Fehler. Deutlich besser war ${alternative}.`
-      : "Das war ein kritischer Fehler – prüfe unmittelbare Drohungen.";
+    message = "War kritisch, weil eine unmittelbare Gefahr übersehen wurde.";
   }
 
   return {
     tone: definition.tone,
     badge: definition.label,
     title: prefix,
-    detail: [message, accuracy].filter(Boolean).join(" · "),
+    detail: message,
   };
 }

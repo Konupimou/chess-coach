@@ -31,7 +31,7 @@ test("nur beste und sehr gute Züge bauen den Präzisions-Streak auf", () => {
   assert.equal(nextStrongMoveStreak(4, "blunder"), 0);
 });
 
-test("Live-Feedback nennt Qualität und bei Fehlern die bessere Fortsetzung", () => {
+test("Live-Feedback nennt die Qualität knapp und verrät keinen nächsten Zug", () => {
   assert.deepEqual(describeLiveMove({
     moveNumber: 12,
     color: "w",
@@ -43,7 +43,7 @@ test("Live-Feedback nennt Qualität und bei Fehlern die bessere Fortsetzung", ()
     tone: "best",
     badge: "Bester Zug",
     title: "12. Nf3",
-    detail: "Du hast die stärkste Fortsetzung gefunden. · 100,0 % Genauigkeit",
+    detail: "War super, weil du die Stellung präzise getroffen hast.",
   });
 
   const mistake = describeLiveMove({
@@ -56,6 +56,6 @@ test("Live-Feedback nennt Qualität und bei Fehlern die bessere Fortsetzung", ()
   });
   assert.equal(mistake.badge, "Fehler");
   assert.equal(mistake.title, "8… Qh4");
-  assert.match(mistake.detail, /Besser war Nf6/);
-  assert.match(mistake.detail, /52,4 %/);
+  assert.doesNotMatch(mistake.detail, /Nf6|besser war/i);
+  assert.match(mistake.detail, /War schlecht, weil/);
 });

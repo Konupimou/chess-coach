@@ -183,6 +183,8 @@ export class ChessApp {
     this.batchCoachControllers = new Set();
     this.gameReviewReport = null;
     this.savedGameReview = null;
+    this.reviewJourney = null;
+    this.reviewJourneyCoachController = null;
     this.engineSettingsOpen = false;
     this.modalKeyHandler = null;
     this.activeGameId = createGameId();
@@ -329,7 +331,10 @@ export class ChessApp {
       "Genauigkeit: Weiß noch nicht berechnet, Schwarz noch nicht berechnet",
     );
     this.accuracyEl.title = "Wird aus den Engine-Bewertungen der gespielten Züge berechnet.";
-    statusGroup.appendChild(this.accuracyEl);
+    this.accuracyFeedbackRowEl = document.createElement("div");
+    this.accuracyFeedbackRowEl.className = "accuracy-feedback-row";
+    this.accuracyFeedbackRowEl.appendChild(this.accuracyEl);
+    statusGroup.appendChild(this.accuracyFeedbackRowEl);
     this.saveStatusEl = document.createElement("div");
     this.saveStatusEl.className = "save-status is-unsaved";
     this.saveStatusEl.setAttribute("role", "status");
@@ -402,6 +407,7 @@ export class ChessApp {
     boardStack.appendChild(boardToolbar);
 
     this.createPlayPanel(engineAvailable);
+    this.createReviewJourneyPanel();
 
     this.suggestionsEl = document.createElement('div');
     this.suggestionsEl.id = 'engine-suggestions';
@@ -588,8 +594,12 @@ export class ChessApp {
     this.analysisModeButton?.addEventListener("click", this._onAnalysisModeClick);
 
     this.detachKeys = attachKeyboard({
-      onLeft: () => this.goBackOnePly(),
-      onRight: () => this.goForwardOnePly(),
+      onLeft: () => this.reviewJourney
+        ? this.navigateReviewJourney(-1)
+        : this.goBackOnePly(),
+      onRight: () => this.reviewJourney
+        ? this.navigateReviewJourney(1)
+        : this.goForwardOnePly(),
       onUp: () => this.cycleVariation(-1),
       onDown: () => this.cycleVariation(1)
     });
@@ -776,17 +786,8 @@ export class ChessApp {
       this.playFeedbackTitleEl,
       this.playFeedbackDetailEl,
     );
-    this.playFeedbackPreviewButton = document.createElement("button");
-    this.playFeedbackPreviewButton.type = "button";
-    this.playFeedbackPreviewButton.className = "secondary-button live-feedback-preview";
-    this.playFeedbackPreviewButton.textContent = "Coach-Zug am Brett zeigen";
-    this.playFeedbackPreviewButton.hidden = true;
-    this.playFeedbackPreviewButton.addEventListener("click", () => {
-      const latest = this.playSession.feedbackHistory[0];
-      if (latest) this.previewCoachMove(latest);
-    });
-    this.playFeedbackEl.appendChild(this.playFeedbackPreviewButton);
-    liveCoach.appendChild(this.playFeedbackEl);
+    this.playFeedbackEl.classList.add("is-inline");
+    this.accuracyFeedbackRowEl?.appendChild(this.playFeedbackEl);
 
     this.playFeedbackHistoryEl = document.createElement("ol");
     this.playFeedbackHistoryEl.className = "live-feedback-history";
@@ -851,6 +852,52 @@ export class ChessApp {
     this.boardStack?.insertBefore(this.playMobileFeedbackEl, this.boardToolbar || null);
     this.createPlaySetupDialog(engineAvailable);
     this.renderPlayPanel();
+  }
+
+  createReviewJourneyPanel() {
+    const panel = document.createElement("section");
+    panel.className = "card review-journey";
+    panel.hidden = true;
+    panel.setAttribute("aria-live", "polite");
+    this.reviewJourneyEl = panel;
+
+    const top = document.createElement("div");
+    top.className = "review-journey-top";
+    this.reviewJourneyProgressEl = document.createElement("span");
+    this.reviewJourneyProgressEl.className = "review-journey-progress";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "dialog-close";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "Geführte Review beenden");
+    close.addEventListener("click", () => this.stopReviewJourney());
+    top.append(this.reviewJourneyProgressEl, close);
+
+    this.reviewJourneyTitleEl = document.createElement("h3");
+    this.reviewJourneyMoveEl = document.createElement("div");
+    this.reviewJourneyMoveEl.className = "review-journey-move";
+    this.reviewJourneyCoachEl = document.createElement("div");
+    this.reviewJourneyCoachEl.className = "review-journey-coach";
+
+    const hint = document.createElement("p");
+    hint.className = "review-journey-hint";
+    hint.textContent = "Die farbigen Felder zeigen Schlüsselfigur, Ziel und Gefahr. Nutze auch ← und →.";
+
+    const controls = document.createElement("div");
+    controls.className = "review-journey-controls";
+    this.reviewJourneyPrevEl = document.createElement("button");
+    this.reviewJourneyPrevEl.type = "button";
+    this.reviewJourneyPrevEl.className = "secondary-button";
+    this.reviewJourneyPrevEl.textContent = "← Vorheriger Moment";
+    this.reviewJourneyPrevEl.addEventListener("click", () => this.navigateReviewJourney(-1));
+    this.reviewJourneyNextEl = document.createElement("button");
+    this.reviewJourneyNextEl.type = "button";
+    this.reviewJourneyNextEl.className = "primary-action-button";
+    this.reviewJourneyNextEl.textContent = "Nächster Moment →";
+    this.reviewJourneyNextEl.addEventListener("click", () => this.navigateReviewJourney(1));
+    controls.append(this.reviewJourneyPrevEl, this.reviewJourneyNextEl);
+    panel.append(top, this.reviewJourneyTitleEl, this.reviewJourneyMoveEl, this.reviewJourneyCoachEl, hint, controls);
+    this.analysisColumn.prepend(panel);
   }
 
   createPlaySetupDialog(engineAvailable) {
@@ -1191,6 +1238,7 @@ export class ChessApp {
       this.appMode = "analysis";
       this.engine?.setMultiPV?.(this.suggestionCount === 0 ? 1 : this.suggestionCount);
     } else {
+      this.stopReviewJourney({ silent: true });
       this.appMode = "play";
       this.engine?.setMultiPV?.(1);
       this.moveArrows?.clear();
@@ -1989,7 +2037,6 @@ export class ChessApp {
     session.feedbackHistory.unshift(feedbackEntry);
     session.feedbackHistory = session.feedbackHistory.slice(0, 12);
     this.renderPlayPanel();
-    this.requestAutomaticPlayCoachFeedback(feedbackEntry, reportMove);
     return feedback;
   }
 
@@ -2043,7 +2090,7 @@ export class ChessApp {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message,
+          message: `${message}\nAntworte nur zum bereits gespielten Zug und zum Schachmotiv. Nenne keinen nächsten Zug, keine Variante und keine konkrete Zugempfehlung.`,
           fen: this.game.fen(),
           evalPawns: this.lastEvalPawns,
           suggestions: [],
@@ -2324,6 +2371,7 @@ export class ChessApp {
 
   renderMoveArrows() {
     if (!this.moveArrows) return;
+    if (this.reviewJourney) return;
     if (
       this.appMode === "play"
       ||
@@ -2553,6 +2601,9 @@ export class ChessApp {
     const ownOnly = this.appMode === "play" && this.playSession.active;
     const ownAccuracy = this.playSession.playerColor === "b" ? blackAccuracy : whiteAccuracy;
     const own = this.playSession.playerColor === "b" ? black : white;
+    if (this.playFeedbackEl) {
+      this.playFeedbackEl.hidden = !ownOnly || !this.playSession.liveFeedback;
+    }
     if (ownOnly) {
       this.accuracyEl.hidden = !this.playSession.liveFeedback;
       this.accuracyLabelEl.textContent = "Deine Genauigkeit";
@@ -2973,6 +3024,24 @@ export class ChessApp {
     lead.appendChild(leadCopy);
     this.feedbackBodyEl.appendChild(lead);
 
+    if (report.criticalMoments?.length > 0) {
+      const journeyCta = document.createElement("div");
+      journeyCta.className = "review-journey-cta";
+      const copy = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = "Deine Partie als geführte Review";
+      const detail = document.createElement("span");
+      detail.textContent = `${report.criticalMoments.length} Schlüsselmomente am Brett – mit Coach-Erklärung und Pfeiltasten.`;
+      copy.append(title, detail);
+      const start = document.createElement("button");
+      start.type = "button";
+      start.className = "primary-action-button";
+      start.textContent = "Review starten";
+      start.addEventListener("click", () => this.startReviewJourney(report));
+      journeyCta.append(copy, start);
+      this.feedbackBodyEl.appendChild(journeyCta);
+    }
+
     const metrics = document.createElement('div');
     metrics.className = 'review-metrics';
     [
@@ -3066,10 +3135,9 @@ export class ChessApp {
         const jump = document.createElement('button');
         jump.type = 'button';
         jump.className = 'secondary-button';
-        jump.textContent = 'Stellung';
+        jump.textContent = 'Im Review zeigen';
         jump.addEventListener('click', () => {
-          this.feedbackDialog.close();
-          this.jumpToFen(move.fenAfter);
+          this.startReviewJourney(report, move.ply);
         });
         item.append(copy, jump);
         list.appendChild(item);
@@ -3095,6 +3163,177 @@ export class ChessApp {
         : coachNote;
       this.feedbackBodyEl.appendChild(status);
     }
+  }
+
+  startReviewJourney(report, startingPly = null) {
+    const moments = [...(report?.criticalMoments || [])]
+      .filter((move) => move?.fenBefore || move?.fenAfter)
+      .sort((left, right) => left.ply - right.ply);
+    if (moments.length === 0) {
+      this.showToast("In dieser Partie gibt es keine klaren Schlüsselmomente.");
+      return;
+    }
+    this.feedbackDialog?.close();
+    this.stopSuggestionPreview(null, { deferRender: true });
+    this.setAppMode("analysis", { force: true, silent: true });
+    const requestedIndex = Number.isInteger(startingPly)
+      ? moments.findIndex((move) => move.ply === startingPly)
+      : 0;
+    this.reviewJourney = {
+      report,
+      moments,
+      index: requestedIndex >= 0 ? requestedIndex : 0,
+      restoreFen: this.currentNode?.fen || this.game.fen(),
+    };
+    this.reviewJourneyEl.hidden = false;
+    this.renderReviewJourneyMoment();
+    this.reviewJourneyEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  navigateReviewJourney(direction) {
+    if (!this.reviewJourney) return;
+    const next = Math.max(
+      0,
+      Math.min(
+        this.reviewJourney.moments.length - 1,
+        this.reviewJourney.index + (direction < 0 ? -1 : 1),
+      ),
+    );
+    if (next === this.reviewJourney.index && direction > 0) {
+      this.stopReviewJourney();
+      return;
+    }
+    this.reviewJourney.index = next;
+    this.renderReviewJourneyMoment();
+  }
+
+  renderReviewJourneyMoment() {
+    const journey = this.reviewJourney;
+    const move = journey?.moments?.[journey.index];
+    if (!move) return;
+    const quality = MOVE_QUALITY[move.quality] || MOVE_QUALITY.good;
+    const position = move.fenBefore || move.fenAfter;
+    this.board.position(position, false);
+    this.clearAnalysisHighlights();
+    this.applyAnalysisHighlights(move);
+    const arrow = move.bestUci || move.playedUci;
+    this.moveArrows?.setMoves(arrow ? [{ rank: 1, move: arrow, impact: 1 }] : []);
+
+    this.reviewJourneyProgressEl.textContent =
+      `Schlüsselmoment ${journey.index + 1} von ${journey.moments.length}`;
+    this.reviewJourneyTitleEl.textContent =
+      `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
+    this.reviewJourneyMoveEl.className = `review-journey-move quality-${quality.tone}`;
+    this.reviewJourneyMoveEl.textContent = `${quality.label} · ${Math.max(0, move.lossCp / 100).toFixed(2).replace(".", ",")} Bauerneinheiten verloren`;
+    const coachIntro = move.quality === "best" || move.quality === "excellent"
+      ? "Das war stark, weil"
+      : move.quality === "good"
+        ? "Das war solide, weil"
+        : "Hier kippte etwas, weil";
+    const bestMove = move.bestSan && move.bestSan !== move.san
+      ? ` Der blaue Pfeil zeigt die stärkere Idee mit ${move.bestSan}.`
+      : "";
+    this.reviewJourneyCoachEl.textContent =
+      `${coachIntro} ${(move.explanation || explainMoveQuality(move)).replace(/^[A-ZÄÖÜ]/, (letter) => letter.toLowerCase())}${bestMove}`;
+    this.reviewJourneyPrevEl.disabled = journey.index === 0;
+    this.reviewJourneyNextEl.textContent = journey.index === journey.moments.length - 1
+      ? "Review abschließen"
+      : "Nächster Moment →";
+    this.requestReviewJourneyCoach(move, position);
+  }
+
+  async requestReviewJourneyCoach(move, fen) {
+    const journey = this.reviewJourney;
+    if (!journey || this.coachConfigured === false) return;
+    journey.coachTexts ||= new Map();
+    if (journey.coachTexts.has(move.ply)) {
+      this.reviewJourneyCoachEl.replaceChildren();
+      renderChatMarkup(this.reviewJourneyCoachEl, journey.coachTexts.get(move.ply));
+      return;
+    }
+    this.reviewJourneyCoachController?.abort();
+    const controller = new AbortController();
+    this.reviewJourneyCoachController = controller;
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: [
+            `Du führst mich durch den Schlüsselmoment ${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}.`,
+            `Bewertung: ${MOVE_QUALITY[move.quality]?.label || move.quality}.`,
+            move.explanation || explainMoveQuality(move),
+            move.bestSan && move.bestSan !== move.san
+              ? `Die stärkere Idee war ${move.bestSan}.`
+              : "",
+            "Erkläre in höchstens drei kurzen Sätzen: Was ist hier passiert, welches Motiv zählt und welchen einfachen Denk-Check soll ich daraus lernen? Keine lange Zugfolge.",
+          ].filter(Boolean).join(" "),
+          fen,
+          evalPawns: null,
+          suggestions: [],
+          history: [],
+          conversation: [],
+        }),
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      const reply = String(payload.reply || "").trim();
+      if (!reply || !this.reviewJourney) return;
+      this.reviewJourney.coachTexts.set(move.ply, reply);
+      const current = this.reviewJourney.moments[this.reviewJourney.index];
+      if (current?.ply === move.ply) {
+        this.reviewJourneyCoachEl.replaceChildren();
+        renderChatMarkup(this.reviewJourneyCoachEl, reply);
+      }
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        // Die lokale Coach-Erklärung bleibt als schneller, robuster Fallback sichtbar.
+      }
+    } finally {
+      if (this.reviewJourneyCoachController === controller) {
+        this.reviewJourneyCoachController = null;
+      }
+    }
+  }
+
+  applyAnalysisHighlights(move) {
+    const mark = (square, className) => {
+      if (!square) return;
+      this.boardSurface?.querySelector(`.square-${square}`)?.classList.add(className);
+    };
+    const played = String(move?.playedUci || "");
+    const best = String(move?.bestUci || "");
+    mark(best.slice(0, 2), "analysis-key-piece");
+    mark(best.slice(2, 4), "analysis-key-target");
+    if (played && played !== best) {
+      mark(played.slice(0, 2), "analysis-played-piece");
+      mark(played.slice(2, 4), "analysis-danger-square");
+    }
+  }
+
+  clearAnalysisHighlights() {
+    this.boardSurface?.querySelectorAll(
+      ".analysis-key-piece, .analysis-key-target, .analysis-played-piece, .analysis-danger-square",
+    ).forEach((square) => square.classList.remove(
+      "analysis-key-piece",
+      "analysis-key-target",
+      "analysis-played-piece",
+      "analysis-danger-square",
+    ));
+  }
+
+  stopReviewJourney({ silent = false } = {}) {
+    if (!this.reviewJourney) return;
+    const restoreFen = this.reviewJourney.restoreFen;
+    this.reviewJourneyCoachController?.abort();
+    this.reviewJourneyCoachController = null;
+    this.reviewJourney = null;
+    if (this.reviewJourneyEl) this.reviewJourneyEl.hidden = true;
+    this.clearAnalysisHighlights();
+    if (restoreFen) this.board.position(restoreFen, false);
+    this.renderMoveArrows();
+    if (!silent) this.showToast("Geführte Review abgeschlossen.");
   }
 
   hasUnsavedGameChanges() {
@@ -3962,6 +4201,114 @@ export class ChessApp {
     this.accountDialog.showModal();
   }
 
+  openPlayerStory(games, stats = buildPlayerProfile(games || [])) {
+    this.playerStoryDialog?.remove();
+    const analyzed = (games || []).filter((game) => game?.review?.analyzedMoves > 0);
+    if (analyzed.length === 0) {
+      this.showToast("Analysiere zuerst mindestens eine gespeicherte Partie.");
+      return;
+    }
+    const ownAccuracy = (game) => {
+      const color = game.metadata?.playerColor;
+      return color === "w"
+        ? game.review?.whiteAccuracy
+        : color === "b" ? game.review?.blackAccuracy : game.review?.overallAccuracy;
+    };
+    const strongest = [...analyzed]
+      .sort((left, right) => (ownAccuracy(right) || 0) - (ownAccuracy(left) || 0))[0];
+    const learning = [...analyzed]
+      .sort((left, right) => (ownAccuracy(left) || 100) - (ownAccuracy(right) || 100))[0];
+    const seriousErrors = (stats.ownMistakes || 0) + (stats.ownBlunders || 0);
+    const type = Number.isFinite(stats.ownAccuracy) && stats.ownAccuracy >= 88
+      ? "Der präzise Kontrolleur"
+      : seriousErrors <= Math.max(2, stats.analyzedGames)
+        ? "Der solide Stratege"
+        : "Der mutige Kämpfer";
+    const strength = Number.isFinite(stats.whiteAccuracy) && Number.isFinite(stats.blackAccuracy)
+      ? stats.whiteAccuracy >= stats.blackAccuracy
+        ? "Mit Weiß findest du deine Pläne etwas sicherer und setzt früher den Ton."
+        : "Mit Schwarz verteidigst du dich besonders verlässlich und nutzt gegnerische Lücken."
+      : "Deine guten Partien zeigen: Wenn du einen klaren Plan hast, hältst du die Stellung stabil.";
+    const growth = seriousErrors > 0
+      ? `Dein größter Hebel sind die ${seriousErrors} kritischen Momente: Vor dem Ziehen kurz gegnerische Drohungen, Schachs und Schlagzüge prüfen.`
+      : "Deine Partien sind bereits sehr sauber. Dein nächster Schritt sind bewusst komplexere Stellungen.";
+
+    const dialog = document.createElement("dialog");
+    dialog.className = "modal-dialog player-story-dialog";
+    this.playerStoryDialog = dialog;
+    const heading = document.createElement("div");
+    heading.className = "dialog-heading";
+    const headingCopy = document.createElement("div");
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "player-story-eyebrow";
+    eyebrow.textContent = "Deine Geschichte aus allen analysierten Partien";
+    const title = document.createElement("div");
+    title.className = "card-title";
+    title.textContent = type;
+    headingCopy.append(eyebrow, title);
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "dialog-close";
+    close.textContent = "×";
+    close.setAttribute("aria-label", "Spieler-DNA schließen");
+    close.addEventListener("click", () => dialog.close());
+    heading.append(headingCopy, close);
+
+    const story = document.createElement("div");
+    story.className = "player-story-copy";
+    const lead = document.createElement("p");
+    lead.textContent = `Über ${stats.analyzedGames} analysierte ${stats.analyzedGames === 1 ? "Partie" : "Partien"} entsteht ein klares Bild: Du spielst am besten, wenn die Stellung verständlich bleibt und du deinem Plan vertraust. ${strength}`;
+    const opening = document.createElement("p");
+    opening.textContent = stats.favoriteOpening?.name
+      ? `${stats.favoriteOpening.name} ist deine vertrauteste Eröffnungswelt. Dort lohnt es sich, typische Ideen statt langer Varianten zu lernen.`
+      : "Deine Eröffnungsidentität ist noch offen. Ein paar weitere gespeicherte Partien machen dieses Muster sichtbar.";
+    const focus = document.createElement("p");
+    focus.textContent = growth;
+    story.append(lead, opening, focus);
+
+    const chapters = document.createElement("div");
+    chapters.className = "player-story-chapters";
+    const addExample = (label, game, copy) => {
+      if (!game) return;
+      const card = document.createElement("article");
+      const badge = document.createElement("span");
+      badge.textContent = label;
+      const name = document.createElement("strong");
+      name.textContent = game.title;
+      const detail = document.createElement("p");
+      detail.textContent = copy;
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "secondary-button";
+      open.textContent = "Als Review ansehen";
+      open.addEventListener("click", () => {
+        dialog.close();
+        this.accountDialog?.close();
+        if (this.openSavedGame(game)) {
+          requestAnimationFrame(() => this.startReviewJourney(game.review));
+        }
+      });
+      card.append(badge, name, detail, open);
+      chapters.appendChild(card);
+    };
+    addExample(
+      "Das kannst du schon",
+      strongest,
+      `Mit ${Number(ownAccuracy(strongest) || 0).toFixed(1).replace(".", ",")} % Genauigkeit zeigt diese Partie deine beste Kontrolle.`,
+    );
+    if (learning?.id !== strongest?.id) {
+      addExample(
+        "Hier steckt dein nächster Sprung",
+        learning,
+        "Diese Partie enthält besonders wertvolle Momente für deinen Sicherheitscheck vor dem Zug.",
+      );
+    }
+    dialog.append(heading, story, chapters);
+    document.body.appendChild(dialog);
+    dialog.addEventListener("close", () => dialog.remove(), { once: true });
+    dialog.showModal();
+  }
+
   renderAccountDialog() {
     if (!this.accountBodyEl) return;
     this.accountBodyEl.replaceChildren();
@@ -4035,9 +4382,6 @@ export class ChessApp {
     const formatPercent = (value) => (
       Number.isFinite(value) ? `${value.toFixed(1).replace('.', ',')} %` : '—'
     );
-    const formatDecimal = (value, suffix = '') => (
-      Number.isFinite(value) ? `${value.toFixed(1).replace('.', ',')}${suffix}` : '—'
-    );
     const gamesLabel = (count) => `${count} ${count === 1 ? 'Partie' : 'Partien'}`;
 
     const profileHeading = document.createElement('div');
@@ -4048,7 +4392,13 @@ export class ChessApp {
     const profileCoverage = document.createElement('span');
     profileCoverage.textContent = `${playerStats.totalGames} gespeichert · ${playerStats.analyzedGames} analysiert`;
     profileHeadingCopy.append(profileHeadingTitle, profileCoverage);
-    profileHeading.appendChild(profileHeadingCopy);
+    const playerStoryButton = document.createElement("button");
+    playerStoryButton.type = "button";
+    playerStoryButton.className = "primary-action-button player-story-button";
+    playerStoryButton.textContent = "Meine Spieler-DNA";
+    playerStoryButton.disabled = playerStats.analyzedGames === 0;
+    playerStoryButton.addEventListener("click", () => this.openPlayerStory(games, playerStats));
+    profileHeading.append(profileHeadingCopy, playerStoryButton);
     this.accountBodyEl.appendChild(profileHeading);
 
     const overview = document.createElement('dl');
@@ -4102,36 +4452,10 @@ export class ChessApp {
       progress.setAttribute('aria-label', 'Fortschritt der Gesamtanalyse');
       const active = document.createElement('small');
       active.textContent = this.batchReviewProgress.activeTitles.length
-        ? `Parallel aktiv: ${this.batchReviewProgress.activeTitles.join(' · ')}`
+        ? 'Bis zu zwei Partien werden gleichzeitig ausgewertet. Du kannst weiterarbeiten.'
         : 'Die nächsten Partien werden vorbereitet …';
       progressCard.append(progressTop, progress, active);
       this.accountBodyEl.appendChild(progressCard);
-    } else if (this.batchReviewSummary) {
-      const summary = this.batchReviewSummary;
-      const summaryCard = document.createElement('section');
-      summaryCard.className = 'batch-analysis-card is-complete';
-      const title = document.createElement('strong');
-      title.textContent = 'Gesamtanalyse abgeschlossen';
-      const lead = document.createElement('p');
-      lead.textContent = `${summary.completed} Partien neu analysiert${summary.failed ? ` · ${summary.failed} nicht abgeschlossen` : ''}. Deine Gesamtgenauigkeit liegt bei ${formatPercent(summary.ownAccuracy)}.`;
-      const facts = document.createElement('div');
-      facts.className = 'batch-analysis-summary-facts';
-      [
-        ['Punktquote', formatPercent(summary.scoreRate)],
-        ['Stärkere Farbe', summary.strongerColor],
-        ['Lieblingseröffnung', summary.favoriteOpening],
-        ['Trainingssignal', summary.trainingSignal],
-      ].forEach(([label, value]) => {
-        const item = document.createElement('div');
-        const itemLabel = document.createElement('span');
-        itemLabel.textContent = label;
-        const itemValue = document.createElement('strong');
-        itemValue.textContent = value;
-        item.append(itemLabel, itemValue);
-        facts.appendChild(item);
-      });
-      summaryCard.append(title, lead, facts);
-      this.accountBodyEl.appendChild(summaryCard);
     }
 
     if (pendingAnalysisGames.length > 0) {
@@ -4186,55 +4510,46 @@ export class ChessApp {
         ? 'Ausgeglichen'
         : playerStats.whiteAccuracy > playerStats.blackAccuracy ? 'Weiß' : 'Schwarz';
     }
+    const seriousErrors = (playerStats.ownMistakes || 0) + (playerStats.ownBlunders || 0);
+    const playerType = Number.isFinite(playerStats.ownAccuracy) && playerStats.ownAccuracy >= 88
+      ? "Präziser Kontrolleur"
+      : seriousErrors <= Math.max(2, playerStats.analyzedGames)
+        ? "Solider Stratege"
+        : "Mutiger Kämpfer";
     appendFact(
-      'Stärkere Farbe',
-      strongerColor,
+      "Dein Spielertyp",
+      playerType,
+      playerType === "Mutiger Kämpfer"
+        ? "Du gehst Chancen ein – der nächste Schritt ist ein ruhiger Sicherheitscheck."
+        : "Du baust Stellungen verlässlich auf und hältst deinen Plan zusammen.",
+    );
+    appendFact(
+      "Deine Stärke",
+      strongerColor === "Noch offen" ? "Stabile Grundideen" : `Spiel mit ${strongerColor}`,
       `Weiß ${formatPercent(playerStats.whiteAccuracy)} · Schwarz ${formatPercent(playerStats.blackAccuracy)}`,
     );
     appendFact(
-      'Lieblingseröffnung',
-      playerStats.favoriteOpening?.name || 'Noch offen',
-      playerStats.favoriteOpening ? gamesLabel(playerStats.favoriteOpening.games) : 'Eröffnung beim Speichern erfassen',
+      "Deine Komfortzone",
+      playerStats.favoriteOpening?.name || playerStats.mostCommonTimeFormat?.name || "Noch nicht erkennbar",
+      playerStats.favoriteOpening
+        ? `Diese Eröffnung spielst du am häufigsten (${gamesLabel(playerStats.favoriteOpening.games)}).`
+        : "Mit mehr gespeicherten Partien wird dein Muster klarer.",
     );
     appendFact(
-      'Beste Eröffnung',
-      playerStats.bestOpening?.name || 'Mehr Partien nötig',
-      playerStats.bestOpening
-        ? `${formatPercent(playerStats.bestOpening.scoreRate)} Punktquote`
-        : 'wird ab zwei Partien verglichen',
+      "Dein Trainingshebel",
+      seriousErrors > 0 ? "Gefahren vor dem Zug prüfen" : "Komplexere Stellungen suchen",
+      seriousErrors > 0
+        ? `${seriousErrors} kritische Momente: erst Drohung, Schach und Schlagzug prüfen.`
+        : "Deine Basis ist sauber – jetzt darf das Training anspruchsvoller werden.",
     );
     appendFact(
-      'Häufigstes Zeitformat',
-      playerStats.mostCommonTimeFormat?.name || 'Noch offen',
-      playerStats.mostCommonTimeFormat
-        ? gamesLabel(playerStats.mostCommonTimeFormat.games)
-        : 'Zeitformat beim Speichern wählen',
-    );
-    appendFact(
-      'Ø Verlust pro Zug',
-      formatDecimal(playerStats.ownAverageCentipawnLoss, ' cp'),
-      'nur deine analysierten Züge',
-    );
-    appendFact(
-      'Letzte Form',
+      "Deine aktuelle Form",
       formatPercent(playerStats.currentForm.scoreRate),
       playerStats.currentForm.sequence.length
         ? playerStats.currentForm.sequence
-          .map((result) => ({ W: 'S', D: 'R', L: 'N' }[result] || '–'))
-          .join(' · ')
-        : 'Noch keine abgeschlossenen Partien',
-    );
-    appendFact(
-      'Ø Partielänge',
-      Number.isFinite(playerStats.averageMoves) ? `${playerStats.averageMoves} Züge` : '—',
-      playerStats.longestGame ? `längste: ${playerStats.longestGame.moves} Züge` : '',
-    );
-    appendFact(
-      'Eigene Fehler',
-      `${playerStats.ownMistakes} Fehler · ${playerStats.ownBlunders} Patzer`,
-      playerStats.ownQualityCounts.sourceGames === 1
-        ? 'aus 1 detaillierter Analyse'
-        : `aus ${playerStats.ownQualityCounts.sourceGames} detaillierten Analysen`,
+          .map((result) => ({ W: "S", D: "R", L: "N" }[result] || "–"))
+          .join(" · ")
+        : "Noch keine abgeschlossenen Partien",
     );
     this.accountBodyEl.appendChild(facts);
 
@@ -4351,11 +4666,16 @@ export class ChessApp {
       if (analyzedGameIds.has(game.id) && game.review?.feedback) {
         const coachSummary = document.createElement('span');
         coachSummary.className = 'saved-game-coach-summary';
-        coachSummary.textContent = String(game.review.feedback)
-          .replace(/[*#_`]/g, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 190);
+        const ownAccuracy = game.metadata?.playerColor === "w"
+          ? game.review.whiteAccuracy
+          : game.metadata?.playerColor === "b"
+            ? game.review.blackAccuracy
+            : game.review.overallAccuracy;
+        coachSummary.textContent = ownAccuracy >= 88
+          ? "Starke Partie · weiter so präzise bleiben."
+          : ownAccuracy >= 75
+            ? "Solide Partie · kritische Momente ruhiger prüfen."
+            : "Schwierige Partie · Drohungen vor jedem Zug kontrollieren.";
         copy.appendChild(coachSummary);
       }
 
@@ -4373,6 +4693,16 @@ export class ChessApp {
         analyze.textContent = 'Einzeln analysieren';
         analyze.addEventListener('click', () => analyzeSavedGame(game));
         itemActions.appendChild(analyze);
+      } else {
+        const review = document.createElement("button");
+        review.type = "button";
+        review.className = "secondary-button";
+        review.textContent = "Review";
+        review.addEventListener("click", () => {
+          if (!this.openSavedGame(game)) return;
+          requestAnimationFrame(() => this.startReviewJourney(game.review));
+        });
+        itemActions.appendChild(review);
       }
       const edit = document.createElement('button');
       edit.type = 'button';
@@ -4586,28 +4916,14 @@ export class ChessApp {
     } finally {
       this.batchReviewRunning = false;
       this.batchReviewCancelled = false;
-      const stats = buildPlayerProfile(this.accountState?.games || []);
-      const strongerColor = Number.isFinite(stats.whiteAccuracy)
-        && Number.isFinite(stats.blackAccuracy)
-        ? stats.whiteAccuracy === stats.blackAccuracy
-          ? "Ausgeglichen"
-          : stats.whiteAccuracy > stats.blackAccuracy ? "Weiß" : "Schwarz"
-        : "Noch offen";
-      const mistakes = (stats.ownMistakes || 0) + (stats.ownBlunders || 0);
-      this.batchReviewSummary = {
-        completed: this.batchReviewProgress.completed,
-        failed: this.batchReviewProgress.failed,
-        ownAccuracy: stats.ownAccuracy,
-        scoreRate: stats.results.scoreRate,
-        strongerColor,
-        favoriteOpening: stats.favoriteOpening?.name || "Noch offen",
-        trainingSignal: mistakes > 0
-          ? `${mistakes} kritische Fehler gezielt nachtrainieren`
-          : "Starke Konstanz – anspruchsvollere Stellungen trainieren",
-      };
+      const completed = this.batchReviewProgress.completed;
+      const failed = this.batchReviewProgress.failed;
+      this.batchReviewSummary = null;
       this.updateBatchReviewUi();
       this.showToast(
-        `${this.batchReviewSummary.completed}/${pendingGames.length} Partien im Hintergrund analysiert.`,
+        failed
+          ? `${completed} Partien analysiert · ${failed} konnten nicht abgeschlossen werden.`
+          : `Gesamtanalyse fertig: ${completed} Partien ausgewertet.`,
       );
     }
   }
@@ -4756,6 +5072,7 @@ export class ChessApp {
   openSavedGame(record) {
     if (!record?.tree) return false;
     if (!this.confirmDiscardUnsavedGame('eine andere Partie öffnen')) return false;
+    this.stopReviewJourney({ silent: true });
     this.cancelPlaySession();
     this.appMode = "analysis";
     this.engine?.setMultiPV?.(this.suggestionCount === 0 ? 1 : this.suggestionCount);
@@ -5155,9 +5472,11 @@ export class ChessApp {
     if (!skipDiscardPrompt && !this.confirmDiscardUnsavedGame('eine neue Partie beginnen')) {
       return false;
     }
+    this.stopReviewJourney({ silent: true });
     this.cancelPlaySession();
     this.cancelFullGameReview();
     this.reviewCoachController?.abort();
+    this.reviewJourneyCoachController?.abort();
     this.stopSuggestionPreview();
     this.game.reset();
     this.declaredGameResult = null;
@@ -5310,6 +5629,7 @@ export class ChessApp {
     }
     this.engineSettingsDialog?.remove();
     this.feedbackDialog?.remove();
+    this.playerStoryDialog?.remove();
     this.saveGameDialog?.remove();
     this.playSetupDialog?.remove();
     this.accountDialog?.remove();
