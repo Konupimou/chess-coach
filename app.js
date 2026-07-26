@@ -15,6 +15,7 @@ import {
   MOVE_QUALITY,
   analysisEntryFromInfo,
   buildFallbackFeedback,
+  buildLearningSummary,
   buildPvFrames,
   calculateMoveAccuracy,
   explainMoveQuality,
@@ -275,6 +276,18 @@ export class ChessApp {
     this.boardSurface = boardSurface;
     this.playModeButton = document.getElementById("play-mode-button");
     this.analysisModeButton = document.getElementById("analysis-mode-button");
+    this.startGuide = document.getElementById("start-guide");
+    this.startGuideOptions = document.getElementById("start-guide-options");
+    this.startGuideSelection = document.getElementById("start-guide-selection");
+    this.startGuideChangeButton = document.getElementById("start-guide-change");
+    this.startPlayButton = document.getElementById("start-play-button");
+    this.startGameAnalysisButton = document.getElementById("start-game-analysis-button");
+    this.startPositionButton = document.getElementById("start-position-button");
+    this.modeContext = document.getElementById("mode-context");
+    this.modeContextEyebrow = document.getElementById("mode-context-eyebrow");
+    this.modeContextTitle = document.getElementById("mode-context-title");
+    this.modeContextDescription = document.getElementById("mode-context-description");
+    this.modePrimaryAction = document.getElementById("mode-primary-action");
     this.moveListSection = document.querySelector(".move-list-section");
     this.moveListEyebrow = document.getElementById("move-list-eyebrow");
     this.moveListTitle = document.getElementById("move-list-title");
@@ -348,8 +361,8 @@ export class ChessApp {
 
     this.engineSettingsButton = document.createElement("button");
     this.engineSettingsButton.type = "button";
-    this.engineSettingsButton.className = "secondary-button";
-    this.engineSettingsButton.textContent = "⚙ Engine";
+    this.engineSettingsButton.className = "secondary-button expert-settings-button";
+    this.engineSettingsButton.textContent = "⚙ Expertenmodus";
     this.engineSettingsButton.setAttribute("aria-haspopup", "dialog");
     this.engineSettingsButton.setAttribute("aria-expanded", "false");
     this.engineSettingsButton.addEventListener("click", () => this.openEngineSettings());
@@ -414,8 +427,8 @@ export class ChessApp {
     this.suggestionsEl.className = 'card suggestions-card';
     this.suggestionsEl.innerHTML = [
       '<div class="suggestions-heading">',
-      '<div class="card-title">Vorschläge</div>',
-      '<span>Hover = Variante zeigen</span>',
+      '<div><p class="eyebrow">Schachcomputer</p><div class="card-title">Starke Zugideen</div></div>',
+      '<span>Berühren oder fokussieren: am Brett ansehen</span>',
       '</div>',
       '<div class="lines muted">Warten auf Analyse…</div>',
     ].join('');
@@ -425,7 +438,7 @@ export class ChessApp {
     chatWrapper.className = 'chat-wrapper';
     this.chatWrapper = chatWrapper;
     this.createChatPanel(chatWrapper);
-    analysisColumn.appendChild(chatWrapper);
+    analysisColumn.insertBefore(chatWrapper, this.suggestionsEl);
 
     const controls = document.createElement('dialog');
     controls.id = 'engine-settings-dialog';
@@ -438,7 +451,7 @@ export class ChessApp {
     const controlsTitle = document.createElement('div');
     controlsTitle.id = 'engine-settings-title';
     controlsTitle.className = 'card-title';
-    controlsTitle.textContent = 'Engine-Einstellungen';
+    controlsTitle.textContent = 'Erweiterte Einstellungen für den Schachcomputer';
     controlsHeader.appendChild(controlsTitle);
     const controlsClose = document.createElement('button');
     controlsClose.type = 'button';
@@ -450,8 +463,10 @@ export class ChessApp {
     controls.appendChild(controlsHeader);
 
     const controlsDescription = document.createElement('p');
+    controlsDescription.id = 'engine-settings-description';
     controlsDescription.className = 'dialog-description';
-    controlsDescription.textContent = 'Änderungen werden gemeinsam übernommen und lösen nur eine neue Analyse aus.';
+    controlsDescription.textContent = 'Für erfahrene Nutzer: Diese technischen Werte beeinflussen Rechenzeit und Detailtiefe. Für normales Training sind die Voreinstellungen empfohlen.';
+    controls.setAttribute('aria-describedby', controlsDescription.id);
     controls.appendChild(controlsDescription);
 
     const controlsForm = document.createElement('div');
@@ -467,7 +482,7 @@ export class ChessApp {
 
     const depthRow = makeRow();
     const label = document.createElement('label');
-    label.textContent = 'Tiefe';
+    label.textContent = 'Analysetiefe';
     label.htmlFor = 'engine-depth-input';
     const input = document.createElement('input');
     input.type = 'number';
@@ -481,7 +496,7 @@ export class ChessApp {
 
     const tRow = makeRow();
     const tLabel = document.createElement('label');
-    tLabel.textContent = 'Threads';
+    tLabel.textContent = 'Rechenkerne';
     tLabel.htmlFor = 'engine-threads-input';
     const tInput = document.createElement('input');
     tInput.type = 'number';
@@ -495,7 +510,7 @@ export class ChessApp {
 
     const hRow = makeRow();
     const hLabel = document.createElement('label');
-    hLabel.textContent = 'Hash (MB)';
+    hLabel.textContent = 'Arbeitsspeicher (MB)';
     hLabel.htmlFor = 'engine-hash-input';
     const hInput = document.createElement('input');
     hInput.type = 'number';
@@ -510,7 +525,7 @@ export class ChessApp {
 
     const pvRow = makeRow();
     const pvLabel = document.createElement('label');
-    pvLabel.textContent = 'Vorschläge';
+    pvLabel.textContent = 'Anzahl Zugideen';
     pvLabel.htmlFor = 'engine-suggestions-input';
     const pvInput = document.createElement('input');
     pvInput.type = 'number';
@@ -590,8 +605,18 @@ export class ChessApp {
     this.createAccountPanel();
     this._onPlayModeClick = () => this.setAppMode("play");
     this._onAnalysisModeClick = () => this.setAppMode("analysis");
+    this._onStartPlayClick = () => this.selectStartPath("play");
+    this._onStartGameAnalysisClick = () => this.selectStartPath("game-analysis");
+    this._onStartPositionClick = () => this.selectStartPath("position");
+    this._onStartGuideChangeClick = () => this.expandStartGuide();
+    this._onModePrimaryActionClick = () => this.handleModePrimaryAction();
     this.playModeButton?.addEventListener("click", this._onPlayModeClick);
     this.analysisModeButton?.addEventListener("click", this._onAnalysisModeClick);
+    this.startPlayButton?.addEventListener("click", this._onStartPlayClick);
+    this.startGameAnalysisButton?.addEventListener("click", this._onStartGameAnalysisClick);
+    this.startPositionButton?.addEventListener("click", this._onStartPositionClick);
+    this.startGuideChangeButton?.addEventListener("click", this._onStartGuideChangeClick);
+    this.modePrimaryAction?.addEventListener("click", this._onModePrimaryActionClick);
 
     this.detachKeys = attachKeyboard({
       onLeft: () => this.reviewJourney
@@ -667,12 +692,12 @@ export class ChessApp {
     const headingCopy = document.createElement("div");
     const eyebrow = document.createElement("p");
     eyebrow.className = "eyebrow";
-    eyebrow.textContent = "Gegen die Engine";
+    eyebrow.textContent = "Gegen den Schachcomputer";
     const title = document.createElement("h2");
     title.id = "play-mode-title";
     title.textContent = "Deine Partie";
     const description = document.createElement("p");
-    description.textContent = "Spiele gegen Stockfish und erhalte direkt nach deinen Zügen ein klares Feedback.";
+    description.textContent = "Spiele gegen den Schachcomputer Stockfish und erhalte direkt nach deinen Zügen ein klares Feedback.";
     headingCopy.append(eyebrow, title, description);
     const engineBadge = document.createElement("span");
     engineBadge.className = "play-engine-badge";
@@ -688,7 +713,7 @@ export class ChessApp {
     this.playEmptyView = document.createElement("div");
     this.playEmptyView.className = "play-empty-state";
     const emptyTitle = document.createElement("h3");
-    emptyTitle.textContent = "Neue Engine-Partie starten";
+    emptyTitle.textContent = "Neue Trainingspartie starten";
     const emptyText = document.createElement("p");
     emptyText.textContent = "Wähle deine Farbe, die Schwierigkeit und ob der Live-Coach deine Züge bewerten soll.";
     const benefits = document.createElement("ul");
@@ -786,12 +811,37 @@ export class ChessApp {
       this.playFeedbackTitleEl,
       this.playFeedbackDetailEl,
     );
+    this.playFeedbackPreviewButton = document.createElement("button");
+    this.playFeedbackPreviewButton.type = "button";
+    this.playFeedbackPreviewButton.className = "secondary-button live-feedback-preview";
+    this.playFeedbackPreviewButton.textContent = "Stärkere Idee am Brett ansehen";
+    this.playFeedbackPreviewButton.hidden = true;
+    this.playFeedbackPreviewButton.addEventListener("click", () => {
+      const latest = this.playSession.feedbackHistory[0];
+      if (latest) this.previewCoachMove(latest);
+    });
+    this.playFeedbackEl.appendChild(this.playFeedbackPreviewButton);
     this.playFeedbackEl.classList.add("is-inline");
     this.accuracyFeedbackRowEl?.appendChild(this.playFeedbackEl);
 
     this.playFeedbackHistoryEl = document.createElement("ol");
     this.playFeedbackHistoryEl.className = "live-feedback-history";
     liveCoach.appendChild(this.playFeedbackHistoryEl);
+
+    const lesson = document.createElement("div");
+    lesson.className = "coach-lesson";
+    const principle = document.createElement("div");
+    const principleLabel = document.createElement("span");
+    principleLabel.textContent = "Lernprinzip";
+    this.playLearningPrincipleEl = document.createElement("strong");
+    principle.append(principleLabel, this.playLearningPrincipleEl);
+    const nextStep = document.createElement("div");
+    const nextStepLabel = document.createElement("span");
+    nextStepLabel.textContent = "Deine nächste Frage";
+    this.playNextStepEl = document.createElement("p");
+    nextStep.append(nextStepLabel, this.playNextStepEl);
+    lesson.append(principle, nextStep);
+    liveCoach.appendChild(lesson);
 
     this.playCoachConversationEl = document.createElement("div");
     this.playCoachConversationEl.className = "play-coach-conversation";
@@ -913,7 +963,7 @@ export class ChessApp {
     const title = document.createElement("div");
     title.id = "play-setup-title";
     title.className = "card-title";
-    title.textContent = "Neue Partie gegen die Engine";
+    title.textContent = "Neue Partie gegen den Schachcomputer";
     const close = document.createElement("button");
     close.type = "button";
     close.className = "dialog-close";
@@ -943,7 +993,7 @@ export class ChessApp {
     [
       { value: "w", label: "Weiß", detail: "Du beginnst" },
       { value: "random", label: "Zufällig", detail: "wird ausgelost" },
-      { value: "b", label: "Schwarz", detail: "Engine beginnt" },
+      { value: "b", label: "Schwarz", detail: "Computer beginnt" },
     ].forEach(({ value, label, detail }) => {
       const option = document.createElement("label");
       option.className = "play-option-card";
@@ -1082,7 +1132,7 @@ export class ChessApp {
     const playerLabel = session.playerColor === "b" ? "Schwarz" : "Weiß";
     const engineLabel = session.engineColor === "b" ? "Schwarz" : "Weiß";
     const level = ENGINE_LEVELS[normalizeEngineLevel(session.level)];
-    this.playColorSummaryEl.textContent = `Du: ${playerLabel} · Engine: ${engineLabel}`;
+    this.playColorSummaryEl.textContent = `Du: ${playerLabel} · Computer: ${engineLabel}`;
     this.playLevelSummaryEl.textContent = `Stufe: ${level.label}`;
 
     let status = "Partie wird vorbereitet …";
@@ -1091,7 +1141,7 @@ export class ChessApp {
     } else if (session.phase === "feedback") {
       status = "Dein Zug wird bewertet …";
     } else if (session.phase === "engine-thinking") {
-      status = "Stockfish denkt …";
+      status = "Der Schachcomputer denkt …";
     } else if (session.phase === "game-over") {
       const result = this.getGameResult();
       const playerWon = (session.playerColor === "w" && result === "1-0")
@@ -1148,6 +1198,39 @@ export class ChessApp {
     if (this.playFeedbackPreviewButton) {
       this.playFeedbackPreviewButton.hidden = !latest?.bestUci
         || latest.bestUci === latest.playedUci;
+    }
+    if (this.playLearningPrincipleEl && this.playNextStepEl) {
+      const lesson = {
+        best: [
+          "Gute Züge lösen das wichtigste Problem der Stellung.",
+          "Welche gegnerische Antwort hast du mit diesem Zug verhindert?",
+        ],
+        excellent: [
+          "Ein klarer Plan ist stärker, wenn deine Figuren sich gegenseitig unterstützen.",
+          "Welche deiner Figuren arbeitet jetzt besser als vor dem Zug?",
+        ],
+        good: [
+          "Solide Züge halten Optionen offen und vermeiden neue Schwächen.",
+          "Gibt es noch eine Figur, die du verbessern kannst?",
+        ],
+        inaccuracy: [
+          "Prüfe vor deinem Plan, welche Felder oder Figuren danach weniger geschützt sind.",
+          "Welche gegnerische Drohung ist jetzt leichter geworden?",
+        ],
+        mistake: [
+          "Kontrolliere vor jedem Zug zuerst gegnerische Schachs, Schlagzüge und Drohungen.",
+          "Was konnte der Gegner unmittelbar nach deinem Zug erzwingen?",
+        ],
+        blunder: [
+          "Bei einer konkreten Gefahr zählt Sicherheit vor dem eigenen Plan.",
+          "Welche deiner Figuren oder Bauern war nach dem Zug nicht mehr ausreichend geschützt?",
+        ],
+      }[latest?.quality] || [
+        "Verstehe zuerst die Aufgabe der Stellung, bevor du nach einem Zug suchst.",
+        "Was möchte dein Gegner als Nächstes erreichen?",
+      ];
+      this.playLearningPrincipleEl.textContent = lesson[0];
+      this.playNextStepEl.textContent = lesson[1];
     }
     if (this.playMobileFeedbackEl) {
       const tone = !session.liveFeedback
@@ -1207,6 +1290,92 @@ export class ChessApp {
       ? "Vollständig analysieren"
       : "Beenden & analysieren";
     this.playResignAction.hidden = session.phase === "game-over";
+    this.updateModeContext();
+  }
+
+  setStartGuideSelection(label) {
+    if (!this.startGuide || !this.startGuideSelection) return;
+    this.startGuide.classList.add("is-complete");
+    this.startGuideOptions.hidden = true;
+    this.startGuideSelection.hidden = false;
+    this.startGuideSelection.textContent = `Heute im Fokus: ${label}`;
+    if (this.startGuideChangeButton) this.startGuideChangeButton.hidden = false;
+  }
+
+  expandStartGuide() {
+    if (!this.startGuide) return;
+    this.startGuide.classList.remove("is-complete");
+    if (this.startGuideOptions) this.startGuideOptions.hidden = false;
+    if (this.startGuideSelection) this.startGuideSelection.hidden = true;
+    if (this.startGuideChangeButton) this.startGuideChangeButton.hidden = true;
+    this.startPlayButton?.focus();
+  }
+
+  selectStartPath(path) {
+    if (path === "play") {
+      if (!this.setAppMode("play", { silent: true })) return;
+      this.setStartGuideSelection("Eine Partie spielen");
+      this.openPlaySetupDialog(this.startPlayButton);
+      return;
+    }
+
+    if (!this.setAppMode("analysis", { silent: true })) return;
+    if (path === "position") {
+      const reset = this.getCurrentPath().length <= 1
+        ? this.resetGame({ skipDiscardPrompt: true })
+        : this.resetGame();
+      if (!reset) return;
+      this.setStartGuideSelection("Eine Stellung untersuchen");
+      this.showToast("Leere Analyse geöffnet. Ziehe eine Figur oder frage den Coach nach einem Plan.");
+    } else {
+      this.setStartGuideSelection("Eine eigene Partie analysieren");
+      this.showToast("Gib die Züge am Brett ein oder öffne eine gespeicherte Partie im Account.");
+    }
+    this.boardEl?.focus();
+    this.boardStage?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  handleModePrimaryAction() {
+    const action = this.modePrimaryAction?.dataset.action;
+    if (action === "setup-play") {
+      this.openPlaySetupDialog(this.modePrimaryAction);
+    } else if (action === "review-game") {
+      this.startFullGameReview();
+    } else {
+      this.boardEl?.focus();
+      this.boardStage?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  updateModeContext() {
+    if (!this.modeContextTitle || !this.modeContextDescription || !this.modePrimaryAction) return;
+    const hasMoves = this.getCurrentPath().length > 1;
+    this.modePrimaryAction.disabled = false;
+    if (this.appMode === "play") {
+      this.modeContextEyebrow.textContent = this.playSession.active
+        ? "Aktive Partie"
+        : "Spielmodus";
+      this.modeContextTitle.textContent = this.playSession.active
+        ? (this.playSession.phase === "game-over" ? "Partie beendet" : "Konzentriere dich auf deinen nächsten Zug")
+        : "Spielen und direkt lernen";
+      this.modeContextDescription.textContent = this.playSession.active
+        ? "Der Coach bewertet erst nach deinem Zug. Zugvorschläge bleiben während der Partie verborgen."
+        : "Wähle Farbe und Spielstärke. Technische Analysewerte bleiben im Hintergrund.";
+      this.modePrimaryAction.dataset.action = this.playSession.active ? "focus-board" : "setup-play";
+      this.modePrimaryAction.textContent = this.playSession.active ? "Zum Brett" : "Partie einrichten";
+      return;
+    }
+
+    this.modeContextEyebrow.textContent = "Analysemodus";
+    this.modeContextTitle.textContent = hasMoves
+      ? "Verstehe die entscheidenden Momente"
+      : "Untersuche eine Partie oder Stellung";
+    this.modeContextDescription.textContent = hasMoves
+      ? "Nutze Coach, Zugliste und Zugideen gemeinsam. Starte anschließend die vollständige Partieanalyse."
+      : "Ziehe eine Figur auf dem Brett, öffne eine gespeicherte Partie oder importiere Partien über deinen Account.";
+    this.modePrimaryAction.dataset.action = hasMoves ? "review-game" : "focus-board";
+    this.modePrimaryAction.textContent = hasMoves ? "Partie vollständig analysieren" : "Brett aktivieren";
+    this.modePrimaryAction.disabled = hasMoves && (this.reviewRunning || !this.engine);
   }
 
   setAppMode(mode, { force = false, silent = false } = {}) {
@@ -1275,6 +1444,7 @@ export class ChessApp {
     if (this.engineSettingsButton) this.engineSettingsButton.hidden = isPlay;
     if (this.feedbackButton) this.feedbackButton.hidden = isPlay;
     if (this.exportButton) this.exportButton.hidden = isPlay;
+    if (this.saveGameButton) this.saveGameButton.hidden = isPlay;
     if (this.accuracyEl) {
       this.accuracyEl.hidden = isPlay && (
         !this.playSession.active
@@ -1294,7 +1464,7 @@ export class ChessApp {
       element?.setAttribute("aria-live", isPlay ? "off" : "polite");
     });
     if (this.resetButton) {
-      this.resetButton.textContent = isPlay ? "Neue Engine-Partie" : "Neue Analyse";
+      this.resetButton.textContent = isPlay ? "Neue Trainingspartie" : "Neue Analyse";
     }
     if (this.moveListEyebrow) {
       this.moveListEyebrow.textContent = isPlay ? "Partieverlauf" : "Variantenbaum";
@@ -1310,6 +1480,7 @@ export class ChessApp {
     this.renderPlayPanel();
     this.updateFeedbackAvailability();
     this.updateSaveGameButton();
+    this.updateModeContext();
     this.scheduleBoardResize();
   }
 
@@ -2028,6 +2199,7 @@ export class ChessApp {
       : "";
     const feedbackEntry = {
       ...feedback,
+      quality: reportMove.quality,
       ply,
       bestUci: reportMove.bestUci || "",
       bestSan: reportMove.bestSan || "",
@@ -2207,12 +2379,14 @@ export class ChessApp {
     if (this.suggestionCount === 0) {
       body.style.color = '#666';
       body.textContent = 'Vorschläge deaktiviert.';
+      this.updateAnalysisCoachFocus([]);
       return;
     }
 
     if (!this.suggestionState || this.suggestionState.lines.size === 0) {
       body.style.color = '#666';
       body.textContent = 'Warten auf Analyse…';
+      this.updateAnalysisCoachFocus([]);
       return;
     }
 
@@ -2223,6 +2397,7 @@ export class ChessApp {
     if (lines.length === 0) {
       body.style.color = '#666';
       body.textContent = 'Warten auf Analyse…';
+      this.updateAnalysisCoachFocus([]);
       return;
     }
 
@@ -2245,11 +2420,11 @@ export class ChessApp {
       const label = document.createElement('span');
       label.style.fontWeight = '600';
       label.style.color = MOVE_ARROW_STYLES[Math.min(idx - 1, MOVE_ARROW_STYLES.length - 1)].color;
-      label.textContent = `#${idx}`;
+      label.textContent = idx === 1 ? "Beste Idee" : `Alternative ${idx}`;
 
       const scoreSpan = document.createElement('span');
       scoreSpan.style.fontVariantNumeric = 'tabular-nums';
-      scoreSpan.textContent = this.formatScore(data.whiteScore || data.score);
+      scoreSpan.textContent = `Bewertung ${this.formatScore(data.whiteScore || data.score)}`;
 
       header.appendChild(label);
       header.appendChild(scoreSpan);
@@ -2259,7 +2434,7 @@ export class ChessApp {
         depthSpan.style.marginLeft = '8px';
         depthSpan.style.fontSize = '11px';
         depthSpan.style.color = '#93a5c8';
-        depthSpan.textContent = `d${data.depth}`;
+        depthSpan.textContent = `Rechentiefe ${data.depth}`;
         header.appendChild(depthSpan);
       }
 
@@ -2280,9 +2455,9 @@ export class ChessApp {
           : 'Coach-Erklärung wird vorbereitet …';
       row.setAttribute(
         'aria-label',
-        `Variante ${idx} vorführen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
+        `Zugidee ${idx} am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
       );
-      row.title = 'Zeiger darüber halten, um die Variante auf dem Brett abzuspielen.';
+      row.title = 'Berühren oder mit der Tastatur fokussieren, um die Zugidee am Brett anzusehen.';
       row.addEventListener('pointerenter', () => this.startSuggestionPreview(data, row));
       row.addEventListener('pointerleave', () => this.stopSuggestionPreview(row));
       row.addEventListener('focus', () => this.startSuggestionPreview(data, row));
@@ -2293,7 +2468,38 @@ export class ChessApp {
       row.appendChild(coachReason);
       body.appendChild(row);
     });
+    this.updateAnalysisCoachFocus(lines);
     this.scheduleSuggestionCoachReasons(lines);
+  }
+
+  updateAnalysisCoachFocus(lines) {
+    if (
+      !this.analysisCoachFocusTitle
+      || !this.analysisCoachFocusExplanation
+      || !this.analysisCoachFocusPrinciple
+    ) return;
+    const first = Array.isArray(lines) ? lines[0] : null;
+    if (!first) {
+      this.analysisCoachFocusTitle.textContent = "Die Stellung wird eingeordnet";
+      this.analysisCoachFocusExplanation.textContent = "Sobald die Berechnung stabil ist, erscheint hier die wichtigste Idee in verständlicher Form.";
+      this.analysisCoachFocusPrinciple.textContent = "Prüfe zuerst gegnerische Schachs, Schlagzüge und direkte Drohungen.";
+      return;
+    }
+
+    const [, data] = first;
+    const moves = this.pvToSanList(data.pv, data.fen);
+    const firstMove = moves[0] || "dem stärksten Kandidaten";
+    const reason = this.suggestionCoachReasons.get(1);
+    const evaluation = Number.isFinite(this.lastEvalPawns)
+      ? Math.abs(this.lastEvalPawns) < 0.35
+        ? "Die Stellung ist ungefähr ausgeglichen."
+        : `${this.lastEvalPawns > 0 ? "Weiß" : "Schwarz"} hat derzeit die angenehmere Stellung.`
+      : "Die Stellung wird noch genauer eingeordnet.";
+    this.analysisCoachFocusTitle.textContent = evaluation;
+    this.analysisCoachFocusExplanation.textContent = reason
+      ? `${firstMove} ist interessant, weil ${reason.replace(/^[A-ZÄÖÜ]/, (letter) => letter.toLowerCase())}`
+      : `Die stärkste berechnete Idee beginnt mit ${firstMove}. Prüfe dabei, welche Figur aktiver wird und welche gegnerische Antwort eingeschränkt wird.`;
+    this.analysisCoachFocusPrinciple.textContent = "Ein guter Kandidatenzug löst zuerst das dringendste Problem der Stellung.";
   }
 
   scheduleSuggestionCoachReasons(lines) {
@@ -2755,7 +2961,7 @@ export class ChessApp {
 
     const status = document.createElement('div');
     status.className = 'review-progress-label';
-    status.textContent = `Stellung ${Math.min(current, total)} von ${total} · Tiefe ${depth}`;
+    status.textContent = `Stellung ${Math.min(current, total)} von ${total} wird geprüft`;
     this.feedbackBodyEl.appendChild(status);
   }
 
@@ -3016,10 +3222,10 @@ export class ChessApp {
     lead.appendChild(overall);
     const leadCopy = document.createElement('div');
     const leadTitle = document.createElement('strong');
-    leadTitle.textContent = 'Geschätzte Engine-Genauigkeit';
+    leadTitle.textContent = 'Gesamtbild deiner Partie';
     leadCopy.appendChild(leadTitle);
     const coverage = document.createElement('span');
-    coverage.textContent = `${report.analyzedMoves}/${report.totalMoves} Züge · Tiefe ${report.depth || '—'}`;
+    coverage.textContent = `${report.analyzedMoves}/${report.totalMoves} Züge zuverlässig geprüft`;
     leadCopy.appendChild(coverage);
     lead.appendChild(leadCopy);
     this.feedbackBodyEl.appendChild(lead);
@@ -3041,6 +3247,74 @@ export class ChessApp {
       journeyCta.append(copy, start);
       this.feedbackBodyEl.appendChild(journeyCta);
     }
+
+    const learning = buildLearningSummary(report);
+    const learningSection = document.createElement("section");
+    learningSection.className = "learning-summary";
+    learningSection.setAttribute("aria-labelledby", "learning-summary-title");
+    const learningHeading = document.createElement("div");
+    learningHeading.className = "learning-summary-heading";
+    const learningEyebrow = document.createElement("p");
+    learningEyebrow.className = "eyebrow";
+    learningEyebrow.textContent = "Dein nächster Trainingsschritt";
+    const learningTitle = document.createElement("h3");
+    learningTitle.id = "learning-summary-title";
+    learningTitle.textContent = "Was du aus dieser Partie mitnehmen kannst";
+    learningHeading.append(learningEyebrow, learningTitle);
+    learningSection.appendChild(learningHeading);
+    const learningGrid = document.createElement("div");
+    learningGrid.className = "learning-summary-grid";
+    [
+      ["Stärkste Phase", learning.strongestPhase, learning.strongestPhaseDetail, "strength"],
+      ["Wichtigster Moment", "Hier lohnt sich ein zweiter Blick", learning.biggestLesson, "moment"],
+      ["Wiederkehrendes Muster", "Vorsichtige Einordnung", learning.recurringPattern, "pattern"],
+      ["Konkretes Lernziel", learning.learningGoal, "Nutze dieses Ziel in deiner nächsten Partie.", "goal"],
+      ["Empfohlene Übung", learning.exercise, "Kurz, konkret und direkt aus dieser Analyse abgeleitet.", "exercise"],
+    ].forEach(([label, title, detail, tone]) => {
+      const item = document.createElement("article");
+      item.className = `learning-summary-item is-${tone}`;
+      const itemLabel = document.createElement("span");
+      itemLabel.textContent = label;
+      const itemTitle = document.createElement("strong");
+      itemTitle.textContent = title;
+      const itemDetail = document.createElement("p");
+      itemDetail.textContent = detail;
+      item.append(itemLabel, itemTitle, itemDetail);
+      learningGrid.appendChild(item);
+    });
+    learningSection.appendChild(learningGrid);
+    if (learning.confidence === "low") {
+      const note = document.createElement("p");
+      note.className = "learning-confidence";
+      note.textContent = "Hinweis: Die Aussage ist vorsichtig formuliert, weil nur wenige bewertete Züge vorliegen.";
+      learningSection.appendChild(note);
+    }
+    this.feedbackBodyEl.appendChild(learningSection);
+
+    const coachHeading = document.createElement('h3');
+    coachHeading.textContent = 'Persönliches Abschlussfeedback';
+    this.feedbackBodyEl.appendChild(coachHeading);
+    const coach = document.createElement('div');
+    coach.className = 'final-feedback';
+    const displayFeedback = (feedback || buildFallbackFeedback(report))
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/^\s*-\s+/gm, '• ');
+    renderChatMarkup(coach, displayFeedback);
+    this.feedbackBodyEl.appendChild(coach);
+    if (coachPending || coachNote) {
+      const status = document.createElement('p');
+      status.className = 'coach-review-status';
+      status.textContent = coachPending
+        ? 'Der Coach formuliert noch eine persönliche Zusammenfassung …'
+        : coachNote;
+      this.feedbackBodyEl.appendChild(status);
+    }
+
+    const technicalDetails = document.createElement("details");
+    technicalDetails.className = "review-technical-details";
+    const technicalSummary = document.createElement("summary");
+    technicalSummary.textContent = "Technische Auswertung anzeigen";
+    technicalDetails.appendChild(technicalSummary);
 
     const metrics = document.createElement('div');
     metrics.className = 'review-metrics';
@@ -3066,11 +3340,11 @@ export class ChessApp {
       card.append(title, value, detail);
       metrics.appendChild(card);
     });
-    this.feedbackBodyEl.appendChild(metrics);
+    technicalDetails.appendChild(metrics);
 
     const qualityHeading = document.createElement('h3');
     qualityHeading.textContent = 'Zugqualität';
-    this.feedbackBodyEl.appendChild(qualityHeading);
+    technicalDetails.appendChild(qualityHeading);
     const qualities = document.createElement('div');
     qualities.className = 'quality-grid';
     Object.entries(MOVE_QUALITY).forEach(([key, value]) => {
@@ -3083,7 +3357,8 @@ export class ChessApp {
       item.append(number, label);
       qualities.appendChild(item);
     });
-    this.feedbackBodyEl.appendChild(qualities);
+    technicalDetails.appendChild(qualities);
+    this.feedbackBodyEl.appendChild(technicalDetails);
 
     if (report.moves?.length > 0) {
       const movesHeading = document.createElement("h3");
@@ -3130,7 +3405,7 @@ export class ChessApp {
         title.textContent = `${move.moveNumber}${move.color === 'b' ? '…' : '.'} ${move.san}`;
         const description = document.createElement('span');
         const quality = MOVE_QUALITY[move.quality]?.label || move.quality;
-        description.textContent = `${quality} · ${(move.lossCp / 100).toFixed(2)} Bauerneinheiten${move.bestSan ? ` · Besser: ${move.bestSan}` : ''}`;
+        description.textContent = `${quality}${move.bestSan ? ` · Stärkere Idee: ${move.bestSan}` : " · Diesen Moment noch einmal prüfen"}`;
         copy.append(title, description);
         const jump = document.createElement('button');
         jump.type = 'button';
@@ -3145,24 +3420,6 @@ export class ChessApp {
       this.feedbackBodyEl.appendChild(list);
     }
 
-    const coachHeading = document.createElement('h3');
-    coachHeading.textContent = 'Abschlussfeedback';
-    this.feedbackBodyEl.appendChild(coachHeading);
-    const coach = document.createElement('div');
-    coach.className = 'final-feedback';
-    const displayFeedback = (feedback || buildFallbackFeedback(report))
-      .replace(/^#{1,6}\s+/gm, '')
-      .replace(/^\s*-\s+/gm, '• ');
-    renderChatMarkup(coach, displayFeedback);
-    this.feedbackBodyEl.appendChild(coach);
-    if (coachPending || coachNote) {
-      const status = document.createElement('p');
-      status.className = 'coach-review-status';
-      status.textContent = coachPending
-        ? 'Der Coach formuliert noch eine persönliche Zusammenfassung …'
-        : coachNote;
-      this.feedbackBodyEl.appendChild(status);
-    }
   }
 
   startReviewJourney(report, startingPly = null) {
@@ -3224,7 +3481,9 @@ export class ChessApp {
     this.reviewJourneyTitleEl.textContent =
       `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
     this.reviewJourneyMoveEl.className = `review-journey-move quality-${quality.tone}`;
-    this.reviewJourneyMoveEl.textContent = `${quality.label} · ${Math.max(0, move.lossCp / 100).toFixed(2).replace(".", ",")} Bauerneinheiten verloren`;
+    this.reviewJourneyMoveEl.textContent = move.quality === "best" || move.quality === "excellent"
+      ? `${quality.label} · Die Stellung bleibt unter Kontrolle`
+      : `${quality.label} · Hier verändert sich die Partie deutlich`;
     const coachIntro = move.quality === "best" || move.quality === "excellent"
       ? "Das war stark, weil"
       : move.quality === "good"
@@ -5147,34 +5406,98 @@ export class ChessApp {
   }
 
   createChatPanel(container) {
-    const panel = document.createElement('div');
+    const panel = document.createElement('section');
     panel.id = 'coach-chat';
-    panel.className = 'card chat-card';
+    panel.className = 'card chat-card coach-card';
+    panel.setAttribute("aria-labelledby", "coach-chat-title");
 
-    const title = document.createElement('div');
+    const header = document.createElement("div");
+    header.className = "coach-card-header";
+    const avatar = document.createElement("span");
+    avatar.className = "coach-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.textContent = "♞";
+    const heading = document.createElement("div");
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "Dein persönlicher Coach";
+    const title = document.createElement('h2');
+    title.id = "coach-chat-title";
     title.className = 'card-title';
-    title.textContent = 'Coach Chat';
-    panel.appendChild(title);
+    title.textContent = 'Was sagt dir diese Stellung?';
+    const subtitle = document.createElement("p");
+    subtitle.textContent = "Verständliche Pläne zuerst, technische Werte nur als Hintergrund.";
+    heading.append(eyebrow, title, subtitle);
+    header.append(avatar, heading);
+    panel.appendChild(header);
+
+    const focus = document.createElement("div");
+    focus.className = "analysis-coach-focus";
+    focus.setAttribute("role", "region");
+    focus.setAttribute("aria-label", "Aktuelle Coach-Einschätzung");
+    const focusLabel = document.createElement("span");
+    focusLabel.textContent = "Coach-Blick";
+    this.analysisCoachFocusTitle = document.createElement("strong");
+    this.analysisCoachFocusTitle.textContent = "Bereit für deine Stellung";
+    this.analysisCoachFocusExplanation = document.createElement("p");
+    this.analysisCoachFocusExplanation.textContent = "Ziehe eine Figur oder warte kurz auf die erste Stellungsbewertung.";
+    const focusPrinciple = document.createElement("div");
+    const focusPrincipleLabel = document.createElement("span");
+    focusPrincipleLabel.textContent = "Lernprinzip";
+    this.analysisCoachFocusPrinciple = document.createElement("p");
+    this.analysisCoachFocusPrinciple.textContent = "Erst die Aufgabe der Stellung verstehen, dann Kandidatenzüge vergleichen.";
+    focusPrinciple.append(focusPrincipleLabel, this.analysisCoachFocusPrinciple);
+    this.analysisCoachExplainButton = document.createElement("button");
+    this.analysisCoachExplainButton.type = "button";
+    this.analysisCoachExplainButton.className = "secondary-button";
+    this.analysisCoachExplainButton.textContent = "Ausführlicher erklären";
+    this.analysisCoachExplainButton.addEventListener("click", () => {
+      this.sendChatMessage("Erkläre mir die aktuelle Coach-Einschätzung einfach und ohne lange Zugfolge.");
+    });
+    focus.append(
+      focusLabel,
+      this.analysisCoachFocusTitle,
+      this.analysisCoachFocusExplanation,
+      focusPrinciple,
+      this.analysisCoachExplainButton,
+    );
+    panel.appendChild(focus);
 
     this.chatBodyEl = document.createElement('div');
     this.chatBodyEl.className = 'chat-body';
+    this.chatBodyEl.setAttribute("aria-live", "polite");
+    this.chatBodyEl.setAttribute("aria-label", "Gespräch mit dem Schachcoach");
     panel.appendChild(this.chatBodyEl);
 
     this.chatStatusEl = document.createElement('div');
     this.chatStatusEl.className = 'chat-status muted';
     panel.appendChild(this.chatStatusEl);
 
+    const prompts = document.createElement("div");
+    prompts.className = "coach-prompts";
+    this.coachPromptButtons = [];
+    [
+      "Was ist hier der Plan?",
+      "Welche Gefahr übersehe ich?",
+      "Erkläre es einfacher",
+    ].forEach((prompt) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "coach-prompt-button";
+      button.textContent = prompt;
+      button.addEventListener("click", () => this.sendChatMessage(prompt));
+      this.coachPromptButtons.push(button);
+      prompts.appendChild(button);
+    });
+    panel.appendChild(prompts);
+
     const form = document.createElement('div');
-    form.style.display = 'flex';
-    form.style.marginTop = '8px';
-    form.style.gap = '6px';
+    form.className = "coach-form";
 
     this.chatInputEl = document.createElement('textarea');
     this.chatInputEl.rows = 2;
-    this.chatInputEl.placeholder = 'Frag den Coach...';
-    this.chatInputEl.style.flex = '1';
-    this.chatInputEl.style.resize = 'none';
-    this.chatInputEl.style.fontFamily = 'system-ui, -apple-system, Arial';
+    this.chatInputEl.placeholder = 'Frag nach einem Plan, einer Gefahr oder einer einfacheren Erklärung …';
+    this.chatInputEl.setAttribute("aria-label", "Frage an den Schachcoach");
     form.appendChild(this.chatInputEl);
 
     this.chatInputEl.addEventListener('keydown', (e) => {
@@ -5185,8 +5508,8 @@ export class ChessApp {
     });
 
     this.chatSendBtn = document.createElement('button');
-    this.chatSendBtn.textContent = 'Senden';
-    this.chatSendBtn.style.padding = '6px 12px';
+    this.chatSendBtn.className = "primary-action-button";
+    this.chatSendBtn.textContent = 'Coach fragen';
     this.chatSendBtn.addEventListener('click', () => this.handleChatSubmit());
     form.appendChild(this.chatSendBtn);
 
@@ -5194,7 +5517,14 @@ export class ChessApp {
     container.appendChild(panel);
 
     this.chatMessages = [
-      { role: 'assistant', content: 'Hallo! Stell eine Frage oder beschreibe deine Idee, und ich gebe dir Hinweise.' }
+      {
+        role: 'assistant',
+        content: [
+          "**Aktuelle Einschätzung:** Das Brett ist bereit für deine Analyse.",
+          "**Lernprinzip:** Suche zuerst nach gegnerischen Schachs, Schlagzügen und direkten Drohungen.",
+          "**Nächster Schritt:** Ziehe eine Variante auf dem Brett oder frage mich nach einem verständlichen Plan.",
+        ].join("\n\n"),
+      }
     ];
     this.renderChat();
     this.checkCoachHealth();
@@ -5220,20 +5550,7 @@ export class ChessApp {
     this.chatBodyEl.innerHTML = '';
     this.chatMessages.forEach((msg) => {
       const bubble = document.createElement('div');
-      bubble.style.margin = '4px 0';
-      bubble.style.padding = '6px 8px';
-      bubble.style.borderRadius = '6px';
-      bubble.style.whiteSpace = 'pre-wrap';
-      bubble.style.fontSize = '13px';
-      if (msg.role === 'assistant') {
-        bubble.style.background = 'rgba(90, 162, 255, 0.18)';
-        bubble.style.border = '1px solid rgba(90, 162, 255, 0.4)';
-        bubble.style.color = '#f7fbff';
-      } else {
-        bubble.style.background = 'rgba(255, 255, 255, 0.08)';
-        bubble.style.border = '1px solid rgba(255, 255, 255, 0.25)';
-        bubble.style.color = '#fff';
-      }
+      bubble.className = `coach-message is-${msg.role}`;
       renderChatMarkup(bubble, msg.content);
       this.chatBodyEl.appendChild(bubble);
     });
@@ -5289,6 +5606,9 @@ export class ChessApp {
     this.chatBusy = state;
     if (this.chatSendBtn) this.chatSendBtn.disabled = !!state;
     if (this.chatInputEl) this.chatInputEl.disabled = !!state;
+    this.coachPromptButtons?.forEach((button) => {
+      button.disabled = Boolean(state);
+    });
     if (this.chatStatusEl) {
       this.chatStatusEl.textContent = state ? 'Coach denkt nach…' : '';
     }
@@ -5466,6 +5786,7 @@ export class ChessApp {
     this.gameStatusEl.textContent = label;
     this.updateFeedbackAvailability();
     this.renderPlayPanel();
+    this.updateModeContext();
   }
 
   resetGame({ skipDiscardPrompt = false } = {}) {
@@ -5508,6 +5829,7 @@ export class ChessApp {
     this.feedbackButton.disabled = this.reviewRunning || !this.currentNode?.parent || !this.engine;
     this.feedbackButton.textContent = this.reviewRunning ? 'Analysiere …' : 'Partie analysieren';
     this.updateSaveGameButton();
+    this.updateModeContext();
   }
 
   handleEngineReady() {
@@ -5528,7 +5850,7 @@ export class ChessApp {
     if (this.playSession.active) this.cancelPlaySession();
     if (this.playStartButton) this.playStartButton.disabled = true;
     if (this.playSetupSubmitButton) this.playSetupSubmitButton.disabled = true;
-    if (this.playEngineBadgeEl) this.playEngineBadgeEl.textContent = "Engine nicht verfügbar";
+    if (this.playEngineBadgeEl) this.playEngineBadgeEl.textContent = "Schachcomputer nicht verfügbar";
     this.moveArrows?.clear();
     this.renderEngineUnavailable();
     this.engineInputs?.forEach((input) => {
@@ -5626,6 +5948,21 @@ export class ChessApp {
     }
     if (this._onAnalysisModeClick) {
       this.analysisModeButton?.removeEventListener("click", this._onAnalysisModeClick);
+    }
+    if (this._onStartPlayClick) {
+      this.startPlayButton?.removeEventListener("click", this._onStartPlayClick);
+    }
+    if (this._onStartGameAnalysisClick) {
+      this.startGameAnalysisButton?.removeEventListener("click", this._onStartGameAnalysisClick);
+    }
+    if (this._onStartPositionClick) {
+      this.startPositionButton?.removeEventListener("click", this._onStartPositionClick);
+    }
+    if (this._onStartGuideChangeClick) {
+      this.startGuideChangeButton?.removeEventListener("click", this._onStartGuideChangeClick);
+    }
+    if (this._onModePrimaryActionClick) {
+      this.modePrimaryAction?.removeEventListener("click", this._onModePrimaryActionClick);
     }
     this.engineSettingsDialog?.remove();
     this.feedbackDialog?.remove();

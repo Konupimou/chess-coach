@@ -40,12 +40,16 @@ npm run site:package  # deploybares Sites-Archiv erzeugen
 
 ## Bedienung
 
+- Einstieg: „Eine Partie spielen“, „Eine eigene Partie analysieren“ oder
+  „Eine Stellung untersuchen“ führt direkt in den passenden Arbeitsablauf
 - „Spielen“: Farbe und Schwierigkeit wählen, gegen Stockfish antreten und nach
-  jedem eigenen Zug ein lokales Live-Urteil, die eigene Genauigkeit und einen
-  Präzisions-Streak erhalten
+  jedem eigenen Zug ein verständliches Live-Urteil, ein Lernprinzip, die eigene
+  Genauigkeit und einen Präzisions-Streak erhalten
 - „Analyse“: frei ziehen, Varianten untersuchen, beste Züge anzeigen und den
-  Coach befragen; die Zugliste färbt Bewertungen von Grün bis Rot und erklärt
-  jeden analysierten Zug kurz
+  hervorgehobenen Coach befragen; die Zugliste färbt Bewertungen von Grün bis
+  Rot und erklärt jeden analysierten Zug kurz
+- vollständige Partieanalyse: geführte Schlüsselmomente, persönliches
+  Abschlussfeedback, vorsichtig abgeleitetes Lernziel und konkrete nächste Übung
 - Figuren ziehen: neue Hauptlinie oder Variante anlegen
 - `←` / `→`: einen Halbzug zurück oder vor
 - `↑` / `↓`: zwischen Geschwistervarianten wechseln

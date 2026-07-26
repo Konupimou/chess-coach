@@ -309,6 +309,78 @@ export function reviewDepthForPlies(plies, preferredDepth = 15) {
   return Math.max(8, Math.min(18, adaptive, preferred));
 }
 
+export function buildLearningSummary(report) {
+  const moves = Array.isArray(report?.moves) ? report.moves.filter(Boolean) : [];
+  if (moves.length === 0) {
+    return {
+      strongestPhase: "Noch nicht zuverlässig erkennbar",
+      strongestPhaseDetail: "Dafür müssen zuerst mehrere Züge vollständig analysiert werden.",
+      biggestLesson: "Es liegt noch kein belastbarer Schlüsselmoment vor.",
+      recurringPattern: "Mit weiteren analysierten Zügen kann der Coach wiederkehrende Muster erkennen.",
+      learningGoal: "Analysiere zunächst eine vollständige Partie.",
+      exercise: "Spiele oder importiere eine Partie und starte danach die vollständige Analyse.",
+      confidence: "low",
+    };
+  }
+
+  const phaseNames = ["Eröffnung", "Mittelspiel", "Endphase"];
+  const phaseSize = Math.max(1, Math.ceil(moves.length / 3));
+  const phases = phaseNames
+    .map((name, index) => {
+      const values = moves
+        .slice(index * phaseSize, index === 2 ? moves.length : (index + 1) * phaseSize)
+        .map((move) => move.accuracy)
+        .filter(Number.isFinite);
+      return { name, values, average: mean(values) };
+    })
+    .filter((phase) => phase.values.length > 0);
+  const strongest = [...phases].sort((left, right) => right.average - left.average)[0];
+
+  const biggest = [...moves]
+    .filter((move) => Number.isFinite(move.winPercentLoss))
+    .sort((left, right) => right.winPercentLoss - left.winPercentLoss)[0];
+  const serious = moves.filter((move) => move.quality === "mistake" || move.quality === "blunder");
+  const inaccuracies = moves.filter((move) => move.quality === "inaccuracy");
+  const strong = moves.filter((move) => move.quality === "best" || move.quality === "excellent");
+
+  let recurringPattern;
+  let learningGoal;
+  let exercise;
+  if (serious.length >= 2) {
+    recurringPattern = `${serious.length} deutliche Bewertungseinbrüche sprechen dafür, dass konkrete gegnerische Antworten zu spät geprüft wurden.`;
+    learningGoal = "Prüfe vor jedem Zug gegnerische Schachs, Schlagzüge und direkte Drohungen.";
+    exercise = "Nimm die zwei größten Fehler erneut am Brett durch und nenne vor deinem Zug jeweils drei gegnerische Zwangszüge.";
+  } else if (inaccuracies.length >= 2) {
+    recurringPattern = `${inaccuracies.length} Ungenauigkeiten zeigen eher mehrere kleine Planungsverluste als einen einzelnen großen Einbruch.`;
+    learningGoal = "Vergleiche vor der Entscheidung mindestens zwei sinnvolle Kandidatenzüge.";
+    exercise = "Gehe drei ungenaue Stellungen erneut durch und notiere pro Stellung zwei Kandidaten samt kurzer Begründung.";
+  } else if (strong.length >= Math.max(2, Math.ceil(moves.length * 0.6))) {
+    recurringPattern = "Die vorhandenen Bewertungen zeigen überwiegend stabile Entscheidungen ohne häufige klare Einbrüche.";
+    learningGoal = "Mache deinen guten Entscheidungsprozess bewusst wiederholbar.";
+    exercise = "Wähle zwei starke Züge und erkläre jeweils: gegnerische Drohung, eigener Plan und verbesserte Figur.";
+  } else {
+    recurringPattern = "Die vorhandenen Daten zeigen noch kein eindeutiges wiederkehrendes Fehlermuster.";
+    learningGoal = "Nutze an kritischen Stellen eine feste Reihenfolge für deine Zugentscheidung.";
+    exercise = "Übe an drei Schlüsselmomenten: Gefahr erkennen, zwei Kandidaten vergleichen, erst dann ziehen.";
+  }
+
+  const biggestLesson = biggest
+    ? `${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}: ${biggest.explanation || explainMoveQuality(biggest)}`
+    : "Kein einzelner Zug hebt sich zuverlässig als größter Fehler ab.";
+
+  return {
+    strongestPhase: strongest?.name || "Stabilste Phase",
+    strongestPhaseDetail: strongest
+      ? `Dort lag deine geschätzte Genauigkeit bei rund ${strongest.average.toFixed(0)} %.`
+      : "Noch nicht zuverlässig erkennbar.",
+    biggestLesson,
+    recurringPattern,
+    learningGoal,
+    exercise,
+    confidence: moves.length >= 8 ? "medium" : "low",
+  };
+}
+
 export function buildFallbackFeedback(report) {
   if (!report || report.analyzedMoves === 0) {
     return "**Noch keine vollständige Bewertung:** Für ein aussagekräftiges Feedback braucht die Partie mindestens einen analysierten Zug.";
@@ -319,13 +391,13 @@ export function buildFallbackFeedback(report) {
   const serious = (report.counts?.mistake || 0) + (report.counts?.blunder || 0);
   const biggest = report.criticalMoments?.[0];
   const focus = biggest
-    ? `Prüfe besonders **${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}**. Dort gingen ungefähr ${(biggest.lossCp / 100).toFixed(2)} Bauerneinheiten verloren${biggest.bestSan ? `; stärker war **${biggest.bestSan}**` : ""}.`
+    ? `Prüfe besonders **${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}**. Dort veränderte sich die Stellung deutlich${biggest.bestSan ? `; stärker war **${biggest.bestSan}**` : ""}.`
     : "Die Partie enthält keinen klaren kritischen Einbruch.";
   const verdict = report.overallAccuracy >= 90
     ? "Du hast sehr konstant gespielt."
     : report.overallAccuracy >= 75
       ? "Die Partie war insgesamt solide, mit einigen konkreten Verbesserungsmöglichkeiten."
-      : "Die größten Fortschritte liegen darin, vor jedem Zug gegnerische Drohungen und forcing moves zu prüfen.";
+      : "Die größten Fortschritte liegen darin, vor jedem Zug gegnerische Schachs, Schlagzüge und direkte Drohungen zu prüfen.";
   const strongest = [...(report.moves || [])]
     .filter((move) => move.quality === "best" || move.quality === "excellent")
     .sort((left, right) => (right.accuracy || 0) - (left.accuracy || 0))[0];

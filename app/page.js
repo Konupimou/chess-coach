@@ -20,6 +20,55 @@ export default function HomePage() {
         </header>
 
         <main className="workbench">
+          <section
+            id="start-guide"
+            className="start-guide"
+            aria-labelledby="start-guide-title"
+          >
+            <div className="start-guide-heading">
+              <div>
+                <p className="eyebrow">Dein Training</p>
+                <h2 id="start-guide-title">Was möchtest du heute verbessern?</h2>
+                <p>Wähle einen Einstieg. Du kannst den Bereich später jederzeit wechseln.</p>
+              </div>
+              <button
+                id="start-guide-change"
+                className="start-guide-change"
+                type="button"
+                hidden
+              >
+                Auswahl ändern
+              </button>
+            </div>
+            <div id="start-guide-options" className="start-guide-options">
+              <button id="start-play-button" className="start-guide-option" type="button">
+                <span className="start-guide-icon" aria-hidden="true">♟</span>
+                <span>
+                  <strong>Eine Partie spielen</strong>
+                  <small>Gegen den Schachcomputer spielen und direkt aus deinen Zügen lernen.</small>
+                </span>
+                <span aria-hidden="true">→</span>
+              </button>
+              <button id="start-game-analysis-button" className="start-guide-option" type="button">
+                <span className="start-guide-icon" aria-hidden="true">◎</span>
+                <span>
+                  <strong>Eine eigene Partie analysieren</strong>
+                  <small>Züge eingeben, eine gespeicherte Partie öffnen oder von Lichess importieren.</small>
+                </span>
+                <span aria-hidden="true">→</span>
+              </button>
+              <button id="start-position-button" className="start-guide-option" type="button">
+                <span className="start-guide-icon" aria-hidden="true">⌁</span>
+                <span>
+                  <strong>Eine Stellung untersuchen</strong>
+                  <small>Varianten ausprobieren und Pläne mit dem Coach besprechen.</small>
+                </span>
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <p id="start-guide-selection" className="start-guide-selection" role="status" hidden />
+          </section>
+
           <nav className="mode-navigation" aria-label="Chess-Coach-Bereich">
             <button
               id="play-mode-button"
@@ -30,7 +79,7 @@ export default function HomePage() {
               <span aria-hidden="true">♟</span>
               <span>
                 <strong>Spielen</strong>
-                <small>Gegen die Engine mit Live-Feedback</small>
+                <small>Gegen den Schachcomputer mit Live-Feedback</small>
               </span>
             </button>
             <button
@@ -45,6 +94,18 @@ export default function HomePage() {
               </span>
             </button>
           </nav>
+          <section id="mode-context" className="mode-context" aria-labelledby="mode-context-title">
+            <div>
+              <p id="mode-context-eyebrow" className="eyebrow">Aktive Partie</p>
+              <h2 id="mode-context-title">Spielen</h2>
+              <p id="mode-context-description">
+                Richte deine Partie ein. Während des Spiels bleiben technische Details im Hintergrund.
+              </p>
+            </div>
+            <button id="mode-primary-action" className="primary-action-button" type="button">
+              Partie einrichten
+            </button>
+          </section>
           <section id="app" className="board-stage" aria-label="Schachanalyse">
             <div id="board-container" className="board-wrapper">
               <div

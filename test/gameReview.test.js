@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import { MoveTreeNode, addMoveToTree } from "../moveTree.js";
 import {
   buildFallbackFeedback,
+  buildLearningSummary,
   buildPvFrames,
   calculateMoveAccuracy,
   explainMoveQuality,
@@ -131,4 +132,28 @@ test("Fallback-Coach fasst Verlauf, Motive, Stärke, Verbesserung und Training z
   assert.match(feedback, /\*\*Das war stark:\*\*/);
   assert.match(feedback, /\*\*Das kannst du verbessern:\*\*/);
   assert.match(feedback, /\*\*Trainingsfokus:\*\*/);
+});
+
+test("Lernzusammenfassung leitet vorsichtige, konkrete Trainingsschritte aus vorhandenen Zügen ab", () => {
+  const summary = buildLearningSummary({
+    moves: [
+      { moveNumber: 1, color: "w", san: "e4", accuracy: 96, quality: "excellent", winPercentLoss: 1, explanation: "Besetzt das Zentrum." },
+      { moveNumber: 2, color: "w", san: "Qh5", accuracy: 41, quality: "mistake", winPercentLoss: 18, explanation: "Übersieht eine direkte Antwort." },
+      { moveNumber: 3, color: "w", san: "Qxf7+", accuracy: 35, quality: "blunder", winPercentLoss: 25, explanation: "Die Dame gerät in Gefahr." },
+      { moveNumber: 4, color: "w", san: "Nf3", accuracy: 91, quality: "excellent", winPercentLoss: 2, explanation: "Entwickelt eine Figur." },
+    ],
+  });
+
+  assert.ok(["Eröffnung", "Mittelspiel", "Endphase"].includes(summary.strongestPhase));
+  assert.match(summary.biggestLesson, /Qxf7\+/);
+  assert.match(summary.recurringPattern, /2 deutliche Bewertungseinbrüche/);
+  assert.match(summary.learningGoal, /Schachs, Schlagzüge und direkte Drohungen/);
+  assert.match(summary.exercise, /zwei größten Fehler/);
+});
+
+test("Lernzusammenfassung behauptet bei fehlenden Daten kein präzises Muster", () => {
+  const summary = buildLearningSummary({ moves: [] });
+  assert.equal(summary.confidence, "low");
+  assert.match(summary.strongestPhase, /nicht zuverlässig/);
+  assert.match(summary.recurringPattern, /weitere.*Züge/i);
 });
