@@ -65,6 +65,20 @@ const bundledConsoleDimStub =
   'var require_console_dim_external=__commonJS({".open-next/server-functions/default/node_modules/next/dist/server/node-environment-extensions/console-dim.external.js"(exports){"use strict";Object.defineProperty(exports,"__esModule",{value:!0});function setAbortedLogsStyle(){}Object.defineProperty(exports,"setAbortedLogsStyle",{enumerable:!0,get:function(){return setAbortedLogsStyle}})}});var require_unhandled_rejection_external=';
 
 let handler = readFileSync(handlerPath, "utf8");
+
+// Next 16.2 can leave direct CommonJS require() calls in the ESM server bundle
+// (for example in node-environment-extensions/node-crypto.js). Wrangler's local
+// runtime supplies require implicitly, while the production Worker does not.
+// Define it explicitly through the Node compatibility layer before any bundled
+// module is evaluated.
+const createRequireImport =
+  'import { createRequire as __createNodeRequire } from "node:module";\n';
+const createRequireBinding =
+  'const require = __createNodeRequire(import.meta.url);\n';
+if (!handler.includes(createRequireImport)) {
+  handler = `${createRequireImport}${createRequireBinding}${handler}`;
+}
+
 if (!bundledFileLoggerPattern.test(handler)) {
   throw new Error("Bundled Next.js file logger was not found in handler.mjs");
 }
@@ -77,4 +91,4 @@ handler = handler.replace(bundledConsoleDimPattern, bundledConsoleDimStub);
 
 writeFileSync(handlerPath, handler);
 
-console.log("Patched OpenNext worker logging shims and Node-only console modules.");
+console.log("Patched OpenNext worker CommonJS bridge and Node-only console modules.");
