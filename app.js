@@ -7120,7 +7120,35 @@ export class ChessApp {
       const visibleContent = msg.explanation
         ? moveExplanationToMarkdown(msg.explanation, { deep: msg.expanded === true })
         : msg.content;
-      renderChatMarkup(bubble, visibleContent);
+      const canPreviewChatMoves = (
+        !msg.explanation
+        && msg.positionEvidence?.valid === true
+        && !/\*\*/.test(visibleContent)
+      );
+      if (canPreviewChatMoves) {
+        const moveRefs = (msg.positionEvidence.verifiedLines || [])
+          .filter((line) => line?.legal === true && line?.complete === true)
+          .map((line) => ({
+            lineEvidenceId: line.evidenceId,
+            startPly: 0,
+            uci: line.moves.map((move) => move.uci),
+          }));
+        const played = msg.positionEvidence.playedMove;
+        if (played?.uci && played.evidenceId) {
+          moveRefs.unshift({
+            lineEvidenceId: played.evidenceId,
+            startPly: 0,
+            uci: [played.uci],
+          });
+        }
+        this.renderInteractiveExplanationText(
+          bubble,
+          { text: visibleContent, moveRefs },
+          msg.positionEvidence,
+        );
+      } else {
+        renderChatMarkup(bubble, visibleContent);
+      }
       if (msg.explanation?.deepDive?.length > 0) {
         const toggle = document.createElement("button");
         toggle.type = "button";
@@ -7193,6 +7221,10 @@ export class ChessApp {
       history: this.game.history(),
       conversation,
     };
+    const chatBundle = this.buildLocalMoveExplanationBundle(
+      payload.engineContext,
+      payload.openingContext,
+    );
 
     try {
       const res = await fetch('/api/chat', {
@@ -7209,6 +7241,11 @@ export class ChessApp {
       const reply = data?.reply || data?.choices?.[0]?.message?.content || 'Keine Antwort erhalten.';
       if (!requestStillCurrent()) return;
       this.appendChatMessage('assistant', reply.trim());
+      const assistantMessage = this.chatMessages.at(-1);
+      if (assistantMessage && chatBundle?.positionEvidence) {
+        assistantMessage.positionEvidence = chatBundle.positionEvidence;
+        this.renderChat({ preserveScroll: true });
+      }
     } catch (err) {
       if (err?.name === "AbortError" || !requestStillCurrent()) return;
       console.error('[Chat] request failed', err);

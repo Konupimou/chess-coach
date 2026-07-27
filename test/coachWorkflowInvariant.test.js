@@ -31,6 +31,8 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /renderComputerExplanation\(\{[\s\S]*positionEvidence/);
   assert.match(appSource, /setAnnotations\(plan\.persistentAnnotations\)/);
   assert.match(appSource, /alreadyNumbered/);
+  assert.match(appSource, /assistantMessage\.positionEvidence = chatBundle\.positionEvidence/);
+  assert.match(appSource, /canPreviewChatMoves/);
 });
 
 test("beendete Stellungen stoppen Enginevorschläge und erklären Matt regelbasiert", () => {
