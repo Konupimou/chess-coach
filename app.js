@@ -2689,8 +2689,14 @@ export class ChessApp {
       const suffix = part.slice(Math.max(0, prefixLength) + core.length);
       if (prefix) container.appendChild(document.createTextNode(prefix));
       const entry = resolved[index];
+      const alreadyNumbered = /^\d+\.(?:\.\.)?/.test(core);
+      const numberedLabel = formatPvWithMoveNumbers(
+        entry.sequence[0]?.fenBefore,
+        [entry.sequence[0]?.uci],
+        1,
+      );
       container.appendChild(this.createMovePreviewButton({
-        label: core,
+        label: alreadyNumbered ? core : (numberedLabel || core),
         fenBefore: entry.sequence[0].fenBefore,
         uci: entry.sequence.map((move) => move.uci),
         previewLabel: `Coach-Erklärung · ${entry.move.san}`,
@@ -2773,12 +2779,21 @@ export class ChessApp {
 
     const claims = document.createElement("div");
     claims.className = "computer-explanation-claims";
+    const isConcreteClaim = (claim) => {
+      const text = String(claim?.text || "").trim();
+      if (!text) return false;
+      if (!["position_change", "move_effect"].includes(claim?.claimKind)) {
+        return false;
+      }
+      return !/sichere(?:n|r)? Bezugspunkt|vergleiche die Stellung|genauer Wert zeigt|verifizierte Hauptfortsetzung/i
+        .test(text);
+    };
     const summary = expanded
       ? (explanation.summary || []).filter(
-        (claim) => !["assessment", "opening"].includes(claim?.claimKind),
+        isConcreteClaim,
       )
       : compactMoveExplanationClaims(explanation, { maximum: 4 })
-        .filter((claim) => !["assessment", "opening"].includes(claim?.claimKind))
+        .filter(isConcreteClaim)
         .slice(0, 2);
     const selected = [];
     const seen = new Set();
@@ -3047,6 +3062,7 @@ export class ChessApp {
         : null;
       this.renderLastPerspectiveMoveAssessment(body, {
         explanation: currentExplanation,
+        positionEvidence: latest?.positionEvidence,
       });
       const milestone = this.renderOpeningMilestone();
       if (milestone) body.prepend(milestone);
@@ -3181,7 +3197,10 @@ export class ChessApp {
     this.scheduleSuggestionCoachReasons(lines);
   }
 
-  renderLastPerspectiveMoveAssessment(body, { explanation = null } = {}) {
+  renderLastPerspectiveMoveAssessment(
+    body,
+    { explanation = null, positionEvidence = null } = {},
+  ) {
     const move = this.getLastPerspectiveMoveReview();
     body.innerHTML = "";
     if (!move) {
@@ -3234,11 +3253,31 @@ export class ChessApp {
         : verified?.bestSan
           ? `Besser war ${verified.bestSan}.`
           : "";
-    reason.textContent = [assessment.lead, assessment.reason, comparison]
+    const concreteClaim = compactMoveExplanationClaims(explanation, { maximum: 4 })
+      .find((claim) => (
+        ["position_change", "move_effect"].includes(claim?.claimKind)
+        && !/sichere(?:n|r)? Bezugspunkt|vergleiche die Stellung|genauer Wert zeigt/i
+          .test(claim?.text || "")
+      ));
+    const concreteReason = concreteClaim?.text || plan?.explanation || "";
+    reason.textContent = [concreteReason, comparison]
       .filter(Boolean)
       .join(" ");
     row.append(header, reason);
 
+    if (plan?.persistentAnnotations) {
+      this.moveArrows?.setAnnotations(plan.persistentAnnotations);
+    }
+
+    const directExplanation = this.renderComputerExplanation({
+      explanation,
+      positionEvidence: positionEvidence || this.suggestionCoachPositionEvidence,
+      expanded: this.computerExplanationExpanded,
+      onToggle: () => {
+        this.computerExplanationExpanded = !this.computerExplanationExpanded;
+        this.renderSuggestions();
+      },
+    });
     const coachClaim = compactMoveExplanationClaims(explanation, { maximum: 4 })
       .find((claim) => (
         !["assessment", "opening", "variation", "alternative"]
@@ -3270,6 +3309,7 @@ export class ChessApp {
       );
     }
     body.appendChild(row);
+    if (directExplanation) body.appendChild(directExplanation);
   }
 
   getAnalysisPerspective() {
@@ -7275,6 +7315,7 @@ export class ChessApp {
         ? {
           uci: exactBestUci,
           san: exactBest?.san || uciToSan(fen, exactBestUci),
+          notation: formatPvWithMoveNumbers(fen, [exactBestUci], 1),
         }
         : primary.bestMove,
       primaryVariation: primary.pv,
@@ -7287,14 +7328,23 @@ export class ChessApp {
     if (!verified) return null;
     const pvUci = verified.bestPvUci;
     const pvSan = verified.bestPvSan;
+    const notationFor = (uci) => (
+      formatPvWithMoveNumbers(verified.fenBefore, uci ? [uci] : [], 1) || ""
+    );
     const bestMove = verified.bestUci
-      ? { uci: verified.bestUci, san: verified.bestSan }
+      ? {
+        uci: verified.bestUci,
+        san: verified.bestSan,
+        notation: notationFor(verified.bestUci),
+      }
       : null;
     const moveReview = {
       playedMove: {
         uci: verified.playedUci,
         san: verified.san,
+        notation: notationFor(verified.playedUci),
       },
+      moveNumber: Number.isInteger(verified.moveNumber) ? verified.moveNumber : null,
       bestMove,
       depth: verified.engineDepth || 0,
       evaluationBefore: this.coachEvaluation(verified.evaluationBefore, verified.beforeCp),
