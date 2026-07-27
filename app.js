@@ -88,6 +88,10 @@ import {
   moveExplanationCacheKey,
   moveExplanationToMarkdown,
 } from "./coachExplanation.js";
+import {
+  buildCoachVisualPlan,
+  moveQualityPresentation,
+} from "./coachVisualization.js";
 
 const MAX_CHAT_MESSAGES = 160;
 
@@ -268,9 +272,7 @@ export class ChessApp {
     this.previewToken = 0;
     this.suggestionsDirtyDuringPreview = false;
     this._onDocumentPreviewPointerDown = (event) => {
-      const activeToken = this.previewState?.kind === "explanation"
-        ? this.previewState.row
-        : null;
+      const activeToken = this.previewState?.row || null;
       if (
         activeToken?.getAttribute?.("aria-pressed") === "true"
         && !activeToken.contains(event.target)
@@ -971,16 +973,11 @@ export class ChessApp {
       this.playFeedbackTitleEl,
       this.playFeedbackDetailEl,
     );
-    this.playFeedbackPreviewButton = document.createElement("button");
-    this.playFeedbackPreviewButton.type = "button";
-    this.playFeedbackPreviewButton.className = "secondary-button live-feedback-preview";
-    this.playFeedbackPreviewButton.textContent = "Besseren Zug ansehen";
-    this.playFeedbackPreviewButton.hidden = true;
-    this.playFeedbackPreviewButton.addEventListener("click", () => {
+    this.playFeedbackEl.tabIndex = 0;
+    this.bindCoachPlanPreview(this.playFeedbackEl, () => {
       const latest = this.playSession.feedbackHistory[0];
       if (latest) this.previewCoachMove(latest);
     });
-    this.playFeedbackEl.appendChild(this.playFeedbackPreviewButton);
     liveCoach.appendChild(this.playFeedbackEl);
 
     this.playFeedbackHistoryEl = document.createElement("ol");
@@ -1330,15 +1327,21 @@ export class ChessApp {
       this.playFeedbackDetailEl.textContent = "Die vollständige Auswertung bleibt nach der Partie verfügbar.";
     } else if (latest) {
       this.playFeedbackEl.className = `live-feedback-state is-${latest.tone}`;
-      this.playFeedbackBadgeEl.textContent = latest.badge;
-      this.playFeedbackTitleEl.textContent = latest.title;
+      const presentation = moveQualityPresentation({
+        quality: latest.quality,
+        playedUci: latest.playedUci,
+        bestUci: latest.bestUci,
+        lossCp: latest.lossCp,
+      });
+      this.playFeedbackBadgeEl.textContent = presentation.symbol;
+      this.playFeedbackTitleEl.textContent = presentation.label;
       const hasBetterMove = latest.bestUci
         && latest.bestUci !== latest.playedUci
         && latest.bestSan;
       const simpleFallback = hasBetterMove
-        ? `Besser wäre ${latest.bestSan}. Die kurze Erklärung wird gerade vorbereitet …`
-        : latest.detail;
-      renderChatMarkup(this.playFeedbackDetailEl, latest.coachText || simpleFallback);
+        ? `Dein Zug: ${latest.playedSan || latest.title}. Besser war ${latest.bestSan}.`
+        : `Dein Zug: ${latest.playedSan || latest.title}. Das war die erste Wahl.`;
+      this.playFeedbackDetailEl.textContent = simpleFallback;
     } else {
       this.playFeedbackEl.className = "live-feedback-state is-waiting";
       this.playFeedbackBadgeEl.textContent = "Bereit";
@@ -1347,9 +1350,21 @@ export class ChessApp {
         : "Die Bewertung wird vorbereitet";
       this.playFeedbackDetailEl.textContent = "Danach siehst du hier sofort, ob dein Zug gut war.";
     }
-    if (this.playFeedbackPreviewButton) {
-      this.playFeedbackPreviewButton.hidden = !latest?.bestUci
-        || latest.bestUci === latest.playedUci;
+    this.playFeedbackEl.querySelector(".suggestion-coach-popover")?.remove();
+    const livePlan = latest?.coachPlan || null;
+    const livePopover = this.createSuggestionCoachPopover({
+      plan: livePlan,
+      explanation: livePlan?.explanation,
+      variantLabel: latest?.bestUci !== latest?.playedUci
+        ? `Bessere Alternative: ${latest?.bestSan || ""}`
+        : "So trägt die Idee",
+    });
+    if (livePopover && session.liveFeedback) {
+      livePopover.id = "live-feedback-coach-explanation";
+      this.playFeedbackEl.setAttribute("aria-describedby", livePopover.id);
+      this.playFeedbackEl.appendChild(livePopover);
+    } else {
+      this.playFeedbackEl.removeAttribute("aria-describedby");
     }
     if (this.playMobileFeedbackEl) {
       const tone = !session.liveFeedback
@@ -2277,15 +2292,24 @@ export class ChessApp {
     const playedUci = node?.move
       ? `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}`
       : "";
+    const engineContext = this.buildMoveCoachEngineContext(reportMove);
+    const coachPlan = buildCoachVisualPlan({
+      fen: beforeNode?.fen || "",
+      pv: engineContext?.moveReview?.pv?.uci || [],
+      rank: 1,
+    });
     const feedbackEntry = {
       ...feedback,
       quality: reportMove.quality,
+      lossCp: reportMove.lossCp,
       ply,
       bestUci: reportMove.bestUci || "",
       bestSan: reportMove.bestSan || "",
       playedUci,
+      playedSan: reportMove.san || node?.move?.san || "",
       beforeFen: beforeNode?.fen || "",
-      engineContext: this.buildMoveCoachEngineContext(reportMove),
+      engineContext,
+      coachPlan,
     };
     session.feedbackHistory.unshift(feedbackEntry);
     session.feedbackHistory = session.feedbackHistory.slice(0, 12);
@@ -2403,29 +2427,20 @@ export class ChessApp {
   }
 
   previewCoachMove(feedback) {
-    if (!feedback?.beforeFen || !feedback?.bestUci || this.reviewRunning) return;
-    this.stopAllBoardPreviews({ restore: false, deferRender: true });
-    const frames = buildPvFrames(feedback.beforeFen, [feedback.bestUci], 1);
-    if (frames.length === 0) return;
-    const token = ++this.previewToken;
-    this.previewState = { token, row: null, frames, index: -1, coach: true };
-    this.board.position(feedback.beforeFen, false);
-    this.moveArrows?.setMoves([{ rank: 1, move: feedback.bestUci, impact: 1 }]);
-    const boardSurface = this.boardSurface || document.getElementById("board-surface");
-    if (!this.previewBadge && boardSurface) {
-      this.previewBadge = document.createElement("div");
-      this.previewBadge.className = "board-preview-badge";
-      boardSurface.appendChild(this.previewBadge);
-    }
-    if (this.previewBadge) {
-      this.previewBadge.hidden = false;
-      this.previewBadge.textContent = `Coach-Zug · ${feedback.bestSan || frames[0].san} · ${feedback.detail}`;
-    }
-    this.previewTimer = window.setTimeout(() => {
-      if (this.previewState?.token !== token) return;
-      this.board.position(frames[0].fen, true);
-      this.previewTimer = window.setTimeout(() => this.stopSuggestionPreview(), 1400);
-    }, 650);
+    const plan = feedback?.coachPlan || buildCoachVisualPlan({
+      fen: feedback?.beforeFen,
+      pv: feedback?.engineContext?.moveReview?.pv?.uci || [feedback?.bestUci],
+      rank: 1,
+    });
+    if (!feedback?.beforeFen || !plan || this.reviewRunning) return;
+    this.startCoachPlanPreview({
+      fen: feedback.beforeFen,
+      plan,
+      row: this.playFeedbackEl,
+      label: feedback.bestUci === feedback.playedUci
+        ? `Dein Zug ${feedback.playedSan || feedback.bestSan}`
+        : `Besser: ${feedback.bestSan}`,
+    });
   }
 
   celebratePlayedPiece(square, quality) {
@@ -2777,6 +2792,92 @@ export class ChessApp {
     return section;
   }
 
+  createSuggestionCoachPopover({
+    plan,
+    explanation = "",
+    variantLabel = "Beispielvariante",
+  } = {}) {
+    if (!plan?.san?.length) return null;
+    const popover = document.createElement("aside");
+    popover.className = "suggestion-coach-popover";
+    popover.setAttribute("role", "tooltip");
+
+    const eyebrow = document.createElement("span");
+    eyebrow.className = "suggestion-coach-popover-eyebrow";
+    eyebrow.textContent = plan.tactical ? "Taktik erkannt" : "Coach-Idee";
+    const headline = document.createElement("strong");
+    headline.className = "suggestion-coach-popover-title";
+    headline.textContent = plan.headline;
+    const copy = document.createElement("p");
+    copy.textContent = String(explanation || "").trim() || plan.explanation;
+
+    const variation = document.createElement("div");
+    variation.className = "suggestion-coach-variation";
+    const label = document.createElement("span");
+    label.textContent = variantLabel;
+    const moves = document.createElement("strong");
+    moves.textContent = plan.san.join(" ");
+    variation.append(label, moves);
+
+    const hint = document.createElement("span");
+    hint.className = "suggestion-coach-popover-hint";
+    hint.textContent = "Klicken oder tippen zum Fixieren · erneut zum Lösen";
+    popover.append(eyebrow, headline, copy, variation, hint);
+    return popover;
+  }
+
+  bindCoachPlanPreview(row, startPreview) {
+    if (!row || typeof startPreview !== "function") return;
+    row.setAttribute("aria-pressed", "false");
+    let pointerInside = false;
+    let focused = false;
+    const start = (event = null) => {
+      if (event?.pointerType && event.pointerType !== "mouse") return;
+      startPreview();
+    };
+    const stopUnlessPinned = () => {
+      if (
+        pointerInside
+        || focused
+        || row.getAttribute("aria-pressed") === "true"
+      ) return;
+      this.stopSuggestionPreview(row);
+    };
+    row.addEventListener("pointerenter", (event) => {
+      pointerInside = true;
+      start(event);
+    });
+    row.addEventListener("pointerleave", () => {
+      pointerInside = false;
+      stopUnlessPinned();
+    });
+    row.addEventListener("focus", () => {
+      focused = true;
+      startPreview();
+    });
+    row.addEventListener("blur", () => {
+      focused = false;
+      stopUnlessPinned();
+    });
+    row.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const pinned = row.getAttribute("aria-pressed") === "true";
+      if (pinned && this.previewState?.row === row) {
+        this.stopSuggestionPreview(row);
+        row.setAttribute("aria-pressed", "false");
+        return;
+      }
+      startPreview();
+      row.setAttribute("aria-pressed", "true");
+    });
+    row.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      event.preventDefault();
+      row.click();
+    });
+  }
+
   renderOpeningMilestone() {
     const announcement = this.buildOpeningCoachContext()?.announcement;
     if (!announcement) return null;
@@ -2862,9 +2963,6 @@ export class ChessApp {
     }
 
     if (!ownTurn) {
-      this.renderLastPerspectiveMoveAssessment(body);
-      const milestone = this.renderOpeningMilestone();
-      if (milestone) body.prepend(milestone);
       const path = this.getCurrentPath();
       const latest = this.latestComputerExplanation;
       const currentMove = path.at(-1)?.move;
@@ -2872,7 +2970,7 @@ export class ChessApp {
         ? `${currentMove.from || ""}${currentMove.to || ""}${currentMove.promotion || ""}`.toLowerCase()
         : "";
       const currentPathSignature = movePathSignature(path);
-      if (
+      const currentExplanation = (
         latest?.explanation
         && latest.positionEvidence?.valid
         && latest.gameGeneration === this.coachGameGeneration
@@ -2881,18 +2979,14 @@ export class ChessApp {
         && latest.positionFenBefore === path.at(-2)?.fen
         && latest.positionFenAfter === path.at(-1)?.fen
         && latest.pathSignature === currentPathSignature
-      ) {
-        const explanation = this.renderComputerExplanation({
-          explanation: latest.explanation,
-          positionEvidence: latest.positionEvidence,
-          expanded: this.computerExplanationExpanded,
-          onToggle: () => {
-            this.computerExplanationExpanded = !this.computerExplanationExpanded;
-            this.renderSuggestions();
-          },
-        });
-        if (explanation) body.appendChild(explanation);
-      }
+      )
+        ? latest.explanation
+        : null;
+      this.renderLastPerspectiveMoveAssessment(body, {
+        explanation: currentExplanation,
+      });
+      const milestone = this.renderOpeningMilestone();
+      if (milestone) body.prepend(milestone);
       return;
     }
 
@@ -2932,15 +3026,17 @@ export class ChessApp {
     const milestone = this.renderOpeningMilestone();
     if (milestone) body.appendChild(milestone);
     lines.forEach(([idx, data]) => {
+      const plan = buildCoachVisualPlan({
+        fen: data.fen,
+        pv: data.pv,
+        rank: idx,
+      });
       const row = document.createElement('div');
       row.className = 'suggestion-line';
       row.tabIndex = 0;
-      row.style.display = 'flex';
-      row.style.flexDirection = 'column';
-      row.style.gap = '2px';
-      row.style.padding = '4px 0';
 
       const header = document.createElement('div');
+      header.className = "suggestion-line-header";
       header.style.display = 'flex';
       header.style.justifyContent = 'space-between';
       header.style.alignItems = 'baseline';
@@ -2968,73 +3064,40 @@ export class ChessApp {
 
       const moves = document.createElement('div');
       moves.className = 'moves';
-      moves.style.fontSize = '12px';
-      moves.style.color = '#c7d4ed';
-      const sanMoves = this.pvToSanList(data.pv, data.fen);
-      moves.textContent = sanMoves.length > 0 ? sanMoves.join(' ') : '(keine Züge)';
+      const sanMoves = plan?.san || this.pvToSanList(data.pv, data.fen).slice(0, 2);
+      moves.textContent = sanMoves.length > 0 ? sanMoves[0] : '(kein legaler Zug)';
 
-      const coachReason = document.createElement('div');
-      coachReason.className = 'suggestion-coach-reason';
       const reason = this.suggestionCoachReasons.get(idx);
-      coachReason.textContent = reason
-        ? reason
-        : this.suggestionCoachBusy
-          ? 'Eine einfache Erklärung wird vorbereitet …'
-          : 'Die Erklärung folgt gleich …';
       row.setAttribute(
         'aria-label',
-        `Zugidee ${idx} am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
+        `${idx === 1 ? "Beste Idee" : `Alternative ${idx}`} erklären und am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
       );
-      row.title = 'Berühren oder mit der Tastatur fokussieren, um die Zugidee am Brett anzusehen.';
-      let pointerInside = false;
-      let focused = false;
-      const startPreview = () => this.startSuggestionPreview(data, row);
-      const stopPreview = () => {
-        if (!pointerInside && !focused) this.stopSuggestionPreview(row);
-      };
-      row.addEventListener('pointerenter', () => {
-        pointerInside = true;
-        startPreview();
-      });
-      row.addEventListener('pointerleave', () => {
-        pointerInside = false;
-        stopPreview();
-      });
-      row.addEventListener('focus', () => {
-        focused = true;
-        startPreview();
-      });
-      row.addEventListener('blur', () => {
-        focused = false;
-        stopPreview();
-      });
+      row.title = 'Hovern für die Coach-Erklärung, klicken zum Fixieren.';
 
       row.appendChild(header);
       row.appendChild(moves);
-      if (!(idx === 1 && this.suggestionCoachExplanation)) {
-        row.appendChild(coachReason);
+      const popover = this.createSuggestionCoachPopover({
+        plan,
+        explanation: reason || plan?.explanation,
+        variantLabel: plan?.tactical ? "Die Pointe" : "Kurze Hauptidee",
+      });
+      if (popover) {
+        popover.id = `suggestion-coach-${idx}`;
+        row.setAttribute("aria-describedby", popover.id);
+        row.appendChild(popover);
+      }
+      if (plan) {
+        this.bindCoachPlanPreview(
+          row,
+          () => this.startSuggestionPreview(data, row, plan),
+        );
       }
       body.appendChild(row);
     });
-    if (
-      this.suggestionCoachExplanation
-      && this.suggestionCoachPositionEvidence?.valid
-    ) {
-      const explanation = this.renderComputerExplanation({
-        explanation: this.suggestionCoachExplanation,
-        positionEvidence: this.suggestionCoachPositionEvidence,
-        expanded: this.suggestionExplanationExpanded,
-        onToggle: () => {
-          this.suggestionExplanationExpanded = !this.suggestionExplanationExpanded;
-          this.renderSuggestions();
-        },
-      });
-      if (explanation) body.appendChild(explanation);
-    }
     this.scheduleSuggestionCoachReasons(lines);
   }
 
-  renderLastPerspectiveMoveAssessment(body) {
+  renderLastPerspectiveMoveAssessment(body, { explanation = null } = {}) {
     const move = this.getLastPerspectiveMoveReview();
     body.innerHTML = "";
     if (!move) {
@@ -3048,22 +3111,80 @@ export class ChessApp {
       return;
     }
 
+    const verified = verifiedMoveReview(move);
+    const presentation = moveQualityPresentation({
+      quality: verified?.quality,
+      playedUci: verified?.playedUci,
+      bestUci: verified?.bestUci,
+      lossCp: verified?.lossCp,
+    });
+    const plan = buildCoachVisualPlan({
+      fen: verified?.fenBefore,
+      pv: verified?.bestPvUci,
+      rank: 1,
+    });
+    const exactBest = Boolean(
+      verified?.playedUci
+      && verified.playedUci === verified.bestUci,
+    );
+    const equivalent = !exactBest
+      && Number.isFinite(verified?.lossCp)
+      && verified.lossCp <= 15;
     body.style.color = "#fff";
     const row = document.createElement("div");
-    row.className = `perspective-move-assessment is-${assessment.tone}`;
+    row.className = `perspective-move-assessment is-${presentation.tone}`;
+    row.tabIndex = 0;
     const header = document.createElement("div");
     header.className = "perspective-move-assessment-header";
     const moveLabel = document.createElement("span");
     moveLabel.textContent = `Dein Zug · ${move.san || "unbekannt"}`;
     const quality = document.createElement("strong");
-    quality.textContent = assessment.label;
+    quality.textContent = `${presentation.symbol} ${presentation.label}`;
     header.append(moveLabel, quality);
 
     const reason = document.createElement("p");
-    reason.textContent = [assessment.reason, assessment.alternative]
+    const comparison = exactBest
+      ? "Dein Zug entspricht der ersten Wahl."
+      : equivalent
+        ? `Dein Zug ist praktisch gleichwertig mit ${verified.bestSan}.`
+        : verified?.bestSan
+          ? `Besser war ${verified.bestSan}.`
+          : "";
+    reason.textContent = [assessment.lead, assessment.reason, comparison]
       .filter(Boolean)
       .join(" ");
     row.append(header, reason);
+
+    const coachClaim = compactMoveExplanationClaims(explanation, { maximum: 4 })
+      .find((claim) => (
+        !["assessment", "opening", "variation", "alternative"]
+          .includes(claim?.claimKind)
+      ));
+    const popover = this.createSuggestionCoachPopover({
+      plan,
+      explanation: coachClaim?.text || plan?.explanation,
+      variantLabel: exactBest || equivalent
+        ? "So trägt die Idee"
+        : `Bessere Alternative: ${verified?.bestSan || ""}`,
+    });
+    if (popover) {
+      popover.id = "last-move-coach-explanation";
+      row.setAttribute("aria-describedby", popover.id);
+      row.appendChild(popover);
+    }
+    if (plan && verified?.fenBefore) {
+      this.bindCoachPlanPreview(
+        row,
+        () => this.startCoachPlanPreview({
+          fen: verified.fenBefore,
+          plan,
+          row,
+          label: exactBest || equivalent
+            ? `Dein Zug ${verified.san}`
+            : `Besser: ${verified.bestSan}`,
+        }),
+      );
+    }
     body.appendChild(row);
   }
 
@@ -3370,8 +3491,11 @@ export class ChessApp {
     );
     const shortReason = (explanation) => (
       compactMoveExplanationClaims(explanation, { maximum: 4 })
-        .filter((claim) => !["assessment", "opening"].includes(claim?.claimKind))
-        .slice(0, 2)
+        .filter((claim) => (
+          !["assessment", "opening", "variation", "alternative"]
+            .includes(claim?.claimKind)
+        ))
+        .slice(0, 1)
         .map((claim) => claim?.text)
         .filter(Boolean)
         .join(" ")
@@ -3453,7 +3577,7 @@ export class ChessApp {
     this.moveArrows.setMoves(moves);
   }
 
-  startSuggestionPreview(data, row) {
+  startSuggestionPreview(data, row, suppliedPlan = null) {
     if (
       this.appMode === "play"
       ||
@@ -3463,9 +3587,33 @@ export class ChessApp {
       || data.fen !== this.game.fen()
       || data.searchId !== this.suggestionState?.searchId
     ) return;
-    const requestedPv = Array.isArray(data.pv) ? data.pv.slice(0, 8) : [];
-    const frames = buildPvFrames(data.fen, requestedPv, 8);
-    if (frames.length === 0 || frames.length !== requestedPv.length) return;
+    const plan = suppliedPlan || buildCoachVisualPlan({
+      fen: data.fen,
+      pv: data.pv,
+      rank: data.multipv || 1,
+    });
+    if (!plan) return;
+    this.startCoachPlanPreview({
+      fen: data.fen,
+      plan,
+      row,
+      label: plan.rank === 1 ? "Beste Idee" : `Alternative ${plan.rank}`,
+    });
+  }
+
+  startCoachPlanPreview({
+    fen,
+    plan,
+    row,
+    label = "Coach-Idee",
+  } = {}) {
+    if (
+      this.destroyed
+      || this.reviewRunning
+      || !fen
+      || !plan?.frames?.length
+      || !plan?.uci?.length
+    ) return;
     if (this.previewState?.row === row) return;
     this.stopAllBoardPreviews({ restore: false, deferRender: true });
 
@@ -3476,26 +3624,39 @@ export class ChessApp {
       this.previewBadge.className = 'board-preview-badge';
       boardSurface.appendChild(this.previewBadge);
     }
-    this.previewState = { token, row, frames, index: -1 };
+    const frames = plan.frames;
+    this.previewState = {
+      token,
+      row,
+      frames,
+      index: -1,
+      kind: "coach-plan",
+      plan,
+    };
     row?.classList.add('is-previewing');
-    this.moveArrows?.setMoves([
-      { rank: 1, move: data.pv?.[0], impact: 1 },
-    ]);
-    this.board.position(data.fen, false);
+    this.moveArrows?.setAnnotations(plan.annotations);
+    this.board.position(fen, false);
     if (this.previewBadge) {
       this.previewBadge.hidden = false;
-      const rank = data.multipv || 1;
-      const reason = this.suggestionCoachReasons.get(rank);
-      this.previewBadge.textContent = reason
-        ? `Coach-Vorschau · ${reason}`
-        : 'Coach-Vorschau';
+      this.previewBadge.textContent = plan.tactical
+        ? `${label} · ${plan.motif}`
+        : `${label} · ${plan.headline}`;
     }
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
     if (reducedMotion) {
       const last = frames[frames.length - 1];
       this.board.position(last.fen, false);
-      if (this.previewBadge) this.previewBadge.textContent = `Vorschau · ${last.san}`;
+      this.moveArrows?.setAnnotations({
+        arrows: [],
+        highlights: [
+          { square: last.from, role: "origin" },
+          { square: last.to, role: "destination" },
+        ],
+      });
+      if (this.previewBadge) {
+        this.previewBadge.textContent = `${label} · ${plan.headline}`;
+      }
       return;
     }
 
@@ -3505,14 +3666,31 @@ export class ChessApp {
       if (!frame) return;
       this.previewState.index = index;
       this.board.position(frame.fen, true);
+      const next = frames[index + 1];
+      const frameAnnotations = plan.frameAnnotations?.[index] || {
+        arrows: [],
+        highlights: [],
+      };
+      this.moveArrows?.setAnnotations({
+        arrows: [
+          ...frameAnnotations.arrows.filter(
+            (arrow) => arrow.role !== "primary",
+          ),
+          ...(next
+            ? [{ rank: 1, move: next.uci, impact: 1, role: "primary" }]
+            : []),
+        ],
+        highlights: frameAnnotations.highlights,
+      });
       if (this.previewBadge) {
-        this.previewBadge.textContent = `Vorschau ${index + 1}/${frames.length} · ${frame.san}`;
+        this.previewBadge.textContent =
+          `${label} · ${index + 1}/${frames.length} · ${frame.san}`;
       }
       if (index + 1 < frames.length) {
-        this.previewTimer = window.setTimeout(() => showFrame(index + 1), 620);
+        this.previewTimer = window.setTimeout(() => showFrame(index + 1), 720);
       }
     };
-    this.previewTimer = window.setTimeout(() => showFrame(0), 180);
+    this.previewTimer = window.setTimeout(() => showFrame(0), 520);
   }
 
   stopSuggestionPreview(row = null, { deferRender = false, restore = true } = {}) {

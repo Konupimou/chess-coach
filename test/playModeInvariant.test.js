@@ -145,7 +145,10 @@ test("Vorschauarten überlagern sich nicht und Escape übernimmt vertagte Update
 });
 
 test("Coach-Vorschauen verbinden Maus und Fokus und verwerfen überholte Requests", () => {
-  const renderSource = methodSource("renderSuggestions", "renderLastPerspectiveMoveAssessment");
+  const bindingSource = methodSource(
+    "bindCoachPlanPreview",
+    "renderOpeningMilestone",
+  );
   const latestSource = methodSource(
     "scheduleLatestMoveExplanation",
     "buildAnalysisCoachEngineContext",
@@ -159,9 +162,10 @@ test("Coach-Vorschauen verbinden Maus und Fokus und verwerfen überholte Request
     "renderMoveArrows",
   );
 
-  assert.match(renderSource, /let pointerInside = false/);
-  assert.match(renderSource, /let focused = false/);
-  assert.match(renderSource, /if \(!pointerInside && !focused\)/);
+  assert.match(bindingSource, /let pointerInside = false/);
+  assert.match(bindingSource, /let focused = false/);
+  assert.match(bindingSource, /row\.getAttribute\("aria-pressed"\)/);
+  assert.match(bindingSource, /this\.stopSuggestionPreview\(row\)/);
   assert.match(moveListSource, /state = \{ pointer: false, focus: false \}/);
   assert.match(moveListSource, /!state\.pointer && !state\.focus/);
   assert.match(latestSource, /bundle\.key/);

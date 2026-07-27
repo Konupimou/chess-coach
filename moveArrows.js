@@ -9,6 +9,20 @@ export const MOVE_ARROW_STYLES = Object.freeze([
   { color: "#6aa9ef", opacity: 0.54, width: 0.94 },
 ]);
 
+export const MOVE_ARROW_ROLE_STYLES = Object.freeze({
+  primary: Object.freeze({ color: "#6aa9ef" }),
+  threat: Object.freeze({ color: "#f0b86a" }),
+  danger: Object.freeze({ color: "#ff7474" }),
+  defense: Object.freeze({ color: "#53e0a1" }),
+});
+
+export const SQUARE_HIGHLIGHT_STYLES = Object.freeze({
+  origin: Object.freeze({ fill: "#6aa9ef", opacity: 0.18, stroke: "#6aa9ef" }),
+  destination: Object.freeze({ fill: "#53e0a1", opacity: 0.25, stroke: "#53e0a1" }),
+  target: Object.freeze({ fill: "#f0b86a", opacity: 0.25, stroke: "#f0b86a" }),
+  danger: Object.freeze({ fill: "#ff7474", opacity: 0.25, stroke: "#ff7474" }),
+});
+
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 
 function scoreToCentipawns(score) {
@@ -161,6 +175,9 @@ export function normalizeArrowMoves(entries, limit = 5) {
       rank: Number.isInteger(requestedRank) && requestedRank > 0
         ? Math.min(requestedRank, MOVE_ARROW_STYLES.length)
         : Math.min(index + 1, MOVE_ARROW_STYLES.length),
+      ...(MOVE_ARROW_ROLE_STYLES[entry?.role]
+        ? { role: entry.role }
+        : {}),
       ...(Number.isFinite(entry?.impact)
         ? { impact: clamp(entry.impact, 0.2, 1) }
         : {}),
@@ -176,6 +193,31 @@ export function normalizeArrowMoves(entries, limit = 5) {
     .slice(0, Math.min(limit, MOVE_ARROW_STYLES.length));
 }
 
+export function normalizeSquareHighlights(entries, limit = 6) {
+  if (!Array.isArray(entries) || limit <= 0) return [];
+  const normalized = new Map();
+  entries.forEach((entry) => {
+    const square = String(entry?.square || "").toLowerCase();
+    if (!/^[a-h][1-8]$/.test(square)) return;
+    const role = SQUARE_HIGHLIGHT_STYLES[entry?.role]
+      ? entry.role
+      : "target";
+    normalized.set(square, { square, role });
+  });
+  return [...normalized.values()].slice(0, Math.min(12, limit));
+}
+
+export function squareBounds(square, orientation = "white") {
+  const center = squareCenter(square, orientation);
+  if (!center) return null;
+  return {
+    x: center.x - 6.25,
+    y: center.y - 6.25,
+    width: 12.5,
+    height: 12.5,
+  };
+}
+
 export class MoveArrowOverlay {
   constructor({ hostEl, boardEl, orientation = "white" } = {}) {
     if (!hostEl || !boardEl) {
@@ -186,6 +228,7 @@ export class MoveArrowOverlay {
     this.boardEl = boardEl;
     this.orientation = orientation === "black" ? "black" : "white";
     this.moves = [];
+    this.highlights = [];
     this.visible = true;
     this.destroyed = false;
     this.resizeFrame = null;
@@ -210,6 +253,16 @@ export class MoveArrowOverlay {
   setMoves(entries) {
     if (this.destroyed) return;
     this.moves = normalizeArrowMoves(entries);
+    this.highlights = [];
+    this.visible = true;
+    this.resize();
+    this.render();
+  }
+
+  setAnnotations({ arrows = [], highlights = [] } = {}) {
+    if (this.destroyed) return;
+    this.moves = normalizeArrowMoves(arrows);
+    this.highlights = normalizeSquareHighlights(highlights);
     this.visible = true;
     this.resize();
     this.render();
@@ -226,12 +279,16 @@ export class MoveArrowOverlay {
   setVisible(visible) {
     if (this.destroyed) return;
     this.visible = Boolean(visible);
-    this.svg.hidden = !this.visible || this.moves.length === 0;
+    this.svg.hidden = (
+      !this.visible
+      || (this.moves.length === 0 && this.highlights.length === 0)
+    );
   }
 
   clear() {
     if (this.destroyed) return;
     this.moves = [];
+    this.highlights = [];
     this.render();
   }
 
@@ -263,15 +320,42 @@ export class MoveArrowOverlay {
   render() {
     if (this.destroyed) return;
     this.svg.replaceChildren();
-    this.svg.hidden = !this.visible || this.moves.length === 0;
+    this.svg.hidden = (
+      !this.visible
+      || (this.moves.length === 0 && this.highlights.length === 0)
+    );
     if (this.svg.hidden) return;
 
     const documentRef = this.hostEl.ownerDocument || document;
+    this.highlights.forEach((highlight) => {
+      const bounds = squareBounds(highlight.square, this.orientation);
+      const style = SQUARE_HIGHLIGHT_STYLES[highlight.role];
+      if (!bounds || !style) return;
+      const square = documentRef.createElementNS(SVG_NAMESPACE, "rect");
+      square.classList.add("coach-square-highlight");
+      square.dataset.square = highlight.square;
+      square.dataset.role = highlight.role;
+      square.setAttribute("x", String(bounds.x + 0.65));
+      square.setAttribute("y", String(bounds.y + 0.65));
+      square.setAttribute("width", String(bounds.width - 1.3));
+      square.setAttribute("height", String(bounds.height - 1.3));
+      square.setAttribute("rx", "1.35");
+      square.setAttribute("fill", style.fill);
+      square.setAttribute("fill-opacity", String(style.opacity));
+      square.setAttribute("stroke", style.stroke);
+      square.setAttribute("stroke-opacity", "0.72");
+      square.setAttribute("stroke-width", "0.46");
+      this.svg.appendChild(square);
+    });
     [...this.moves].reverse().forEach((move) => {
       const geometry = arrowGeometry(move, this.orientation);
       if (!geometry) return;
       const styleIndex = Math.max(0, Math.min(move.rank - 1, MOVE_ARROW_STYLES.length - 1));
-      const style = MOVE_ARROW_STYLES[styleIndex];
+      const baseStyle = MOVE_ARROW_STYLES[styleIndex];
+      const roleStyle = MOVE_ARROW_ROLE_STYLES[move.role];
+      const style = roleStyle
+        ? { ...baseStyle, color: roleStyle.color }
+        : baseStyle;
       const impact = Number.isFinite(move.impact) ? move.impact : 1;
       const width = Math.max(0.86, style.width * (0.76 + impact * 0.24));
       const opacity = Math.max(0.48, style.opacity * (0.8 + impact * 0.2));
@@ -330,5 +414,6 @@ export class MoveArrowOverlay {
     this.resizeObserver?.disconnect();
     this.svg?.remove();
     this.moves = [];
+    this.highlights = [];
   }
 }

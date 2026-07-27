@@ -75,6 +75,9 @@ test("Live-Coach bewertet rechts oben, erlaubt Nachfragen und hält automatische
   assert.match(appSource, /buildMoveCoachEngineContext/);
   assert.match(appSource, /if \(automatic && Number\.isInteger\(ply\)\)/);
   assert.match(appSource, /item\.coachText = reply/);
+  assert.match(appSource, /coachPlan:?\s*buildCoachVisualPlan|const coachPlan = buildCoachVisualPlan/);
+  assert.match(appSource, /this\.bindCoachPlanPreview\(this\.playFeedbackEl/);
+  assert.match(appSource, /moveQualityPresentation/);
   assert.match(appSource, /this\.chatMessages = \[\];/);
   assert.doesNotMatch(appSource, /accuracyFeedbackRowEl\?\.appendChild\(this\.playFeedbackEl\)/);
 });

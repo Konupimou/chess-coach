@@ -5,8 +5,10 @@ import {
   arrowGeometry,
   arrowHeadGeometry,
   normalizeArrowMoves,
+  normalizeSquareHighlights,
   parseUciMove,
   selectImpactArrowMoves,
+  squareBounds,
   squareCenter,
 } from "../moveArrows.js";
 
@@ -98,5 +100,28 @@ test("Pfeilliste entfernt Dubletten, sortiert und begrenzt", () => {
   assert.deepEqual(
     normalizeArrowMoves(["e2e4", "d2d4"], 1),
     [{ from: "e2", to: "e4", promotion: null, uci: "e2e4", rank: 1 }],
+  );
+});
+
+test("Coach-Markierungen validieren Felder, Rollen und Brettorientierung", () => {
+  assert.deepEqual(
+    normalizeSquareHighlights([
+      { square: "e4", role: "destination" },
+      { square: "E4", role: "danger" },
+      { square: "d6", role: "target" },
+      { square: "z9", role: "target" },
+    ]),
+    [
+      { square: "e4", role: "danger" },
+      { square: "d6", role: "target" },
+    ],
+  );
+  assert.deepEqual(
+    squareBounds("a8", "white"),
+    { x: 0, y: 0, width: 12.5, height: 12.5 },
+  );
+  assert.deepEqual(
+    squareBounds("a8", "black"),
+    { x: 87.5, y: 87.5, width: 12.5, height: 12.5 },
   );
 });
