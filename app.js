@@ -3019,6 +3019,9 @@ export class ChessApp {
     this.liveAccuracyReport = summarizeGameReview(path, evaluations, {
       depth: this.engine?.depth || null,
       final: false,
+      playerColor: this.appMode === "play" && this.playSession.active
+        ? this.playSession.playerColor
+        : this.gameSaveDraft?.playerColor || this.analysisPerspective,
     });
     this.updateAccuracyDisplay();
     this.renderMoveList();
@@ -3340,7 +3343,13 @@ export class ChessApp {
         this.renderReviewProgress(index + 1, path.length, depth);
       }
 
-      report = summarizeGameReview(path, evaluations, { depth, final: true });
+      report = summarizeGameReview(path, evaluations, {
+        depth,
+        final: true,
+        playerColor: this.appMode === "play" && this.playSession.active
+          ? this.playSession.playerColor
+          : this.gameSaveDraft?.playerColor || this.analysisPerspective,
+      });
       report.result = this.getGameResult();
       report.feedback = buildFallbackFeedback(report);
       this.gameReviewReport = report;
@@ -3480,6 +3489,33 @@ export class ChessApp {
       start.addEventListener("click", () => this.startReviewJourney(report));
       journeyCta.append(copy, start);
       this.feedbackBodyEl.appendChild(journeyCta);
+    }
+
+    if (report.criticalMoments?.length > 0) {
+      const criticalHeading = document.createElement("h3");
+      criticalHeading.textContent = `Deine ${report.criticalMoments.length} entscheidenden Momente`;
+      this.feedbackBodyEl.appendChild(criticalHeading);
+      const list = document.createElement("div");
+      list.className = "critical-list";
+      report.criticalMoments.forEach((move) => {
+        const item = document.createElement("div");
+        item.className = "critical-move";
+        const copy = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
+        const description = document.createElement("span");
+        const quality = MOVE_QUALITY[move.quality]?.label || move.quality;
+        description.textContent = `${quality}${move.bestSan ? ` · Stärkere Idee: ${move.bestSan}` : " · Diesen Moment noch einmal prüfen"}`;
+        copy.append(title, description);
+        const jump = document.createElement("button");
+        jump.type = "button";
+        jump.className = "secondary-button";
+        jump.textContent = "Am Brett ansehen";
+        jump.addEventListener("click", () => this.startReviewJourney(report, move.ply));
+        item.append(copy, jump);
+        list.appendChild(item);
+      });
+      this.feedbackBodyEl.appendChild(list);
     }
 
     const learning = buildLearningSummary(report);
@@ -3623,35 +3659,6 @@ export class ChessApp {
         moveExplanations.appendChild(item);
       });
       this.feedbackBodyEl.appendChild(moveExplanations);
-    }
-
-    if (report.criticalMoments?.length > 0) {
-      const criticalHeading = document.createElement('h3');
-      criticalHeading.textContent = 'Kritische Momente';
-      this.feedbackBodyEl.appendChild(criticalHeading);
-      const list = document.createElement('div');
-      list.className = 'critical-list';
-      report.criticalMoments.forEach((move) => {
-        const item = document.createElement('div');
-        item.className = 'critical-move';
-        const copy = document.createElement('div');
-        const title = document.createElement('strong');
-        title.textContent = `${move.moveNumber}${move.color === 'b' ? '…' : '.'} ${move.san}`;
-        const description = document.createElement('span');
-        const quality = MOVE_QUALITY[move.quality]?.label || move.quality;
-        description.textContent = `${quality}${move.bestSan ? ` · Stärkere Idee: ${move.bestSan}` : " · Diesen Moment noch einmal prüfen"}`;
-        copy.append(title, description);
-        const jump = document.createElement('button');
-        jump.type = 'button';
-        jump.className = 'secondary-button';
-        jump.textContent = 'Im Review zeigen';
-        jump.addEventListener('click', () => {
-          this.startReviewJourney(report, move.ply);
-        });
-        item.append(copy, jump);
-        list.appendChild(item);
-      });
-      this.feedbackBodyEl.appendChild(list);
     }
 
   }
@@ -4315,7 +4322,7 @@ export class ChessApp {
     this.lichessImportButton = document.createElement("button");
     this.lichessImportButton.type = "button";
     this.lichessImportButton.className = "primary-action-button";
-    this.lichessImportButton.textContent = "Ausgewählte importieren";
+    this.lichessImportButton.textContent = "Importieren & analysieren";
     this.lichessImportButton.disabled = true;
     this.lichessImportButton.addEventListener("click", () => this.importSelectedLichessGames());
     this.lichessImportAllButton = document.createElement("button");
@@ -4519,9 +4526,16 @@ export class ChessApp {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.value = game.id;
-      checkbox.checked = !disabledReason;
+      checkbox.checked = false;
       checkbox.disabled = Boolean(disabledReason);
       checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          this.lichessImportResultsEl
+            .querySelectorAll('input[type="checkbox"]:checked:not(:disabled)')
+            .forEach((input) => {
+              if (input !== checkbox) input.checked = false;
+            });
+        }
         const hasSelected = Boolean(this.lichessImportResultsEl
           .querySelector('input[type="checkbox"]:checked:not(:disabled)'));
         this.lichessImportButton.disabled = !hasSelected;
@@ -4563,7 +4577,7 @@ export class ChessApp {
         ? `${this.lichessFetchedGames.length} gefunden · ${selectable} noch nicht importiert`
         : `${this.lichessFetchedGames.length} gefunden · keine neue importierbare Partie`;
     }
-    this.lichessImportButton.disabled = selectable === 0;
+    this.lichessImportButton.disabled = true;
     this.lichessImportAllButton.disabled = selectable === 0;
   }
 
@@ -4598,9 +4612,10 @@ export class ChessApp {
       this.accountState?.profile,
     );
     let nextState;
+    let records = [];
     try {
       nextState = mergeAccountStates(this.accountState, latestState);
-      const records = selectedGames.map((game) => (
+      records = selectedGames.map((game) => (
         lichessGameToSavedRecord(game, username)
       ));
       if (nextState.games.length + records.length > MAX_SAVED_GAMES) {
@@ -4621,9 +4636,19 @@ export class ChessApp {
     }
     this.accountState = nextState;
     this.updateAccountButton();
-    this.showToast(
-      `${selectedGames.length} ${selectedGames.length === 1 ? "Partie" : "Partien"} importiert. Die Analyse kann jetzt gestartet werden.`,
-    );
+    if (records.length === 1) {
+      if (this.openSavedGame(records[0])) {
+        this.lichessReturnToAccount = false;
+        this.showToast("Partie importiert. Die Analyse startet jetzt.");
+        this.lichessImportDialog.close();
+        requestAnimationFrame(() => this.startFullGameReview());
+      } else {
+        this.showToast("Partie importiert. Du findest sie jetzt in deinem Profil.");
+        this.lichessImportDialog.close();
+      }
+      return;
+    }
+    this.showToast(`${selectedGames.length} Partien importiert.`);
     this.lichessImportDialog.close();
   }
 
@@ -5307,7 +5332,11 @@ export class ChessApp {
     if (path.length < 2) throw new Error(`„${record.title}“ enthält noch keinen Zug.`);
     const depth = reviewDepthForPlies(path.length - 1, this.engine?.depth || 15);
     const evaluations = await this.analyzeSavedPathInBackground(path, depth);
-    const report = summarizeGameReview(path, evaluations, { depth, final: true });
+    const report = summarizeGameReview(path, evaluations, {
+      depth,
+      final: true,
+      playerColor: record?.metadata?.playerColor,
+    });
     report.result = record.result;
     report.feedback = buildFallbackFeedback(report);
 
