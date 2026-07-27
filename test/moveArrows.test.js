@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   MOVE_ARROW_STYLES,
+  MoveArrowOverlay,
   arrowGeometry,
   arrowHeadGeometry,
   normalizeArrowMoves,
@@ -11,6 +12,29 @@ import {
   squareBounds,
   squareCenter,
 } from "../moveArrows.js";
+
+function fakeSvgElement(tagName = "div") {
+  return {
+    tagName,
+    children: [],
+    dataset: {},
+    hidden: false,
+    style: {},
+    attributes: new Map(),
+    classList: { add() {} },
+    appendChild(child) {
+      this.children.push(child);
+      return child;
+    },
+    replaceChildren(...children) {
+      this.children = children;
+    },
+    setAttribute(name, value) {
+      this.attributes.set(name, String(value));
+    },
+    remove() {},
+  };
+}
 
 test("alle Vorschlagspfeile verwenden dieselbe Farbe", () => {
   assert.equal(new Set(MOVE_ARROW_STYLES.map((style) => style.color)).size, 1);
@@ -82,6 +106,44 @@ test("Pfeilspitzen werden als symmetrische, eigenständige Dreiecke berechnet", 
   assert.equal((head.left.x + head.right.x) / 2, geometry.x2);
   assert.ok(head.left.x > head.right.x);
   assert.ok(head.shaftEnd.y > geometry.y2);
+});
+
+test("Pfeil-Overlay rendert einen legalen Zug ohne die Analysekarte zu unterbrechen", () => {
+  const documentRef = {
+    createElementNS(_namespace, tagName) {
+      return fakeSvgElement(tagName);
+    },
+  };
+  const hostEl = {
+    ownerDocument: documentRef,
+    children: [],
+    appendChild(child) {
+      this.children.push(child);
+    },
+    getBoundingClientRect() {
+      return { left: 0, top: 0 };
+    },
+  };
+  const boardSurface = {
+    clientWidth: 800,
+    clientHeight: 800,
+    clientLeft: 0,
+    clientTop: 0,
+    getBoundingClientRect() {
+      return { left: 0, top: 0 };
+    },
+  };
+  const boardEl = {
+    querySelector(selector) {
+      return selector === ".board-b72b1" ? boardSurface : null;
+    },
+  };
+
+  const overlay = new MoveArrowOverlay({ hostEl, boardEl });
+  assert.doesNotThrow(() => overlay.setMoves([{ move: "e2e4", rank: 1 }]));
+  assert.equal(overlay.svg.hidden, false);
+  assert.equal(overlay.svg.children.filter((child) => child.tagName === "line").length, 2);
+  assert.equal(overlay.svg.children.filter((child) => child.tagName === "path").length, 1);
 });
 
 test("Pfeilliste entfernt Dubletten, sortiert und begrenzt", () => {

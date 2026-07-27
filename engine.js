@@ -449,7 +449,11 @@ export class Engine {
       parsed.searchId = this.activeSearch.id;
       parsed.whiteScore = scoreFromWhitePerspective(parsed.score, parsed.fen);
       if (this.onInfo) {
-        try { this.onInfo(parsed); } catch {}
+        try {
+          this.onInfo(parsed);
+        } catch (error) {
+          console.error("[Engine] onInfo callback failed", error);
+        }
       }
       if (!parsed.multipv || parsed.multipv === 1) this.latestPrimaryInfo = parsed;
       const target = this.currentTargetDepth || this.depth;
@@ -493,7 +497,11 @@ export class Engine {
         };
         queueMicrotask(() => {
           if (this.disposed) return;
-          try { this.onBestMove(payload); } catch {}
+          try {
+            this.onBestMove(payload);
+          } catch (error) {
+            console.error("[Engine] onBestMove callback failed", error);
+          }
         });
       }
       return;
