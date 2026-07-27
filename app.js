@@ -2713,9 +2713,6 @@ export class ChessApp {
     });
     this.updateAccuracyDisplay();
     this.renderMoveList();
-    if (this.appMode === "analysis") {
-      this.updateAnalysisCoachFocus(this.analysisCoachLines);
-    }
   }
 
   updateAccuracyDisplay() {

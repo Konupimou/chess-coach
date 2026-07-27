@@ -46,6 +46,8 @@ test("Analysechat enthält nur ausdrücklich gestartete Nutzer-Coach-Dialoge", (
   assert.match(sendSource, /appendChatMessage\('assistant', reply\.trim\(\)\)/);
   assert.doesNotMatch(appSource, /scheduleSuggestionCoachReasons/);
   assert.doesNotMatch(appSource, /scheduleAnalysisMoveCoachFeedback/);
+  assert.doesNotMatch(appSource, /updateAnalysisCoachFocus/);
+  assert.doesNotMatch(appSource, /analysisCoachLines/);
 });
 
 test("Zugliste und Pfeiltastennavigation bleiben in der reduzierten Analyse erhalten", () => {
