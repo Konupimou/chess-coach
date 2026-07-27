@@ -19,6 +19,7 @@ import {
   summarizeGameReview,
   terminalWhiteCp,
   verifiedMoveReview,
+  verifiedSuggestionInfo,
 } from "../gameReview.js";
 
 const START_FEN = new Chess().fen();
@@ -70,6 +71,29 @@ test("PV-Vorschau erzeugt legale Frames, ohne die Ausgangsstellung zu verändern
   assert.deepEqual(
     legalPv(startFen, ["e2e4", "e7e5", "g1g3"]).map((frame) => frame.uci),
     ["e2e4", "e7e5"],
+  );
+});
+
+test("Vorschlagsanzeige behält einen legalen PV-Präfix und verwirft nur den fehlerhaften Rest", () => {
+  const partial = verifiedSuggestionInfo({
+    fen: START_FEN,
+    depth: 18,
+    whiteScore: { unit: "cp", value: 24, pawns: 0.24 },
+    pv: ["e2e4", "e7e5", "g1g3", "b8c6"],
+  });
+  assert.deepEqual(partial.pv, ["e2e4", "e7e5"]);
+  assert.equal(partial.pvComplete, false);
+  assert.equal(partial.rejectedPvTailLength, 2);
+
+  const complete = verifiedSuggestionInfo({
+    fen: START_FEN,
+    pv: ["e2e4", "e7e5", "g1f3"],
+  });
+  assert.equal(complete.pvComplete, true);
+  assert.equal(complete.rejectedPvTailLength, 0);
+  assert.equal(
+    verifiedSuggestionInfo({ fen: START_FEN, pv: ["e2e5", "e7e5"] }),
+    null,
   );
 });
 

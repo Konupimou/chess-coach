@@ -19,6 +19,9 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /isExpanded \? completeMoves : collapsedMoves/);
   assert.match(appSource, /onToggleExpanded/);
   assert.match(appSource, /expandedSuggestionRanks/);
+  assert.match(appSource, /verifiedSuggestionInfo\(info, 20\)/);
+  assert.match(appSource, /verifiedInfo\.pvComplete/);
+  assert.match(appSource, /!this\.suggestionState\.lines\.has\(1\)/);
 });
 
 test("automatische Zugerklärungen bleiben im Schachcomputer und der Chat beginnt mit dem Nutzer", () => {

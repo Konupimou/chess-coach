@@ -28,6 +28,7 @@ import {
   summarizeGameReview,
   terminalWhiteCp,
   uciToSan,
+  verifiedSuggestionInfo,
   verifiedMoveReview,
 } from "./gameReview.js";
 import {
@@ -2149,13 +2150,8 @@ export class ChessApp {
     if (!info || !Array.isArray(info.pv) || info.pv.length === 0) return;
     if (!this.suggestionState || info.fen !== this.suggestionState.fen) return;
     if (!this.suggestionState.searchId || info.searchId !== this.suggestionState.searchId) return;
-    const suppliedPv = info.pv.slice(0, 20);
-    const legalFrames = legalPv(info.fen, suppliedPv, 20);
-    if (legalFrames.length === 0 || legalFrames.length !== suppliedPv.length) return;
-    const verifiedInfo = {
-      ...info,
-      pv: legalFrames.map((frame) => frame.uci),
-    };
+    const verifiedInfo = verifiedSuggestionInfo(info, 20);
+    if (!verifiedInfo) return;
     const index = info.multipv || 1;
     const previous = this.suggestionState.lines.get(index);
     if (
@@ -2168,7 +2164,9 @@ export class ChessApp {
       this.suggestionState.depth = Math.max(this.suggestionState.depth || 0, info.depth);
     }
     if (index === 1) {
-      const analysis = analysisEntryFromInfo(verifiedInfo);
+      const analysis = verifiedInfo.pvComplete
+        ? analysisEntryFromInfo(verifiedInfo)
+        : null;
       const node = this.suggestionState.node;
       const analysisReady = (
         analysis
@@ -2209,6 +2207,17 @@ export class ChessApp {
       const ponderFrames = legalPv(result.fen, [verifiedBestMove.uci, result.ponder], 2);
       this.suggestionState.bestMoveUci = verifiedBestMove.uci;
       this.suggestionState.ponderUci = ponderFrames[1]?.uci || "";
+      if (!this.suggestionState.lines.has(1)) {
+        this.suggestionState.lines.set(1, {
+          ...(result.info || {}),
+          fen: result.fen,
+          searchId: result.searchId,
+          multipv: 1,
+          pv: [verifiedBestMove.uci],
+          pvComplete: false,
+          rejectedPvTailLength: 0,
+        });
+      }
       if (this.appMode === "analysis") this.renderSuggestions();
     }
     if (

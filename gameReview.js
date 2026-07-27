@@ -75,6 +75,20 @@ export function legalPv(fen, pv, limit = 20) {
   return buildPvFrames(fen, pv, limit);
 }
 
+export function verifiedSuggestionInfo(info, limit = 20) {
+  if (!info || typeof info !== "object" || !Array.isArray(info.pv)) return null;
+  const suppliedPv = info.pv.slice(0, Math.max(1, limit));
+  if (suppliedPv.length === 0) return null;
+  const frames = legalPv(info.fen, suppliedPv, limit);
+  if (frames.length === 0) return null;
+  return {
+    ...info,
+    pv: frames.map((frame) => frame.uci),
+    pvComplete: frames.length === suppliedPv.length,
+    rejectedPvTailLength: Math.max(0, suppliedPv.length - frames.length),
+  };
+}
+
 export function verifiedMoveReview(move) {
   if (!move || typeof move !== "object") return null;
   const played = legalUciMove(move.fenBefore, move.playedUci);
