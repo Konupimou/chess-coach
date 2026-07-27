@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const pageSource = readFileSync(new URL("../app/page.js", import.meta.url), "utf8");
 const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const styleSource = readFileSync(new URL("../style.css", import.meta.url), "utf8");
+const evalBarSource = readFileSync(new URL("../evalBar.js", import.meta.url), "utf8");
 
 test("Bereichsnavigation führt direkt zu Spielen und Analyse", () => {
   assert.match(pageSource, /id="play-mode-button"/);

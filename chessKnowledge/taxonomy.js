@@ -1,0 +1,53 @@
+import { deepFreeze } from "./freeze.js";
+
+export const KNOWLEDGE_SCHEMA_VERSION = 1;
+
+const categories = [
+  ["opening", "Opening", "Eröffnung", "game-phase"],
+  ["tactical-motifs", "Tactical Motifs", "Taktische Motive", "tactics"],
+  ["checkmate-patterns", "Checkmate Patterns", "Mattmuster", "tactics"],
+  ["strategy", "Strategy", "Strategie", "middlegame"],
+  ["positional-play", "Positional Play", "Positionsspiel", "middlegame"],
+  ["piece-activity", "Piece Activity", "Figurenaktivität", "middlegame"],
+  ["piece-evaluation", "Piece Evaluation", "Figurenbewertung", "evaluation"],
+  ["pawn-structures", "Pawn Structures", "Bauernstrukturen", "pawn-play"],
+  ["pawn-play", "Pawn Play", "Bauernspiel", "pawn-play"],
+  ["attack", "Attack", "Angriff", "middlegame"],
+  ["king-attack", "King Attack", "Königsangriff", "middlegame"],
+  ["defence", "Defence", "Verteidigung", "middlegame"],
+  ["prophylaxis", "Prophylaxis", "Prophylaxe", "thinking"],
+  ["exchanges-and-transformations", "Exchanges and Transformations", "Abtausch und Stellungsübergänge", "strategy"],
+  ["calculation", "Calculation", "Berechnung", "thinking"],
+  ["evaluation", "Evaluation", "Stellungsbewertung", "thinking"],
+  ["planning", "Planning", "Planfindung", "thinking"],
+  ["decision-making", "Decision Making", "Entscheidungsfindung", "thinking"],
+  ["pawn-endgames", "Pawn Endgames", "Bauernendspiele", "endgame"],
+  ["rook-endgames", "Rook Endgames", "Turmendspiele", "endgame"],
+  ["queen-endgames", "Queen Endgames", "Damenendspiele", "endgame"],
+  ["bishop-endgames", "Bishop Endgames", "Läuferendspiele", "endgame"],
+  ["knight-endgames", "Knight Endgames", "Springerendspiele", "endgame"],
+  ["bishop-versus-knight", "Bishop versus Knight", "Läufer gegen Springer", "endgame"],
+  ["minor-piece-endgames", "Minor-Piece Endgames", "Leichtfigurenendspiele", "endgame"],
+  ["mixed-material-endgames", "Mixed-Material Endgames", "Endspiele mit gemischtem Material", "endgame"],
+  ["fortresses-and-drawing-mechanisms", "Fortresses and Drawing Mechanisms", "Festungen und Remismechanismen", "endgame"],
+  ["conversion-of-advantages", "Conversion of Advantages", "Vorteilsverwertung", "technique"],
+  ["practical-chess", "Practical Chess", "Praktisches Schach", "practice"],
+  ["psychology", "Psychology", "Psychologie", "practice"],
+  ["time-management", "Time Management", "Zeiteinteilung", "practice"],
+  ["training-methods", "Training Methods", "Trainingsmethoden", "training"],
+  ["game-analysis", "Game Analysis", "Partieanalyse", "training"],
+  ["mistake-classification", "Mistake Classification", "Fehlerklassifikation", "training"],
+  ["opening-preparation", "Opening Preparation", "Eröffnungsvorbereitung", "training"],
+  ["pattern-recognition", "Pattern Recognition", "Mustererkennung", "training"],
+  ["endgame-principles", "Endgame Principles", "Allgemeine Endspielprinzipien", "endgame"],
+  ["transitions", "Transitions", "Phasen- und Stellungsübergänge", "strategy"],
+  ["tactical-preconditions", "Tactical Preconditions", "Taktische Voraussetzungen", "tactics"],
+  ["critical-moments", "Critical Moments", "Kritische Momente", "thinking"],
+];
+
+export const KNOWLEDGE_TAXONOMY = deepFreeze(categories.map(([id, en, de, group], index) => ({
+  id,
+  name: { en, de },
+  group,
+  order: index + 1,
+})));

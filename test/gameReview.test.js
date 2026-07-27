@@ -119,6 +119,42 @@ test("Partiebericht aggregiert Farben, Verluste und kritische Momente", () => {
   assert.match(report.moves[0].explanation, /genauer war d4|Verschlechtert|Gibt etwas Vorteil ab/);
 });
 
+test("fokussierter Partiebericht zeigt höchstens die drei entscheidendsten eigenen Momente", () => {
+  const game = new Chess();
+  const root = new MoveTreeNode({ fen: game.fen() });
+  const nodes = [root];
+  let current = root;
+  ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "d3", "Bc5"].forEach((san) => {
+    current = addMoveToTree(current, game.move(san), game.fen());
+    nodes.push(current);
+  });
+  const evaluations = [0, -300, 100, -250, 150, -200, 200, -150, 250]
+    .map((whiteCp) => ({ whiteCp, pv: [] }));
+
+  const whiteReport = summarizeGameReview(nodes, evaluations, {
+    depth: 12,
+    final: true,
+    playerColor: "w",
+  });
+  const blackReport = summarizeGameReview(nodes, evaluations, {
+    depth: 12,
+    final: true,
+    playerColor: "b",
+  });
+
+  assert.equal(whiteReport.playerColor, "w");
+  assert.equal(whiteReport.criticalMoments.length, 3);
+  assert.ok(whiteReport.criticalMoments.every((move) => move.color === "w"));
+  assert.equal(blackReport.criticalMoments.length, 3);
+  assert.ok(blackReport.criticalMoments.every((move) => move.color === "b"));
+  assert.deepEqual(
+    whiteReport.criticalMoments.map((move) => move.winPercentLoss),
+    [...whiteReport.criticalMoments]
+      .map((move) => move.winPercentLoss)
+      .sort((left, right) => right - left),
+  );
+});
+
 test("nach nur einem weißen Zug bleibt die Genauigkeit für Schwarz offen", () => {
   const game = new Chess();
   const root = new MoveTreeNode({ fen: game.fen() });
@@ -311,8 +347,36 @@ test("Fallback-Coach fasst Verlauf, Motive, Stärke, Verbesserung und Training z
   assert.match(feedback, /\*\*Trainingsfokus:\*\*/);
 });
 
+test("Fallback-Coach behandelt nicht-arrayförmige Züge und kritische Momente als leer", () => {
+  const malformedCollections = {
+    overallAccuracy: 72,
+    analyzedMoves: 1,
+    moves: { 0: { quality: "blunder" } },
+    criticalMoments: "kein Array",
+  };
+
+  assert.doesNotThrow(() => buildFallbackFeedback(malformedCollections));
+  const feedback = buildFallbackFeedback(malformedCollections);
+  assert.match(feedback, /0 Fehler oder Patzer bei 0 eigenen analysierten Zügen/);
+  assert.match(feedback, /keinen klaren kritischen Einbruch/);
+});
+
 test("Lernzusammenfassung leitet vorsichtige, konkrete Trainingsschritte aus vorhandenen Zügen ab", () => {
   const summary = buildLearningSummary({
+    criticalMoments: [
+      {
+        moveNumber: 3,
+        color: "w",
+        san: "Qxf7+",
+        bestSan: "Nf3",
+        bestPvSan: ["Nf3", "Nc6", "Bc4"],
+        fenBefore: "example-fen",
+        accuracy: 35,
+        quality: "blunder",
+        winPercentLoss: 25,
+        explanation: "Die Dame gerät in Gefahr.",
+      },
+    ],
     moves: [
       { moveNumber: 1, color: "w", san: "e4", accuracy: 96, quality: "excellent", winPercentLoss: 1, explanation: "Besetzt das Zentrum." },
       { moveNumber: 2, color: "w", san: "Qh5", accuracy: 41, quality: "mistake", winPercentLoss: 18, explanation: "Übersieht eine direkte Antwort." },
@@ -325,7 +389,53 @@ test("Lernzusammenfassung leitet vorsichtige, konkrete Trainingsschritte aus vor
   assert.match(summary.biggestLesson, /Qxf7\+/);
   assert.match(summary.recurringPattern, /2 deutliche Stockfish-Bewertungseinbrüche/);
   assert.match(summary.learningGoal, /Stockfishs erster Wahl/);
-  assert.match(summary.exercise, /zwei größten Bewertungseinbrüche/);
+  assert.match(summary.exercise, /3\. Qxf7\+/);
+  assert.match(summary.exercise, /Nf3/);
+  assert.doesNotMatch(summary.exercise, /zwei|drei/i);
+});
+
+test("Lernzusammenfassung und Fallback beziehen sich nur auf die Züge des Spielers", () => {
+  const report = {
+    playerColor: "w",
+    analyzedMoves: 4,
+    overallAccuracy: 50,
+    whiteAccuracy: 81,
+    blackAccuracy: 19,
+    criticalMoments: [
+      { moveNumber: 1, color: "b", san: "e5", bestSan: "c5", quality: "blunder", winPercentLoss: 35, explanation: "Großer Einbruch." },
+      { moveNumber: 2, color: "w", san: "Nf3", bestSan: "Bc4", quality: "mistake", winPercentLoss: 12, explanation: "Verliert etwas Initiative." },
+    ],
+    moves: [
+      { moveNumber: 1, color: "w", san: "e4", accuracy: 98, quality: "excellent", winPercentLoss: 1, explanation: "Stabil." },
+      { moveNumber: 1, color: "b", san: "e5", accuracy: 10, quality: "blunder", winPercentLoss: 35, explanation: "Großer Einbruch." },
+      { moveNumber: 2, color: "w", san: "Nf3", accuracy: 65, quality: "mistake", winPercentLoss: 12, explanation: "Verliert etwas Initiative." },
+      { moveNumber: 2, color: "b", san: "Nc6", accuracy: 20, quality: "blunder", winPercentLoss: 30, explanation: "Noch ein Einbruch." },
+    ],
+  };
+
+  const summary = buildLearningSummary(report);
+  const feedback = buildFallbackFeedback(report);
+
+  assert.match(summary.biggestLesson, /Nf3/);
+  assert.doesNotMatch(summary.biggestLesson, /e5|Nc6/);
+  assert.doesNotMatch(summary.recurringPattern, /2 deutliche/);
+  assert.match(feedback, /81\.0 %/);
+  assert.match(feedback, /1 Fehler oder Patzer bei 2 eigenen/);
+  assert.doesNotMatch(feedback, /Großer Einbruch|Noch ein Einbruch/);
+});
+
+test("auch ohne Fehler bleibt die Übung an eine konkrete eigene Stellung gebunden", () => {
+  const summary = buildLearningSummary({
+    playerColor: "w",
+    criticalMoments: [],
+    moves: [
+      { moveNumber: 1, color: "w", san: "e4", accuracy: 100, quality: "best", winPercentLoss: 0, explanation: "Stabil." },
+      { moveNumber: 1, color: "b", san: "c5", accuracy: 100, quality: "best", winPercentLoss: 0, explanation: "Stabil." },
+    ],
+  });
+
+  assert.match(summary.exercise, /1\. e4/);
+  assert.doesNotMatch(summary.exercise, /den wichtigsten Schlüsselmoment/);
 });
 
 test("Lernzusammenfassung behauptet bei fehlenden Daten kein präzises Muster", () => {

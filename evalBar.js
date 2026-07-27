@@ -52,10 +52,10 @@ export class EvalBar {
     this.bar.id = 'eval-bar';
     this.bar.style.height = `${barHeight - 40}px`;
     this.bar.style.width = '28px';
-    this.bar.style.border = '1px solid #ccc';
+    this.bar.style.border = '1px solid rgba(255, 255, 255, 0.22)';
     this.bar.style.margin = '0 auto';
     this.bar.style.position = 'relative';
-    this.bar.style.background = 'linear-gradient(#fff,#000)';
+    this.bar.style.background = '#05070b';
     this.bar.style.borderRadius = '4px';
     this.bar.style.overflow = 'hidden';
 
@@ -67,7 +67,7 @@ export class EvalBar {
     this.overlay.style.bottom = '0';
     this.overlay.style.width = '100%';
     this.overlay.style.height = '50%';
-    this.overlay.style.background = '#fff';
+    this.overlay.style.background = '#f5f7fa';
 
     // Marker line
     this.marker = document.createElement('div');

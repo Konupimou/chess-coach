@@ -355,7 +355,29 @@ function rounded(value, digits = 1) {
   return Math.round(value * factor) / factor;
 }
 
-export function summarizeGameReview(path, evaluations, { depth = null, final = true } = {}) {
+export function selectCriticalMoments(moves, { playerColor = null, limit = 3 } = {}) {
+  const normalizedLimit = Number.isInteger(limit) && limit > 0 ? limit : 3;
+  const perspective = playerColor === "w" || playerColor === "b" ? playerColor : null;
+  return (Array.isArray(moves) ? moves : [])
+    .filter((move) => (
+      move
+      && ["inaccuracy", "mistake", "blunder"].includes(move.quality)
+      && Number.isFinite(move.winPercentLoss)
+      && (!perspective || move.color === perspective)
+    ))
+    .sort((left, right) => (
+      right.winPercentLoss - left.winPercentLoss
+      || left.ply - right.ply
+    ))
+    .slice(0, normalizedLimit)
+    .map((move, index) => ({ ...move, decisivenessRank: index + 1 }));
+}
+
+export function summarizeGameReview(
+  path,
+  evaluations,
+  { depth = null, final = true, playerColor = null } = {},
+) {
   const nodes = Array.isArray(path) ? path : [];
   const entries = Array.isArray(evaluations) ? evaluations : [];
   const moves = [];
@@ -453,10 +475,8 @@ export function summarizeGameReview(path, evaluations, { depth = null, final = t
     blackAverageCentipawnLoss: rounded(mean(blackMoves.map((move) => move.lossCp))),
     counts,
     moves,
-    criticalMoments: [...moves]
-      .filter((move) => move.accuracy < 97)
-      .sort((left, right) => right.winPercentLoss - left.winPercentLoss)
-      .slice(0, 6),
+    playerColor: playerColor === "w" || playerColor === "b" ? playerColor : null,
+    criticalMoments: selectCriticalMoments(moves, { playerColor, limit: 3 }),
   };
 }
 
@@ -467,7 +487,13 @@ export function reviewDepthForPlies(plies, preferredDepth = 15) {
 }
 
 export function buildLearningSummary(report) {
-  const moves = Array.isArray(report?.moves) ? report.moves.filter(Boolean) : [];
+  const allMoves = Array.isArray(report?.moves) ? report.moves.filter(Boolean) : [];
+  const perspective = report?.playerColor === "w" || report?.playerColor === "b"
+    ? report.playerColor
+    : null;
+  const moves = perspective
+    ? allMoves.filter((move) => move.color === perspective)
+    : allMoves;
   if (moves.length === 0) {
     return {
       strongestPhase: "Noch nicht zuverlässig erkennbar",
@@ -499,6 +525,15 @@ export function buildLearningSummary(report) {
   const serious = moves.filter((move) => move.quality === "mistake" || move.quality === "blunder");
   const inaccuracies = moves.filter((move) => move.quality === "inaccuracy");
   const strong = moves.filter((move) => move.quality === "best" || move.quality === "excellent");
+  const focusedMoment = (Array.isArray(report?.criticalMoments)
+    ? report.criticalMoments.find((move) => !perspective || move?.color === perspective)
+    : null) || biggest || moves[0];
+  const focusedLabel = `${focusedMoment.moveNumber}${focusedMoment.color === "b" ? "…" : "."} ${focusedMoment.san}`;
+  const focusedComparison = focusedMoment.bestSan
+    ? `vergleiche danach mit Stockfishs ${focusedMoment.bestSan} und spiele die gespeicherte Hauptvariante nach`
+    : Array.isArray(focusedMoment.bestPvSan) && focusedMoment.bestPvSan.length > 0
+      ? "vergleiche danach mit der gespeicherten Stockfish-Hauptvariante"
+      : "notiere deine Kandidatenzüge und prüfe danach mögliche Drohungen sowie ungedeckte Figuren";
 
   let recurringPattern;
   let learningGoal;
@@ -506,19 +541,19 @@ export function buildLearningSummary(report) {
   if (serious.length >= 2) {
     recurringPattern = `${serious.length} deutliche Stockfish-Bewertungseinbrüche zeigen wiederholt kritische Entscheidungen; ein gemeinsames Schachmotiv lässt sich daraus allein noch nicht sicher ableiten.`;
     learningGoal = "Vergleiche bei kritischen Entscheidungen deinen Zug mit Stockfishs erster Wahl und der zugehörigen Hauptvariante.";
-    exercise = "Nimm die zwei größten Bewertungseinbrüche erneut am Brett durch und spiele jeweils ausschließlich die gespeicherte Stockfish-PV nach.";
+    exercise = `Stelle die Position vor ${focusedLabel} erneut auf. Finde zuerst selbst den stärksten Zug, ${focusedComparison}.`;
   } else if (inaccuracies.length >= 2) {
     recurringPattern = `${inaccuracies.length} Ungenauigkeiten zeigen eher mehrere kleine Planungsverluste als einen einzelnen großen Einbruch.`;
     learningGoal = "Vergleiche die kleinen Abweichungen gezielt mit Stockfishs erster Wahl.";
-    exercise = "Gehe drei ungenaue Stellungen erneut durch und erkläre nur anhand der gespeicherten Engine-PV, worin sich dein Zug unterscheidet.";
+    exercise = `Stelle die Position vor ${focusedLabel} erneut auf. Finde zuerst selbst den stärksten Zug, ${focusedComparison}.`;
   } else if (strong.length >= Math.max(2, Math.ceil(moves.length * 0.6))) {
     recurringPattern = "Die vorhandenen Bewertungen zeigen überwiegend stabile Entscheidungen ohne häufige klare Einbrüche.";
     learningGoal = "Untersuche, bei welchen Entscheidungen dein Zug mit Stockfishs erster Wahl übereinstimmte.";
-    exercise = "Wähle zwei starke Züge und vergleiche sie mit der jeweils gespeicherten Stockfish-Hauptvariante.";
+    exercise = `Stelle die Position vor ${focusedLabel} erneut auf und erkläre, warum dein Zug die Stockfish-Bewertung stabil hielt.`;
   } else {
     recurringPattern = "Die vorhandenen Daten zeigen noch kein eindeutiges wiederkehrendes Fehlermuster.";
     learningGoal = "Arbeite zunächst mit den konkret gespeicherten Stockfish-Schlüsselmomenten.";
-    exercise = "Gehe drei Schlüsselmomente erneut durch und vergleiche deinen Zug jeweils mit der gespeicherten Engine-Linie.";
+    exercise = `Stelle die Position vor ${focusedLabel} erneut auf. Finde zuerst selbst den stärksten Zug, ${focusedComparison}.`;
   }
 
   const biggestLesson = biggest
@@ -542,20 +577,36 @@ export function buildFallbackFeedback(report) {
   if (!report || report.analyzedMoves === 0) {
     return "**Noch keine vollständige Bewertung:** Für ein aussagekräftiges Feedback braucht die Partie mindestens einen analysierten Zug.";
   }
-  const accuracy = Number.isFinite(report.overallAccuracy)
-    ? `${report.overallAccuracy.toFixed(1)} %`
+  const perspective = report.playerColor === "w" || report.playerColor === "b"
+    ? report.playerColor
+    : null;
+  const reportMoves = Array.isArray(report.moves) ? report.moves : [];
+  const perspectiveMoves = reportMoves
+    .filter((move) => move && typeof move === "object")
+    .filter((move) => !perspective || move.color === perspective);
+  const perspectiveAccuracy = perspective === "w"
+    ? report.whiteAccuracy
+    : perspective === "b"
+      ? report.blackAccuracy
+      : report.overallAccuracy;
+  const accuracy = Number.isFinite(perspectiveAccuracy)
+    ? `${perspectiveAccuracy.toFixed(1)} %`
     : "noch offen";
-  const serious = (report.counts?.mistake || 0) + (report.counts?.blunder || 0);
-  const biggest = report.criticalMoments?.[0];
+  const serious = perspectiveMoves
+    .filter((move) => move.quality === "mistake" || move.quality === "blunder")
+    .length;
+  const criticalMoments = Array.isArray(report.criticalMoments) ? report.criticalMoments : [];
+  const biggest = criticalMoments
+    .find((move) => move && typeof move === "object" && (!perspective || move.color === perspective));
   const focus = biggest
     ? `Prüfe besonders **${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}**. Dort veränderte sich die Stellung deutlich${biggest.bestSan ? `; stärker war **${biggest.bestSan}**` : ""}.`
     : "Die Partie enthält keinen klaren kritischen Einbruch.";
-  const verdict = report.overallAccuracy >= 90
+  const verdict = perspectiveAccuracy >= 90
     ? "Du hast sehr konstant gespielt."
-    : report.overallAccuracy >= 75
+    : perspectiveAccuracy >= 75
       ? "Die Partie war insgesamt solide, mit einigen konkreten Verbesserungsmöglichkeiten."
       : "Die größten Fortschritte liegen laut Auswertung in den Stellungen mit den stärksten Bewertungsabfällen.";
-  const strongest = [...(report.moves || [])]
+  const strongest = [...perspectiveMoves]
     .filter((move) => move.quality === "best" || move.quality === "excellent")
     .sort((left, right) => (right.accuracy || 0) - (left.accuracy || 0))[0];
   const strength = strongest
@@ -564,7 +615,7 @@ export function buildFallbackFeedback(report) {
 
   return [
     `**Spielverlauf:** ${accuracy} geschätzte Engine-Genauigkeit. ${verdict}`,
-    `**Engine-Muster:** ${serious} Fehler oder Patzer bei ${report.analyzedMoves} analysierten Zügen. Ein gemeinsames taktisches Motiv wird ohne passende Stockfish-PV bewusst nicht behauptet.`,
+    `**Engine-Muster:** ${serious} Fehler oder Patzer bei ${perspectiveMoves.length} eigenen analysierten Zügen. Ein gemeinsames taktisches Motiv wird ohne passende Stockfish-PV bewusst nicht behauptet.`,
     `**Das war stark:** ${strength}`,
     `**Das kannst du verbessern:** ${focus}`,
     "**Trainingsfokus:** Spiele die gespeicherten Stockfish-Hauptvarianten der größten Bewertungseinbrüche nach und vergleiche sie mit deinen Partiezügen.",

@@ -99,6 +99,26 @@ test("Analyseperspektive trennt eigene Zugoptionen von der Bewertung des letzten
   assert.match(appSource, /describeMoveAssessment/);
 });
 
+test("Analysechat enthält nur ausdrücklich gestartete Nutzer-Coach-Dialoge", () => {
+  const sendStart = appSource.indexOf("  async sendChatMessage(text)");
+  const sendEnd = appSource.indexOf("  setChatBusy(", sendStart);
+  const sendSource = appSource.slice(sendStart, sendEnd);
+  assert.match(sendSource, /appendChatMessage\('user', text\)/);
+  assert.match(sendSource, /appendChatMessage\('assistant', reply\.trim\(\)\)/);
+  assert.doesNotMatch(appSource, /scheduleSuggestionCoachReasons/);
+  assert.doesNotMatch(appSource, /scheduleAnalysisMoveCoachFeedback/);
+  assert.doesNotMatch(appSource, /updateAnalysisCoachFocus/);
+  assert.doesNotMatch(appSource, /analysisCoachLines/);
+});
+
+test("Zugliste und Pfeiltastennavigation bleiben in der reduzierten Analyse erhalten", () => {
+  const pageSource = readFileSync(new URL("../app/page.js", import.meta.url), "utf8");
+  assert.match(pageSource, /id="move-list"/);
+  assert.match(pageSource, /← → navigieren/);
+  assert.match(appSource, /new MoveListView/);
+  assert.match(appSource, /attachKeyboard/);
+});
+
 test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett", () => {
   assert.match(appSource, /startReviewJourney/);
   assert.match(appSource, /navigateReviewJourney/);

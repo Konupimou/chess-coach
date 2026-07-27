@@ -593,6 +593,25 @@ export class ChessApp {
       '</div>',
       '<div class="lines muted">Warten auf Analyse…</div>',
     ].join('');
+    const suggestionsHeading = this.suggestionsEl.querySelector('.suggestions-heading');
+    const perspective = document.createElement("div");
+    perspective.className = "analysis-perspective";
+    perspective.setAttribute("role", "group");
+    perspective.setAttribute("aria-label", "Deine Farbe und Brettansicht");
+    const perspectiveLabel = document.createElement("span");
+    perspectiveLabel.textContent = "Deine Sicht";
+    perspective.appendChild(perspectiveLabel);
+    this.analysisPerspectiveButtons = {};
+    [["w", "Weiß"], ["b", "Schwarz"]].forEach(([color, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "analysis-perspective-button";
+      button.textContent = label;
+      button.addEventListener("click", () => this.setAnalysisPerspective(color));
+      this.analysisPerspectiveButtons[color] = button;
+      perspective.appendChild(button);
+    });
+    suggestionsHeading?.appendChild(perspective);
     analysisColumn.appendChild(this.suggestionsEl);
 
     const chatWrapper = document.createElement('div');
@@ -1487,7 +1506,7 @@ export class ChessApp {
     if (this.chatWrapper) this.chatWrapper.hidden = isPlay;
     if (this.evalBar?.container) this.evalBar.container.hidden = isPlay;
     if (this.engineSettingsButton) this.engineSettingsButton.hidden = isPlay;
-    if (this.feedbackButton) this.feedbackButton.hidden = isPlay;
+
     if (this.exportButton) this.exportButton.hidden = isPlay;
     if (this.saveGameButton) this.saveGameButton.hidden = isPlay;
     this.saveStatusEl?.setAttribute("aria-live", isPlay ? "off" : "polite");
@@ -3920,6 +3939,9 @@ export class ChessApp {
     this.liveAccuracyReport = summarizeGameReview(path, evaluations, {
       depth: this.engine?.depth || null,
       final: false,
+      playerColor: this.appMode === "play" && this.playSession.active
+        ? this.playSession.playerColor
+        : this.gameSaveDraft?.playerColor || this.analysisPerspective,
     });
     this.updateAccuracyDisplay();
     this.renderMoveList();
@@ -4014,7 +4036,7 @@ export class ChessApp {
       }
       this.reviewCoachController?.abort();
       this.reviewCoachController = null;
-      this.feedbackButton?.focus();
+      this.modePrimaryAction?.focus();
     });
     document.body.appendChild(dialog);
   }
@@ -4129,7 +4151,7 @@ export class ChessApp {
     this.reviewCancelled = false;
     this.reviewRunning = true;
     this.markGameDirty();
-    this.feedbackButton.disabled = true;
+    if (this.modePrimaryAction) this.modePrimaryAction.disabled = true;
     this.feedbackCancelButton.textContent = 'Abbrechen';
     if (!this.feedbackDialog.open) this.feedbackDialog.showModal();
 
@@ -4332,17 +4354,44 @@ export class ChessApp {
       journeyCta.className = "review-journey-cta";
       const copy = document.createElement("div");
       const title = document.createElement("strong");
-      title.textContent = "Deine Partie als geführte Review";
+      title.textContent = "Deine Partie als Präsentation";
       const detail = document.createElement("span");
       detail.textContent = `${report.criticalMoments.length} Schlüsselmomente am Brett – mit Coach-Erklärung und Pfeiltasten.`;
       copy.append(title, detail);
       const start = document.createElement("button");
       start.type = "button";
       start.className = "primary-action-button";
-      start.textContent = "Review starten";
+      start.textContent = "Präsentation starten";
       start.addEventListener("click", () => this.startReviewJourney(report));
       journeyCta.append(copy, start);
       this.feedbackBodyEl.appendChild(journeyCta);
+    }
+
+    if (report.criticalMoments?.length > 0) {
+      const criticalHeading = document.createElement("h3");
+      criticalHeading.textContent = `Deine ${report.criticalMoments.length} entscheidenden Momente`;
+      this.feedbackBodyEl.appendChild(criticalHeading);
+      const list = document.createElement("div");
+      list.className = "critical-list";
+      report.criticalMoments.forEach((move) => {
+        const item = document.createElement("div");
+        item.className = "critical-move";
+        const copy = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
+        const description = document.createElement("span");
+        const quality = MOVE_QUALITY[move.quality]?.label || move.quality;
+        description.textContent = `${quality}${move.bestSan ? ` · Stärkere Idee: ${move.bestSan}` : " · Diesen Moment noch einmal prüfen"}`;
+        copy.append(title, description);
+        const jump = document.createElement("button");
+        jump.type = "button";
+        jump.className = "secondary-button";
+        jump.textContent = "Am Brett ansehen";
+        jump.addEventListener("click", () => this.startReviewJourney(report, move.ply));
+        item.append(copy, jump);
+        list.appendChild(item);
+      });
+      this.feedbackBodyEl.appendChild(list);
     }
 
     const learning = buildLearningSummary(report);
@@ -5234,7 +5283,7 @@ export class ChessApp {
     this.lichessImportButton = document.createElement("button");
     this.lichessImportButton.type = "button";
     this.lichessImportButton.className = "primary-action-button";
-    this.lichessImportButton.textContent = "Ausgewählte importieren";
+    this.lichessImportButton.textContent = "Importieren & analysieren";
     this.lichessImportButton.disabled = true;
     this.lichessImportButton.addEventListener("click", () => this.importSelectedLichessGames());
     this.lichessImportAllButton = document.createElement("button");
@@ -5442,9 +5491,16 @@ export class ChessApp {
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.value = game.id;
-      checkbox.checked = !disabledReason;
+      checkbox.checked = false;
       checkbox.disabled = Boolean(disabledReason);
       checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          this.lichessImportResultsEl
+            .querySelectorAll('input[type="checkbox"]:checked:not(:disabled)')
+            .forEach((input) => {
+              if (input !== checkbox) input.checked = false;
+            });
+        }
         const hasSelected = Boolean(this.lichessImportResultsEl
           .querySelector('input[type="checkbox"]:checked:not(:disabled)'));
         this.lichessImportButton.disabled = !hasSelected;
@@ -5486,7 +5542,7 @@ export class ChessApp {
         ? `${this.lichessFetchedGames.length} gefunden · ${selectable} noch nicht importiert`
         : `${this.lichessFetchedGames.length} gefunden · keine neue importierbare Partie`;
     }
-    this.lichessImportButton.disabled = selectable === 0;
+    this.lichessImportButton.disabled = true;
     this.lichessImportAllButton.disabled = selectable === 0;
   }
 
@@ -5521,9 +5577,10 @@ export class ChessApp {
       this.accountState?.profile,
     );
     let nextState;
+    let records = [];
     try {
       nextState = mergeAccountStates(this.accountState, latestState);
-      const records = selectedGames.map((game) => (
+      records = selectedGames.map((game) => (
         lichessGameToSavedRecord(game, username)
       ));
       if (nextState.games.length + records.length > MAX_SAVED_GAMES) {
@@ -6622,7 +6679,6 @@ export class ChessApp {
     try {
       this.openingBook = await loadOpeningBook();
       if (this.destroyed) return;
-      this.openingBookError = "";
       this.refreshOpeningRecognition();
       this.refreshCoachContextAfterProfileChange();
     } catch (error) {
@@ -6857,13 +6913,14 @@ export class ChessApp {
   }
 
   createChatPanel(container) {
-    const panel = document.createElement('section');
+    const panel = document.createElement('details');
     panel.id = 'coach-chat';
     panel.className = 'card chat-card coach-card';
+    panel.open = true;
     panel.setAttribute("aria-labelledby", "coach-chat-title");
 
-    const header = document.createElement("div");
-    header.className = "coach-card-header";
+    const header = document.createElement("summary");
+    header.className = "coach-card-header coach-chat-summary";
     const avatar = document.createElement("span");
     avatar.className = "coach-avatar";
     avatar.setAttribute("aria-hidden", "true");
@@ -7414,6 +7471,10 @@ export class ChessApp {
       this.board?.resize?.();
       this.evalBar?.resizeToBoard?.();
       this.moveArrows?.resize?.();
+      const analysisHeight = this.boardStack?.offsetHeight || this.boardEl?.offsetHeight;
+      if (analysisHeight) {
+        this.boardContainer?.style.setProperty("--analysis-height", `${analysisHeight}px`);
+      }
       this.updateBoardKeyboardHighlights();
       this.syncAnalysisColumnHeight();
     });
@@ -7489,9 +7550,6 @@ export class ChessApp {
   }
 
   updateFeedbackAvailability() {
-    if (!this.feedbackButton) return;
-    this.feedbackButton.disabled = this.reviewRunning || !this.currentNode?.parent || !this.engine;
-    this.feedbackButton.textContent = this.reviewRunning ? 'Analysiere …' : 'Partie analysieren';
     this.updateSaveGameButton();
   }
 

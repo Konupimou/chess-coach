@@ -326,12 +326,13 @@ export function buildPrompt({
   gameReview,
 }) {
   const sections = [];
+  const knowledgeContext = buildCoachKnowledgeContext({ message, engineContext });
 
   sections.push(
-    `<stockfish_analysis>\n${JSON.stringify(engineContext || null)}\n</stockfish_analysis>`,
+    `<stockfish_analysis>\n${serializePromptData(engineContext)}\n</stockfish_analysis>`,
   );
   sections.push(
-    `<opening_context>\n${JSON.stringify(openingContext || null)}\n</opening_context>`,
+    `<opening_context>\n${serializePromptData(openingContext)}\n</opening_context>`,
   );
   sections.push(
     `<learner_profile>\n${JSON.stringify(learnerProfileForCoach(learnerProfile))}\n</learner_profile>`,
@@ -352,15 +353,14 @@ export function buildPrompt({
   if (history.length > 0) {
     sections.push(`<moves_played>\n${history.join(" ")}\n</moves_played>`);
   }
-  if (conversation.length > 0) {
-    const lines = conversation.map(({ role, content }) => `${role}: ${content}`);
-    sections.push(`<recent_conversation>\n${lines.join("\n")}\n</recent_conversation>`);
+  if (Array.isArray(conversation) && conversation.length > 0) {
+    sections.push(`<recent_conversation>\n${serializePromptData(conversation)}\n</recent_conversation>`);
   }
   if (gameReview) {
-    sections.push(`<game_review_statistics>\n${JSON.stringify(gameReview)}\n</game_review_statistics>`);
+    sections.push(`<game_review_statistics>\n${serializePromptData(gameReview)}\n</game_review_statistics>`);
   }
 
-  sections.push(`<user_question>\n${message}\n</user_question>`);
+  sections.push(`<user_question>\n${escapePromptText(message)}\n</user_question>`);
   return sections.join("\n\n");
 }
 

@@ -238,7 +238,7 @@ export class MoveArrowOverlay {
     this.svg = documentRef.createElementNS(SVG_NAMESPACE, "svg");
     this.svg.classList.add("move-arrows");
     this.svg.setAttribute("viewBox", "0 0 100 100");
-    this.svg.setAttribute("preserveAspectRatio", "none");
+    this.svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     this.svg.setAttribute("aria-hidden", "true");
     this.svg.setAttribute("focusable", "false");
     hostEl.appendChild(this.svg);
@@ -365,8 +365,6 @@ export class MoveArrowOverlay {
       this.svg.appendChild(square);
     });
     [...this.moves].reverse().forEach((move) => {
-      const geometry = arrowGeometry(move, this.orientation);
-      if (!geometry) return;
       const styleIndex = Math.max(0, Math.min(move.rank - 1, MOVE_ARROW_STYLES.length - 1));
       const baseStyle = MOVE_ARROW_STYLES[styleIndex];
       const roleStyle = MOVE_ARROW_ROLE_STYLES[move.role];
@@ -396,8 +394,11 @@ export class MoveArrowOverlay {
       arrow.classList.add("move-arrow-line");
       arrow.dataset.rank = String(move.rank);
       arrow.dataset.move = move.uci;
-      arrow.setAttribute("stroke", style.color);
-      arrow.setAttribute("stroke-width", String(width));
+      arrow.setAttribute("d", geometry.path);
+      arrow.setAttribute("fill", style.color);
+      arrow.setAttribute("stroke", "rgba(8, 12, 22, 0.68)");
+      arrow.setAttribute("stroke-width", "0.48");
+      arrow.setAttribute("stroke-linejoin", "round");
       arrow.setAttribute("opacity", String(opacity));
       this.svg.appendChild(arrow);
 
@@ -413,15 +414,6 @@ export class MoveArrowOverlay {
       arrowHead.setAttribute("opacity", String(opacity));
       this.svg.appendChild(arrowHead);
     });
-  }
-
-  applyLineGeometry(line, geometry) {
-    line.setAttribute("x1", String(geometry.x1));
-    line.setAttribute("y1", String(geometry.y1));
-    line.setAttribute("x2", String(geometry.x2));
-    line.setAttribute("y2", String(geometry.y2));
-    line.setAttribute("stroke-linecap", "round");
-    line.setAttribute("stroke-linejoin", "round");
   }
 
   destroy() {
