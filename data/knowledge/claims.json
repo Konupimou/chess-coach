@@ -1,0 +1,656 @@
+{
+  "schemaVersion": "1.0.0",
+  "locale": "de-DE",
+  "contentPolicy": {
+    "mode": "paraphrase-only",
+    "description": "Eigenständige deutsche Paraphrasen allgemein anerkannter Schachprinzipien; keine Zitate oder reproduzierten Buchpassagen.",
+    "concreteChessPolicy": "Jede konkrete Zugbehauptung muss zusätzlich durch legale Brettlogik und Engine-Varianten belegt werden."
+  },
+  "sources": [
+    {
+      "id": "chernev-logical-chess-1957",
+      "title": "Logical Chess: Move by Move",
+      "author": "Irving Chernev",
+      "publicationYear": 1957,
+      "kind": "book",
+      "url": "https://dn721504.ca.archive.org/0/items/logicalchess_movebymove/Chessbook%20-%20Irving%20Chernev%20-%20Logical%20Chess%20-%20Move%20by%20Move.pdf",
+      "rights": "copyrighted-reference-only",
+      "usePolicy": "Didaktisches Vorbild und allgemeine Prinzipien ausschließlich eigenständig paraphrasieren; keinen Buchtext übernehmen.",
+      "reviewStatus": "reviewed"
+    },
+    {
+      "id": "capablanca-chess-fundamentals-1921",
+      "title": "Chess Fundamentals",
+      "author": "José Raúl Capablanca",
+      "publicationYear": 1921,
+      "kind": "book",
+      "url": "https://www.gutenberg.org/ebooks/33870",
+      "rights": "public-domain-in-the-usa",
+      "usePolicy": "Allgemeine Prinzipien eigenständig auf Deutsch paraphrasieren.",
+      "reviewStatus": "reviewed"
+    },
+    {
+      "id": "nimzowitsch-my-system-1925",
+      "title": "My System",
+      "author": "Aron Nimzowitsch",
+      "publicationYear": 1925,
+      "kind": "book",
+      "rights": "bibliographic-reference-only",
+      "usePolicy": "Begriffe und allgemeine strategische Prinzipien eigenständig paraphrasieren; keinen Wortlaut übernehmen.",
+      "reviewStatus": "reviewed"
+    },
+    {
+      "id": "kotov-think-like-grandmaster-1971",
+      "title": "Think Like a Grandmaster",
+      "author": "Alexander Kotov",
+      "publicationYear": 1971,
+      "kind": "book",
+      "rights": "copyrighted-reference-only",
+      "usePolicy": "Allgemeine Berechnungsprinzipien eigenständig paraphrasieren; keinen Wortlaut übernehmen.",
+      "reviewStatus": "reviewed"
+    },
+    {
+      "id": "silman-complete-endgame-course-2007",
+      "title": "Silman's Complete Endgame Course",
+      "author": "Jeremy Silman",
+      "publicationYear": 2007,
+      "kind": "book",
+      "publisher": "Siles Press",
+      "isbn": "9781890085100",
+      "rights": "copyrighted-reference-only",
+      "usePolicy": "Allgemeine Endspielprinzipien eigenständig paraphrasieren; keinen Wortlaut oder Aufgabenstellungen übernehmen.",
+      "reviewStatus": "reviewed"
+    },
+    {
+      "id": "dvoretsky-endgame-manual-2003",
+      "title": "Dvoretsky's Endgame Manual",
+      "author": "Mark Dvoretsky",
+      "publicationYear": 2003,
+      "kind": "book",
+      "rights": "copyrighted-reference-only",
+      "usePolicy": "Allgemeine Endspielprinzipien eigenständig paraphrasieren; keine Analysen oder Buchpassagen übernehmen.",
+      "reviewStatus": "reviewed"
+    }
+  ],
+  "claims": [
+    {
+      "id": "center.control-before-wing-play",
+      "conceptIds": ["opening.fight_for_the_centre", "opening.control_the_centre"],
+      "paraphrase": "Bevor du ohne konkreten Anlass am Flügel spielst, solltest du das Zentrum ausreichend kontrollieren oder den gegnerischen Einfluss dort wirksam bestreiten.",
+      "rationale": "Zentrale Kontrolle gibt den Figuren mehr Beweglichkeit und erschwert dem Gegner aktive Zentrumszüge.",
+      "requiredFeatures": ["center.contested"],
+      "excludedFeatures": ["tactic.forcing_emergency", "king.immediate_danger"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Principles of the openings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "Opening instruction across the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.96
+    },
+    {
+      "id": "center.challenge-pawn-center",
+      "conceptIds": ["opening.undermining_the_centre", "pawn_structures.central_pawn_break"],
+      "paraphrase": "Ein breites gegnerisches Bauernzentrum sollte nicht unangetastet bleiben: Greife seine Stützpunkte mit Figuren an oder bereite einen passenden Bauernhebel vor.",
+      "rationale": "Ein Bauernzentrum ist stark, solange es stabil und beweglich bleibt; Druck auf seine Basis kann es festlegen oder auflösen.",
+      "requiredFeatures": ["center.opponent_pawn_center"],
+      "excludedFeatures": ["tactic.forcing_emergency", "center.own_immediate_break_wins"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "The centre and pawn chains", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.93
+    },
+    {
+      "id": "center-tension-evaluate-before-release",
+      "conceptIds": ["opening.central_tension", "pawn_play.maintaining_pawn_tension", "pawn_play.resolving_pawn_tension"],
+      "paraphrase": "Löse eine zentrale Bauernspannung nicht automatisch. Vergleiche zuerst, welche Linien, Felder und Figuren nach Schlagen, Vorrücken oder Halten der Spannung profitieren.",
+      "rationale": "Ein Bauerntausch verändert die Stellung dauerhaft und kann dem Gegner ein freies Feld oder eine offene Linie schenken.",
+      "requiredFeatures": ["center.tension"],
+      "excludedFeatures": ["tactic.forcing_emergency"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "The centre and restraint", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "General principles of play", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.91
+    },
+    {
+      "id": "development-minor-pieces-first",
+      "conceptIds": ["opening.minor_piece_development", "opening.rapid_development"],
+      "paraphrase": "Bringe in der Eröffnung zunächst die Leichtfiguren auf sinnvolle Felder, statt dieselbe Figur ohne konkreten Gewinn mehrfach zu ziehen.",
+      "rationale": "Jede neu aktivierte Figur erhöht die Beteiligung am Zentrum und verkürzt den Weg zur Königssicherheit.",
+      "requiredFeatures": ["development.incomplete"],
+      "excludedFeatures": ["tactic.forcing_emergency", "development.repeat_move_is_forcing"],
+      "phases": ["opening"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Principles of the openings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "Opening instruction across the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "development-open-center-with-lead",
+      "conceptIds": ["opening.development_lead", "attack.attack_with_a_development_lead", "opening.open_centre"],
+      "paraphrase": "Mit Entwicklungsvorsprung ist das Öffnen des Zentrums häufig attraktiv, sofern der eigene König sicher ist und die konkrete Variante trägt.",
+      "rationale": "Offene Linien lassen aktive Figuren schneller wirken und machen den unentwickelten gegnerischen König verwundbarer.",
+      "requiredFeatures": ["development.lead", "king.opponent_uncastled", "center.break_available"],
+      "excludedFeatures": ["king.own_exposed", "tactic.break_refuted"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Development and attacks before castling", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "Development themes across the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
+    },
+    {
+      "id": "development-early-queen-tempo",
+      "conceptIds": ["opening.early_queen_development", "opening.tempo_gain"],
+      "paraphrase": "Eine früh entwickelte Dame kann zum Angriffsziel werden. Prüfe, ob der Gegner sie mit einem natürlichen Entwicklungszug angreifen und dabei ein Tempo gewinnen kann.",
+      "rationale": "Wenn die Dame erneut ziehen muss, entwickelt der Gegner eine Figur, während die eigene Entwicklung stehen bleibt.",
+      "requiredFeatures": ["development.queen_exposed"],
+      "excludedFeatures": ["tactic.queen_move_is_forcing", "tactic.queen_has_concrete_gain"],
+      "phases": ["opening"],
+      "learnerLevels": ["beginner", "intermediate"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Principles of the openings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "Queen development themes in the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "king-safety-castle-when-safe",
+      "conceptIds": ["opening.king_safety", "opening.castling"],
+      "paraphrase": "Wenn die Rochade legal und konkret sicher ist, bringt sie den König meist aus dem Zentrum und beteiligt zugleich einen Turm am Spiel.",
+      "rationale": "Der Zug erfüllt zwei Aufgaben auf einmal: Königsschutz und bessere Turmverbindung.",
+      "requiredFeatures": ["king.uncastled", "king.can_castle_safely"],
+      "excludedFeatures": ["tactic.castling_loses_material", "king.castling_side_under_attack"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Principles of the openings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "King-safety instruction across the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "king-safety-open-center-urgency",
+      "conceptIds": ["opening.king_in_the_centre", "king_attack.attack_against_the_king_in_the_centre"],
+      "paraphrase": "Bei offenem oder bald aufbrechendem Zentrum ist ein unrochierter König besonders dringlich. Sichere ihn, bevor du einen langsamen Nebenplan verfolgst.",
+      "rationale": "Offene Zentral- und Diagonallinien ermöglichen gegnerischen Figuren direkte Tempi gegen den König.",
+      "requiredFeatures": ["king.uncastled", "center.open_or_breaking"],
+      "excludedFeatures": ["king.cannot_reach_safety", "tactic.forcing_emergency"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Development and king safety", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "King in the centre themes in the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.96
+    },
+    {
+      "id": "king-safety-pawn-shield-is-irreversible",
+      "conceptIds": ["evaluation.king_safety", "king_attack.weak_pawn_shield"],
+      "paraphrase": "Ziehe einen Bauern vor dem eigenen König nur mit einem klaren Zweck. Der Zug kann Luft oder Kontrolle schaffen, hinterlässt aber dauerhaft neue Felder und Linien.",
+      "rationale": "Bauern können nicht zurückziehen; eine entstandene Königsfeldschwäche bleibt deshalb oft bis ins Endspiel bestehen.",
+      "requiredFeatures": ["king.castled", "king.pawn_shield_move_considered"],
+      "excludedFeatures": ["king.escape_square_needed", "tactic.pawn_move_is_forcing"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "General principles of pawn play and king safety", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
+    },
+    {
+      "id": "open-lines-rook-on-open-file",
+      "conceptIds": ["positional.open_file", "piece_activity.active_rook"],
+      "paraphrase": "Ein Turm gehört häufig auf eine offene Linie, besonders wenn er dort eindringen, eine Schwäche angreifen oder die gegnerischen Türme binden kann.",
+      "rationale": "Ohne eigene Bauern auf der Linie kann der Turm seine Reichweite unmittelbar nutzen.",
+      "requiredFeatures": ["file.open", "piece.rook_can_occupy"],
+      "excludedFeatures": ["tactic.rook_entry_is_unsafe", "file.no_useful_target_or_entry"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Rook play and open files", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Open files", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.96
+    },
+    {
+      "id": "open-lines-semi-open-file-target",
+      "conceptIds": ["positional.semi_open_file", "positional.weak_pawn"],
+      "paraphrase": "Eine halboffene Linie wird besonders wertvoll, wenn ein gegnerischer Bauer oder ein Eindringfeld darauf ein dauerhaftes Ziel bietet.",
+      "rationale": "Der eigene Turm hat freie Sicht, während der gegnerische Bauer die Linie nicht ohne Weiteres verlassen kann.",
+      "requiredFeatures": ["file.semi_open", "file.target_pawn_or_entry"],
+      "excludedFeatures": ["tactic.rook_entry_is_unsafe"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Open files and targets", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
+    },
+    {
+      "id": "open-lines-control-entry-before-doubling",
+      "conceptIds": ["piece_activity.doubling_rooks", "positional.open_file"],
+      "paraphrase": "Verdopple Türme auf einer offenen Linie nicht mechanisch. Prüfe zuerst, ob du ein Eindringfeld kontrollierst und ob der Gegner die Linie wirksam bestreiten kann.",
+      "rationale": "Eine besetzte Linie ist nur dann ein Vorteil, wenn die Schwerfiguren dort eine konkrete Aufgabe oder Zugang zur gegnerischen Stellung haben.",
+      "requiredFeatures": ["file.open", "piece.rooks_can_double", "file.contested"],
+      "excludedFeatures": ["tactic.doubling_loses_tempo", "file.no_useful_target_or_entry"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Open files and invasion", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Rook coordination", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.91
+    },
+    {
+      "id": "pawn-structure-attack-chain-base",
+      "conceptIds": ["pawn_structures.pawn_chain", "pawn_structures.attacking_the_pawn_chain_base"],
+      "paraphrase": "Eine Bauernkette wird häufig am wirkungsvollsten an ihrer Basis angegriffen, weil dieser Bauer die übrige Kette stützt.",
+      "rationale": "Fällt oder bindet die Basis, verlieren die weiter vorgerückten Bauern oft ihren stabilen Rückhalt.",
+      "requiredFeatures": ["pawn.opponent_chain", "pawn.chain_base_targetable"],
+      "excludedFeatures": ["tactic.chain_attack_refuted"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Pawn chains", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "pawn-structure-isolated-pawn-is-dynamic",
+      "conceptIds": ["pawn_structures.isolated_pawn", "piece_evaluation.activity_versus_material"],
+      "paraphrase": "Ein isolierter Bauer ist nicht nur eine Schwäche: Er kann Raum und aktive Felder geben. Beurteile, ob seine Dynamik den dauerhaften Verteidigungsaufwand rechtfertigt.",
+      "rationale": "Ohne Nachbarbauern ist er schwer zu stützen, doch offene Linien und aktive Figuren können diesen Nachteil ausgleichen.",
+      "requiredFeatures": ["pawn.isolated"],
+      "excludedFeatures": ["tactic.isolated_pawn_immediately_lost"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Isolated pawn and blockade", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Pawn weaknesses", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.93
+    },
+    {
+      "id": "pawn-structure-doubled-pawns-context",
+      "conceptIds": ["pawn_structures.doubled_pawns", "evaluation.pawn_structure"],
+      "paraphrase": "Doppelbauern sind nur im Zusammenhang zu bewerten. Neben möglichen Schwächen können sie offene Linien, Feldkontrolle oder ein Läuferpaar als Gegenwert mitbringen.",
+      "rationale": "Die reine Bauernform sagt noch nicht, ob die Figuren aktiv sind oder ein Bauer tatsächlich angegriffen werden kann.",
+      "requiredFeatures": ["pawn.doubled"],
+      "excludedFeatures": ["tactic.doubled_pawn_immediately_lost"],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Pawn formation and piece play", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.91
+    },
+    {
+      "id": "pawn-structure-break-transforms-position",
+      "conceptIds": ["pawn_structures.pawn_break", "pawn_structures.structural_transformation"],
+      "paraphrase": "Ein Bauernhebel ist ein Stellungswechsel, kein bloßer Raumzug. Berechne, welche Linien sich öffnen, welche Bauern zurückbleiben und welche Figur danach besser steht.",
+      "rationale": "Nach einem Bauernkontakt können Abtausch, Vorrücken und Vorbeiziehen jeweils eine andere dauerhafte Struktur erzeugen.",
+      "requiredFeatures": ["pawn.break_available"],
+      "excludedFeatures": ["tactic.forcing_emergency"],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Pawn chains and breaks", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Pawn play", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.93
+    },
+    {
+      "id": "pawn-structure-passed-pawn-needs-support",
+      "conceptIds": ["pawn_structures.passed_pawn", "pawn_play.creating_a_passed_pawn"],
+      "paraphrase": "Ein Freibauer wird mit zunehmender Nähe zum Umwandlungsfeld gefährlicher, sollte aber nur vorrücken, wenn das Zielfeld kontrolliert und die Unterstützung gesichert ist.",
+      "rationale": "Ein zu früher Vorstoß kann den Bauern blockierbar machen oder von seinen eigenen Figuren trennen.",
+      "requiredFeatures": ["pawn.passed", "pawn.advance_considered"],
+      "excludedFeatures": ["tactic.pawn_advance_loses", "pawn.must_stop_enemy_first"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Passed pawns and endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "silman-complete-endgame-course-2007", "locator": "Passed-pawn fundamentals", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.96
+    },
+    {
+      "id": "activity-improve-worst-piece",
+      "conceptIds": ["piece_activity.improving_the_worst_placed_piece", "piece_activity.piece_coordination"],
+      "paraphrase": "Wenn keine Taktik oder dringende Gefahr vorliegt, ist die Verbesserung der am schlechtesten stehenden Figur oft ein verlässlicher Plan.",
+      "rationale": "Eine untätige Figur begrenzt die Zusammenarbeit; ihre Aktivierung kann mehrere spätere Pläne gleichzeitig unterstützen.",
+      "requiredFeatures": ["piece.passive", "position.no_forcing_priority"],
+      "excludedFeatures": ["tactic.forcing_emergency", "attack.immediate_conversion"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Piece development and coordination", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "Piece-improvement explanations across the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
+    },
+    {
+      "id": "activity-knight-outpost",
+      "conceptIds": ["positional.knight_outpost", "piece_evaluation.knight_outpost"],
+      "paraphrase": "Ein Springer profitiert von einem gedeckten Vorposten, wenn gegnerische Bauern ihn dort nicht vertreiben können und er von dort wichtige Felder oder Ziele erreicht.",
+      "rationale": "Der Springer erhält dauerhafte Aktivität, während der Gegner häufig eine Figur für seinen Abtausch binden muss.",
+      "requiredFeatures": ["square.outpost", "piece.knight_can_occupy"],
+      "excludedFeatures": ["tactic.outpost_entry_loses", "piece.knight_has_no_targets"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Outposts and blockading pieces", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "activity-bishop-open-position",
+      "conceptIds": ["piece_activity.active_bishop", "bishop_vs_knight.open_position_favouring_the_bishop"],
+      "paraphrase": "In einer offenen Stellung können Läufer über beide Flügel wirken. Halte wichtige Diagonalen frei und vermeide einen Abtausch, der ihre Reichweite ohne Gegenwert aufgibt.",
+      "rationale": "Wenige blockierende Bauern lassen die langreichweitige Wirkung des Läufers besonders stark werden.",
+      "requiredFeatures": ["position.open", "piece.active_bishop"],
+      "excludedFeatures": ["exchange.bishop_trade_wins_concretely"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Relative value and activity of the pieces", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "activity-material-needs-coordination",
+      "conceptIds": ["piece_evaluation.activity_versus_material", "strategy.material_versus_initiative"],
+      "paraphrase": "Ein materieller Vorteil ist erst dann sicher, wenn die Figuren koordiniert sind und der Gegner keine anhaltende Initiative besitzt. Aktivität kann kurzfristig wichtiger sein als ein Bauer.",
+      "rationale": "Unentwickelte oder gebundene Mehrfiguren helfen nicht gegen unmittelbare Drohungen und offene Linien.",
+      "requiredFeatures": ["material.ahead", "piece.opponent_has_initiative"],
+      "excludedFeatures": ["tactic.forced_win_available"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Material, development and initiative", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "Development-versus-material themes in the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.93
+    },
+    {
+      "id": "prophylaxis-name-opponents-threat",
+      "conceptIds": ["prophylaxis.opponents_threat", "prophylaxis.preventive_move"],
+      "paraphrase": "Bevor du deinen Plan fortsetzt, benenne die stärkste gegnerische Drohung und prüfe, ob dein Zug sie verhindert, zulässt oder mit Gegenspiel beantwortet.",
+      "rationale": "Ein guter Plan bleibt nur gut, wenn er gegen die beste Antwort des Gegners funktioniert.",
+      "requiredFeatures": ["opponent.threat"],
+      "excludedFeatures": ["tactic.own_forcing_win"],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Prophylaxis and restraint", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Considering the opponent's replies", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "prophylaxis-stop-pawn-break",
+      "conceptIds": ["prophylaxis.stopping_a_pawn_break", "prophylaxis.restricting_counterplay"],
+      "paraphrase": "Wenn der gegnerische Befreiungshebel bereitsteht, kann sein Verhindern oder Erschweren wichtiger sein als die direkte Verstärkung des eigenen Plans.",
+      "rationale": "Ein erfolgreicher Bauernhebel kann passive Figuren befreien und die gesamte Bewertung einer ruhigen Stellung verändern.",
+      "requiredFeatures": ["opponent.pawn_break_ready"],
+      "excludedFeatures": ["tactic.break_cannot_be_stopped", "tactic.own_forcing_win"],
+      "phases": ["opening", "middlegame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Restraint and prophylaxis", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
+    },
+    {
+      "id": "prophylaxis-useful-waiting-move",
+      "conceptIds": ["prophylaxis.useful_waiting_move", "prophylaxis.flexible_prophylaxis"],
+      "paraphrase": "Ein ruhiger Vorbeugungszug ist nur dann nützlich, wenn er eine konkrete gegnerische Idee einschränkt und zugleich die eigene Stellung verbessert oder flexibel hält.",
+      "rationale": "Reines Abwarten kann ein Tempo verschenken; wirksame Prophylaxe erfüllt mindestens eine überprüfbare Aufgabe.",
+      "requiredFeatures": ["position.no_forcing_priority", "opponent.restrictable_plan"],
+      "excludedFeatures": ["tactic.forcing_emergency", "development.urgent"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Prophylaxis and restraint", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.9
+    },
+    {
+      "id": "exchange-ahead-trade-pieces",
+      "conceptIds": ["conversion.exchange_pieces_when_ahead", "conversion.realizing_a_material_advantage"],
+      "paraphrase": "Mit materiellem Vorteil sind Figurenabtäusche oft hilfreich, wenn sie gegnerisches Gegenspiel reduzieren. Bauern solltest du nicht ebenso automatisch tauschen.",
+      "rationale": "Weniger gegnerische Figuren bedeuten meist weniger taktische Chancen, während verbleibende Bauern den Materialvorteil zur Umwandlung tragen können.",
+      "requiredFeatures": ["material.ahead", "exchange.piece_trade_available"],
+      "excludedFeatures": ["exchange.leads_to_drawn_endgame", "tactic.trade_loses_material", "piece.opponent_passive_piece_only"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Simplification and conversion", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "silman-complete-endgame-course-2007", "locator": "Converting material advantages", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "exchange-remove-key-defender",
+      "conceptIds": ["exchanges.exchange_of_defenders", "tactics.removing_the_defender"],
+      "paraphrase": "Der Abtausch eines wichtigen Verteidigers kann mehr wert sein als ein scheinbar gleichwertiger Figurentausch, wenn danach ein Feld, eine Linie oder ein Angriffsziel nicht mehr ausreichend gedeckt ist.",
+      "rationale": "Der Wert des Tauschs entsteht aus der veränderten Aufgabe der übrigen Figuren, nicht nur aus ihren nominellen Materialwerten.",
+      "requiredFeatures": ["exchange.key_defender_available", "attack.target_after_exchange"],
+      "excludedFeatures": ["tactic.exchange_sequence_refuted"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Exchanges and resulting positions", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Calculating exchange sequences", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.93
+    },
+    {
+      "id": "exchange-do-not-free-passive-piece",
+      "conceptIds": ["exchanges.exchange_of_passive_pieces", "piece_activity.passive_piece"],
+      "paraphrase": "Tausche eine gegnerische passive Figur nicht ohne Grund gegen eine eigene aktive Figur. Du kannst damit eine gegnerische Schwäche beseitigen und deine eigene Initiative verringern.",
+      "rationale": "Figuren mit gleichem Materialwert können wegen ihrer aktuellen Felder und Aufgaben sehr unterschiedlich wertvoll sein.",
+      "requiredFeatures": ["exchange.own_active_for_opponent_passive"],
+      "excludedFeatures": ["tactic.exchange_wins_material", "exchange.forced", "exchange.removes_key_defender"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Relative piece value and exchanges", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.92
+    },
+    {
+      "id": "exchange-evaluate-resulting-endgame",
+      "conceptIds": ["exchanges.endgame_transition", "calculation.comparing_final_positions"],
+      "paraphrase": "Vor einem großen Abtausch musst du die entstehende Endspielstellung bewerten: Königaktivität, Bauernstruktur, Freibauern und die Aktivität der verbleibenden Figuren zählen dort neu.",
+      "rationale": "Ein günstiges Mittelspiel kann nach Vereinfachung remis oder sogar schlechter werden, wenn sein Vorteil nicht ins Endspiel übertragbar ist.",
+      "requiredFeatures": ["exchange.endgame_transition_available"],
+      "excludedFeatures": ["tactic.forced_exchange"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Transition into endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "dvoretsky-endgame-manual-2003", "locator": "General endgame evaluation", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
+    },
+    {
+      "id": "tactics-forcing-moves-first",
+      "conceptIds": ["calculation.checks_captures_and_threats", "calculation.forcing_moves"],
+      "paraphrase": "Beginne die Kandidatensuche mit Schachs, Schlagzügen und konkreten Drohungen, aber spiele sie nicht automatisch: Berechne jeweils die stärkste Antwort.",
+      "rationale": "Forcierende Züge begrenzen häufig die gegnerischen Möglichkeiten und machen Varianten dadurch klarer prüfbar.",
+      "requiredFeatures": ["tactic.forcing_candidate_available"],
+      "excludedFeatures": [],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Candidate moves and calculation", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "tactics-loose-pieces",
+      "conceptIds": ["tactics.loose_piece", "tactics.hanging_piece", "calculation.blunder_check"],
+      "paraphrase": "Unverteidigte und nur knapp verteidigte Figuren sind natürliche taktische Ziele. Prüfe nach jedem Zug neu, ob eine Figur hängt oder überlastet geschützt ist.",
+      "rationale": "Viele Kombinationen entstehen nicht aus einem einzelnen Muster, sondern aus einer bereits losen Figur am Ende der Variante.",
+      "requiredFeatures": ["tactic.loose_piece"],
+      "excludedFeatures": [],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Tactical candidate moves and verification", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "chernev-logical-chess-1957", "locator": "Tactical consequences explained across the annotated games", "usage": "paraphrased-didactic-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "tactics-remove-overloaded-defender",
+      "conceptIds": ["tactics.overloading", "tactics.removing_the_defender"],
+      "paraphrase": "Wenn eine gegnerische Figur mehrere wichtige Aufgaben gleichzeitig erfüllt, prüfe Schlagen, Ablenken oder Binden dieses Verteidigers.",
+      "rationale": "Nach dem Verlust einer ihrer Aufgaben kann ein zuvor ausreichend gedecktes Ziel plötzlich taktisch fallen.",
+      "requiredFeatures": ["tactic.overloaded_defender"],
+      "excludedFeatures": ["tactic.removal_sequence_refuted"],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Forcing candidates and tactical calculation", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "tactics-final-legality-and-blunder-check",
+      "conceptIds": ["calculation.final_verification", "calculation.blunder_check", "calculation.opponents_best_defence"],
+      "paraphrase": "Bevor du einen ausgewählten Zug spielst, prüfe seine Legalität und suche noch einmal nach dem stärksten gegnerischen Schach, Schlagzug und der stärksten direkten Drohung.",
+      "rationale": "Die letzte Gegenprüfung fängt Varianten ab, die bei der eigenen Planfindung übersehen oder zu früh beendet wurden.",
+      "requiredFeatures": ["decision.candidate_selected"],
+      "excludedFeatures": [],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Verification of calculated variations", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.98
+    },
+    {
+      "id": "endgame-activate-king",
+      "conceptIds": ["piece_activity.king_activity", "piece_activity.king_centralization"],
+      "paraphrase": "Im Endspiel wird der König zur aktiven Figur. Wenn keine taktische Gefahr besteht, sollte er Bauern stützen, gegnerische Bauern angreifen oder wichtige Felder betreten.",
+      "rationale": "Mit weniger Figuren sinkt die Mattgefahr, während der kurze Aktionsradius des Königs in Bauernkämpfen entscheidend wird.",
+      "requiredFeatures": ["endgame.king_can_activate"],
+      "excludedFeatures": ["king.check_danger", "tactic.king_route_loses"],
+      "phases": ["endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "The active king in endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "silman-complete-endgame-course-2007", "locator": "King activity", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.98
+    },
+    {
+      "id": "endgame-rule-of-square",
+      "conceptIds": ["pawn_endgames.rule_of_the_square", "pawn_endgames.pawn_race"],
+      "paraphrase": "Bei einem Bauernlauf lässt sich zuerst geometrisch prüfen, ob der gegnerische König den Freibauern ohne weitere Tempi erreicht; anschließend müssen Schachs und Zwischenzüge berechnet werden.",
+      "rationale": "Die Quadratregel liefert eine schnelle Vorauswahl, ersetzt aber keine Berechnung, sobald weitere Bauern oder taktische Ressourcen beteiligt sind.",
+      "requiredFeatures": ["endgame.pawn_race"],
+      "excludedFeatures": ["tactic.promotion_with_check_changes_race", "endgame.blocking_piece_changes_race"],
+      "phases": ["endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "King and pawn endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "silman-complete-endgame-course-2007", "locator": "King and pawn fundamentals", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.98
+    },
+    {
+      "id": "endgame-opposition-is-a-means",
+      "conceptIds": ["pawn_endgames.opposition", "pawn_endgames.key_squares"],
+      "paraphrase": "Die Opposition ist kein Selbstzweck. Nutze sie, wenn sie dem König den Zugang zu einem Schlüsselfeld ermöglicht oder den gegnerischen König zurückdrängt.",
+      "rationale": "Entscheidend ist die Stellung nach dem erzwungenen Königszug, nicht nur, wer gerade gegenübersteht.",
+      "requiredFeatures": ["endgame.king_and_pawn_opposition"],
+      "excludedFeatures": ["endgame.opposition_irrelevant_to_key_square"],
+      "phases": ["endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "King and pawn endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "dvoretsky-endgame-manual-2003", "locator": "Opposition and corresponding squares", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "endgame-rook-behind-passed-pawn",
+      "conceptIds": ["rook_endgames.rook_behind_the_passed_pawn", "rook_endgames.active_rook"],
+      "paraphrase": "Im Turmendspiel ist der Platz hinter einem Freibauern häufig ideal: Der Turm unterstützt den eigenen Bauern beim Vorrücken oder bremst einen gegnerischen aus der Distanz.",
+      "rationale": "Hinter dem Bauern wächst die Reichweite des Turms mit jedem Bauernzug, statt durch den Bauern verkürzt zu werden.",
+      "requiredFeatures": ["endgame.rook_and_passed_pawn", "endgame.rook_can_reach_behind"],
+      "excludedFeatures": ["tactic.rook_behind_move_loses", "endgame.concrete_checking_priority"],
+      "phases": ["endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Rook and pawn endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "dvoretsky-endgame-manual-2003", "locator": "Rook endings with passed pawns", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "endgame-rook-activity-before-pawn-grab",
+      "conceptIds": ["rook_endgames.rook_activity_before_pawn_grabbing", "rook_endgames.cut_off_king"],
+      "paraphrase": "Im Turmendspiel ist aktive Turmstellung oft wichtiger als ein sofort geschlagener Bauer. Prüfe zuerst Schachs, das Abschneiden des Königs und Eindringmöglichkeiten.",
+      "rationale": "Ein passiver Turm kann trotz Mehrbauer an Verteidigungsaufgaben gebunden bleiben, während ein aktiver Turm von mehreren Seiten angreift.",
+      "requiredFeatures": ["endgame.rook_activity_choice", "material.pawn_capture_available"],
+      "excludedFeatures": ["tactic.pawn_capture_forced", "tactic.activity_line_refuted"],
+      "phases": ["endgame"],
+      "learnerLevels": ["intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Activity in rook endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "dvoretsky-endgame-manual-2003", "locator": "Active rook principles", "usage": "paraphrased-endgame-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.96
+    }
+  ]
+}

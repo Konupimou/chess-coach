@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildPrompt,
   extractResponseText,
+  isOpeningKnowledgeQuestion,
   normalizeChatPayload,
   requestCoachResponse,
 } from "../api/chat.js";
@@ -10,7 +11,7 @@ import {
 const engineContext = {
   source: "stockfish",
   kind: "position",
-  fen: "start",
+  fen: "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
   depth: 18,
   evaluation: { unit: "cp", value: 42 },
   bestMove: { uci: "g1f3", san: "Nf3" },
@@ -66,6 +67,10 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
   assert.deepEqual(result.value.engineContext.primaryVariation.san, ["Nf3", "Nc6", "Bb5"]);
   assert.equal(result.value.openingContext.eco, "B90");
   assert.equal(result.value.openingContext.sourceName, "Sicilian Defense: Najdorf Variation");
+  assert.equal(result.value.openingContext.knowledge.scope, "family");
+  assert.equal(result.value.openingContext.knowledge.family, "Sicilian Defense");
+  assert.ok(result.value.openingContext.knowledge.whitePlans.length > 0);
+  assert.ok(result.value.openingContext.knowledge.blackPlans.length > 0);
   assert.equal("entries" in result.value.openingContext, false);
   assert.equal(result.value.gameReview.overallAccuracy, 88.4);
   assert.equal(normalizeChatPayload({ message: "  " }).error, "Bitte gib eine Frage ein.");
@@ -86,6 +91,41 @@ test("Prompt trennt vertrauenswürdige Anweisungen von Stellungsdaten", () => {
   assert.match(prompt, /"bestMove":\{"uci":"g1f3","san":"Nf3"\}/);
   assert.match(prompt, /<user_question>\nWarum ist Nf3 gut\?/);
   assert.match(prompt, /<game_review_statistics>/);
+});
+
+test("ein vorgeschlagener erster Zug transportiert seinen Eröffnungsnamen", () => {
+  const result = normalizeChatPayload({
+    message: "Was ist der beste erste Zug?",
+    engineContext,
+    openingContext: {
+      matched: false,
+      currentPly: 0,
+      matchedBy: "unknown",
+      inKnownSequence: false,
+      source: "lichess-chess-openings",
+      suggestedOpening: {
+        matched: true,
+        eco: "B00",
+        sourceName: "King's Pawn Game",
+        displayName: "Königbauernspiel",
+        family: "King's Pawn Game",
+        variation: null,
+        subvariation: null,
+        source: "lichess-chess-openings",
+      },
+    },
+    history: [],
+    conversation: [],
+  });
+  assert.equal(result.value.openingContext.matched, false);
+  assert.equal(
+    result.value.openingContext.suggestedOpening.displayName,
+    "Königbauernspiel",
+  );
+  assert.equal(
+    result.value.openingContext.suggestedOpening.knowledge.family,
+    "King's Pawn Game",
+  );
 });
 
 test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen", async () => {
@@ -114,18 +154,22 @@ test("Responses API wird ohne Speicherung und mit Safety Identifier aufgerufen",
     },
   );
 
-  assert.equal(reply, "Aktiviere deine Figuren.");
+  assert.match(reply, /Hier geht es um \*\*Sizilianische Verteidigung: Najdorf-Variante\*\*\./);
+  assert.match(reply, /Aktiviere deine Figuren\./);
   assert.equal(request.url, "https://api.openai.com/v1/responses");
   assert.equal(request.body.model, "test-model");
   assert.equal(request.body.store, false);
   assert.equal(request.body.safety_identifier, "safe-user");
-  assert.match(request.body.instructions, /kein Schachspieler/);
+  assert.match(request.body.instructions, /gelieferten Quellen/);
+  assert.match(request.body.instructions, /position_evidence/);
+  assert.match(request.body.instructions, /verified_knowledge/);
   assert.match(request.body.instructions, /Stockfish ist die einzige Quelle/);
-  assert.match(request.body.instructions, /Erfinde keine Alternative/);
+  assert.match(request.body.instructions, /keine Alternativen, Fortsetzungen, Bewertungen/);
   assert.match(request.body.instructions, /Besser wäre/);
   assert.match(request.body.instructions, /Schachanfänger/);
   assert.match(request.body.instructions, /Eröffnungsnamen ausschließlich/);
-  assert.match(request.body.instructions, /keine typischen Pläne/);
+  assert.match(request.body.instructions, /Eröffnungsplänen, Bauernstrukturen, Entwicklung/);
+  assert.match(request.body.instructions, /suggestedOpening/);
   assert.equal(request.body.text.verbosity, "low");
   assert.equal(request.options.headers.Authorization, "Bearer test-key");
 });
@@ -169,6 +213,101 @@ test("Coach rät ohne vollständige Engine-PV nicht und verwirft erfundene Züge
     },
   );
   assert.match(rejected, /nicht sicher genug belegt/);
+});
+
+test("der Name einer vorgeschlagenen ersten Eröffnung wird zuverlässig ergänzt", async () => {
+  const normalized = normalizeChatPayload({
+    message: "Was ist der beste erste Zug?",
+    engineContext,
+    openingContext: {
+      matched: false,
+      currentPly: 0,
+      matchedBy: "unknown",
+      inKnownSequence: false,
+      source: "lichess-chess-openings",
+      suggestedOpening: {
+        matched: true,
+        eco: "B00",
+        sourceName: "King's Pawn Game",
+        displayName: "Königbauernspiel",
+        family: "King's Pawn Game",
+        source: "lichess-chess-openings",
+      },
+    },
+    history: [],
+    conversation: [],
+  }).value;
+  const reply = await requestCoachResponse(normalized, {
+    apiKey: "test-key",
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return { output_text: "Der zentrale Bauernzug schafft Raum für die Figuren." };
+      },
+    }),
+  });
+  assert.match(reply, /Mit diesem Zug beginnt \*\*Königbauernspiel\*\*\./);
+});
+
+test("Eröffnungsfragen können in der Eröffnungsphase ohne Engine beantwortet werden", async () => {
+  const normalized = normalizeChatPayload({
+    message: "Was ist hier der typische Plan?",
+    engineContext: null,
+    openingContext: {
+      ...openingContext,
+      currentPly: 10,
+    },
+    history: ["e4", "c5"],
+    conversation: [],
+  }).value;
+  assert.equal(isOpeningKnowledgeQuestion(normalized.message, normalized.openingContext), true);
+
+  let calls = 0;
+  const reply = await requestCoachResponse(normalized, {
+    apiKey: "test-key",
+    fetchImpl: async (_url, options) => {
+      calls += 1;
+      const request = JSON.parse(options.body);
+      assert.match(request.input, /"scope":"family"/);
+      assert.match(request.input, /"family":"Sicilian Defense"/);
+      return {
+        ok: true,
+        async json() {
+          return {
+            output_text: "Weiß nutzt meist seinen Raum, während Schwarz Gegenspiel am Damenflügel sucht.",
+          };
+        },
+      };
+    },
+  });
+
+  assert.equal(calls, 1);
+  assert.match(reply, /Raum/);
+});
+
+test("Eröffnungswissen ersetzt außerhalb der Eröffnungsphase keine konkrete Analyse", async () => {
+  const normalized = normalizeChatPayload({
+    message: "Was ist der beste Zug?",
+    engineContext: null,
+    openingContext: {
+      ...openingContext,
+      currentPly: 40,
+    },
+    history: [],
+    conversation: [],
+  }).value;
+  assert.equal(isOpeningKnowledgeQuestion(normalized.message, normalized.openingContext), false);
+
+  let calls = 0;
+  const reply = await requestCoachResponse(normalized, {
+    apiKey: "test-key",
+    fetchImpl: async () => {
+      calls += 1;
+      throw new Error("darf nicht aufgerufen werden");
+    },
+  });
+  assert.equal(calls, 0);
+  assert.match(reply, /Analyse ist noch nicht vollständig/);
 });
 
 test("ein Zugkürzel im exakten Eröffnungsnamen gilt nicht als erfundene Variante", async () => {

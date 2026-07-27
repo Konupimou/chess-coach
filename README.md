@@ -1,4 +1,114 @@
-# Chess Coach
+# Chess Coach Knowledge Ontology
+
+Dieses Repository enthält neben der Chess-Coach-Anwendung eine quellenneutrale
+Master-Ontologie für wiederverwendbares Schachwissen. Sie bildet die gemeinsame
+Begriffsschicht zwischen Stockfish-Analyse, Coach-Erklärungen, Trainingsinhalten
+und später importierten Buchquellen. Bücher, Autoren, Kapitel und einzelne
+Partien sind deshalb keine Kategorien der Ontologie.
+
+## Ontologie-Dateien
+
+- `chess-ontology.json` ist die kanonische, maschinenlesbare Repräsentation.
+- `chess-ontology.md` enthält jeden Begriff in einer vollständig lesbaren
+  Fassung für Review und redaktionelle Arbeit.
+- `chess-ontology.csv` bietet eine flache Zeile pro Konzept für Import,
+  Tabellenprüfung und Datenbank-Migration. Mehrfachwerte sind mit `|` getrennt.
+- `validate-ontology.py` prüft Schema, Wertebereiche, Eindeutigkeit,
+  Referenzintegrität, Pflichtkategorien und die drei synchronen Darstellungen.
+
+Die Ontologie deckt Eröffnung, Taktik, Mattbilder, Strategie, Positionsspiel,
+Figuren- und Bauernspiel, Angriff, Verteidigung, Prophylaxe, Abtausch,
+Berechnung, Bewertung, Planung, Entscheidungsfindung, alle wesentlichen
+Endspieltypen, praktische Spielführung, Psychologie, Zeitmanagement, Training,
+Partieanalyse, Fehlerklassifikation, Eröffnungsvorbereitung und
+Mustererkennung ab.
+
+## Konzept-Schema
+
+Jedes Objekt hat eine stabile technische `id`, einen eindeutigen `title`, eine
+`category` und `subcategory` sowie optionale Hierarchiebezüge über `parent_id`.
+Inhaltliche Felder beschreiben Erkennung, Voraussetzungen, typische
+Vorbedingungen, Pläne, Angriffs- und Verteidigungsmethoden, häufige Fehler,
+Ausnahmen, Engine-Indikatoren und Coach-Fragen. Beziehungen werden
+ausschließlich über existierende IDs gespeichert.
+
+`difficulty` verwendet nur `beginner`, `intermediate`, `advanced` oder
+`expert`. `game_phases` verwendet nur `opening`, `middlegame`, `endgame` oder
+`universal`; `importance` liegt zwischen 1 und 10. Neu angelegte
+Ontologieeinträge haben `review_status: "ontology_only"` und ein leeres
+`sources`-Array.
+
+## Validierung
+
+Die vollständige Qualitätskontrolle wird im Projektordner ausgeführt:
+
+```bash
+python3 validate-ontology.py
+```
+
+Ein erfolgreicher Lauf gibt die Anzahl der Kategorien, Unterkategorien und
+Konzepte aus und endet mit Exit-Code 0. Fehler werden einzeln und verständlich
+ausgegeben; der Prozess endet dann mit Exit-Code 1. Geprüft werden unter
+anderem gültiges JSON, 500 bis 850 Konzepte, alle 36 Pflichtkategorien, nicht
+leere und formatkonforme IDs, doppelte IDs und Kategorietitel, erlaubte
+Wertebereiche, vollständige Beziehungen sowie die Zeilen- und
+Eintragsabdeckung in CSV und Markdown.
+
+## Bücher und andere Quellen importieren
+
+Quellen erweitern bestehende Konzepte und erzeugen keine buchbasierte
+Parallelstruktur. Der vorgesehene Prozess ist:
+
+```text
+PDF
+→ Kapitel und Abschnitte erkennen
+→ Konzepte extrahieren
+→ bestehende Ontologie durchsuchen
+→ bestehendes Konzept erweitern oder neues Konzept vorschlagen
+→ Quellenbeitrag speichern
+→ Review
+→ Freigabe für den Coach
+```
+
+Ein Quellenbeitrag sollte getrennt vom Ontologie-Kern den Quellenbezeichner,
+Autor, Werk, Abschnitt oder Locator, eine paraphrasierte Aussage, betroffene
+Konzept-ID, Nutzungsrechte und Reviewstatus speichern. Es werden keine
+Seitenzahlen, Zitate oder bibliografischen Angaben erfunden. Beim Import wird
+zuerst nach ID, normalisiertem Titel, Alias, Schlüsselwörtern und verwandten
+Konzepten gesucht. Ein Treffer erweitert das vorhandene Konzept; nur eine
+fachlich neue, wiederverwendbare Idee wird als neues Konzept vorgeschlagen.
+Nach der redaktionellen Freigabe kann der Quellenbeitrag an die bestehende ID
+angehängt werden.
+
+## Konzepte pflegen und Duplikate vermeiden
+
+Vor einem neuen Eintrag werden Titel, Aliasse, nahe Begriffe und
+Querverbindungen in der JSON-Datei durchsucht. Unterschiedliche
+Formulierungen desselben Schachgedankens werden als Aliasse oder
+Quellenbeiträge modelliert. Ein neues Konzept ist nur gerechtfertigt, wenn es
+eigene Erkennungsmerkmale, Voraussetzungen oder Handlungsregeln besitzt.
+
+Neue IDs bestehen ausschließlich aus dem stabilen Kategoriepräfix, einem Punkt
+und einem kleingeschriebenen `snake_case`-Namen. Nach einer Änderung werden
+JSON, Markdown und CSV gemeinsam aktualisiert und der Validator ausgeführt.
+Querverweise dürfen niemals auf freie Titeltexte zeigen, sondern nur auf
+existierende IDs. Quellen bleiben vom quellenneutralen Kern getrennt, bis sie
+geprüft wurden.
+
+## Verwendung durch den Chess Coach
+
+Der Coach kann aus einer Stellung zunächst Engine-Indikatoren und
+Stellungsmerkmale ermitteln, passende Konzept-IDs laden und daraus
+Erkennungsmerkmale, Pläne, typische Fehler, Gegenmaßnahmen und Coach-Fragen
+abrufen. `related_concepts`, Hierarchiebezüge, Spielphase, Schwierigkeit und
+Wichtigkeit steuern Kontextauswahl und Erklärungstiefe. Stockfish bleibt für
+konkrete Varianten und Bewertungen zuständig; die Ontologie liefert die
+fachliche Sprache und verbindet mehrere geprüfte Quellen mit demselben
+Schachkonzept.
+
+---
+
+# Chess Coach Application
 
 Ein persönlicher Schachcoach mit zwei Bereichen: gegen Stockfish spielen und
 direktes Live-Feedback erhalten oder Stellungen und ganze Partien analysieren.

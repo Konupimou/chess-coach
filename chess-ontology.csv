@@ -1,0 +1,819 @@
+id,title,category,subcategory,parent_id,difficulty,importance,game_phases,aliases,related_concepts,review_status
+opening.rapid_development,Rapid Development,Opening,Development,,intermediate,7,opening,,opening.opening_principles_versus_concrete_tactics|opening.development_lead,ontology_only
+opening.development_lead,Development Lead,Opening,Development,,intermediate,7,opening,,opening.rapid_development|opening.complete_development,ontology_only
+opening.complete_development,Complete Development,Opening,Development,,intermediate,7,opening,,opening.development_lead|opening.development_before_material,ontology_only
+opening.development_before_material,Development before Material,Opening,Development,,beginner,7,opening,,opening.complete_development|opening.development_before_attack,ontology_only
+opening.development_before_attack,Development before Attack,Opening,Development,,intermediate,7,opening,,opening.development_before_material|opening.connect_the_rooks,ontology_only
+opening.connect_the_rooks,Connect the Rooks,Opening,Development,,intermediate,7,opening,,opening.development_before_attack|opening.minor_piece_development,ontology_only
+opening.minor_piece_development,Minor-Piece Development,Opening,Development,,intermediate,7,opening,,opening.connect_the_rooks|opening.punishing_slow_development,ontology_only
+opening.punishing_slow_development,Punishing Slow Development,Opening,Development,,intermediate,7,opening,,opening.minor_piece_development|opening.delayed_development,ontology_only
+opening.delayed_development,Delayed Development,Opening,Development,,intermediate,7,opening,,opening.punishing_slow_development|opening.repeated_piece_moves,ontology_only
+opening.repeated_piece_moves,Repeated Piece Moves,Opening,Opening Principles,,intermediate,7,opening,,opening.delayed_development|opening.early_queen_development,ontology_only
+opening.early_queen_development,Early Queen Development,Opening,Development,,intermediate,7,opening,,opening.repeated_piece_moves|opening.fight_for_the_centre,ontology_only
+opening.fight_for_the_centre,Fight for the Centre,Opening,Centre,,intermediate,7,opening,,opening.early_queen_development|opening.occupy_the_centre,ontology_only
+opening.occupy_the_centre,Occupy the Centre,Opening,Centre,,intermediate,7,opening,,opening.fight_for_the_centre|opening.control_the_centre,ontology_only
+opening.control_the_centre,Control the Centre,Opening,Centre,,intermediate,7,opening,,opening.occupy_the_centre|opening.pawn_centre,ontology_only
+opening.pawn_centre,Pawn Centre,Opening,Centre,,intermediate,7,opening,,opening.control_the_centre|opening.piece_pressure_on_the_centre,ontology_only
+opening.piece_pressure_on_the_centre,Piece Pressure on the Centre,Opening,Centre,,intermediate,7,opening,,opening.pawn_centre|opening.central_tension,ontology_only
+opening.central_tension,Central Tension,Opening,Centre,,intermediate,7,opening,,opening.piece_pressure_on_the_centre|opening.central_break,ontology_only
+opening.central_break,Central Break,Opening,Centre,,intermediate,7,opening,,opening.central_tension|opening.undermining_the_centre,ontology_only
+opening.undermining_the_centre,Undermining the Centre,Opening,Centre,,intermediate,7,opening,,opening.central_break|opening.open_centre,ontology_only
+opening.open_centre,Open Centre,Opening,Centre,,intermediate,7,opening,,opening.undermining_the_centre|opening.closed_centre,ontology_only
+opening.closed_centre,Closed Centre,Opening,Centre,,intermediate,7,opening,,opening.open_centre|opening.semi_open_centre,ontology_only
+opening.semi_open_centre,Semi-Open Centre,Opening,Centre,,intermediate,7,opening,,opening.closed_centre|opening.locked_centre,ontology_only
+opening.locked_centre,Locked Centre,Opening,Centre,,intermediate,7,opening,,opening.semi_open_centre|opening.king_safety,ontology_only
+opening.king_safety,King Safety,Opening,King Safety,,intermediate,10,opening,,opening.locked_centre|opening.castling|piece_evaluation.king_safety|evaluation.king_safety,ontology_only
+opening.castling,Castling,Opening,King Safety,,beginner,7,opening,,opening.king_safety|opening.delayed_castling,ontology_only
+opening.delayed_castling,Delayed Castling,Opening,King Safety,,beginner,7,opening,,opening.castling|opening.opposite_side_castling,ontology_only
+opening.opposite_side_castling,Opposite-Side Castling,Opening,King Safety,,beginner,7,opening,,opening.delayed_castling|opening.king_in_the_centre,ontology_only
+opening.king_in_the_centre,King in the Centre,Opening,Centre,,intermediate,7,opening,,opening.opposite_side_castling|opening.pawn_shield,ontology_only
+opening.pawn_shield,Pawn Shield,Opening,King Safety,,intermediate,7,opening,,opening.king_in_the_centre|opening.opening_initiative,ontology_only
+opening.opening_initiative,Opening Initiative,Opening,Opening Principles,,intermediate,7,opening,,opening.pawn_shield|opening.tempo_gain,ontology_only
+opening.tempo_gain,Tempo Gain,Opening,Development,,intermediate,7,opening,,opening.opening_initiative|opening.tempo_loss,ontology_only
+opening.tempo_loss,Tempo Loss,Opening,Development,,intermediate,7,opening,,opening.tempo_gain|opening.opening_trap,ontology_only
+opening.opening_trap,Opening Trap,Opening,Gambits and Traps,,intermediate,7,opening,,opening.tempo_loss|opening.poisoned_pawn,ontology_only
+opening.poisoned_pawn,Poisoned Pawn,Opening,Gambits and Traps,,intermediate,7,opening,,opening.opening_trap|opening.development_trap,ontology_only
+opening.development_trap,Development Trap,Opening,Development,,intermediate,7,opening,,opening.poisoned_pawn|opening.opening_gambit,ontology_only
+opening.opening_gambit,Opening Gambit,Opening,Gambits and Traps,,intermediate,7,opening,,opening.development_trap|opening.gambit_compensation,ontology_only
+opening.gambit_compensation,Gambit Compensation,Opening,Gambits and Traps,,intermediate,7,opening,,opening.opening_gambit|opening.opening_repertoire,ontology_only
+opening.opening_repertoire,Opening Repertoire,Opening,Repertoire Mechanics,,intermediate,7,opening,,opening.gambit_compensation|opening.move_order_awareness,ontology_only
+opening.move_order_awareness,Move-Order Awareness,Opening,Repertoire Mechanics,,intermediate,7,opening,,opening.opening_repertoire|opening.transposition,ontology_only
+opening.transposition,Transposition,Opening,Repertoire Mechanics,,intermediate,7,opening,,opening.move_order_awareness|opening.opening_principles_versus_concrete_tactics,ontology_only
+opening.opening_principles_versus_concrete_tactics,Opening Principles versus Concrete Tactics,Opening,Opening Principles,,intermediate,7,opening,,opening.transposition|opening.rapid_development,ontology_only
+tactics.fork,Fork,Tactical Motifs,Double Attacks,,beginner,10,universal,,tactics.tactical_simplification|tactics.knight_fork,ontology_only
+tactics.knight_fork,Knight Fork,Tactical Motifs,Double Attacks,,beginner,8,universal,,tactics.fork|tactics.pawn_fork,ontology_only
+tactics.pawn_fork,Pawn Fork,Tactical Motifs,Double Attacks,,beginner,8,universal,,tactics.knight_fork|tactics.queen_fork,ontology_only
+tactics.queen_fork,Queen Fork,Tactical Motifs,Double Attacks,,beginner,8,universal,,tactics.pawn_fork|tactics.king_fork,ontology_only
+tactics.king_fork,King Fork,Tactical Motifs,Double Attacks,,beginner,8,universal,,tactics.queen_fork|tactics.royal_fork,ontology_only
+tactics.royal_fork,Royal Fork,Tactical Motifs,Double Attacks,,beginner,8,universal,,tactics.king_fork|tactics.double_attack,ontology_only
+tactics.double_attack,Double Attack,Tactical Motifs,Double Attacks,,intermediate,8,universal,,tactics.royal_fork|tactics.pin,ontology_only
+tactics.pin,Pin,Tactical Motifs,Line Tactics,,beginner,10,universal,,tactics.double_attack|tactics.absolute_pin,ontology_only
+tactics.absolute_pin,Absolute Pin,Tactical Motifs,Line Tactics,,beginner,8,universal,,tactics.pin|tactics.relative_pin,ontology_only
+tactics.relative_pin,Relative Pin,Tactical Motifs,Line Tactics,,beginner,8,universal,,tactics.absolute_pin|tactics.cross_pin,ontology_only
+tactics.cross_pin,Cross Pin,Tactical Motifs,Line Tactics,,advanced,8,universal,,tactics.relative_pin|tactics.skewer,ontology_only
+tactics.skewer,Skewer,Tactical Motifs,Line Tactics,,intermediate,8,universal,,tactics.cross_pin|tactics.discovered_attack,ontology_only
+tactics.discovered_attack,Discovered Attack,Tactical Motifs,Line Tactics,,intermediate,8,universal,,tactics.skewer|tactics.discovered_check,ontology_only
+tactics.discovered_check,Discovered Check,Tactical Motifs,Line Tactics,,intermediate,8,universal,,tactics.discovered_attack|tactics.double_check,ontology_only
+tactics.double_check,Double Check,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.discovered_check|tactics.x_ray_attack,ontology_only
+tactics.x_ray_attack,X-Ray Attack,Tactical Motifs,Line Tactics,,intermediate,8,universal,,tactics.double_check|tactics.x_ray_defence,ontology_only
+tactics.x_ray_defence,X-Ray Defence,Tactical Motifs,Line Tactics,,intermediate,8,universal,,tactics.x_ray_attack|tactics.deflection,ontology_only
+tactics.deflection,Deflection,Tactical Motifs,Defender Manipulation,,intermediate,8,universal,,tactics.x_ray_defence|tactics.decoy,ontology_only
+tactics.decoy,Decoy,Tactical Motifs,Defender Manipulation,,intermediate,8,universal,,tactics.deflection|tactics.attraction,ontology_only
+tactics.attraction,Attraction,Tactical Motifs,Defender Manipulation,,intermediate,8,universal,,tactics.decoy|tactics.clearance,ontology_only
+tactics.clearance,Clearance,Tactical Motifs,Clearance and Interference,,intermediate,8,universal,,tactics.attraction|tactics.line_clearance,ontology_only
+tactics.line_clearance,Line Clearance,Tactical Motifs,Clearance and Interference,,intermediate,8,universal,,tactics.clearance|tactics.square_clearance,ontology_only
+tactics.square_clearance,Square Clearance,Tactical Motifs,Clearance and Interference,,intermediate,8,universal,,tactics.line_clearance|tactics.interference,ontology_only
+tactics.interference,Interference,Tactical Motifs,Clearance and Interference,,intermediate,8,universal,,tactics.square_clearance|tactics.blocking,ontology_only
+tactics.blocking,Blocking,Tactical Motifs,Clearance and Interference,,intermediate,8,universal,,tactics.interference|tactics.overloading,ontology_only
+tactics.overloading,Overloading,Tactical Motifs,Defender Manipulation,,intermediate,8,universal,,tactics.blocking|tactics.removing_the_defender,ontology_only
+tactics.removing_the_defender,Removing the Defender,Tactical Motifs,Defender Manipulation,,intermediate,8,universal,,tactics.overloading|tactics.undermining_the_defender,ontology_only
+tactics.undermining_the_defender,Undermining the Defender,Tactical Motifs,Defender Manipulation,,intermediate,8,universal,,tactics.removing_the_defender|tactics.zwischenzug,ontology_only
+tactics.zwischenzug,Zwischenzug,Tactical Motifs,Tactical Resources,,intermediate,8,universal,,tactics.undermining_the_defender|tactics.zwischencheck,ontology_only
+tactics.zwischencheck,Zwischencheck,Tactical Motifs,Tactical Resources,,intermediate,8,universal,,tactics.zwischenzug|tactics.desperado,ontology_only
+tactics.desperado,Desperado,Tactical Motifs,Tactical Resources,,intermediate,8,universal,,tactics.zwischencheck|tactics.trapped_piece,ontology_only
+tactics.trapped_piece,Trapped Piece,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.desperado|tactics.loose_piece,ontology_only
+tactics.loose_piece,Loose Piece,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.trapped_piece|tactics.hanging_piece,ontology_only
+tactics.hanging_piece,Hanging Piece,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.loose_piece|tactics.dominated_piece,ontology_only
+tactics.dominated_piece,Dominated Piece,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.hanging_piece|tactics.en_prise_piece,ontology_only
+tactics.en_prise_piece,En Prise Piece,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.dominated_piece|tactics.back_rank_tactic,ontology_only
+tactics.back_rank_tactic,Back-Rank Tactic,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.en_prise_piece|tactics.promotion_combination,ontology_only
+tactics.promotion_combination,Promotion Combination,Tactical Motifs,Promotion and Drawing Tactics,,intermediate,8,universal,,tactics.back_rank_tactic|tactics.underpromotion,ontology_only
+tactics.underpromotion,Underpromotion,Tactical Motifs,Promotion and Drawing Tactics,,advanced,8,universal,,tactics.promotion_combination|tactics.pawn_breakthrough,ontology_only
+tactics.pawn_breakthrough,Pawn Breakthrough,Tactical Motifs,Promotion and Drawing Tactics,,intermediate,8,universal,,tactics.underpromotion|tactics.perpetual_check|pawn_structures.pawn_breakthrough|pawn_play.pawn_breakthrough,ontology_only
+tactics.perpetual_check,Perpetual Check,Tactical Motifs,Promotion and Drawing Tactics,,intermediate,8,universal,,tactics.pawn_breakthrough|tactics.stalemate_combination|defence.perpetual_check|queen_endgames.perpetual_check,ontology_only
+tactics.stalemate_combination,Stalemate Combination,Tactical Motifs,Promotion and Drawing Tactics,,intermediate,8,universal,,tactics.perpetual_check|tactics.fortress_combination,ontology_only
+tactics.fortress_combination,Fortress Combination,Tactical Motifs,Promotion and Drawing Tactics,,advanced,8,universal,,tactics.stalemate_combination|tactics.sacrifice_for_initiative,ontology_only
+tactics.sacrifice_for_initiative,Sacrifice for Initiative,Tactical Motifs,Sacrifices,,intermediate,8,universal,,tactics.fortress_combination|tactics.line_opening_sacrifice,ontology_only
+tactics.line_opening_sacrifice,Line-Opening Sacrifice,Tactical Motifs,Sacrifices,,intermediate,8,universal,,tactics.sacrifice_for_initiative|tactics.exchange_sacrifice,ontology_only
+tactics.exchange_sacrifice,Exchange Sacrifice,Tactical Motifs,Sacrifices,,intermediate,8,universal,,tactics.line_opening_sacrifice|tactics.greek_gift_sacrifice,ontology_only
+tactics.greek_gift_sacrifice,Greek Gift Sacrifice,Tactical Motifs,Sacrifices,,intermediate,8,universal,,tactics.exchange_sacrifice|tactics.windmill,ontology_only
+tactics.windmill,Windmill,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.greek_gift_sacrifice|tactics.battery,ontology_only
+tactics.battery,Battery,Tactical Motifs,Line Tactics,,intermediate,8,universal,,tactics.windmill|tactics.mating_net,ontology_only
+tactics.mating_net,Mating Net,Tactical Motifs,General Tactics,,intermediate,8,universal,,tactics.battery|tactics.tactical_defence|king_attack.mating_net,ontology_only
+tactics.tactical_defence,Tactical Defence,Tactical Motifs,Tactical Resources,,intermediate,8,universal,,tactics.mating_net|tactics.counter_tactic,ontology_only
+tactics.counter_tactic,Counter-Tactic,Tactical Motifs,Tactical Resources,,intermediate,8,universal,,tactics.tactical_defence|tactics.counterattack,ontology_only
+tactics.counterattack,Counterattack,Tactical Motifs,Tactical Resources,,intermediate,8,universal,,tactics.counter_tactic|tactics.tactical_simplification|defence.counterattack,ontology_only
+tactics.tactical_simplification,Tactical Simplification,Tactical Motifs,Tactical Resources,,intermediate,8,universal,,tactics.counterattack|tactics.fork,ontology_only
+checkmates.anastasias_mate,Anastasia’s Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.mating_attack_against_an_uncastled_king|checkmates.arabian_mate,ontology_only
+checkmates.arabian_mate,Arabian Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.anastasias_mate|checkmates.bodens_mate,ontology_only
+checkmates.bodens_mate,Boden’s Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.arabian_mate|checkmates.back_rank_mate,ontology_only
+checkmates.back_rank_mate,Back-Rank Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.bodens_mate|checkmates.smothered_mate,ontology_only
+checkmates.smothered_mate,Smothered Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.back_rank_mate|checkmates.lucena_smothered_mate_pattern,ontology_only
+checkmates.lucena_smothered_mate_pattern,Lucena Smothered-Mate Pattern,Checkmate Patterns,Named Mates,,expert,6,universal,,checkmates.smothered_mate|checkmates.damianos_mate,ontology_only
+checkmates.damianos_mate,Damiano’s Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.lucena_smothered_mate_pattern|checkmates.legals_mate,ontology_only
+checkmates.legals_mate,Legal’s Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.damianos_mate|checkmates.epaulette_mate,ontology_only
+checkmates.epaulette_mate,Epaulette Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.legals_mate|checkmates.dovetail_mate,ontology_only
+checkmates.dovetail_mate,Dovetail Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.epaulette_mate|checkmates.swallows_tail_mate,ontology_only
+checkmates.swallows_tail_mate,Swallow’s-Tail Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.dovetail_mate|checkmates.hook_mate,ontology_only
+checkmates.hook_mate,Hook Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.swallows_tail_mate|checkmates.opera_mate,ontology_only
+checkmates.opera_mate,Opera Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.hook_mate|checkmates.corridor_mate,ontology_only
+checkmates.corridor_mate,Corridor Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.opera_mate|checkmates.suffocation_mate,ontology_only
+checkmates.suffocation_mate,Suffocation Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.corridor_mate|checkmates.queen_and_rook_mating_pattern,ontology_only
+checkmates.queen_and_rook_mating_pattern,Queen and Rook Mating Pattern,Checkmate Patterns,Mating Geometries,,intermediate,7,universal,,checkmates.suffocation_mate|checkmates.queen_and_bishop_mating_pattern,ontology_only
+checkmates.queen_and_bishop_mating_pattern,Queen and Bishop Mating Pattern,Checkmate Patterns,Mating Geometries,,intermediate,7,universal,,checkmates.queen_and_rook_mating_pattern|checkmates.queen_and_knight_mating_pattern,ontology_only
+checkmates.queen_and_knight_mating_pattern,Queen and Knight Mating Pattern,Checkmate Patterns,Mating Geometries,,intermediate,7,universal,,checkmates.queen_and_bishop_mating_pattern|checkmates.rook_and_knight_mating_pattern,ontology_only
+checkmates.rook_and_knight_mating_pattern,Rook and Knight Mating Pattern,Checkmate Patterns,Mating Geometries,,intermediate,7,universal,,checkmates.queen_and_knight_mating_pattern|checkmates.two_bishop_mating_pattern,ontology_only
+checkmates.two_bishop_mating_pattern,Two-Bishop Mating Pattern,Checkmate Patterns,Mating Geometries,,intermediate,7,universal,,checkmates.rook_and_knight_mating_pattern|checkmates.bishop_and_knight_checkmate,ontology_only
+checkmates.bishop_and_knight_checkmate,Bishop and Knight Checkmate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.two_bishop_mating_pattern|checkmates.edge_of_the_board_mating_net,ontology_only
+checkmates.edge_of_the_board_mating_net,Edge-of-the-Board Mating Net,Checkmate Patterns,Mating Geometries,,intermediate,7,universal,,checkmates.bishop_and_knight_checkmate|checkmates.open_file_mate,ontology_only
+checkmates.open_file_mate,Open-File Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.edge_of_the_board_mating_net|checkmates.open_diagonal_mate,ontology_only
+checkmates.open_diagonal_mate,Open-Diagonal Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.open_file_mate|checkmates.pawn_supported_mate,ontology_only
+checkmates.pawn_supported_mate,Pawn-Supported Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.open_diagonal_mate|checkmates.double_check_mate,ontology_only
+checkmates.double_check_mate,Double-Check Mate,Checkmate Patterns,Named Mates,,intermediate,7,universal,,checkmates.pawn_supported_mate|checkmates.mating_attack_against_an_uncastled_king,ontology_only
+checkmates.mating_attack_against_an_uncastled_king,Mating Attack against an Uncastled King,Checkmate Patterns,Mating Geometries,,intermediate,7,universal,,checkmates.double_check_mate|checkmates.anastasias_mate,ontology_only
+strategy.strategic_imbalance,Strategic Imbalance,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.transformation_of_advantages|strategy.static_versus_dynamic_play,ontology_only
+strategy.static_versus_dynamic_play,Static versus Dynamic Play,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.strategic_imbalance|strategy.space_versus_structure,ontology_only
+strategy.space_versus_structure,Space versus Structure,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.static_versus_dynamic_play|strategy.material_versus_initiative,ontology_only
+strategy.material_versus_initiative,Material versus Initiative,Strategy,Strategic Principles,,beginner,7,middlegame,,strategy.space_versus_structure|strategy.centre_versus_wing_play,ontology_only
+strategy.centre_versus_wing_play,Centre versus Wing Play,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.material_versus_initiative|strategy.long_term_asset,ontology_only
+strategy.long_term_asset,Long-Term Asset,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.centre_versus_wing_play|strategy.long_term_liability,ontology_only
+strategy.long_term_liability,Long-Term Liability,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.long_term_asset|strategy.favourable_transformation,ontology_only
+strategy.favourable_transformation,Favourable Transformation,Strategy,Strategic Principles,,advanced,7,middlegame,,strategy.long_term_liability|strategy.strategic_turning_point,ontology_only
+strategy.strategic_turning_point,Strategic Turning Point,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.favourable_transformation|strategy.strategic_restraint,ontology_only
+strategy.strategic_restraint,Strategic Restraint,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.strategic_turning_point|strategy.strategic_expansion,ontology_only
+strategy.strategic_expansion,Strategic Expansion,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.strategic_restraint|strategy.multi_stage_strategy,ontology_only
+strategy.multi_stage_strategy,Multi-Stage Strategy,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.strategic_expansion|strategy.initiative,ontology_only
+strategy.initiative,Initiative,Strategy,Strategic Principles,,intermediate,10,middlegame,,strategy.multi_stage_strategy|strategy.maintaining_the_initiative|piece_evaluation.initiative|evaluation.initiative,ontology_only
+strategy.maintaining_the_initiative,Maintaining the Initiative,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.initiative|strategy.gaining_the_initiative,ontology_only
+strategy.gaining_the_initiative,Gaining the Initiative,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.maintaining_the_initiative|strategy.losing_the_initiative,ontology_only
+strategy.losing_the_initiative,Losing the Initiative,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.gaining_the_initiative|strategy.dynamic_compensation,ontology_only
+strategy.dynamic_compensation,Dynamic Compensation,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.losing_the_initiative|strategy.static_advantage,ontology_only
+strategy.static_advantage,Static Advantage,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.dynamic_compensation|strategy.space_advantage,ontology_only
+strategy.space_advantage,Space Advantage,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.static_advantage|strategy.space_disadvantage,ontology_only
+strategy.space_disadvantage,Space Disadvantage,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.space_advantage|strategy.cramped_position,ontology_only
+strategy.cramped_position,Cramped Position,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.space_disadvantage|strategy.expansion,ontology_only
+strategy.expansion,Expansion,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.cramped_position|strategy.restriction,ontology_only
+strategy.restriction,Restriction,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.expansion|strategy.preventing_counterplay,ontology_only
+strategy.preventing_counterplay,Preventing Counterplay,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.restriction|strategy.creating_counterplay,ontology_only
+strategy.creating_counterplay,Creating Counterplay,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.preventing_counterplay|strategy.second_weakness,ontology_only
+strategy.second_weakness,Second Weakness,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.creating_counterplay|strategy.principle_of_two_weaknesses,ontology_only
+strategy.principle_of_two_weaknesses,Principle of Two Weaknesses,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.second_weakness|strategy.switching_wings,ontology_only
+strategy.switching_wings,Switching Wings,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.principle_of_two_weaknesses|strategy.play_on_both_wings,ontology_only
+strategy.play_on_both_wings,Play on Both Wings,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.switching_wings|strategy.creating_a_second_front,ontology_only
+strategy.creating_a_second_front,Creating a Second Front,Strategy,Strategic Principles,,intermediate,7,middlegame,,strategy.play_on_both_wings|strategy.transformation_of_advantages,ontology_only
+strategy.transformation_of_advantages,Transformation of Advantages,Strategy,Strategic Principles,,advanced,7,middlegame,,strategy.creating_a_second_front|strategy.strategic_imbalance|exchanges.transformation_of_advantages,ontology_only
+positional.piece_domination,Piece Domination,Positional Play,Positional Techniques,,advanced,7,middlegame,,positional.dominating_a_piece|positional.weak_square,ontology_only
+positional.weak_square,Weak Square,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.piece_domination|positional.weak_pawn,ontology_only
+positional.weak_pawn,Weak Pawn,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.weak_square|positional.weak_colour_complex,ontology_only
+positional.weak_colour_complex,Weak Colour Complex,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.weak_pawn|positional.dark_square_weakness,ontology_only
+positional.dark_square_weakness,Dark-Square Weakness,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.weak_colour_complex|positional.light_square_weakness,ontology_only
+positional.light_square_weakness,Light-Square Weakness,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.dark_square_weakness|positional.permanent_weakness,ontology_only
+positional.permanent_weakness,Permanent Weakness,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.light_square_weakness|positional.temporary_weakness,ontology_only
+positional.temporary_weakness,Temporary Weakness,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.permanent_weakness|positional.fixing_a_weakness,ontology_only
+positional.fixing_a_weakness,Fixing a Weakness,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.temporary_weakness|positional.provoking_a_weakness|planning.fixing_a_weakness,ontology_only
+positional.provoking_a_weakness,Provoking a Weakness,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.fixing_a_weakness|positional.exploiting_a_weakness,ontology_only
+positional.exploiting_a_weakness,Exploiting a Weakness,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.provoking_a_weakness|positional.strong_square,ontology_only
+positional.strong_square,Strong Square,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.exploiting_a_weakness|positional.outpost,ontology_only
+positional.outpost,Outpost,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.strong_square|positional.knight_outpost,ontology_only
+positional.knight_outpost,Knight Outpost,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.outpost|positional.bishop_outpost|piece_evaluation.knight_outpost|knight_endgames.knight_outpost,ontology_only
+positional.bishop_outpost,Bishop Outpost,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.knight_outpost|positional.central_outpost,ontology_only
+positional.central_outpost,Central Outpost,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.bishop_outpost|positional.protected_outpost,ontology_only
+positional.protected_outpost,Protected Outpost,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.central_outpost|positional.blockade,ontology_only
+positional.blockade,Blockade,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.protected_outpost|positional.knight_blockade|defence.blockade,ontology_only
+positional.knight_blockade,Knight Blockade,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.blockade|positional.rook_blockade|knight_endgames.knight_blockade,ontology_only
+positional.rook_blockade,Rook Blockade,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.knight_blockade|positional.open_file,ontology_only
+positional.open_file,Open File,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.rook_blockade|positional.semi_open_file,ontology_only
+positional.semi_open_file,Semi-Open File,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.open_file|positional.open_rank,ontology_only
+positional.open_rank,Open Rank,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.semi_open_file|positional.open_diagonal,ontology_only
+positional.open_diagonal,Open Diagonal,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.open_rank|positional.positional_sacrifice,ontology_only
+positional.positional_sacrifice,Positional Sacrifice,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.open_diagonal|positional.exchange_sacrifice_for_positional_compensation,ontology_only
+positional.exchange_sacrifice_for_positional_compensation,Exchange Sacrifice for Positional Compensation,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.positional_sacrifice|positional.restricting_a_bishop,ontology_only
+positional.restricting_a_bishop,Restricting a Bishop,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.exchange_sacrifice_for_positional_compensation|positional.restricting_a_knight,ontology_only
+positional.restricting_a_knight,Restricting a Knight,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.restricting_a_bishop|positional.restricting_a_rook,ontology_only
+positional.restricting_a_rook,Restricting a Rook,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.restricting_a_knight|positional.dominating_a_piece,ontology_only
+positional.dominating_a_piece,Dominating a Piece,Positional Play,Positional Techniques,,intermediate,7,middlegame,,positional.restricting_a_rook|positional.piece_domination,ontology_only
+piece_activity.active_piece,Active Piece,Piece Activity,Activation and Coordination,,beginner,7,universal,,piece_activity.king_centralization|piece_activity.passive_piece,ontology_only
+piece_activity.passive_piece,Passive Piece,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.active_piece|piece_activity.piece_scope,ontology_only
+piece_activity.piece_scope,Piece Scope,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.passive_piece|piece_activity.effective_mobility,ontology_only
+piece_activity.effective_mobility,Effective Mobility,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.piece_scope|piece_activity.latent_activity,ontology_only
+piece_activity.latent_activity,Latent Activity,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.effective_mobility|piece_activity.restricted_mobility,ontology_only
+piece_activity.restricted_mobility,Restricted Mobility,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.latent_activity|piece_activity.piece_coordination,ontology_only
+piece_activity.piece_coordination,Piece Coordination,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.restricted_mobility|piece_activity.piece_harmony|evaluation.piece_coordination,ontology_only
+piece_activity.piece_harmony,Piece Harmony,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.piece_coordination|piece_activity.centralized_piece,ontology_only
+piece_activity.centralized_piece,Centralized Piece,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.piece_harmony|piece_activity.active_rook,ontology_only
+piece_activity.active_rook,Active Rook,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.centralized_piece|piece_activity.active_bishop|rook_endgames.active_rook,ontology_only
+piece_activity.active_bishop,Active Bishop,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.active_rook|piece_activity.active_knight|piece_evaluation.active_bishop,ontology_only
+piece_activity.active_knight,Active Knight,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.active_bishop|piece_activity.active_queen,ontology_only
+piece_activity.active_queen,Active Queen,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.active_knight|piece_activity.king_activity|piece_evaluation.active_queen,ontology_only
+piece_activity.king_activity,King Activity,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.active_queen|piece_activity.rook_lift,ontology_only
+piece_activity.rook_lift,Rook Lift,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.king_activity|piece_activity.battery_formation,ontology_only
+piece_activity.battery_formation,Battery Formation,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.rook_lift|piece_activity.piece_redeployment,ontology_only
+piece_activity.piece_redeployment,Piece Redeployment,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.battery_formation|piece_activity.improving_the_worst_placed_piece,ontology_only
+piece_activity.improving_the_worst_placed_piece,Improving the Worst-Placed Piece,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.piece_redeployment|piece_activity.rook_on_the_seventh_rank,ontology_only
+piece_activity.rook_on_the_seventh_rank,Rook on the Seventh Rank,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.improving_the_worst_placed_piece|piece_activity.doubling_rooks|rook_endgames.rook_on_the_seventh_rank,ontology_only
+piece_activity.doubling_rooks,Doubling Rooks,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.rook_on_the_seventh_rank|piece_activity.tripling_major_pieces,ontology_only
+piece_activity.tripling_major_pieces,Tripling Major Pieces,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.doubling_rooks|piece_activity.queen_and_rook_battery,ontology_only
+piece_activity.queen_and_rook_battery,Queen and Rook Battery,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.tripling_major_pieces|piece_activity.queen_and_bishop_battery,ontology_only
+piece_activity.queen_and_bishop_battery,Queen and Bishop Battery,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.queen_and_rook_battery|piece_activity.piece_activity,ontology_only
+piece_activity.piece_activity,Piece Activity,Piece Activity,Activation and Coordination,,intermediate,10,universal,,piece_activity.queen_and_bishop_battery|piece_activity.piece_mobility|evaluation.piece_activity,ontology_only
+piece_activity.piece_mobility,Piece Mobility,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.piece_activity|piece_activity.piece_flexibility,ontology_only
+piece_activity.piece_flexibility,Piece Flexibility,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.piece_mobility|piece_activity.centralization,ontology_only
+piece_activity.centralization,Centralization,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.piece_flexibility|piece_activity.king_centralization|piece_evaluation.centralization,ontology_only
+piece_activity.king_centralization,King Centralization,Piece Activity,Activation and Coordination,,intermediate,7,universal,,piece_activity.centralization|piece_activity.active_piece,ontology_only
+piece_evaluation.nominal_piece_value,Nominal Piece Value,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.short_term_compensation|piece_evaluation.relative_piece_value,ontology_only
+piece_evaluation.relative_piece_value,Relative Piece Value,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.nominal_piece_value|piece_evaluation.activity_versus_material,ontology_only
+piece_evaluation.activity_versus_material,Activity versus Material,Piece Evaluation,Piece Quality and Imbalances,,beginner,7,universal,,piece_evaluation.relative_piece_value|piece_evaluation.mobility,ontology_only
+piece_evaluation.mobility,Mobility,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.activity_versus_material|piece_evaluation.coordination,ontology_only
+piece_evaluation.coordination,Coordination,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.mobility|piece_evaluation.centralization,ontology_only
+piece_evaluation.centralization,Centralization,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.coordination|piece_evaluation.king_safety|piece_activity.centralization,ontology_only
+piece_evaluation.king_safety,King Safety,Piece Evaluation,Piece Quality and Imbalances,,intermediate,10,universal,,piece_evaluation.centralization|piece_evaluation.space|opening.king_safety|evaluation.king_safety,ontology_only
+piece_evaluation.space,Space,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.king_safety|piece_evaluation.initiative|evaluation.space,ontology_only
+piece_evaluation.initiative,Initiative,Piece Evaluation,Piece Quality and Imbalances,,intermediate,10,universal,,piece_evaluation.space|piece_evaluation.bishop_pair|strategy.initiative|evaluation.initiative,ontology_only
+piece_evaluation.bishop_pair,Bishop Pair,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.initiative|piece_evaluation.good_bishop,ontology_only
+piece_evaluation.good_bishop,Good Bishop,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.bishop_pair|piece_evaluation.bad_bishop|bishop_endgames.good_bishop,ontology_only
+piece_evaluation.bad_bishop,Bad Bishop,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.good_bishop|piece_evaluation.active_bishop|bishop_endgames.bad_bishop,ontology_only
+piece_evaluation.active_bishop,Active Bishop,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.bad_bishop|piece_evaluation.passive_bishop|piece_activity.active_bishop,ontology_only
+piece_evaluation.passive_bishop,Passive Bishop,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.active_bishop|piece_evaluation.good_knight,ontology_only
+piece_evaluation.good_knight,Good Knight,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.passive_bishop|piece_evaluation.bad_knight,ontology_only
+piece_evaluation.bad_knight,Bad Knight,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.good_knight|piece_evaluation.knight_on_the_rim,ontology_only
+piece_evaluation.knight_on_the_rim,Knight on the Rim,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.bad_knight|piece_evaluation.knight_outpost,ontology_only
+piece_evaluation.knight_outpost,Knight Outpost,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.knight_on_the_rim|piece_evaluation.rook_activity|positional.knight_outpost|knight_endgames.knight_outpost,ontology_only
+piece_evaluation.rook_activity,Rook Activity,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.knight_outpost|piece_evaluation.active_queen,ontology_only
+piece_evaluation.active_queen,Active Queen,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.rook_activity|piece_evaluation.passive_queen|piece_activity.active_queen,ontology_only
+piece_evaluation.passive_queen,Passive Queen,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.active_queen|piece_evaluation.queen_centralization,ontology_only
+piece_evaluation.queen_centralization,Queen Centralization,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.passive_queen|piece_evaluation.exchange_imbalance|queen_endgames.queen_centralization,ontology_only
+piece_evaluation.exchange_imbalance,Exchange Imbalance,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.queen_centralization|piece_evaluation.queen_versus_two_rooks,ontology_only
+piece_evaluation.queen_versus_two_rooks,Queen versus Two Rooks,Piece Evaluation,Piece Quality and Imbalances,,expert,6,universal,,piece_evaluation.exchange_imbalance|piece_evaluation.rook_and_pawn_versus_two_minor_pieces,ontology_only
+piece_evaluation.rook_and_pawn_versus_two_minor_pieces,Rook and Pawn versus Two Minor Pieces,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.queen_versus_two_rooks|piece_evaluation.rook_versus_minor_piece,ontology_only
+piece_evaluation.rook_versus_minor_piece,Rook versus Minor Piece,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.rook_and_pawn_versus_two_minor_pieces|piece_evaluation.three_minor_pieces_versus_queen,ontology_only
+piece_evaluation.three_minor_pieces_versus_queen,Three Minor Pieces versus Queen,Piece Evaluation,Piece Quality and Imbalances,,expert,6,universal,,piece_evaluation.rook_versus_minor_piece|piece_evaluation.compensation_for_material,ontology_only
+piece_evaluation.compensation_for_material,Compensation for Material,Piece Evaluation,Piece Quality and Imbalances,,beginner,7,universal,,piece_evaluation.three_minor_pieces_versus_queen|piece_evaluation.long_term_compensation,ontology_only
+piece_evaluation.long_term_compensation,Long-Term Compensation,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.compensation_for_material|piece_evaluation.short_term_compensation,ontology_only
+piece_evaluation.short_term_compensation,Short-Term Compensation,Piece Evaluation,Piece Quality and Imbalances,,intermediate,7,universal,,piece_evaluation.long_term_compensation|piece_evaluation.nominal_piece_value,ontology_only
+pawn_structures.isolated_pawn,Isolated Pawn,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.opposite_wing_pawn_majorities|pawn_structures.isolated_queens_pawn,ontology_only
+pawn_structures.isolated_queens_pawn,Isolated Queen’s Pawn,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.isolated_pawn|pawn_structures.isolated_doubled_pawns,ontology_only
+pawn_structures.isolated_doubled_pawns,Isolated Doubled Pawns,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.isolated_queens_pawn|pawn_structures.doubled_pawns,ontology_only
+pawn_structures.doubled_pawns,Doubled Pawns,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.isolated_doubled_pawns|pawn_structures.tripled_pawns,ontology_only
+pawn_structures.tripled_pawns,Tripled Pawns,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.doubled_pawns|pawn_structures.backward_pawn,ontology_only
+pawn_structures.backward_pawn,Backward Pawn,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.tripled_pawns|pawn_structures.hanging_pawns,ontology_only
+pawn_structures.hanging_pawns,Hanging Pawns,Pawn Structures,Structural Features,,intermediate,7,middlegame,,pawn_structures.backward_pawn|pawn_structures.passed_pawn,ontology_only
+pawn_structures.passed_pawn,Passed Pawn,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.hanging_pawns|pawn_structures.protected_passed_pawn,ontology_only
+pawn_structures.protected_passed_pawn,Protected Passed Pawn,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.passed_pawn|pawn_structures.connected_passed_pawns|pawn_endgames.protected_passed_pawn,ontology_only
+pawn_structures.connected_passed_pawns,Connected Passed Pawns,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.protected_passed_pawn|pawn_structures.outside_passed_pawn|pawn_endgames.connected_passed_pawns,ontology_only
+pawn_structures.outside_passed_pawn,Outside Passed Pawn,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.connected_passed_pawns|pawn_structures.remote_passed_pawn|pawn_endgames.outside_passed_pawn,ontology_only
+pawn_structures.remote_passed_pawn,Remote Passed Pawn,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.outside_passed_pawn|pawn_structures.candidate_passed_pawn,ontology_only
+pawn_structures.candidate_passed_pawn,Candidate Passed Pawn,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.remote_passed_pawn|pawn_structures.supported_passed_pawn|pawn_endgames.candidate_passed_pawn,ontology_only
+pawn_structures.supported_passed_pawn,Supported Passed Pawn,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.candidate_passed_pawn|pawn_structures.pawn_majority,ontology_only
+pawn_structures.pawn_majority,Pawn Majority,Pawn Structures,Pawn Majorities,,intermediate,7,middlegame,,pawn_structures.supported_passed_pawn|pawn_structures.kingside_majority|pawn_endgames.pawn_majority,ontology_only
+pawn_structures.kingside_majority,Kingside Majority,Pawn Structures,Pawn Majorities,,intermediate,7,middlegame,,pawn_structures.pawn_majority|pawn_structures.queenside_majority,ontology_only
+pawn_structures.queenside_majority,Queenside Majority,Pawn Structures,Pawn Majorities,,intermediate,7,middlegame,,pawn_structures.kingside_majority|pawn_structures.pawn_minority,ontology_only
+pawn_structures.pawn_minority,Pawn Minority,Pawn Structures,Pawn Majorities,,intermediate,7,middlegame,,pawn_structures.queenside_majority|pawn_structures.minority_attack,ontology_only
+pawn_structures.minority_attack,Minority Attack,Pawn Structures,Pawn Majorities,,intermediate,7,middlegame,,pawn_structures.pawn_minority|pawn_structures.pawn_chain,ontology_only
+pawn_structures.pawn_chain,Pawn Chain,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.minority_attack|pawn_structures.pawn_chain_base,ontology_only
+pawn_structures.pawn_chain_base,Pawn-Chain Base,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.pawn_chain|pawn_structures.pawn_chain_head,ontology_only
+pawn_structures.pawn_chain_head,Pawn-Chain Head,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.pawn_chain_base|pawn_structures.attacking_the_pawn_chain_base,ontology_only
+pawn_structures.attacking_the_pawn_chain_base,Attacking the Pawn-Chain Base,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.pawn_chain_head|pawn_structures.pawn_island,ontology_only
+pawn_structures.pawn_island,Pawn Island,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.attacking_the_pawn_chain_base|pawn_structures.compact_pawn_structure,ontology_only
+pawn_structures.compact_pawn_structure,Compact Pawn Structure,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.pawn_island|pawn_structures.weak_pawn_structure,ontology_only
+pawn_structures.weak_pawn_structure,Weak Pawn Structure,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.compact_pawn_structure|pawn_structures.fixed_pawn_structure,ontology_only
+pawn_structures.fixed_pawn_structure,Fixed Pawn Structure,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.weak_pawn_structure|pawn_structures.mobile_pawn_centre,ontology_only
+pawn_structures.mobile_pawn_centre,Mobile Pawn Centre,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.fixed_pawn_structure|pawn_structures.broad_pawn_centre,ontology_only
+pawn_structures.broad_pawn_centre,Broad Pawn Centre,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.mobile_pawn_centre|pawn_structures.closed_pawn_centre,ontology_only
+pawn_structures.closed_pawn_centre,Closed Pawn Centre,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.broad_pawn_centre|pawn_structures.pawn_phalanx,ontology_only
+pawn_structures.pawn_phalanx,Pawn Phalanx,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.closed_pawn_centre|pawn_structures.pawn_wedge,ontology_only
+pawn_structures.pawn_wedge,Pawn Wedge,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.pawn_phalanx|pawn_structures.pawn_lever,ontology_only
+pawn_structures.pawn_lever,Pawn Lever,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.pawn_wedge|pawn_structures.pawn_break|pawn_play.pawn_lever,ontology_only
+pawn_structures.pawn_break,Pawn Break,Pawn Structures,Pawn Dynamics,,intermediate,10,middlegame,,pawn_structures.pawn_lever|pawn_structures.central_pawn_break|pawn_play.pawn_break,ontology_only
+pawn_structures.central_pawn_break,Central Pawn Break,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.pawn_break|pawn_structures.wing_pawn_break,ontology_only
+pawn_structures.wing_pawn_break,Wing Pawn Break,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.central_pawn_break|pawn_structures.pawn_breakthrough,ontology_only
+pawn_structures.pawn_breakthrough,Pawn Breakthrough,Pawn Structures,Pawn Dynamics,,intermediate,7,middlegame,,pawn_structures.wing_pawn_break|pawn_structures.pawn_sacrifice_for_structure|tactics.pawn_breakthrough|pawn_play.pawn_breakthrough,ontology_only
+pawn_structures.pawn_sacrifice_for_structure,Pawn Sacrifice for Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.pawn_breakthrough|pawn_structures.creating_a_passed_pawn,ontology_only
+pawn_structures.creating_a_passed_pawn,Creating a Passed Pawn,Pawn Structures,Passed Pawns,,intermediate,7,middlegame,,pawn_structures.pawn_sacrifice_for_structure|pawn_structures.creating_a_weak_pawn|pawn_play.creating_a_passed_pawn,ontology_only
+pawn_structures.creating_a_weak_pawn,Creating a Weak Pawn,Pawn Structures,Pawn Weaknesses,,intermediate,7,middlegame,,pawn_structures.creating_a_passed_pawn|pawn_structures.structural_transformation,ontology_only
+pawn_structures.structural_transformation,Structural Transformation,Pawn Structures,Pawn Dynamics,,advanced,7,middlegame,,pawn_structures.creating_a_weak_pawn|pawn_structures.carlsbad_structure|exchanges.structural_transformation,ontology_only
+pawn_structures.carlsbad_structure,Carlsbad Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.structural_transformation|pawn_structures.maroczy_bind,ontology_only
+pawn_structures.maroczy_bind,Maroczy Bind,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.carlsbad_structure|pawn_structures.stonewall_structure,ontology_only
+pawn_structures.stonewall_structure,Stonewall Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.maroczy_bind|pawn_structures.hedgehog_structure,ontology_only
+pawn_structures.hedgehog_structure,Hedgehog Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.stonewall_structure|pawn_structures.french_pawn_chain,ontology_only
+pawn_structures.french_pawn_chain,French Pawn Chain,Pawn Structures,Pawn Chains,,intermediate,7,middlegame,,pawn_structures.hedgehog_structure|pawn_structures.kings_indian_locked_centre,ontology_only
+pawn_structures.kings_indian_locked_centre,King’s Indian Locked Centre,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.french_pawn_chain|pawn_structures.benoni_structure,ontology_only
+pawn_structures.benoni_structure,Benoni Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.kings_indian_locked_centre|pawn_structures.iqp_structure,ontology_only
+pawn_structures.iqp_structure,IQP Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.benoni_structure|pawn_structures.hanging_pawn_structure,ontology_only
+pawn_structures.hanging_pawn_structure,Hanging-Pawn Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.iqp_structure|pawn_structures.symmetrical_pawn_structure,ontology_only
+pawn_structures.symmetrical_pawn_structure,Symmetrical Pawn Structure,Pawn Structures,Structural Systems,,intermediate,7,middlegame,,pawn_structures.hanging_pawn_structure|pawn_structures.opposite_wing_pawn_majorities,ontology_only
+pawn_structures.opposite_wing_pawn_majorities,Opposite-Wing Pawn Majorities,Pawn Structures,Structural Features,,intermediate,7,middlegame,,pawn_structures.symmetrical_pawn_structure|pawn_structures.isolated_pawn,ontology_only
+pawn_play.pawn_advance,Pawn Advance,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.stopping_a_passed_pawn|pawn_play.pawn_break,ontology_only
+pawn_play.pawn_break,Pawn Break,Pawn Play,Pawn Dynamics,,intermediate,10,middlegame,,pawn_play.pawn_advance|pawn_play.pawn_lever|pawn_structures.pawn_break,ontology_only
+pawn_play.pawn_lever,Pawn Lever,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_break|pawn_play.pawn_tension|pawn_structures.pawn_lever,ontology_only
+pawn_play.pawn_tension,Pawn Tension,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_lever|pawn_play.maintaining_pawn_tension,ontology_only
+pawn_play.maintaining_pawn_tension,Maintaining Pawn Tension,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_tension|pawn_play.resolving_pawn_tension,ontology_only
+pawn_play.resolving_pawn_tension,Resolving Pawn Tension,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.maintaining_pawn_tension|pawn_play.pawn_exchange,ontology_only
+pawn_play.pawn_exchange,Pawn Exchange,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.resolving_pawn_tension|pawn_play.pawn_recapture_choice|exchanges.pawn_exchange,ontology_only
+pawn_play.pawn_recapture_choice,Pawn Recapture Choice,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_exchange|pawn_play.pawn_storm,ontology_only
+pawn_play.pawn_storm,Pawn Storm,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_recapture_choice|pawn_play.pawn_sacrifice|king_attack.pawn_storm,ontology_only
+pawn_play.pawn_sacrifice,Pawn Sacrifice,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_storm|pawn_play.pawn_breakthrough,ontology_only
+pawn_play.pawn_breakthrough,Pawn Breakthrough,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_sacrifice|pawn_play.creating_a_passed_pawn|tactics.pawn_breakthrough|pawn_structures.pawn_breakthrough,ontology_only
+pawn_play.creating_a_passed_pawn,Creating a Passed Pawn,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.pawn_breakthrough|pawn_play.fixing_an_enemy_pawn|pawn_structures.creating_a_passed_pawn,ontology_only
+pawn_play.fixing_an_enemy_pawn,Fixing an Enemy Pawn,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.creating_a_passed_pawn|pawn_play.inducing_a_pawn_weakness,ontology_only
+pawn_play.inducing_a_pawn_weakness,Inducing a Pawn Weakness,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.fixing_an_enemy_pawn|pawn_play.gaining_space_with_pawns,ontology_only
+pawn_play.gaining_space_with_pawns,Gaining Space with Pawns,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.inducing_a_pawn_weakness|pawn_play.restraining_a_pawn_majority,ontology_only
+pawn_play.restraining_a_pawn_majority,Restraining a Pawn Majority,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.gaining_space_with_pawns|pawn_play.mobilizing_a_pawn_majority,ontology_only
+pawn_play.mobilizing_a_pawn_majority,Mobilizing a Pawn Majority,Pawn Play,Pawn Dynamics,,intermediate,7,middlegame,,pawn_play.restraining_a_pawn_majority|pawn_play.stopping_a_passed_pawn,ontology_only
+pawn_play.stopping_a_passed_pawn,Stopping a Passed Pawn,Pawn Play,Pawn Dynamics,,beginner,7,middlegame,,pawn_play.mobilizing_a_pawn_majority|pawn_play.pawn_advance,ontology_only
+attack.building_an_attack,Building an Attack,Attack,Attacking Play,,intermediate,7,middlegame,,attack.when_to_stop_attacking|attack.accumulating_attacking_pieces,ontology_only
+attack.accumulating_attacking_pieces,Accumulating Attacking Pieces,Attack,Attacking Play,,intermediate,7,middlegame,,attack.building_an_attack|attack.local_superiority,ontology_only
+attack.local_superiority,Local Superiority,Attack,Attacking Play,,intermediate,7,middlegame,,attack.accumulating_attacking_pieces|attack.attack_with_a_development_lead,ontology_only
+attack.attack_with_a_development_lead,Attack with a Development Lead,Attack,Attacking Play,,intermediate,7,middlegame,,attack.local_superiority|attack.missing_defender,ontology_only
+attack.missing_defender,Missing Defender,Attack,Attacking Play,,intermediate,7,middlegame,,attack.attack_with_a_development_lead|attack.removing_a_key_defender,ontology_only
+attack.removing_a_key_defender,Removing a Key Defender,Attack,Attacking Play,,intermediate,7,middlegame,,attack.missing_defender|attack.attack_on_a_colour_complex,ontology_only
+attack.attack_on_a_colour_complex,Attack on a Colour Complex,Attack,Attacking Play,,intermediate,7,middlegame,,attack.removing_a_key_defender|attack.attack_through_a_pawn_wedge,ontology_only
+attack.attack_through_a_pawn_wedge,Attack through a Pawn Wedge,Attack,Attacking Play,,intermediate,7,middlegame,,attack.attack_on_a_colour_complex|attack.switching_the_attack,ontology_only
+attack.switching_the_attack,Switching the Attack,Attack,Attacking Play,,intermediate,7,middlegame,,attack.attack_through_a_pawn_wedge|attack.increasing_pressure,ontology_only
+attack.increasing_pressure,Increasing Pressure,Attack,Attacking Play,,intermediate,7,middlegame,,attack.switching_the_attack|attack.attack_conversion,ontology_only
+attack.attack_conversion,Attack Conversion,Attack,Attacking Play,,intermediate,7,middlegame,,attack.increasing_pressure|attack.transition_from_attack_to_endgame,ontology_only
+attack.transition_from_attack_to_endgame,Transition from Attack to Endgame,Attack,Attacking Play,,intermediate,7,middlegame,,attack.attack_conversion|attack.when_to_stop_attacking,ontology_only
+attack.when_to_stop_attacking,When to Stop Attacking,Attack,Attacking Play,,intermediate,7,middlegame,,attack.transition_from_attack_to_endgame|attack.building_an_attack,ontology_only
+king_attack.king_safety_differential,King-Safety Differential,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.rook_lift_in_a_king_attack|king_attack.attacking_the_uncastled_king,ontology_only
+king_attack.attacking_the_uncastled_king,Attacking the Uncastled King,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.king_safety_differential|king_attack.attacking_a_castled_king,ontology_only
+king_attack.attacking_a_castled_king,Attacking a Castled King,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.attacking_the_uncastled_king|king_attack.opposite_side_castling_attack,ontology_only
+king_attack.opposite_side_castling_attack,Opposite-Side Castling Attack,King Attack,King-Attack Methods,,beginner,7,middlegame,,king_attack.attacking_a_castled_king|king_attack.same_side_castling_attack,ontology_only
+king_attack.same_side_castling_attack,Same-Side Castling Attack,King Attack,King-Attack Methods,,beginner,7,middlegame,,king_attack.opposite_side_castling_attack|king_attack.weak_pawn_shield,ontology_only
+king_attack.weak_pawn_shield,Weak Pawn Shield,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.same_side_castling_attack|king_attack.missing_shield_pawn,ontology_only
+king_attack.missing_shield_pawn,Missing Shield Pawn,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.weak_pawn_shield|king_attack.open_file_toward_the_king,ontology_only
+king_attack.open_file_toward_the_king,Open File toward the King,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.missing_shield_pawn|king_attack.open_diagonal_toward_the_king,ontology_only
+king_attack.open_diagonal_toward_the_king,Open Diagonal toward the King,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.open_file_toward_the_king|king_attack.dark_square_king_attack,ontology_only
+king_attack.dark_square_king_attack,Dark-Square King Attack,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.open_diagonal_toward_the_king|king_attack.light_square_king_attack,ontology_only
+king_attack.light_square_king_attack,Light-Square King Attack,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.dark_square_king_attack|king_attack.sacrifice_to_expose_the_king,ontology_only
+king_attack.sacrifice_to_expose_the_king,Sacrifice to Expose the King,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.light_square_king_attack|king_attack.attacking_piece_superiority,ontology_only
+king_attack.attacking_piece_superiority,Attacking-Piece Superiority,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.sacrifice_to_expose_the_king|king_attack.king_hunt,ontology_only
+king_attack.king_hunt,King Hunt,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.attacking_piece_superiority|king_attack.mating_net_construction,ontology_only
+king_attack.mating_net_construction,Mating Net Construction,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.king_hunt|king_attack.attack_against_the_king_in_the_centre,ontology_only
+king_attack.attack_against_the_king_in_the_centre,Attack against the King in the Centre,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.mating_net_construction|king_attack.attack_after_same_side_castling,ontology_only
+king_attack.attack_after_same_side_castling,Attack after Same-Side Castling,King Attack,King-Attack Methods,,beginner,7,middlegame,,king_attack.attack_against_the_king_in_the_centre|king_attack.attack_after_opposite_side_castling,ontology_only
+king_attack.attack_after_opposite_side_castling,Attack after Opposite-Side Castling,King Attack,King-Attack Methods,,beginner,7,middlegame,,king_attack.attack_after_same_side_castling|king_attack.pawn_storm,ontology_only
+king_attack.pawn_storm,Pawn Storm,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.attack_after_opposite_side_castling|king_attack.opening_lines_toward_the_king|pawn_play.pawn_storm,ontology_only
+king_attack.opening_lines_toward_the_king,Opening Lines toward the King,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.pawn_storm|king_attack.open_h_file,ontology_only
+king_attack.open_h_file,Open h-File,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.opening_lines_toward_the_king|king_attack.open_g_file,ontology_only
+king_attack.open_g_file,Open g-File,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.open_h_file|king_attack.weak_back_rank,ontology_only
+king_attack.weak_back_rank,Weak Back Rank,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.open_g_file|king_attack.sacrifice_to_open_the_king,ontology_only
+king_attack.sacrifice_to_open_the_king,Sacrifice to Open the King,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.weak_back_rank|king_attack.greek_gift,ontology_only
+king_attack.greek_gift,Greek Gift,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.sacrifice_to_open_the_king|king_attack.mating_net,ontology_only
+king_attack.mating_net,Mating Net,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.greek_gift|king_attack.bringing_the_queen_into_the_attack|tactics.mating_net,ontology_only
+king_attack.bringing_the_queen_into_the_attack,Bringing the Queen into the Attack,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.mating_net|king_attack.bringing_the_rook_into_the_attack,ontology_only
+king_attack.bringing_the_rook_into_the_attack,Bringing the Rook into the Attack,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.bringing_the_queen_into_the_attack|king_attack.rook_lift_in_a_king_attack,ontology_only
+king_attack.rook_lift_in_a_king_attack,Rook Lift in a King Attack,King Attack,King-Attack Methods,,intermediate,7,middlegame,,king_attack.bringing_the_rook_into_the_attack|king_attack.king_safety_differential,ontology_only
+defence.active_defence,Active Defence,Defence,Defensive Methods,,intermediate,7,universal,,defence.reducing_the_opponents_options|defence.passive_defence,ontology_only
+defence.passive_defence,Passive Defence,Defence,Defensive Methods,,intermediate,7,universal,,defence.active_defence|defence.counterplay,ontology_only
+defence.counterplay,Counterplay,Defence,Defensive Methods,,intermediate,7,universal,,defence.passive_defence|defence.counterattack,ontology_only
+defence.counterattack,Counterattack,Defence,Defensive Methods,,intermediate,7,universal,,defence.counterplay|defence.simplification_as_defence|tactics.counterattack,ontology_only
+defence.simplification_as_defence,Simplification as Defence,Defence,Defensive Methods,,intermediate,7,universal,,defence.counterattack|defence.exchange_of_attacking_pieces,ontology_only
+defence.exchange_of_attacking_pieces,Exchange of Attacking Pieces,Defence,Defensive Methods,,intermediate,7,universal,,defence.simplification_as_defence|defence.returning_material,ontology_only
+defence.returning_material,Returning Material,Defence,Defensive Methods,,beginner,7,universal,,defence.exchange_of_attacking_pieces|defence.defensive_sacrifice,ontology_only
+defence.defensive_sacrifice,Defensive Sacrifice,Defence,Defensive Methods,,intermediate,7,universal,,defence.returning_material|defence.blockade,ontology_only
+defence.blockade,Blockade,Defence,Defensive Methods,,intermediate,7,universal,,defence.defensive_sacrifice|defence.fortress|positional.blockade,ontology_only
+defence.fortress,Fortress,Defence,Defensive Methods,,advanced,7,universal,,defence.blockade|defence.perpetual_check|drawing_mechanisms.fortress,ontology_only
+defence.perpetual_check,Perpetual Check,Defence,Defensive Methods,,intermediate,7,universal,,defence.fortress|defence.stalemate|tactics.perpetual_check|queen_endgames.perpetual_check,ontology_only
+defence.stalemate,Stalemate,Defence,Defensive Methods,,intermediate,7,universal,,defence.perpetual_check|defence.repetition|drawing_mechanisms.stalemate,ontology_only
+defence.repetition,Repetition,Defence,Defensive Methods,,intermediate,7,universal,,defence.stalemate|defence.creating_luft,ontology_only
+defence.creating_luft,Creating Luft,Defence,Defensive Methods,,intermediate,7,universal,,defence.repetition|defence.king_evacuation,ontology_only
+defence.king_evacuation,King Evacuation,Defence,Defensive Methods,,intermediate,7,universal,,defence.creating_luft|defence.closing_lines,ontology_only
+defence.closing_lines,Closing Lines,Defence,Defensive Methods,,intermediate,7,universal,,defence.king_evacuation|defence.challenging_the_attackers_centre,ontology_only
+defence.challenging_the_attackers_centre,Challenging the Attacker’s Centre,Defence,Defensive Methods,,intermediate,7,universal,,defence.closing_lines|defence.eliminating_the_strongest_attacker,ontology_only
+defence.eliminating_the_strongest_attacker,Eliminating the Strongest Attacker,Defence,Defensive Methods,,intermediate,7,universal,,defence.challenging_the_attackers_centre|defence.defensive_prophylaxis,ontology_only
+defence.defensive_prophylaxis,Defensive Prophylaxis,Defence,Defensive Methods,,intermediate,7,universal,,defence.eliminating_the_strongest_attacker|defence.overprotection,ontology_only
+defence.overprotection,Overprotection,Defence,Defensive Methods,,intermediate,7,universal,,defence.defensive_prophylaxis|defence.consolidation|prophylaxis.overprotection,ontology_only
+defence.consolidation,Consolidation,Defence,Defensive Methods,,intermediate,7,universal,,defence.overprotection|defence.neutralizing_the_initiative|conversion.consolidation,ontology_only
+defence.neutralizing_the_initiative,Neutralizing the Initiative,Defence,Defensive Methods,,intermediate,7,universal,,defence.consolidation|defence.defending_a_worse_position,ontology_only
+defence.defending_a_worse_position,Defending a Worse Position,Defence,Defensive Methods,,intermediate,7,universal,,defence.neutralizing_the_initiative|defence.practical_defensive_chances,ontology_only
+defence.practical_defensive_chances,Practical Defensive Chances,Defence,Defensive Methods,,intermediate,7,universal,,defence.defending_a_worse_position|defence.creating_tactical_complications,ontology_only
+defence.creating_tactical_complications,Creating Tactical Complications,Defence,Defensive Methods,,intermediate,7,universal,,defence.practical_defensive_chances|defence.reducing_the_opponents_options,ontology_only
+defence.reducing_the_opponents_options,Reducing the Opponent’s Options,Defence,Defensive Methods,,intermediate,7,universal,,defence.creating_tactical_complications|defence.active_defence,ontology_only
+prophylaxis.opponents_idea,Opponent's Idea,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.prophylaxis|prophylaxis.opponents_threat,ontology_only
+prophylaxis.opponents_threat,Opponent's Threat,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.opponents_idea|prophylaxis.preventive_move,ontology_only
+prophylaxis.preventive_move,Preventive Move,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.opponents_threat|prophylaxis.preventive_pawn_move,ontology_only
+prophylaxis.preventive_pawn_move,Preventive Pawn Move,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.preventive_move|prophylaxis.preventive_exchange,ontology_only
+prophylaxis.preventive_exchange,Preventive Exchange,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.preventive_pawn_move|prophylaxis.restricting_counterplay,ontology_only
+prophylaxis.restricting_counterplay,Restricting Counterplay,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.preventive_exchange|prophylaxis.stopping_a_pawn_break,ontology_only
+prophylaxis.stopping_a_pawn_break,Stopping a Pawn Break,Prophylaxis,Preventive Play,,beginner,7,universal,,prophylaxis.restricting_counterplay|prophylaxis.stopping_piece_activation,ontology_only
+prophylaxis.stopping_piece_activation,Stopping Piece Activation,Prophylaxis,Preventive Play,,beginner,7,universal,,prophylaxis.stopping_a_pawn_break|prophylaxis.overprotection,ontology_only
+prophylaxis.overprotection,Overprotection,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.stopping_piece_activation|prophylaxis.useful_waiting_move|defence.overprotection,ontology_only
+prophylaxis.useful_waiting_move,Useful Waiting Move,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.overprotection|prophylaxis.flexible_prophylaxis,ontology_only
+prophylaxis.flexible_prophylaxis,Flexible Prophylaxis,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.useful_waiting_move|prophylaxis.prophylactic_king_move,ontology_only
+prophylaxis.prophylactic_king_move,Prophylactic King Move,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.flexible_prophylaxis|prophylaxis.prophylaxis,ontology_only
+prophylaxis.prophylaxis,Prophylaxis,Prophylaxis,Preventive Play,,intermediate,7,universal,,prophylaxis.prophylactic_king_move|prophylaxis.opponents_idea,ontology_only
+exchanges.favourable_exchange,Favourable Exchange,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.transformation_of_advantages|exchanges.unfavourable_exchange,ontology_only
+exchanges.unfavourable_exchange,Unfavourable Exchange,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.favourable_exchange|exchanges.equal_exchange,ontology_only
+exchanges.equal_exchange,Equal Exchange,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.unfavourable_exchange|exchanges.exchange_of_defenders,ontology_only
+exchanges.exchange_of_defenders,Exchange of Defenders,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.equal_exchange|exchanges.exchange_of_attackers,ontology_only
+exchanges.exchange_of_attackers,Exchange of Attackers,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.exchange_of_defenders|exchanges.exchange_of_active_pieces,ontology_only
+exchanges.exchange_of_active_pieces,Exchange of Active Pieces,Exchanges and Transformations,Exchange Decisions,,beginner,7,universal,,exchanges.exchange_of_attackers|exchanges.exchange_of_passive_pieces,ontology_only
+exchanges.exchange_of_passive_pieces,Exchange of Passive Pieces,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.exchange_of_active_pieces|exchanges.queen_trade,ontology_only
+exchanges.queen_trade,Queen Trade,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.exchange_of_passive_pieces|exchanges.rook_trade,ontology_only
+exchanges.rook_trade,Rook Trade,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.queen_trade|exchanges.minor_piece_trade,ontology_only
+exchanges.minor_piece_trade,Minor-Piece Trade,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.rook_trade|exchanges.pawn_exchange,ontology_only
+exchanges.pawn_exchange,Pawn Exchange,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.minor_piece_trade|exchanges.material_transformation|pawn_play.pawn_exchange,ontology_only
+exchanges.material_transformation,Material Transformation,Exchanges and Transformations,Exchange Decisions,,advanced,7,universal,,exchanges.pawn_exchange|exchanges.structural_transformation,ontology_only
+exchanges.structural_transformation,Structural Transformation,Exchanges and Transformations,Exchange Decisions,,advanced,7,universal,,exchanges.material_transformation|exchanges.endgame_transition|pawn_structures.structural_transformation,ontology_only
+exchanges.endgame_transition,Endgame Transition,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.structural_transformation|exchanges.liquidation_into_a_pawn_endgame,ontology_only
+exchanges.liquidation_into_a_pawn_endgame,Liquidation into a Pawn Endgame,Exchanges and Transformations,Exchange Decisions,,intermediate,7,universal,,exchanges.endgame_transition|exchanges.simplification_into_a_fortress,ontology_only
+exchanges.simplification_into_a_fortress,Simplification into a Fortress,Exchanges and Transformations,Exchange Decisions,,advanced,7,universal,,exchanges.liquidation_into_a_pawn_endgame|exchanges.transformation_of_advantages,ontology_only
+exchanges.transformation_of_advantages,Transformation of Advantages,Exchanges and Transformations,Exchange Decisions,,advanced,7,universal,,exchanges.simplification_into_a_fortress|exchanges.favourable_exchange|strategy.transformation_of_advantages,ontology_only
+calculation.candidate_move_generation,Candidate-Move Generation,Calculation,Candidate Moves,,intermediate,10,universal,,calculation.final_verification|calculation.checks_captures_and_threats,ontology_only
+calculation.checks_captures_and_threats,"Checks, Captures, and Threats",Calculation,Candidate Moves,,intermediate,8,universal,,calculation.candidate_move_generation|calculation.forcing_moves,ontology_only
+calculation.forcing_moves,Forcing Moves,Calculation,Candidate Moves,,intermediate,8,universal,,calculation.checks_captures_and_threats|calculation.quiet_candidate_moves,ontology_only
+calculation.quiet_candidate_moves,Quiet Candidate Moves,Calculation,Candidate Moves,,intermediate,8,universal,,calculation.forcing_moves|calculation.opponents_best_defence,ontology_only
+calculation.opponents_best_defence,Opponent’s Best Defence,Calculation,Verification,,intermediate,8,universal,,calculation.quiet_candidate_moves|calculation.calculation_tree,ontology_only
+calculation.calculation_tree,Calculation Tree,Calculation,Calculation Process,,intermediate,8,universal,,calculation.opponents_best_defence|calculation.branch_management,ontology_only
+calculation.branch_management,Branch Management,Calculation,Calculation Process,,intermediate,8,universal,,calculation.calculation_tree|calculation.move_order_calculation,ontology_only
+calculation.move_order_calculation,Move-Order Calculation,Calculation,Calculation Process,,intermediate,8,universal,,calculation.branch_management|calculation.visualization,ontology_only
+calculation.visualization,Visualization,Calculation,Visualization,,intermediate,8,universal,,calculation.move_order_calculation|calculation.board_representation,ontology_only
+calculation.board_representation,Board Representation,Calculation,Visualization,,intermediate,8,universal,,calculation.visualization|calculation.calculation_to_a_stable_position,ontology_only
+calculation.calculation_to_a_stable_position,Calculation to a Stable Position,Calculation,Calculation Process,,intermediate,8,universal,,calculation.board_representation|calculation.comparing_final_positions,ontology_only
+calculation.comparing_final_positions,Comparing Final Positions,Calculation,Calculation Fundamentals,,intermediate,8,universal,,calculation.calculation_to_a_stable_position|calculation.elimination_method,ontology_only
+calculation.elimination_method,Elimination Method,Calculation,Calculation Process,,intermediate,8,universal,,calculation.comparing_final_positions|calculation.comparison_method,ontology_only
+calculation.comparison_method,Comparison Method,Calculation,Calculation Process,,intermediate,8,universal,,calculation.elimination_method|calculation.pattern_based_calculation,ontology_only
+calculation.pattern_based_calculation,Pattern-Based Calculation,Calculation,Calculation Types,,intermediate,8,universal,,calculation.comparison_method|calculation.concrete_calculation,ontology_only
+calculation.concrete_calculation,Concrete Calculation,Calculation,Calculation Fundamentals,,intermediate,8,universal,,calculation.pattern_based_calculation|calculation.tactical_calculation,ontology_only
+calculation.tactical_calculation,Tactical Calculation,Calculation,Calculation Types,,intermediate,8,universal,,calculation.concrete_calculation|calculation.positional_calculation,ontology_only
+calculation.positional_calculation,Positional Calculation,Calculation,Calculation Types,,intermediate,8,universal,,calculation.tactical_calculation|calculation.calculation_of_pawn_races,ontology_only
+calculation.calculation_of_pawn_races,Calculation of Pawn Races,Calculation,Calculation Types,,intermediate,8,universal,,calculation.positional_calculation|calculation.calculation_of_exchanges,ontology_only
+calculation.calculation_of_exchanges,Calculation of Exchanges,Calculation,Calculation Types,,intermediate,8,universal,,calculation.calculation_of_pawn_races|calculation.calculation_of_king_hunts,ontology_only
+calculation.calculation_of_king_hunts,Calculation of King Hunts,Calculation,Calculation Types,,intermediate,8,universal,,calculation.calculation_of_exchanges|calculation.zwischenmoves_in_calculation,ontology_only
+calculation.zwischenmoves_in_calculation,Zwischenmoves in Calculation,Calculation,Calculation Fundamentals,,intermediate,8,universal,,calculation.calculation_of_king_hunts|calculation.defensive_resources,ontology_only
+calculation.defensive_resources,Defensive Resources,Calculation,Calculation Fundamentals,,intermediate,8,universal,,calculation.zwischenmoves_in_calculation|calculation.counterchecks,ontology_only
+calculation.counterchecks,Counterchecks,Calculation,Candidate Moves,,intermediate,8,universal,,calculation.defensive_resources|calculation.countercaptures,ontology_only
+calculation.countercaptures,Countercaptures,Calculation,Calculation Fundamentals,,intermediate,8,universal,,calculation.counterchecks|calculation.calculation_discipline,ontology_only
+calculation.calculation_discipline,Calculation Discipline,Calculation,Verification,,intermediate,8,universal,,calculation.countercaptures|calculation.avoiding_wishful_thinking,ontology_only
+calculation.avoiding_wishful_thinking,Avoiding Wishful Thinking,Calculation,Verification,,intermediate,8,universal,,calculation.calculation_discipline|calculation.avoiding_premature_evaluation,ontology_only
+calculation.avoiding_premature_evaluation,Avoiding Premature Evaluation,Calculation,Calculation Fundamentals,,intermediate,8,universal,,calculation.avoiding_wishful_thinking|calculation.horizon_effect,ontology_only
+calculation.horizon_effect,Horizon Effect,Calculation,Verification,,intermediate,8,universal,,calculation.avoiding_premature_evaluation|calculation.rechecking_the_initial_position,ontology_only
+calculation.rechecking_the_initial_position,Rechecking the Initial Position,Calculation,Verification,,intermediate,8,universal,,calculation.horizon_effect|calculation.blunder_check,ontology_only
+calculation.blunder_check,Blunder Check,Calculation,Verification,,beginner,10,universal,,calculation.rechecking_the_initial_position|calculation.final_verification,ontology_only
+calculation.final_verification,Final Verification,Calculation,Verification,,intermediate,8,universal,,calculation.blunder_check|calculation.candidate_move_generation,ontology_only
+evaluation.material,Material,Evaluation,Position Assessment,,beginner,10,universal,,evaluation.re_evaluation_after_every_move|evaluation.king_safety,ontology_only
+evaluation.king_safety,King Safety,Evaluation,Position Assessment,,intermediate,10,universal,,evaluation.material|evaluation.piece_activity|opening.king_safety|piece_evaluation.king_safety,ontology_only
+evaluation.piece_activity,Piece Activity,Evaluation,Position Assessment,,intermediate,10,universal,,evaluation.king_safety|evaluation.development|piece_activity.piece_activity,ontology_only
+evaluation.development,Development,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.piece_activity|evaluation.initiative,ontology_only
+evaluation.initiative,Initiative,Evaluation,Position Assessment,,intermediate,10,universal,,evaluation.development|evaluation.space|strategy.initiative|piece_evaluation.initiative,ontology_only
+evaluation.space,Space,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.initiative|evaluation.pawn_structure|piece_evaluation.space,ontology_only
+evaluation.pawn_structure,Pawn Structure,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.space|evaluation.weak_squares,ontology_only
+evaluation.weak_squares,Weak Squares,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.pawn_structure|evaluation.strong_squares,ontology_only
+evaluation.strong_squares,Strong Squares,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.weak_squares|evaluation.passed_pawns,ontology_only
+evaluation.passed_pawns,Passed Pawns,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.strong_squares|evaluation.piece_coordination,ontology_only
+evaluation.piece_coordination,Piece Coordination,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.passed_pawns|evaluation.tactical_threats|piece_activity.piece_coordination,ontology_only
+evaluation.tactical_threats,Tactical Threats,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.piece_coordination|evaluation.dynamic_factors,ontology_only
+evaluation.dynamic_factors,Dynamic Factors,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.tactical_threats|evaluation.static_factors,ontology_only
+evaluation.static_factors,Static Factors,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.dynamic_factors|evaluation.temporary_advantages,ontology_only
+evaluation.temporary_advantages,Temporary Advantages,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.static_factors|evaluation.permanent_advantages,ontology_only
+evaluation.permanent_advantages,Permanent Advantages,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.temporary_advantages|evaluation.endgame_potential,ontology_only
+evaluation.endgame_potential,Endgame Potential,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.permanent_advantages|evaluation.exchange_evaluation,ontology_only
+evaluation.exchange_evaluation,Exchange Evaluation,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.endgame_potential|evaluation.transition_evaluation,ontology_only
+evaluation.transition_evaluation,Transition Evaluation,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.exchange_evaluation|evaluation.practical_evaluation,ontology_only
+evaluation.practical_evaluation,Practical Evaluation,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.transition_evaluation|evaluation.risk_evaluation,ontology_only
+evaluation.risk_evaluation,Risk Evaluation,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.practical_evaluation|evaluation.compensation,ontology_only
+evaluation.compensation,Compensation,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.risk_evaluation|evaluation.dominant_imbalance,ontology_only
+evaluation.dominant_imbalance,Dominant Imbalance,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.compensation|evaluation.evaluation_after_calculation,ontology_only
+evaluation.evaluation_after_calculation,Evaluation after Calculation,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.dominant_imbalance|evaluation.re_evaluation_after_every_move,ontology_only
+evaluation.re_evaluation_after_every_move,Re-Evaluation after Every Move,Evaluation,Position Assessment,,intermediate,8,universal,,evaluation.evaluation_after_calculation|evaluation.material,ontology_only
+planning.plan_based_on_pawn_structure,Plan Based on Pawn Structure,Planning,Plan Formation,,intermediate,8,universal,,planning.converting_a_positional_advantage|planning.plan_based_on_weaknesses,ontology_only
+planning.plan_based_on_weaknesses,Plan Based on Weaknesses,Planning,Plan Formation,,intermediate,8,universal,,planning.plan_based_on_pawn_structure|planning.plan_based_on_piece_placement,ontology_only
+planning.plan_based_on_piece_placement,Plan Based on Piece Placement,Planning,Plan Formation,,intermediate,8,universal,,planning.plan_based_on_weaknesses|planning.plan_based_on_king_safety,ontology_only
+planning.plan_based_on_king_safety,Plan Based on King Safety,Planning,Plan Formation,,intermediate,8,universal,,planning.plan_based_on_piece_placement|planning.plan_based_on_space,ontology_only
+planning.plan_based_on_space,Plan Based on Space,Planning,Plan Formation,,intermediate,8,universal,,planning.plan_based_on_king_safety|planning.plan_based_on_material_imbalance,ontology_only
+planning.plan_based_on_material_imbalance,Plan Based on Material Imbalance,Planning,Plan Formation,,beginner,8,universal,,planning.plan_based_on_space|planning.short_term_plan,ontology_only
+planning.short_term_plan,Short-Term Plan,Planning,Plan Formation,,intermediate,8,universal,,planning.plan_based_on_material_imbalance|planning.long_term_plan,ontology_only
+planning.long_term_plan,Long-Term Plan,Planning,Plan Formation,,intermediate,8,universal,,planning.short_term_plan|planning.improving_the_worst_piece,ontology_only
+planning.improving_the_worst_piece,Improving the Worst Piece,Planning,Plan Formation,,intermediate,8,universal,,planning.long_term_plan|planning.creating_a_weakness,ontology_only
+planning.creating_a_weakness,Creating a Weakness,Planning,Plan Formation,,intermediate,8,universal,,planning.improving_the_worst_piece|planning.fixing_a_weakness,ontology_only
+planning.fixing_a_weakness,Fixing a Weakness,Planning,Plan Formation,,intermediate,8,universal,,planning.creating_a_weakness|planning.creating_a_second_weakness|positional.fixing_a_weakness,ontology_only
+planning.creating_a_second_weakness,Creating a Second Weakness,Planning,Plan Formation,,intermediate,8,universal,,planning.fixing_a_weakness|planning.preparing_a_pawn_break,ontology_only
+planning.preparing_a_pawn_break,Preparing a Pawn Break,Planning,Plan Formation,,intermediate,8,universal,,planning.creating_a_second_weakness|planning.preventing_the_opponents_plan,ontology_only
+planning.preventing_the_opponents_plan,Preventing the Opponent’s Plan,Planning,Plan Formation,,intermediate,8,universal,,planning.preparing_a_pawn_break|planning.switching_plans,ontology_only
+planning.switching_plans,Switching Plans,Planning,Plan Formation,,intermediate,8,universal,,planning.preventing_the_opponents_plan|planning.plan_transformation,ontology_only
+planning.plan_transformation,Plan Transformation,Planning,Plan Formation,,advanced,8,universal,,planning.switching_plans|planning.choosing_the_correct_wing,ontology_only
+planning.choosing_the_correct_wing,Choosing the Correct Wing,Planning,Plan Formation,,intermediate,8,universal,,planning.plan_transformation|planning.manoeuvring,ontology_only
+planning.manoeuvring,Manoeuvring,Planning,Plan Formation,,intermediate,8,universal,,planning.choosing_the_correct_wing|planning.accumulating_small_advantages,ontology_only
+planning.accumulating_small_advantages,Accumulating Small Advantages,Planning,Plan Formation,,intermediate,8,universal,,planning.manoeuvring|planning.converting_a_positional_advantage,ontology_only
+planning.converting_a_positional_advantage,Converting a Positional Advantage,Planning,Plan Formation,,intermediate,8,universal,,planning.accumulating_small_advantages|planning.plan_based_on_pawn_structure,ontology_only
+decision_making.critical_moment_identification,Critical-Moment Identification,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.final_blunder_check|decision_making.candidate_move_selection,ontology_only
+decision_making.candidate_move_selection,Candidate-Move Selection,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.critical_moment_identification|decision_making.forcing_move_priority,ontology_only
+decision_making.forcing_move_priority,Forcing-Move Priority,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.candidate_move_selection|decision_making.comparison_of_candidates,ontology_only
+decision_making.comparison_of_candidates,Comparison of Candidates,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.forcing_move_priority|decision_making.commitment_decision,ontology_only
+decision_making.commitment_decision,Commitment Decision,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.comparison_of_candidates|decision_making.reversible_move,ontology_only
+decision_making.reversible_move,Reversible Move,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.commitment_decision|decision_making.irreversible_move,ontology_only
+decision_making.irreversible_move,Irreversible Move,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.reversible_move|decision_making.risk_reward_balance,ontology_only
+decision_making.risk_reward_balance,Risk-Reward Balance,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.irreversible_move|decision_making.practical_move_choice,ontology_only
+decision_making.practical_move_choice,Practical Move Choice,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.risk_reward_balance|decision_making.strategic_move_choice,ontology_only
+decision_making.strategic_move_choice,Strategic Move Choice,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.practical_move_choice|decision_making.tactical_move_choice,ontology_only
+decision_making.tactical_move_choice,Tactical Move Choice,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.strategic_move_choice|decision_making.intuition_versus_calculation,ontology_only
+decision_making.intuition_versus_calculation,Intuition versus Calculation,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.tactical_move_choice|decision_making.decision_confidence,ontology_only
+decision_making.decision_confidence,Decision Confidence,Decision Making,Move Selection,,intermediate,7,universal,,decision_making.intuition_versus_calculation|decision_making.final_blunder_check,ontology_only
+decision_making.final_blunder_check,Final Blunder Check,Decision Making,Move Selection,,beginner,7,universal,,decision_making.decision_confidence|decision_making.critical_moment_identification,ontology_only
+pawn_endgames.opposition,Opposition,Pawn Endgames,Pawn-Endgame Technique,,intermediate,10,endgame,,pawn_endgames.transformation_into_a_drawn_pawn_ending|pawn_endgames.direct_opposition,ontology_only
+pawn_endgames.direct_opposition,Direct Opposition,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.opposition|pawn_endgames.distant_opposition,ontology_only
+pawn_endgames.distant_opposition,Distant Opposition,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.direct_opposition|pawn_endgames.diagonal_opposition,ontology_only
+pawn_endgames.diagonal_opposition,Diagonal Opposition,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.distant_opposition|pawn_endgames.corresponding_squares,ontology_only
+pawn_endgames.corresponding_squares,Corresponding Squares,Pawn Endgames,Pawn-Endgame Technique,,expert,6,endgame,,pawn_endgames.diagonal_opposition|pawn_endgames.key_squares,ontology_only
+pawn_endgames.key_squares,Key Squares,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.corresponding_squares|pawn_endgames.rule_of_the_square,ontology_only
+pawn_endgames.rule_of_the_square,Rule of the Square,Pawn Endgames,Pawn-Endgame Technique,,beginner,7,endgame,,pawn_endgames.key_squares|pawn_endgames.zugzwang,ontology_only
+pawn_endgames.zugzwang,Zugzwang,Pawn Endgames,Pawn-Endgame Technique,,advanced,7,endgame,,pawn_endgames.rule_of_the_square|pawn_endgames.mutual_zugzwang,ontology_only
+pawn_endgames.mutual_zugzwang,Mutual Zugzwang,Pawn Endgames,Pawn-Endgame Technique,,advanced,7,endgame,,pawn_endgames.zugzwang|pawn_endgames.reserve_tempo|drawing_mechanisms.mutual_zugzwang,ontology_only
+pawn_endgames.reserve_tempo,Reserve Tempo,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.mutual_zugzwang|pawn_endgames.spare_pawn_move,ontology_only
+pawn_endgames.spare_pawn_move,Spare Pawn Move,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.reserve_tempo|pawn_endgames.triangulation,ontology_only
+pawn_endgames.triangulation,Triangulation,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.spare_pawn_move|pawn_endgames.king_penetration,ontology_only
+pawn_endgames.king_penetration,King Penetration,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.triangulation|pawn_endgames.king_shoulder,ontology_only
+pawn_endgames.king_shoulder,King Shoulder,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.king_penetration|pawn_endgames.outflanking,ontology_only
+pawn_endgames.outflanking,Outflanking,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.king_shoulder|pawn_endgames.flanking_manoeuvre,ontology_only
+pawn_endgames.flanking_manoeuvre,Flanking Manoeuvre,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.outflanking|pawn_endgames.pawn_race,ontology_only
+pawn_endgames.pawn_race,Pawn Race,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.flanking_manoeuvre|pawn_endgames.promotion_with_check,ontology_only
+pawn_endgames.promotion_with_check,Promotion with Check,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.pawn_race|pawn_endgames.breakthrough,ontology_only
+pawn_endgames.breakthrough,Breakthrough,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.promotion_with_check|pawn_endgames.outside_passed_pawn,ontology_only
+pawn_endgames.outside_passed_pawn,Outside Passed Pawn,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.breakthrough|pawn_endgames.protected_passed_pawn|pawn_structures.outside_passed_pawn,ontology_only
+pawn_endgames.protected_passed_pawn,Protected Passed Pawn,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.outside_passed_pawn|pawn_endgames.connected_passed_pawns|pawn_structures.protected_passed_pawn,ontology_only
+pawn_endgames.connected_passed_pawns,Connected Passed Pawns,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.protected_passed_pawn|pawn_endgames.pawn_majority|pawn_structures.connected_passed_pawns,ontology_only
+pawn_endgames.pawn_majority,Pawn Majority,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.connected_passed_pawns|pawn_endgames.candidate_passed_pawn|pawn_structures.pawn_majority,ontology_only
+pawn_endgames.candidate_passed_pawn,Candidate Passed Pawn,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.pawn_majority|pawn_endgames.king_versus_pawn|pawn_structures.candidate_passed_pawn,ontology_only
+pawn_endgames.king_versus_pawn,King versus Pawn,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.candidate_passed_pawn|pawn_endgames.king_and_pawn_versus_king,ontology_only
+pawn_endgames.king_and_pawn_versus_king,King and Pawn versus King,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.king_versus_pawn|pawn_endgames.rook_pawn_exception,ontology_only
+pawn_endgames.rook_pawn_exception,Rook-Pawn Exception,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.king_and_pawn_versus_king|pawn_endgames.stalemate_in_pawn_endgames,ontology_only
+pawn_endgames.stalemate_in_pawn_endgames,Stalemate in Pawn Endgames,Pawn Endgames,Pawn-Endgame Technique,,intermediate,7,endgame,,pawn_endgames.rook_pawn_exception|pawn_endgames.transformation_into_a_won_pawn_ending,ontology_only
+pawn_endgames.transformation_into_a_won_pawn_ending,Transformation into a Won Pawn Ending,Pawn Endgames,Pawn-Endgame Technique,,advanced,7,endgame,,pawn_endgames.stalemate_in_pawn_endgames|pawn_endgames.transformation_into_a_drawn_pawn_ending,ontology_only
+pawn_endgames.transformation_into_a_drawn_pawn_ending,Transformation into a Drawn Pawn Ending,Pawn Endgames,Pawn-Endgame Technique,,advanced,7,endgame,,pawn_endgames.transformation_into_a_won_pawn_ending|pawn_endgames.opposition,ontology_only
+rook_endgames.active_rook,Active Rook,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_sacrifice_for_the_last_pawn|rook_endgames.passive_rook|piece_activity.active_rook,ontology_only
+rook_endgames.passive_rook,Passive Rook,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.active_rook|rook_endgames.rook_behind_the_passed_pawn,ontology_only
+rook_endgames.rook_behind_the_passed_pawn,Rook behind the Passed Pawn,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.passive_rook|rook_endgames.rook_in_front_of_the_passed_pawn,ontology_only
+rook_endgames.rook_in_front_of_the_passed_pawn,Rook in Front of the Passed Pawn,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_behind_the_passed_pawn|rook_endgames.cut_off_king,ontology_only
+rook_endgames.cut_off_king,Cut-Off King,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_in_front_of_the_passed_pawn|rook_endgames.checking_distance,ontology_only
+rook_endgames.checking_distance,Checking Distance,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.cut_off_king|rook_endgames.side_checks,ontology_only
+rook_endgames.side_checks,Side Checks,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.checking_distance|rook_endgames.rear_checks,ontology_only
+rook_endgames.rear_checks,Rear Checks,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.side_checks|rook_endgames.short_side_defence,ontology_only
+rook_endgames.short_side_defence,Short-Side Defence,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rear_checks|rook_endgames.long_side_defence,ontology_only
+rook_endgames.long_side_defence,Long-Side Defence,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.short_side_defence|rook_endgames.lucena_position,ontology_only
+rook_endgames.lucena_position,Lucena Position,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.long_side_defence|rook_endgames.building_a_bridge,ontology_only
+rook_endgames.building_a_bridge,Building a Bridge,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.lucena_position|rook_endgames.philidor_position,ontology_only
+rook_endgames.philidor_position,Philidor Position,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.building_a_bridge|rook_endgames.third_rank_defence,ontology_only
+rook_endgames.third_rank_defence,Third-Rank Defence,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.philidor_position|rook_endgames.vancura_position,ontology_only
+rook_endgames.vancura_position,Vancura Position,Rook Endgames,Rook-Endgame Technique,,expert,6,endgame,,rook_endgames.third_rank_defence|rook_endgames.rook_versus_passed_pawn,ontology_only
+rook_endgames.rook_versus_passed_pawn,Rook versus Passed Pawn,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.vancura_position|rook_endgames.rook_versus_connected_passed_pawns,ontology_only
+rook_endgames.rook_versus_connected_passed_pawns,Rook versus Connected Passed Pawns,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_versus_passed_pawn|rook_endgames.rook_pawn_endings,ontology_only
+rook_endgames.rook_pawn_endings,Rook-Pawn Endings,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_versus_connected_passed_pawns|rook_endgames.rook_and_pawn_versus_rook,ontology_only
+rook_endgames.rook_and_pawn_versus_rook,Rook and Pawn versus Rook,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_pawn_endings|rook_endgames.rook_activity_before_pawn_grabbing,ontology_only
+rook_endgames.rook_activity_before_pawn_grabbing,Rook Activity before Pawn Grabbing,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_and_pawn_versus_rook|rook_endgames.king_activity_in_rook_endgames,ontology_only
+rook_endgames.king_activity_in_rook_endgames,King Activity in Rook Endgames,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_activity_before_pawn_grabbing|rook_endgames.rook_on_the_seventh_rank,ontology_only
+rook_endgames.rook_on_the_seventh_rank,Rook on the Seventh Rank,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.king_activity_in_rook_endgames|rook_endgames.transition_into_a_pawn_ending|piece_activity.rook_on_the_seventh_rank,ontology_only
+rook_endgames.transition_into_a_pawn_ending,Transition into a Pawn Ending,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_on_the_seventh_rank|rook_endgames.rook_endgame_fortresses,ontology_only
+rook_endgames.rook_endgame_fortresses,Rook Endgame Fortresses,Rook Endgames,Rook-Endgame Technique,,advanced,7,endgame,,rook_endgames.transition_into_a_pawn_ending|rook_endgames.cutting_the_king_horizontally,ontology_only
+rook_endgames.cutting_the_king_horizontally,Cutting the King Horizontally,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.rook_endgame_fortresses|rook_endgames.cutting_the_king_vertically,ontology_only
+rook_endgames.cutting_the_king_vertically,Cutting the King Vertically,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.cutting_the_king_horizontally|rook_endgames.checking_from_the_side,ontology_only
+rook_endgames.checking_from_the_side,Checking from the Side,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.cutting_the_king_vertically|rook_endgames.rook_sacrifice_for_the_last_pawn,ontology_only
+rook_endgames.rook_sacrifice_for_the_last_pawn,Rook Sacrifice for the Last Pawn,Rook Endgames,Rook-Endgame Technique,,intermediate,7,endgame,,rook_endgames.checking_from_the_side|rook_endgames.active_rook,ontology_only
+queen_endgames.queen_activity,Queen Activity,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_versus_two_minor_pieces|queen_endgames.queen_centralization,ontology_only
+queen_endgames.queen_centralization,Queen Centralization,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_activity|queen_endgames.perpetual_check|piece_evaluation.queen_centralization,ontology_only
+queen_endgames.perpetual_check,Perpetual Check,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_centralization|queen_endgames.queen_checks_from_distance|tactics.perpetual_check|defence.perpetual_check,ontology_only
+queen_endgames.queen_checks_from_distance,Queen Checks from Distance,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.perpetual_check|queen_endgames.queen_versus_pawn,ontology_only
+queen_endgames.queen_versus_pawn,Queen versus Pawn,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_checks_from_distance|queen_endgames.queen_versus_rook_pawn,ontology_only
+queen_endgames.queen_versus_rook_pawn,Queen versus Rook Pawn,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_versus_pawn|queen_endgames.queen_versus_bishop_pawn,ontology_only
+queen_endgames.queen_versus_bishop_pawn,Queen versus Bishop Pawn,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_versus_rook_pawn|queen_endgames.queen_versus_advanced_pawn,ontology_only
+queen_endgames.queen_versus_advanced_pawn,Queen versus Advanced Pawn,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_versus_bishop_pawn|queen_endgames.queen_and_pawn_versus_queen,ontology_only
+queen_endgames.queen_and_pawn_versus_queen,Queen and Pawn versus Queen,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_versus_advanced_pawn|queen_endgames.queen_trade_decision,ontology_only
+queen_endgames.queen_trade_decision,Queen Trade Decision,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_and_pawn_versus_queen|queen_endgames.king_safety_in_queen_endgames,ontology_only
+queen_endgames.king_safety_in_queen_endgames,King Safety in Queen Endgames,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_trade_decision|queen_endgames.passed_pawn_in_queen_endgames,ontology_only
+queen_endgames.passed_pawn_in_queen_endgames,Passed Pawn in Queen Endgames,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.king_safety_in_queen_endgames|queen_endgames.queen_endgame_fortress,ontology_only
+queen_endgames.queen_endgame_fortress,Queen Endgame Fortress,Queen Endgames,Queen-Endgame Technique,,advanced,7,endgame,,queen_endgames.passed_pawn_in_queen_endgames|queen_endgames.stalemate_tricks_in_queen_endgames,ontology_only
+queen_endgames.stalemate_tricks_in_queen_endgames,Stalemate Tricks in Queen Endgames,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_endgame_fortress|queen_endgames.cross_checks,ontology_only
+queen_endgames.cross_checks,Cross-Checks,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.stalemate_tricks_in_queen_endgames|queen_endgames.checking_geometry,ontology_only
+queen_endgames.checking_geometry,Checking Geometry,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.cross_checks|queen_endgames.queen_domination,ontology_only
+queen_endgames.queen_domination,Queen Domination,Queen Endgames,Queen-Endgame Technique,,advanced,7,endgame,,queen_endgames.checking_geometry|queen_endgames.queen_versus_rook,ontology_only
+queen_endgames.queen_versus_rook,Queen versus Rook,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_domination|queen_endgames.queen_versus_minor_piece,ontology_only
+queen_endgames.queen_versus_minor_piece,Queen versus Minor Piece,Queen Endgames,Queen-Endgame Technique,,intermediate,7,endgame,,queen_endgames.queen_versus_rook|queen_endgames.queen_versus_two_minor_pieces,ontology_only
+queen_endgames.queen_versus_two_minor_pieces,Queen versus Two Minor Pieces,Queen Endgames,Queen-Endgame Technique,,expert,6,endgame,,queen_endgames.queen_versus_minor_piece|queen_endgames.queen_activity,ontology_only
+bishop_endgames.same_coloured_bishops,Same-Coloured Bishops,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_sacrifice_for_the_last_pawn|bishop_endgames.opposite_coloured_bishops,ontology_only
+bishop_endgames.opposite_coloured_bishops,Opposite-Coloured Bishops,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.same_coloured_bishops|bishop_endgames.good_bishop,ontology_only
+bishop_endgames.good_bishop,Good Bishop,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.opposite_coloured_bishops|bishop_endgames.bad_bishop|piece_evaluation.good_bishop,ontology_only
+bishop_endgames.bad_bishop,Bad Bishop,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.good_bishop|bishop_endgames.bishop_outside_the_pawn_chain|piece_evaluation.bad_bishop,ontology_only
+bishop_endgames.bishop_outside_the_pawn_chain,Bishop Outside the Pawn Chain,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bad_bishop|bishop_endgames.bishop_behind_the_pawn_chain,ontology_only
+bishop_endgames.bishop_behind_the_pawn_chain,Bishop behind the Pawn Chain,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_outside_the_pawn_chain|bishop_endgames.bishop_and_outside_passed_pawn,ontology_only
+bishop_endgames.bishop_and_outside_passed_pawn,Bishop and Outside Passed Pawn,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_behind_the_pawn_chain|bishop_endgames.bishop_zugzwang,ontology_only
+bishop_endgames.bishop_zugzwang,Bishop Zugzwang,Bishop Endgames,Bishop-Endgame Technique,,advanced,7,endgame,,bishop_endgames.bishop_and_outside_passed_pawn|bishop_endgames.bishop_versus_pawns,ontology_only
+bishop_endgames.bishop_versus_pawns,Bishop versus Pawns,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_zugzwang|bishop_endgames.bishop_versus_rook_pawn,ontology_only
+bishop_endgames.bishop_versus_rook_pawn,Bishop versus Rook Pawn,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_versus_pawns|bishop_endgames.wrong_bishop,ontology_only
+bishop_endgames.wrong_bishop,Wrong Bishop,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_versus_rook_pawn|bishop_endgames.wrong_bishop_fortress,ontology_only
+bishop_endgames.wrong_bishop_fortress,Wrong-Bishop Fortress,Bishop Endgames,Bishop-Endgame Technique,,advanced,7,endgame,,bishop_endgames.wrong_bishop|bishop_endgames.correct_bishop|drawing_mechanisms.wrong_bishop_fortress,ontology_only
+bishop_endgames.correct_bishop,Correct Bishop,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.wrong_bishop_fortress|bishop_endgames.cutting_off_the_defending_king,ontology_only
+bishop_endgames.cutting_off_the_defending_king,Cutting Off the Defending King,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.correct_bishop|bishop_endgames.opposite_coloured_bishop_fortress,ontology_only
+bishop_endgames.opposite_coloured_bishop_fortress,Opposite-Coloured Bishop Fortress,Bishop Endgames,Bishop-Endgame Technique,,advanced,7,endgame,,bishop_endgames.cutting_off_the_defending_king|bishop_endgames.two_weaknesses_with_opposite_coloured_bishops|drawing_mechanisms.opposite_coloured_bishop_fortress,ontology_only
+bishop_endgames.two_weaknesses_with_opposite_coloured_bishops,Two Weaknesses with Opposite-Coloured Bishops,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.opposite_coloured_bishop_fortress|bishop_endgames.attacking_chances_with_opposite_coloured_bishops,ontology_only
+bishop_endgames.attacking_chances_with_opposite_coloured_bishops,Attacking Chances with Opposite-Coloured Bishops,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.two_weaknesses_with_opposite_coloured_bishops|bishop_endgames.bishop_domination,ontology_only
+bishop_endgames.bishop_domination,Bishop Domination,Bishop Endgames,Bishop-Endgame Technique,,advanced,7,endgame,,bishop_endgames.attacking_chances_with_opposite_coloured_bishops|bishop_endgames.bishop_triangulation,ontology_only
+bishop_endgames.bishop_triangulation,Bishop Triangulation,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_domination|bishop_endgames.bishop_sacrifice_for_the_last_pawn,ontology_only
+bishop_endgames.bishop_sacrifice_for_the_last_pawn,Bishop Sacrifice for the Last Pawn,Bishop Endgames,Bishop-Endgame Technique,,intermediate,7,endgame,,bishop_endgames.bishop_triangulation|bishop_endgames.same_coloured_bishops,ontology_only
+knight_endgames.knight_activity,Knight Activity,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.rook_pawn_as_the_knights_enemy|knight_endgames.knight_centralization,ontology_only
+knight_endgames.knight_centralization,Knight Centralization,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_activity|knight_endgames.knight_outpost,ontology_only
+knight_endgames.knight_outpost,Knight Outpost,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_centralization|knight_endgames.knight_blockade|positional.knight_outpost|piece_evaluation.knight_outpost,ontology_only
+knight_endgames.knight_blockade,Knight Blockade,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_outpost|knight_endgames.knight_domination|positional.knight_blockade,ontology_only
+knight_endgames.knight_domination,Knight Domination,Knight Endgames,Knight-Endgame Technique,,advanced,7,endgame,,knight_endgames.knight_blockade|knight_endgames.knight_versus_passed_pawn,ontology_only
+knight_endgames.knight_versus_passed_pawn,Knight versus Passed Pawn,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_domination|knight_endgames.knight_versus_rook_pawn,ontology_only
+knight_endgames.knight_versus_rook_pawn,Knight versus Rook Pawn,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_versus_passed_pawn|knight_endgames.knight_versus_connected_pawns,ontology_only
+knight_endgames.knight_versus_connected_pawns,Knight versus Connected Pawns,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_versus_rook_pawn|knight_endgames.knight_manoeuvring,ontology_only
+knight_endgames.knight_manoeuvring,Knight Manoeuvring,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_versus_connected_pawns|knight_endgames.knight_fork_in_the_endgame,ontology_only
+knight_endgames.knight_fork_in_the_endgame,Knight Fork in the Endgame,Knight Endgames,Knight-Endgame Technique,,beginner,7,endgame,,knight_endgames.knight_manoeuvring|knight_endgames.knight_fortress,ontology_only
+knight_endgames.knight_fortress,Knight Fortress,Knight Endgames,Knight-Endgame Technique,,advanced,7,endgame,,knight_endgames.knight_fork_in_the_endgame|knight_endgames.king_and_knight_coordination|drawing_mechanisms.knight_fortress,ontology_only
+knight_endgames.king_and_knight_coordination,King and Knight Coordination,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_fortress|knight_endgames.knight_versus_bishop,ontology_only
+knight_endgames.knight_versus_bishop,Knight versus Bishop,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.king_and_knight_coordination|knight_endgames.good_knight_versus_bad_bishop,ontology_only
+knight_endgames.good_knight_versus_bad_bishop,Good Knight versus Bad Bishop,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_versus_bishop|knight_endgames.bad_knight_versus_good_bishop,ontology_only
+knight_endgames.bad_knight_versus_good_bishop,Bad Knight versus Good Bishop,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.good_knight_versus_bad_bishop|knight_endgames.knight_on_both_wings,ontology_only
+knight_endgames.knight_on_both_wings,Knight on Both Wings,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.bad_knight_versus_good_bishop|knight_endgames.knights_limited_range,ontology_only
+knight_endgames.knights_limited_range,Knight’s Limited Range,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knight_on_both_wings|knight_endgames.rook_pawn_as_the_knights_enemy,ontology_only
+knight_endgames.rook_pawn_as_the_knights_enemy,Rook Pawn as the Knight’s Enemy,Knight Endgames,Knight-Endgame Technique,,intermediate,7,endgame,,knight_endgames.knights_limited_range|knight_endgames.knight_activity,ontology_only
+bishop_vs_knight.bishop_versus_knight_imbalance,Bishop versus Knight Imbalance,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.exchange_decision_in_bishop_versus_knight_positions|bishop_vs_knight.open_position_favouring_the_bishop,ontology_only
+bishop_vs_knight.open_position_favouring_the_bishop,Open Position Favouring the Bishop,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.bishop_versus_knight_imbalance|bishop_vs_knight.closed_position_favouring_the_knight,ontology_only
+bishop_vs_knight.closed_position_favouring_the_knight,Closed Position Favouring the Knight,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.open_position_favouring_the_bishop|bishop_vs_knight.bishop_on_both_wings,ontology_only
+bishop_vs_knight.bishop_on_both_wings,Bishop on Both Wings,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.closed_position_favouring_the_knight|bishop_vs_knight.knight_blockade_against_bishop,ontology_only
+bishop_vs_knight.knight_blockade_against_bishop,Knight Blockade against Bishop,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.bishop_on_both_wings|bishop_vs_knight.bishop_restriction_of_knight,ontology_only
+bishop_vs_knight.bishop_restriction_of_knight,Bishop Restriction of Knight,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.knight_blockade_against_bishop|bishop_vs_knight.knight_outpost_against_bishop,ontology_only
+bishop_vs_knight.knight_outpost_against_bishop,Knight Outpost against Bishop,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.bishop_restriction_of_knight|bishop_vs_knight.good_bishop_versus_bad_knight,ontology_only
+bishop_vs_knight.good_bishop_versus_bad_knight,Good Bishop versus Bad Knight,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.knight_outpost_against_bishop|bishop_vs_knight.bad_bishop_versus_good_knight,ontology_only
+bishop_vs_knight.bad_bishop_versus_good_knight,Bad Bishop versus Good Knight,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.good_bishop_versus_bad_knight|bishop_vs_knight.fixed_pawns_on_the_bishops_colour,ontology_only
+bishop_vs_knight.fixed_pawns_on_the_bishops_colour,Fixed Pawns on the Bishop's Colour,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.bad_bishop_versus_good_knight|bishop_vs_knight.creating_pawns_on_both_wings,ontology_only
+bishop_vs_knight.creating_pawns_on_both_wings,Creating Pawns on Both Wings,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.fixed_pawns_on_the_bishops_colour|bishop_vs_knight.exchange_decision_in_bishop_versus_knight_positions,ontology_only
+bishop_vs_knight.exchange_decision_in_bishop_versus_knight_positions,Exchange Decision in Bishop-versus-Knight Positions,Bishop versus Knight,Minor-Piece Imbalance,,intermediate,7,universal,,bishop_vs_knight.creating_pawns_on_both_wings|bishop_vs_knight.bishop_versus_knight_imbalance,ontology_only
+minor_piece_endgames.single_minor_piece_endgame,Single-Minor-Piece Endgame,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.transition_to_a_pawn_endgame|minor_piece_endgames.two_bishop_endgame,ontology_only
+minor_piece_endgames.two_bishop_endgame,Two-Bishop Endgame,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.single_minor_piece_endgame|minor_piece_endgames.two_knight_endgame,ontology_only
+minor_piece_endgames.two_knight_endgame,Two-Knight Endgame,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.two_bishop_endgame|minor_piece_endgames.bishop_and_knight_endgame,ontology_only
+minor_piece_endgames.bishop_and_knight_endgame,Bishop and Knight Endgame,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.two_knight_endgame|minor_piece_endgames.minor_piece_versus_pawns,ontology_only
+minor_piece_endgames.minor_piece_versus_pawns,Minor Piece versus Pawns,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.bishop_and_knight_endgame|minor_piece_endgames.minor_piece_and_pawn_versus_minor_piece,ontology_only
+minor_piece_endgames.minor_piece_and_pawn_versus_minor_piece,Minor Piece and Pawn versus Minor Piece,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.minor_piece_versus_pawns|minor_piece_endgames.minor_piece_activity,ontology_only
+minor_piece_endgames.minor_piece_activity,Minor-Piece Activity,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.minor_piece_and_pawn_versus_minor_piece|minor_piece_endgames.minor_piece_domination,ontology_only
+minor_piece_endgames.minor_piece_domination,Minor-Piece Domination,Minor-Piece Endgames,Minor-Piece Technique,,advanced,7,endgame,,minor_piece_endgames.minor_piece_activity|minor_piece_endgames.minor_piece_zugzwang,ontology_only
+minor_piece_endgames.minor_piece_zugzwang,Minor-Piece Zugzwang,Minor-Piece Endgames,Minor-Piece Technique,,advanced,7,endgame,,minor_piece_endgames.minor_piece_domination|minor_piece_endgames.king_support_for_a_minor_piece,ontology_only
+minor_piece_endgames.king_support_for_a_minor_piece,King Support for a Minor Piece,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.minor_piece_zugzwang|minor_piece_endgames.sacrificing_a_minor_piece_for_pawns,ontology_only
+minor_piece_endgames.sacrificing_a_minor_piece_for_pawns,Sacrificing a Minor Piece for Pawns,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.king_support_for_a_minor_piece|minor_piece_endgames.transition_to_a_pawn_endgame,ontology_only
+minor_piece_endgames.transition_to_a_pawn_endgame,Transition to a Pawn Endgame,Minor-Piece Endgames,Minor-Piece Technique,,intermediate,7,endgame,,minor_piece_endgames.sacrificing_a_minor_piece_for_pawns|minor_piece_endgames.single_minor_piece_endgame,ontology_only
+mixed_material_endgames.queen_versus_rook_endgame,Queen versus Rook Endgame,Mixed-Material Endgames,Material Imbalances,,intermediate,7,endgame,,mixed_material_endgames.exchange_sacrifice_in_the_endgame|mixed_material_endgames.queen_versus_minor_piece_endgame,ontology_only
+mixed_material_endgames.queen_versus_minor_piece_endgame,Queen versus Minor Piece Endgame,Mixed-Material Endgames,Material Imbalances,,intermediate,7,endgame,,mixed_material_endgames.queen_versus_rook_endgame|mixed_material_endgames.rook_versus_minor_piece_endgame,ontology_only
+mixed_material_endgames.rook_versus_minor_piece_endgame,Rook versus Minor Piece Endgame,Mixed-Material Endgames,Material Imbalances,,intermediate,7,endgame,,mixed_material_endgames.queen_versus_minor_piece_endgame|mixed_material_endgames.rook_and_minor_piece_versus_rook,ontology_only
+mixed_material_endgames.rook_and_minor_piece_versus_rook,Rook and Minor Piece versus Rook,Mixed-Material Endgames,Material Imbalances,,intermediate,7,endgame,,mixed_material_endgames.rook_versus_minor_piece_endgame|mixed_material_endgames.rook_versus_two_minor_pieces,ontology_only
+mixed_material_endgames.rook_versus_two_minor_pieces,Rook versus Two Minor Pieces,Mixed-Material Endgames,Material Imbalances,,intermediate,7,endgame,,mixed_material_endgames.rook_and_minor_piece_versus_rook|mixed_material_endgames.queen_versus_two_rooks_endgame,ontology_only
+mixed_material_endgames.queen_versus_two_rooks_endgame,Queen versus Two Rooks Endgame,Mixed-Material Endgames,Material Imbalances,,expert,6,endgame,,mixed_material_endgames.rook_versus_two_minor_pieces|mixed_material_endgames.queen_versus_three_minor_pieces,ontology_only
+mixed_material_endgames.queen_versus_three_minor_pieces,Queen versus Three Minor Pieces,Mixed-Material Endgames,Material Imbalances,,expert,6,endgame,,mixed_material_endgames.queen_versus_two_rooks_endgame|mixed_material_endgames.material_balance_assessment,ontology_only
+mixed_material_endgames.material_balance_assessment,Material-Balance Assessment,Mixed-Material Endgames,Material Imbalances,,beginner,7,endgame,,mixed_material_endgames.queen_versus_three_minor_pieces|mixed_material_endgames.coordination_in_material_imbalances,ontology_only
+mixed_material_endgames.coordination_in_material_imbalances,Coordination in Material Imbalances,Mixed-Material Endgames,Material Imbalances,,beginner,7,endgame,,mixed_material_endgames.material_balance_assessment|mixed_material_endgames.fortress_with_material_imbalance,ontology_only
+mixed_material_endgames.fortress_with_material_imbalance,Fortress with Material Imbalance,Mixed-Material Endgames,Material Imbalances,,advanced,7,endgame,,mixed_material_endgames.coordination_in_material_imbalances|mixed_material_endgames.perpetual_check_potential,ontology_only
+mixed_material_endgames.perpetual_check_potential,Perpetual-Check Potential,Mixed-Material Endgames,Material Imbalances,,intermediate,7,endgame,,mixed_material_endgames.fortress_with_material_imbalance|mixed_material_endgames.exchange_sacrifice_in_the_endgame,ontology_only
+mixed_material_endgames.exchange_sacrifice_in_the_endgame,Exchange Sacrifice in the Endgame,Mixed-Material Endgames,Material Imbalances,,intermediate,7,endgame,,mixed_material_endgames.perpetual_check_potential|mixed_material_endgames.queen_versus_rook_endgame,ontology_only
+drawing_mechanisms.fortress,Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.drawing_by_pawn_elimination|drawing_mechanisms.positional_fortress|defence.fortress,ontology_only
+drawing_mechanisms.positional_fortress,Positional Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.fortress|drawing_mechanisms.material_fortress,ontology_only
+drawing_mechanisms.material_fortress,Material Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.positional_fortress|drawing_mechanisms.wrong_bishop_fortress,ontology_only
+drawing_mechanisms.wrong_bishop_fortress,Wrong-Bishop Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.material_fortress|drawing_mechanisms.opposite_coloured_bishop_fortress|bishop_endgames.wrong_bishop_fortress,ontology_only
+drawing_mechanisms.opposite_coloured_bishop_fortress,Opposite-Coloured Bishop Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.wrong_bishop_fortress|drawing_mechanisms.rook_fortress|bishop_endgames.opposite_coloured_bishop_fortress,ontology_only
+drawing_mechanisms.rook_fortress,Rook Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.opposite_coloured_bishop_fortress|drawing_mechanisms.queen_fortress,ontology_only
+drawing_mechanisms.queen_fortress,Queen Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.rook_fortress|drawing_mechanisms.knight_fortress,ontology_only
+drawing_mechanisms.knight_fortress,Knight Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.queen_fortress|drawing_mechanisms.perpetual_check|knight_endgames.knight_fortress,ontology_only
+drawing_mechanisms.perpetual_check,Perpetual Check,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.knight_fortress|drawing_mechanisms.threefold_repetition|tactics.perpetual_check|defence.perpetual_check,ontology_only
+drawing_mechanisms.threefold_repetition,Threefold Repetition,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.perpetual_check|drawing_mechanisms.stalemate,ontology_only
+drawing_mechanisms.stalemate,Stalemate,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.threefold_repetition|drawing_mechanisms.stalemate_sacrifice|defence.stalemate,ontology_only
+drawing_mechanisms.stalemate_sacrifice,Stalemate Sacrifice,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.stalemate|drawing_mechanisms.mutual_zugzwang,ontology_only
+drawing_mechanisms.mutual_zugzwang,Mutual Zugzwang,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.stalemate_sacrifice|drawing_mechanisms.insufficient_progress|pawn_endgames.mutual_zugzwang,ontology_only
+drawing_mechanisms.insufficient_progress,Insufficient Progress,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.mutual_zugzwang|drawing_mechanisms.blockade_fortress,ontology_only
+drawing_mechanisms.blockade_fortress,Blockade Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.insufficient_progress|drawing_mechanisms.sacrificial_fortress,ontology_only
+drawing_mechanisms.sacrificial_fortress,Sacrificial Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.blockade_fortress|drawing_mechanisms.corner_fortress,ontology_only
+drawing_mechanisms.corner_fortress,Corner Fortress,Fortresses and Drawing Mechanisms,Drawing Methods,,advanced,7,endgame,,drawing_mechanisms.sacrificial_fortress|drawing_mechanisms.defensive_setup_without_counterplay,ontology_only
+drawing_mechanisms.defensive_setup_without_counterplay,Defensive Setup without Counterplay,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.corner_fortress|drawing_mechanisms.drawing_by_piece_sacrifice,ontology_only
+drawing_mechanisms.drawing_by_piece_sacrifice,Drawing by Piece Sacrifice,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.defensive_setup_without_counterplay|drawing_mechanisms.drawing_by_pawn_elimination,ontology_only
+drawing_mechanisms.drawing_by_pawn_elimination,Drawing by Pawn Elimination,Fortresses and Drawing Mechanisms,Drawing Methods,,intermediate,7,endgame,,drawing_mechanisms.drawing_by_piece_sacrifice|drawing_mechanisms.fortress,ontology_only
+conversion.realizing_a_material_advantage,Realizing a Material Advantage,Conversion of Advantages,Conversion Technique,,beginner,7,universal,,conversion.choosing_attack_versus_simplification|conversion.realizing_a_positional_advantage,ontology_only
+conversion.realizing_a_positional_advantage,Realizing a Positional Advantage,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.realizing_a_material_advantage|conversion.simplification,ontology_only
+conversion.simplification,Simplification,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.realizing_a_positional_advantage|conversion.correct_exchanges,ontology_only
+conversion.correct_exchanges,Correct Exchanges,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.simplification|conversion.exchange_pieces_when_ahead,ontology_only
+conversion.exchange_pieces_when_ahead,Exchange Pieces when Ahead,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.correct_exchanges|conversion.preserve_pawns_when_ahead,ontology_only
+conversion.preserve_pawns_when_ahead,Preserve Pawns when Ahead,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.exchange_pieces_when_ahead|conversion.avoid_counterplay,ontology_only
+conversion.avoid_counterplay,Avoid Counterplay,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.preserve_pawns_when_ahead|conversion.consolidation,ontology_only
+conversion.consolidation,Consolidation,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.avoid_counterplay|conversion.improve_before_acting|defence.consolidation,ontology_only
+conversion.improve_before_acting,Improve before Acting,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.consolidation|conversion.do_not_rush,ontology_only
+conversion.do_not_rush,Do Not Rush,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.improve_before_acting|conversion.create_a_second_weakness,ontology_only
+conversion.create_a_second_weakness,Create a Second Weakness,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.do_not_rush|conversion.activate_the_king,ontology_only
+conversion.activate_the_king,Activate the King,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.create_a_second_weakness|conversion.convert_into_a_favourable_endgame,ontology_only
+conversion.convert_into_a_favourable_endgame,Convert into a Favourable Endgame,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.activate_the_king|conversion.return_material_for_simplification,ontology_only
+conversion.return_material_for_simplification,Return Material for Simplification,Conversion of Advantages,Conversion Technique,,beginner,7,universal,,conversion.convert_into_a_favourable_endgame|conversion.avoid_unnecessary_complications,ontology_only
+conversion.avoid_unnecessary_complications,Avoid Unnecessary Complications,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.return_material_for_simplification|conversion.technical_phase,ontology_only
+conversion.technical_phase,Technical Phase,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.avoid_unnecessary_complications|conversion.winning_without_allowing_counterplay,ontology_only
+conversion.winning_without_allowing_counterplay,Winning without Allowing Counterplay,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.technical_phase|conversion.maintaining_concentration,ontology_only
+conversion.maintaining_concentration,Maintaining Concentration,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.winning_without_allowing_counterplay|conversion.avoiding_complacency,ontology_only
+conversion.avoiding_complacency,Avoiding Complacency,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.maintaining_concentration|conversion.recognizing_fortresses,ontology_only
+conversion.recognizing_fortresses,Recognizing Fortresses,Conversion of Advantages,Conversion Technique,,advanced,7,universal,,conversion.avoiding_complacency|conversion.choosing_attack_versus_simplification,ontology_only
+conversion.choosing_attack_versus_simplification,Choosing Attack versus Simplification,Conversion of Advantages,Conversion Technique,,intermediate,7,universal,,conversion.recognizing_fortresses|conversion.realizing_a_material_advantage,ontology_only
+practical_chess.practical_chances,Practical Chances,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.recognizing_critical_moments|practical_chess.defending_worse_positions,ontology_only
+practical_chess.defending_worse_positions,Defending Worse Positions,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.practical_chances|practical_chess.converting_better_positions,ontology_only
+practical_chess.converting_better_positions,Converting Better Positions,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.defending_worse_positions|practical_chess.playing_for_tricks,ontology_only
+practical_chess.playing_for_tricks,Playing for Tricks,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.converting_better_positions|practical_chess.avoiding_hope_chess,ontology_only
+practical_chess.avoiding_hope_chess,Avoiding Hope Chess,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.playing_for_tricks|practical_chess.avoiding_automatic_moves,ontology_only
+practical_chess.avoiding_automatic_moves,Avoiding Automatic Moves,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.avoiding_hope_chess|practical_chess.risk_management,ontology_only
+practical_chess.risk_management,Risk Management,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.avoiding_automatic_moves|practical_chess.opponent_awareness,ontology_only
+practical_chess.opponent_awareness,Opponent Awareness,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.risk_management|practical_chess.rechecking_after_gaining_an_advantage,ontology_only
+practical_chess.rechecking_after_gaining_an_advantage,Rechecking after Gaining an Advantage,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.opponent_awareness|practical_chess.recognizing_critical_moments,ontology_only
+practical_chess.recognizing_critical_moments,Recognizing Critical Moments,Practical Chess,Practical Skills,,intermediate,7,universal,,practical_chess.rechecking_after_gaining_an_advantage|practical_chess.practical_chances,ontology_only
+psychology.emotional_control,Emotional Control,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.accepting_a_drawn_position|psychology.objectivity,ontology_only
+psychology.objectivity,Objectivity,Psychology,Competitive Psychology,,intermediate,10,universal,,psychology.emotional_control|psychology.resilience_after_a_mistake,ontology_only
+psychology.resilience_after_a_mistake,Resilience after a Mistake,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.objectivity|psychology.confidence,ontology_only
+psychology.confidence,Confidence,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.resilience_after_a_mistake|psychology.overconfidence,ontology_only
+psychology.overconfidence,Overconfidence,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.confidence|psychology.fear_of_losing,ontology_only
+psychology.fear_of_losing,Fear of Losing,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.overconfidence|psychology.fear_of_complications,ontology_only
+psychology.fear_of_complications,Fear of Complications,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.fear_of_losing|psychology.impatience,ontology_only
+psychology.impatience,Impatience,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.fear_of_complications|psychology.complacency,ontology_only
+psychology.complacency,Complacency,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.impatience|psychology.tilt_control,ontology_only
+psychology.tilt_control,Tilt Control,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.complacency|psychology.opponent_intimidation,ontology_only
+psychology.opponent_intimidation,Opponent Intimidation,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.tilt_control|psychology.result_oriented_thinking,ontology_only
+psychology.result_oriented_thinking,Result-Oriented Thinking,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.opponent_intimidation|psychology.process_oriented_thinking,ontology_only
+psychology.process_oriented_thinking,Process-Oriented Thinking,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.result_oriented_thinking|psychology.maintaining_fighting_spirit,ontology_only
+psychology.maintaining_fighting_spirit,Maintaining Fighting Spirit,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.process_oriented_thinking|psychology.patience,ontology_only
+psychology.patience,Patience,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.maintaining_fighting_spirit|psychology.material_greed,ontology_only
+psychology.material_greed,Material Greed,Psychology,Competitive Psychology,,beginner,7,universal,,psychology.patience|psychology.tilt,ontology_only
+psychology.tilt,Tilt,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.material_greed|psychology.fighting_spirit,ontology_only
+psychology.fighting_spirit,Fighting Spirit,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.tilt|psychology.accepting_a_drawn_position,ontology_only
+psychology.accepting_a_drawn_position,Accepting a Drawn Position,Psychology,Competitive Psychology,,intermediate,7,universal,,psychology.fighting_spirit|psychology.emotional_control,ontology_only
+time_management.time_budget,Time Budget,Time Management,Clock Management,,intermediate,10,universal,,time_management.decision_under_pressure|time_management.opening_time_economy,ontology_only
+time_management.opening_time_economy,Opening Time Economy,Time Management,Clock Management,,intermediate,7,universal,,time_management.time_budget|time_management.critical_moment_time_investment,ontology_only
+time_management.critical_moment_time_investment,Critical-Moment Time Investment,Time Management,Clock Management,,intermediate,7,universal,,time_management.opening_time_economy|time_management.complexity_based_time_allocation,ontology_only
+time_management.complexity_based_time_allocation,Complexity-Based Time Allocation,Time Management,Clock Management,,intermediate,7,universal,,time_management.critical_moment_time_investment|time_management.time_reserve,ontology_only
+time_management.time_reserve,Time Reserve,Time Management,Clock Management,,intermediate,7,universal,,time_management.complexity_based_time_allocation|time_management.time_trouble_prevention,ontology_only
+time_management.time_trouble_prevention,Time-Trouble Prevention,Time Management,Clock Management,,intermediate,7,universal,,time_management.time_reserve|time_management.time_trouble_decision_making,ontology_only
+time_management.time_trouble_decision_making,Time-Trouble Decision Making,Time Management,Clock Management,,intermediate,7,universal,,time_management.time_trouble_prevention|time_management.clock_awareness,ontology_only
+time_management.clock_awareness,Clock Awareness,Time Management,Clock Management,,intermediate,7,universal,,time_management.time_trouble_decision_making|time_management.opponents_clock,ontology_only
+time_management.opponents_clock,Opponent's Clock,Time Management,Clock Management,,intermediate,7,universal,,time_management.clock_awareness|time_management.increment_management,ontology_only
+time_management.increment_management,Increment Management,Time Management,Clock Management,,intermediate,7,universal,,time_management.opponents_clock|time_management.move_time_benchmark,ontology_only
+time_management.move_time_benchmark,Move-Time Benchmark,Time Management,Clock Management,,intermediate,7,universal,,time_management.increment_management|time_management.fast_blunder_check,ontology_only
+time_management.fast_blunder_check,Fast Blunder Check,Time Management,Clock Management,,beginner,7,universal,,time_management.move_time_benchmark|time_management.time_pressure,ontology_only
+time_management.time_pressure,Time Pressure,Time Management,Clock Management,,intermediate,7,universal,,time_management.fast_blunder_check|time_management.decision_under_pressure,ontology_only
+time_management.decision_under_pressure,Decision under Pressure,Time Management,Clock Management,,intermediate,7,universal,,time_management.time_pressure|time_management.time_budget,ontology_only
+training.tactical_puzzle_training,Tactical Puzzle Training,Training Methods,Training Design,,intermediate,7,universal,,training.training_by_difficulty|training.calculation_training,ontology_only
+training.calculation_training,Calculation Training,Training Methods,Training Design,,intermediate,7,universal,,training.tactical_puzzle_training|training.visualization_training,ontology_only
+training.visualization_training,Visualization Training,Training Methods,Training Design,,intermediate,7,universal,,training.calculation_training|training.blindfold_calculation,ontology_only
+training.blindfold_calculation,Blindfold Calculation,Training Methods,Training Design,,intermediate,7,universal,,training.visualization_training|training.endgame_training,ontology_only
+training.endgame_training,Endgame Training,Training Methods,Training Design,,intermediate,7,universal,,training.blindfold_calculation|training.model_games,ontology_only
+training.model_games,Model Games,Training Methods,Training Design,,intermediate,7,universal,,training.endgame_training|training.annotated_games,ontology_only
+training.annotated_games,Annotated Games,Training Methods,Training Design,,intermediate,7,universal,,training.model_games|training.pawn_structure_training,ontology_only
+training.pawn_structure_training,Pawn-Structure Training,Training Methods,Training Design,,intermediate,7,universal,,training.annotated_games|training.position_classification,ontology_only
+training.position_classification,Position Classification,Training Methods,Training Design,,intermediate,7,universal,,training.pawn_structure_training|training.candidate_move_exercises,ontology_only
+training.candidate_move_exercises,Candidate-Move Exercises,Training Methods,Training Design,,intermediate,7,universal,,training.position_classification|training.guess_the_move_training,ontology_only
+training.guess_the_move_training,Guess-the-Move Training,Training Methods,Training Design,,intermediate,7,universal,,training.candidate_move_exercises|training.spaced_repetition,ontology_only
+training.spaced_repetition,Spaced Repetition,Training Methods,Training Design,,intermediate,7,universal,,training.guess_the_move_training|training.flashcard_training,ontology_only
+training.flashcard_training,Flashcard Training,Training Methods,Training Design,,intermediate,7,universal,,training.spaced_repetition|training.thematic_position_sets,ontology_only
+training.thematic_position_sets,Thematic Position Sets,Training Methods,Training Design,,intermediate,7,universal,,training.flashcard_training|training.study_solving,ontology_only
+training.study_solving,Study Solving,Training Methods,Training Design,,intermediate,7,universal,,training.thematic_position_sets|training.endgame_study_training,ontology_only
+training.endgame_study_training,Endgame Study Training,Training Methods,Training Design,,intermediate,7,universal,,training.study_solving|training.progress_tracking,ontology_only
+training.progress_tracking,Progress Tracking,Training Methods,Training Design,,intermediate,7,universal,,training.endgame_study_training|training.weakness_tracking,ontology_only
+training.weakness_tracking,Weakness Tracking,Training Methods,Training Design,,intermediate,7,universal,,training.progress_tracking|training.deliberate_practice,ontology_only
+training.deliberate_practice,Deliberate Practice,Training Methods,Training Design,,intermediate,7,universal,,training.weakness_tracking|training.training_by_difficulty,ontology_only
+training.training_by_difficulty,Training by Difficulty,Training Methods,Training Design,,intermediate,7,universal,,training.deliberate_practice|training.tactical_puzzle_training,ontology_only
+game_analysis.game_reconstruction,Game Reconstruction,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.training_from_personal_games|game_analysis.critical_moment_detection,ontology_only
+game_analysis.critical_moment_detection,Critical-Moment Detection,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.game_reconstruction|game_analysis.self_annotation,ontology_only
+game_analysis.self_annotation,Self-Annotation,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.critical_moment_detection|game_analysis.question_based_annotation,ontology_only
+game_analysis.question_based_annotation,Question-Based Annotation,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.self_annotation|game_analysis.opening_review,ontology_only
+game_analysis.opening_review,Opening Review,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.question_based_annotation|game_analysis.middlegame_review,ontology_only
+game_analysis.middlegame_review,Middlegame Review,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.opening_review|game_analysis.endgame_review,ontology_only
+game_analysis.endgame_review,Endgame Review,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.middlegame_review|game_analysis.candidate_move_reconstruction,ontology_only
+game_analysis.candidate_move_reconstruction,Candidate-Move Reconstruction,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.endgame_review|game_analysis.engine_comparison,ontology_only
+game_analysis.engine_comparison,Engine Comparison,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.candidate_move_reconstruction|game_analysis.evaluation_swing_detection,ontology_only
+game_analysis.evaluation_swing_detection,Evaluation-Swing Detection,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.engine_comparison|game_analysis.root_cause_analysis,ontology_only
+game_analysis.root_cause_analysis,Root-Cause Analysis,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.evaluation_swing_detection|game_analysis.alternative_line_analysis,ontology_only
+game_analysis.alternative_line_analysis,Alternative-Line Analysis,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.root_cause_analysis|game_analysis.lesson_extraction,ontology_only
+game_analysis.lesson_extraction,Lesson Extraction,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.alternative_line_analysis|game_analysis.actionable_training_task,ontology_only
+game_analysis.actionable_training_task,Actionable Training Task,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.lesson_extraction|game_analysis.self_analysis_before_engine_analysis,ontology_only
+game_analysis.self_analysis_before_engine_analysis,Self-Analysis before Engine Analysis,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.actionable_training_task|game_analysis.engine_assisted_review,ontology_only
+game_analysis.engine_assisted_review,Engine-Assisted Review,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.self_analysis_before_engine_analysis|game_analysis.training_from_personal_games,ontology_only
+game_analysis.training_from_personal_games,Training from Personal Games,Game Analysis,Review Workflow,,intermediate,7,universal,,game_analysis.engine_assisted_review|game_analysis.game_reconstruction,ontology_only
+mistakes.blunder,Blunder,Mistake Classification,Error Taxonomy,,beginner,7,universal,,mistakes.error_journal|mistakes.tactical_error,ontology_only
+mistakes.tactical_error,Tactical Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.blunder|mistakes.positional_error,ontology_only
+mistakes.positional_error,Positional Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.tactical_error|mistakes.strategic_error,ontology_only
+mistakes.strategic_error,Strategic Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.positional_error|mistakes.calculation_error,ontology_only
+mistakes.calculation_error,Calculation Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.strategic_error|mistakes.evaluation_error,ontology_only
+mistakes.evaluation_error,Evaluation Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.calculation_error|mistakes.planning_error,ontology_only
+mistakes.planning_error,Planning Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.evaluation_error|mistakes.opening_error,ontology_only
+mistakes.opening_error,Opening Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.planning_error|mistakes.endgame_error,ontology_only
+mistakes.endgame_error,Endgame Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.opening_error|mistakes.time_management_error,ontology_only
+mistakes.time_management_error,Time-Management Error,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.endgame_error|mistakes.missed_opportunity,ontology_only
+mistakes.missed_opportunity,Missed Opportunity,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.time_management_error|mistakes.premature_commitment,ontology_only
+mistakes.premature_commitment,Premature Commitment,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.missed_opportunity|mistakes.automatic_move,ontology_only
+mistakes.automatic_move,Automatic Move,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.premature_commitment|mistakes.hope_chess,ontology_only
+mistakes.hope_chess,Hope Chess,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.automatic_move|mistakes.failure_to_consider_the_opponents_reply,ontology_only
+mistakes.failure_to_consider_the_opponents_reply,Failure to Consider the Opponent's Reply,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.hope_chess|mistakes.mistake_classification,ontology_only
+mistakes.mistake_classification,Mistake Classification,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.failure_to_consider_the_opponents_reply|mistakes.error_journal,ontology_only
+mistakes.error_journal,Error Journal,Mistake Classification,Error Taxonomy,,intermediate,7,universal,,mistakes.mistake_classification|mistakes.blunder,ontology_only
+opening_preparation.repertoire_architecture,Repertoire Architecture,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.opening_repertoire_training|opening_preparation.main_line_preparation,ontology_only
+opening_preparation.main_line_preparation,Main-Line Preparation,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.repertoire_architecture|opening_preparation.sideline_preparation,ontology_only
+opening_preparation.sideline_preparation,Sideline Preparation,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.main_line_preparation|opening_preparation.move_order_preparation,ontology_only
+opening_preparation.move_order_preparation,Move-Order Preparation,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.sideline_preparation|opening_preparation.transposition_map,ontology_only
+opening_preparation.transposition_map,Transposition Map,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.move_order_preparation|opening_preparation.opening_file_maintenance,ontology_only
+opening_preparation.opening_file_maintenance,Opening File Maintenance,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.transposition_map|opening_preparation.model_game_selection,ontology_only
+opening_preparation.model_game_selection,Model-Game Selection,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.opening_file_maintenance|opening_preparation.typical_tactic_collection,ontology_only
+opening_preparation.typical_tactic_collection,Typical-Tactic Collection,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.model_game_selection|opening_preparation.typical_plan_collection,ontology_only
+opening_preparation.typical_plan_collection,Typical-Plan Collection,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.typical_tactic_collection|opening_preparation.critical_position_list,ontology_only
+opening_preparation.critical_position_list,Critical-Position List,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.typical_plan_collection|opening_preparation.engine_assisted_opening_analysis,ontology_only
+opening_preparation.engine_assisted_opening_analysis,Engine-Assisted Opening Analysis,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.critical_position_list|opening_preparation.opponent_preparation,ontology_only
+opening_preparation.opponent_preparation,Opponent Preparation,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.engine_assisted_opening_analysis|opening_preparation.opening_recall_training,ontology_only
+opening_preparation.opening_recall_training,Opening Recall Training,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.opponent_preparation|opening_preparation.repertoire_repair,ontology_only
+opening_preparation.repertoire_repair,Repertoire Repair,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.opening_recall_training|opening_preparation.opening_repertoire_training,ontology_only
+opening_preparation.opening_repertoire_training,Opening-Repertoire Training,Opening Preparation,Repertoire Preparation,,intermediate,7,opening,,opening_preparation.repertoire_repair|opening_preparation.repertoire_architecture,ontology_only
+pattern_recognition.tactical_pattern_recognition,Tactical Pattern Recognition,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.pattern_recognition|pattern_recognition.mating_pattern_recognition,ontology_only
+pattern_recognition.mating_pattern_recognition,Mating-Pattern Recognition,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.tactical_pattern_recognition|pattern_recognition.positional_pattern_recognition,ontology_only
+pattern_recognition.positional_pattern_recognition,Positional Pattern Recognition,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.mating_pattern_recognition|pattern_recognition.pawn_structure_recognition,ontology_only
+pattern_recognition.pawn_structure_recognition,Pawn-Structure Recognition,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.positional_pattern_recognition|pattern_recognition.endgame_pattern_recognition,ontology_only
+pattern_recognition.endgame_pattern_recognition,Endgame-Pattern Recognition,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.pawn_structure_recognition|pattern_recognition.chunking,ontology_only
+pattern_recognition.chunking,Chunking,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.endgame_pattern_recognition|pattern_recognition.pattern_trigger,ontology_only
+pattern_recognition.pattern_trigger,Pattern Trigger,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.chunking|pattern_recognition.pattern_verification,ontology_only
+pattern_recognition.pattern_verification,Pattern Verification,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.pattern_trigger|pattern_recognition.false_pattern_match,ontology_only
+pattern_recognition.false_pattern_match,False Pattern Match,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.pattern_verification|pattern_recognition.pattern_transfer,ontology_only
+pattern_recognition.pattern_transfer,Pattern Transfer,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.false_pattern_match|pattern_recognition.pattern_library,ontology_only
+pattern_recognition.pattern_library,Pattern Library,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.pattern_transfer|pattern_recognition.rapid_position_classification,ontology_only
+pattern_recognition.rapid_position_classification,Rapid Position Classification,Pattern Recognition,Chess Patterns,,intermediate,7,universal,,pattern_recognition.pattern_library|pattern_recognition.pattern_recognition,ontology_only
+pattern_recognition.pattern_recognition,Pattern Recognition,Pattern Recognition,Chess Patterns,,intermediate,10,universal,,pattern_recognition.rapid_position_classification|pattern_recognition.tactical_pattern_recognition,ontology_only

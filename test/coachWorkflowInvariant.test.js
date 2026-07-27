@@ -6,10 +6,13 @@ const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 
 test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /requestSuggestionCoachReasons/);
-  assert.match(appSource, /Warum dieser Zug\?/);
+  assert.match(appSource, /groundedSuggestionReason/);
+  assert.match(appSource, /fallbackReasons/);
+  assert.doesNotMatch(appSource, /Warum dieser Zug\?/);
   assert.match(appSource, /Coach-Vorschau/);
   assert.match(appSource, /selectImpactArrowMoves/);
-  assert.match(appSource, /engineContext: this\.buildPositionCoachEngineContext\(\)/);
+  assert.match(appSource, /const engineContext = this\.buildPositionCoachEngineContext\(\)/);
+  assert.match(appSource, /requestGroundedMoveExplanation/);
 });
 
 test("Live-Coach bewertet rechts oben, erlaubt Nachfragen und hält automatische Antworten aus dem Chat", () => {
@@ -34,9 +37,12 @@ test("Analyseperspektive trennt eigene Zugoptionen von der Bewertung des letzten
   assert.match(appSource, /this\.game\.turn\(\) === this\.getAnalysisPerspective\(\)/);
   assert.match(appSource, /this\.buildPositionCoachEngineContext\(\)/);
   assert.match(appSource, /this\.buildMoveCoachEngineContext\(this\.getLastPerspectiveMoveReview\(\)\)/);
-  assert.match(appSource, /Das sind deine \$\{optionCount\} besten Möglichkeiten/);
-  assert.match(appSource, /Besser wäre \$\{move\.bestSan\}, weil/);
+  assert.doesNotMatch(appSource, /Das sind deine \$\{optionCount\} besten Möglichkeiten/);
   assert.match(appSource, /engineContext: this\.buildAnalysisCoachEngineContext\(\)/);
+  assert.match(appSource, /renderLastPerspectiveMoveAssessment/);
+  assert.match(appSource, /this\.game\.turn\(\) !== this\.getAnalysisPerspective\(\)/);
+  assert.match(appSource, /Rückblick auf deinen letzten Zug/);
+  assert.match(appSource, /describeMoveAssessment/);
 });
 
 test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett", () => {

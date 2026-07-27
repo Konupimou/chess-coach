@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { Chess } from "chess.js";
 import {
   createOpeningBook,
+  detectOpeningAfterMove,
   detectOpeningFromPath,
   displayOpeningName,
   normalizeFenToEpd,
@@ -42,6 +43,14 @@ const cases = [
   ["Englische Eröffnung", "c2c4", "A10", "English Opening"],
   ["Réti-Eröffnung", "g1f3 d7d5 c2c4", "A09", "Réti Opening"],
 ];
+
+test("der vorgeschlagene erste Zug liefert bereits einen Eröffnungsnamen", () => {
+  const result = detectOpeningAfterMove(pathFromUci(""), "e2e4", book);
+  assert.equal(result.matched, true);
+  assert.equal(result.sourceName, "King's Pawn Game");
+  assert.equal(result.displayName, "Königbauernspiel");
+  assert.equal(result.matchedPly, 1);
+});
 
 for (const [label, sequence, eco, sourceFragment] of cases) {
   test(`${label} wird aus der lokalen ECO-Datenbank erkannt`, () => {

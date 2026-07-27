@@ -8,21 +8,31 @@ import {
   buildLearningSummary,
   buildPvFrames,
   calculateMoveAccuracy,
+  describeMoveAssessment,
   explainMoveQuality,
+  groundedSuggestionReason,
+  legalPv,
+  legalUciMove,
   pathToNode,
   reviewDepthForPlies,
   scoreToWhiteCp,
   summarizeGameReview,
   terminalWhiteCp,
+  verifiedMoveReview,
 } from "../gameReview.js";
+
+const START_FEN = new Chess().fen();
+const AFTER_E4_E5_FEN =
+  "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
 
 test("Engine-Eintrag bewahrt Mattwert, Tiefe und vollständige Hauptvariante", () => {
   const pv = [
-    "h5h7", "g8f8", "h7h8", "f8e7", "h8e5",
-    "e7d7", "e5d5", "d7c8", "d5c6", "c8b8",
-    "c6b6", "b8a8", "b6a6",
+    "e2e4", "e7e5", "g1f3", "b8c6", "f1b5",
+    "a7a6", "b5a4", "g8f6", "e1g1", "f8e7",
+    "f1e1", "b7b5", "a4b3",
   ];
   const entry = analysisEntryFromInfo({
+    fen: START_FEN,
     depth: 23,
     whiteScore: { unit: "mate", value: 5, pawns: 100 },
     pv,
@@ -36,6 +46,18 @@ test("Engine-Eintrag bewahrt Mattwert, Tiefe und vollständige Hauptvariante", (
   assert.deepEqual(entry.pv, pv);
 });
 
+test("Engine-Eintrag verwirft eine PV vollständig, sobald ein Zug im geprüften Präfix illegal ist", () => {
+  assert.equal(
+    analysisEntryFromInfo({
+      fen: START_FEN,
+      depth: 18,
+      whiteScore: { unit: "cp", value: 24 },
+      pv: ["e2e4", "e7e5", "g1g3"],
+    }),
+    null,
+  );
+});
+
 test("PV-Vorschau erzeugt legale Frames, ohne die Ausgangsstellung zu verändern", () => {
   const game = new Chess();
   const startFen = game.fen();
@@ -44,6 +66,11 @@ test("PV-Vorschau erzeugt legale Frames, ohne die Ausgangsstellung zu verändern
   assert.deepEqual(frames.map((frame) => frame.san), ["e4", "e5"]);
   assert.equal(game.fen(), startFen);
   assert.equal(buildPvFrames(startFen, ["e2e5", "e7e5"]).length, 0);
+  assert.equal(legalUciMove(startFen, "e2e5"), null);
+  assert.deepEqual(
+    legalPv(startFen, ["e2e4", "e7e5", "g1g3"]).map((frame) => frame.uci),
+    ["e2e4", "e7e5"],
+  );
 });
 
 test("aktueller Variantenpfad folgt Elternknoten statt pauschal der Hauptlinie", () => {
@@ -120,16 +147,145 @@ test("Matt, Score-Normalisierung und adaptive Tiefe sind begrenzt", () => {
 
 test("jede Zugqualität erhält eine kurze Begründung", () => {
   assert.match(
-    explainMoveQuality({ san: "O-O", quality: "best" }),
+    explainMoveQuality({
+      fenBefore: START_FEN,
+      san: "e4",
+      playedUci: "e2e4",
+      bestUci: "e2e4",
+      bestPvUci: ["e2e4"],
+      quality: "best",
+    }),
     /Stockfish-Wahl/,
   );
   assert.match(
-    explainMoveQuality({ san: "Qh5", bestSan: "Nf3", quality: "mistake" }),
+    explainMoveQuality({
+      fenBefore: AFTER_E4_E5_FEN,
+      san: "Qh5",
+      playedUci: "d1h5",
+      bestUci: "g1f3",
+      bestPvUci: ["g1f3"],
+      quality: "mistake",
+    }),
     /Nf3/,
   );
   assert.match(
     explainMoveQuality({ san: "Qh7+", quality: "excellent" }),
     /Stockfish-Bewertung/,
+  );
+});
+
+test("nur der tatsächlich erste Engine-Zug darf als bester Zug bezeichnet werden", () => {
+  const differentButEqual = {
+    fenBefore: START_FEN,
+    san: "e4",
+    playedUci: "e2e4",
+    bestUci: "d2d4",
+    bestPvUci: ["d2d4", "d7d5"],
+    quality: "best",
+  };
+  const verified = verifiedMoveReview(differentButEqual);
+  const assessment = describeMoveAssessment(differentButEqual);
+  const explanation = explainMoveQuality(differentButEqual);
+
+  assert.equal(verified.quality, "excellent");
+  assert.equal(assessment.label, "Sehr gut");
+  assert.equal(assessment.lead, "Das war sehr gut.");
+  assert.match(assessment.alternative, /d4/);
+  assert.doesNotMatch(assessment.lead, /beste[rn]? Zug/i);
+  assert.match(explanation, /erster Wahl d4/);
+  assert.doesNotMatch(explanation, /Entspricht der ersten Stockfish-Wahl/);
+});
+
+test("gleiche Bewertung bei einem anderen Zug wird im Partiebericht höchstens sehr gut", () => {
+  const game = new Chess();
+  const root = new MoveTreeNode({ fen: game.fen() });
+  const e4 = addMoveToTree(root, game.move("e4"), game.fen());
+  const report = summarizeGameReview(
+    [root, e4],
+    [
+      { whiteCp: 20, pv: ["d2d4", "d7d5"] },
+      { whiteCp: 20, pv: ["e7e5"] },
+    ],
+    { depth: 16, final: true },
+  );
+
+  assert.equal(report.moves[0].playedUci, "e2e4");
+  assert.equal(report.moves[0].bestUci, "d2d4");
+  assert.equal(report.moves[0].accuracy, 100);
+  assert.equal(report.moves[0].quality, "excellent");
+  assert.match(report.moves[0].explanation, /erster Wahl d4/);
+  assert.doesNotMatch(
+    report.moves[0].explanation,
+    /Entspricht der ersten Stockfish-Wahl/,
+  );
+});
+
+test("Perspektivbewertung spricht gute und schlechte eigene Züge direkt an", () => {
+  assert.deepEqual(
+    describeMoveAssessment({
+      fenBefore: START_FEN,
+      san: "e4",
+      playedUci: "e2e4",
+      bestUci: "e2e4",
+      bestPvUci: ["e2e4"],
+      quality: "best",
+    }),
+    {
+      tone: "best",
+      label: "Bester Zug",
+      lead: "Das war der beste Zug.",
+      reason: "Du hast damit keinen messbaren Vorteil abgegeben.",
+      alternative: "",
+    },
+  );
+  const mistake = describeMoveAssessment({
+    fenBefore: AFTER_E4_E5_FEN,
+    san: "Qh5",
+    playedUci: "d1h5",
+    bestUci: "g1f3",
+    quality: "mistake",
+    bestPvUci: ["g1f3", "b8c6"],
+  });
+  assert.equal(mistake.lead, "Das war ein Fehler.");
+  assert.match(mistake.reason, /deutlich schwieriger/);
+  assert.equal(
+    mistake.alternative,
+    "Statt Qh5 war Nf3 in der Stellung davor besser.",
+  );
+});
+
+test("Zugrückblicke verwerfen illegale Spielerzüge, Alternativen und PV-Reste", () => {
+  assert.equal(
+    verifiedMoveReview({
+      fenBefore: START_FEN,
+      playedUci: "e2e5",
+      bestUci: "d2d4",
+      bestPvUci: ["d2d4"],
+    }),
+    null,
+  );
+  const verified = verifiedMoveReview({
+    fenBefore: START_FEN,
+    playedUci: "e2e4",
+    bestUci: "d2d4",
+    bestPvUci: ["d2d4", "d7d5", "d1h5"],
+  });
+  assert.equal(verified.bestSan, "d4");
+  assert.deepEqual(verified.bestPvUci, ["d2d4", "d7d5"]);
+});
+
+test("nicht belegte Coach-Erklärungen erhalten einen sicheren lokalen Ersatz", () => {
+  assert.equal(
+    groundedSuggestionReason({ rank: 1, san: "e4", uci: "e2e4" }),
+    "Der Zug erhöht den Einfluss im Zentrum. Die gezeigte Fortsetzung bestätigt ihn als stärkste geprüfte Möglichkeit.",
+  );
+  assert.match(
+    groundedSuggestionReason({ rank: 1, san: "Qh7+", uci: "d3h7" }),
+    /greift den König direkt an/,
+  );
+  assert.match(
+    groundedSuggestionReason({ rank: 2, san: "Nf3", uci: "g1f3" }),
+    /hinter der ersten geprüften Möglichkeit/,
   );
 });
 

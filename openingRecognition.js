@@ -27,25 +27,45 @@ const EMPTY_RESULT = Object.freeze({
 
 const FAMILY_TRANSLATIONS = Object.freeze({
   "Alekhine's Defense": "Aljechin-Verteidigung",
+  "Benoni Defense": "Benoni-Verteidigung",
   "Bird Opening": "Bird-Eröffnung",
+  "Bishop's Opening": "Läufereröffnung",
   "Caro-Kann Defense": "Caro-Kann-Verteidigung",
+  "Catalan Opening": "Katalanische Eröffnung",
+  "Colle System": "Colle-System",
   "Dutch Defense": "Holländische Verteidigung",
   "English Opening": "Englische Eröffnung",
   "French Defense": "Französische Verteidigung",
+  "Four Knights Game": "Vierspringerspiel",
+  "Grünfeld Defense": "Grünfeld-Verteidigung",
   "Indian Game": "Indische Verteidigung",
   "Italian Game": "Italienische Partie",
   "King's Gambit": "Königsgambit",
+  "King's Indian Attack": "Königsindischer Angriff",
   "King's Indian Defense": "Königsindische Verteidigung",
+  "King's Pawn Game": "Königbauernspiel",
+  "London System": "Londoner System",
   "Modern Defense": "Moderne Verteidigung",
   "Nimzo-Indian Defense": "Nimzo-Indische Verteidigung",
+  "Petrov's Defense": "Russische Verteidigung",
+  "Philidor Defense": "Philidor-Verteidigung",
   "Pirc Defense": "Pirc-Verteidigung",
   "Queen's Gambit": "Damengambit",
+  "Queen's Gambit Accepted": "Angenommenes Damengambit",
+  "Queen's Gambit Declined": "Abgelehntes Damengambit",
   "Queen's Indian Defense": "Damenindische Verteidigung",
+  "Queen's Pawn Game": "Damenbauernspiel",
   "Réti Opening": "Réti-Eröffnung",
   "Ruy Lopez": "Spanische Partie",
   "Scandinavian Defense": "Skandinavische Verteidigung",
   "Scotch Game": "Schottische Partie",
+  "Semi-Slav Defense": "Halbslawische Verteidigung",
   "Sicilian Defense": "Sizilianische Verteidigung",
+  "Slav Defense": "Slawische Verteidigung",
+  "Tarrasch Defense": "Tarrasch-Verteidigung",
+  "Trompowsky Attack": "Trompowsky-Angriff",
+  "Vienna Game": "Wiener Partie",
+  "Zukertort Opening": "Zukertort-Eröffnung",
 });
 
 const COMPONENT_TRANSLATIONS = Object.freeze({
@@ -289,6 +309,42 @@ export function detectOpeningFromPath(path, book) {
     matchedBy: confidence,
     source: OPENING_SOURCE,
   };
+}
+
+export function detectOpeningAfterMove(path, uci, book) {
+  const nodes = Array.isArray(path) ? path : [];
+  if (
+    nodes.length === 0
+    || typeof uci !== "string"
+    || !UCI_PATTERN.test(uci)
+  ) return unknownResult(Math.max(0, nodes.length - 1));
+
+  const currentFen = cleanText(nodes.at(-1)?.fen, 140);
+  const game = new Chess();
+  try {
+    game.load(currentFen || new Chess().fen());
+    const move = game.move({
+      from: uci.slice(0, 2),
+      to: uci.slice(2, 4),
+      promotion: uci[4] || undefined,
+    });
+    if (!move) return unknownResult(nodes.length - 1);
+    return detectOpeningFromPath([
+      ...nodes,
+      {
+        fen: game.fen(),
+        move: {
+          from: move.from,
+          to: move.to,
+          promotion: move.promotion,
+          san: move.san,
+          color: move.color,
+        },
+      },
+    ], book);
+  } catch {
+    return unknownResult(nodes.length - 1);
+  }
 }
 
 export function openingCoachContext(result) {

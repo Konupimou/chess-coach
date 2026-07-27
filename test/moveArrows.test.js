@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   MOVE_ARROW_STYLES,
   arrowGeometry,
+  arrowHeadGeometry,
   normalizeArrowMoves,
   parseUciMove,
   selectImpactArrowMoves,
@@ -69,6 +70,16 @@ test("Pfeile enden vor der Mitte des Zielfelds", () => {
     x2: 43.75,
     y2: 42.1,
   });
+});
+
+test("Pfeilspitzen werden als symmetrische, eigenständige Dreiecke berechnet", () => {
+  const geometry = arrowGeometry("e2e4", "white");
+  const head = arrowHeadGeometry(geometry, 1.72);
+  assert.deepEqual(head.tip, { x: geometry.x2, y: geometry.y2 });
+  assert.equal(head.left.y, head.right.y);
+  assert.equal((head.left.x + head.right.x) / 2, geometry.x2);
+  assert.ok(head.left.x > head.right.x);
+  assert.ok(head.shaftEnd.y > geometry.y2);
 });
 
 test("Pfeilliste entfernt Dubletten, sortiert und begrenzt", () => {

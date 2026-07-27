@@ -1,11 +1,15 @@
 import {
   normalizeChatPayload,
   requestCoachResponse,
+  requestMoveExplanation,
 } from "../../../api/chat.js";
 
 export const runtime = "nodejs";
 
-const RATE_LIMIT = 15;
+const RATE_LIMITS = Object.freeze({
+  chat: 15,
+  move_explanation: 30,
+});
 const RATE_WINDOW_MS = 60_000;
 const rateLimitBuckets = globalThis.__chessCoachRateLimits || new Map();
 globalThis.__chessCoachRateLimits = rateLimitBuckets;
@@ -19,9 +23,11 @@ function clientAddress(request) {
   return forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "local";
 }
 
-function checkRateLimit(request) {
+function checkRateLimit(request, task = "chat") {
   const now = Date.now();
-  const key = clientAddress(request);
+  const bucket = task === "move_explanation" ? "move_explanation" : "chat";
+  const key = `${clientAddress(request)}:${bucket}`;
+  const limit = RATE_LIMITS[bucket];
   const current = rateLimitBuckets.get(key);
 
   if (!current || now >= current.resetAt) {
@@ -30,7 +36,7 @@ function checkRateLimit(request) {
   }
 
   current.count += 1;
-  if (current.count <= RATE_LIMIT) return null;
+  if (current.count <= limit) return null;
   return Math.max(1, Math.ceil((current.resetAt - now) / 1_000));
 }
 
@@ -48,15 +54,6 @@ export async function POST(request) {
     return json({ error: "Die Anfrage ist zu groß." }, 413);
   }
 
-  const retryAfter = checkRateLimit(request);
-  if (retryAfter) {
-    return json(
-      { error: "Zu viele Anfragen. Bitte warte kurz." },
-      429,
-      { "Retry-After": String(retryAfter) },
-    );
-  }
-
   let body;
   try {
     body = await request.json();
@@ -68,9 +65,17 @@ export async function POST(request) {
   if (normalized.error) {
     return json({ error: normalized.error }, 400);
   }
+  const retryAfter = checkRateLimit(request, normalized.value.task);
+  if (retryAfter) {
+    return json(
+      { error: "Zu viele Anfragen. Bitte warte kurz." },
+      429,
+      { "Retry-After": String(retryAfter) },
+    );
+  }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 35_000);
+  const timeout = setTimeout(() => controller.abort(), 45_000);
   const abortFromClient = () => controller.abort();
   if (request.signal.aborted) {
     controller.abort();
@@ -79,6 +84,13 @@ export async function POST(request) {
   }
 
   try {
+    if (normalized.value.task === "move_explanation") {
+      const result = await requestMoveExplanation(normalized.value, {
+        signal: controller.signal,
+        safetyIdentifier: await safetyIdentifier(request),
+      });
+      return json(result);
+    }
     const reply = await requestCoachResponse(normalized.value, {
       signal: controller.signal,
       safetyIdentifier: await safetyIdentifier(request),

@@ -1,3 +1,5 @@
+import { Chess } from "chess.js";
+
 const MAX_LINES = 5;
 const MAX_PV_MOVES = 20;
 const MAX_REVIEW_MOMENTS = 8;
@@ -11,14 +13,42 @@ const finite = (value, minimum, maximum) => (
   Number.isFinite(value) ? Math.max(minimum, Math.min(maximum, value)) : null
 );
 
-function normalizeMove(value) {
+function gameFromFen(fen) {
+  if (typeof fen !== "string" || !fen.trim()) return null;
+  const game = new Chess();
+  try {
+    game.load(fen);
+    return game;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeFen(value) {
+  const game = gameFromFen(text(value, 100));
+  return game?.fen() || "";
+}
+
+function normalizeMove(value, fen) {
   if (!value || typeof value !== "object") return null;
   const uci = text(value.uci, 5).toLowerCase();
-  const san = text(value.san, 24);
-  if (!UCI_PATTERN.test(uci) && !san) return null;
+  if (!UCI_PATTERN.test(uci)) return null;
+  const game = gameFromFen(fen);
+  if (!game) return null;
+  let move;
+  try {
+    move = game.move({
+      from: uci.slice(0, 2),
+      to: uci.slice(2, 4),
+      promotion: uci.length > 4 ? uci.slice(4, 5) : undefined,
+    });
+  } catch {
+    return null;
+  }
+  if (!move) return null;
   return {
-    uci: UCI_PATTERN.test(uci) ? uci : "",
-    san,
+    uci,
+    san: move.san,
   };
 }
 
@@ -34,32 +64,43 @@ export function normalizeEngineEvaluation(value) {
   };
 }
 
-function normalizePv(value, maxItems = MAX_PV_MOVES) {
+function normalizePv(value, fen, maxItems = MAX_PV_MOVES) {
+  const game = gameFromFen(fen);
+  if (!game) return { uci: [], san: [] };
   const uci = [];
-  if (Array.isArray(value?.uci)) {
-    for (const rawMove of value.uci.slice(0, maxItems)) {
-      const move = text(rawMove, 5).toLowerCase();
-      if (!UCI_PATTERN.test(move)) break;
-      uci.push(move);
-    }
-  }
-  const san = Array.isArray(value?.san)
-    ? value.san
-      .slice(0, uci.length || maxItems)
-      .map((move) => text(move, 24))
-      .filter(Boolean)
+  const san = [];
+  const supplied = Array.isArray(value?.uci)
+    ? value.uci.slice(0, maxItems)
     : [];
+  for (const rawMove of supplied) {
+    const move = text(rawMove, 5).toLowerCase();
+    if (!UCI_PATTERN.test(move)) return { uci: [], san: [] };
+    let legalMove;
+    try {
+      legalMove = game.move({
+        from: move.slice(0, 2),
+        to: move.slice(2, 4),
+        promotion: move.length > 4 ? move.slice(4, 5) : undefined,
+      });
+    } catch {
+      return { uci: [], san: [] };
+    }
+    if (!legalMove) return { uci: [], san: [] };
+    uci.push(move);
+    san.push(legalMove.san);
+  }
   return { uci, san };
 }
 
-function normalizeLine(value, fallbackRank) {
+function normalizeLine(value, fallbackRank, fen) {
   if (!value || typeof value !== "object") return null;
-  const pv = normalizePv(value.pv);
+  const pv = normalizePv(value.pv, fen);
   if (pv.uci.length === 0) return null;
-  const bestMove = normalizeMove(value.bestMove) || {
+  const bestMove = normalizeMove(value.bestMove, fen) || {
     uci: pv.uci[0],
     san: pv.san[0] || "",
   };
+  if (bestMove.uci !== pv.uci[0]) return null;
   return {
     rank: Math.max(1, Math.min(MAX_LINES, Number.parseInt(value.rank, 10) || fallbackRank)),
     depth: Math.max(0, Math.min(99, Number.parseInt(value.depth, 10) || 0)),
@@ -69,40 +110,75 @@ function normalizeLine(value, fallbackRank) {
   };
 }
 
-function normalizeMoveReview(value) {
+function normalizeMoveReview(value, fen) {
   if (!value || typeof value !== "object") return null;
-  const playedMove = normalizeMove(value.playedMove);
-  const bestMove = normalizeMove(value.bestMove);
-  const pv = normalizePv(value.pv);
-  if (!playedMove && !bestMove && pv.uci.length === 0) return null;
+  const playedMove = normalizeMove(value.playedMove, fen);
+  const bestMove = normalizeMove(value.bestMove, fen);
+  const pv = normalizePv(value.pv, fen);
+  if (!playedMove) return null;
+  if (bestMove && pv.uci.length > 0 && bestMove.uci !== pv.uci[0]) return null;
+  const classification = text(value.classification, 32);
+  const qualityAliases = new Map([
+    ["best", "best"],
+    ["bester zug", "best"],
+    ["excellent", "excellent"],
+    ["sehr gut", "excellent"],
+    ["good", "good"],
+    ["gut", "good"],
+    ["inaccuracy", "inaccuracy"],
+    ["ungenauigkeit", "inaccuracy"],
+    ["mistake", "mistake"],
+    ["fehler", "mistake"],
+    ["blunder", "blunder"],
+    ["patzer", "blunder"],
+  ]);
+  const resolvedBestMove = bestMove || (
+    pv.uci[0] ? { uci: pv.uci[0], san: pv.san[0] || "" } : null
+  );
+  const requestedQuality =
+    qualityAliases.get(text(value.quality || classification, 32).toLowerCase()) || "";
+  const topMoveMismatch = resolvedBestMove?.uci !== playedMove.uci;
+  const quality = requestedQuality === "best" && topMoveMismatch
+    ? "excellent"
+    : requestedQuality;
+  const classificationQuality =
+    qualityAliases.get(classification.toLowerCase()) || "";
+  const safeClassification = classificationQuality === "best" && topMoveMismatch
+    ? "Sehr gut"
+    : classification;
   return {
     playedMove,
-    bestMove: bestMove || (pv.uci[0] ? { uci: pv.uci[0], san: pv.san[0] || "" } : null),
+    bestMove: resolvedBestMove,
     depth: Math.max(0, Math.min(99, Number.parseInt(value.depth, 10) || 0)),
     evaluationBefore: normalizeEngineEvaluation(value.evaluationBefore),
     evaluationAfter: normalizeEngineEvaluation(value.evaluationAfter),
     evaluationDeltaCp: finite(value.evaluationDeltaCp, -100_000, 100_000),
-    classification: text(value.classification, 32),
+    classification: safeClassification,
+    quality,
+    accuracy: finite(value.accuracy, 0, 100),
+    lossCp: finite(value.lossCp, 0, 100_000),
     pv,
   };
 }
 
 export function normalizeEngineContext(value) {
   if (!value || typeof value !== "object" || value.source !== "stockfish") return null;
+  const fen = normalizeFen(value.fen);
+  if (!fen && value.kind !== "game_review") return null;
   const kind = ["position", "move_review", "game_review"].includes(value.kind)
     ? value.kind
     : "position";
   const lines = Array.isArray(value.lines)
     ? value.lines
       .slice(0, MAX_LINES)
-      .map((line, index) => normalizeLine(line, index + 1))
+      .map((line, index) => normalizeLine(line, index + 1, fen))
       .filter(Boolean)
       .sort((left, right) => left.rank - right.rank)
     : [];
   const primary = lines.find((line) => line.rank === 1) || lines[0] || null;
-  const suppliedBestMove = normalizeMove(value.bestMove);
+  const suppliedBestMove = normalizeMove(value.bestMove, fen);
   const bestMove = suppliedBestMove || primary?.bestMove || null;
-  const primaryVariation = normalizePv(value.primaryVariation);
+  const primaryVariation = normalizePv(value.primaryVariation, fen);
   const pv = primaryVariation.uci.length > 0
     ? primaryVariation
     : primary?.pv || { uci: [], san: [] };
@@ -110,11 +186,12 @@ export function normalizeEngineContext(value) {
     ? value.reviewMoments
       .slice(0, MAX_REVIEW_MOMENTS)
       .map((moment) => {
-        const review = normalizeMoveReview(moment);
+        const momentFen = normalizeFen(moment?.fen);
+        const review = normalizeMoveReview(moment, momentFen);
         if (!review) return null;
         return {
           label: text(moment?.label, 48),
-          fen: text(moment?.fen, 100),
+          fen: momentFen,
           ...review,
         };
       })
@@ -125,13 +202,13 @@ export function normalizeEngineContext(value) {
     version: 1,
     source: "stockfish",
     kind,
-    fen: text(value.fen, 100),
+    fen,
     depth: Math.max(0, Math.min(99, Number.parseInt(value.depth, 10) || primary?.depth || 0)),
     evaluation: normalizeEngineEvaluation(value.evaluation) || primary?.evaluation || null,
     bestMove,
     primaryVariation: pv,
     lines,
-    moveReview: normalizeMoveReview(value.moveReview),
+    moveReview: normalizeMoveReview(value.moveReview, fen),
     reviewMoments,
   };
 }
@@ -226,6 +303,16 @@ export function findUnsupportedMoveTokens(reply, context, openingContext = null)
         checkedReply = checkedReply.split(name.trim()).join("");
       });
   }
+  if (openingContext?.suggestedOpening?.matched === true) {
+    [
+      openingContext.suggestedOpening.sourceName,
+      openingContext.suggestedOpening.displayName,
+    ]
+      .filter((name) => typeof name === "string" && name.trim())
+      .forEach((name) => {
+        checkedReply = checkedReply.split(name.trim()).join("");
+      });
+  }
   return [...new Set(
     [...checkedReply.matchAll(MOVE_TOKEN_PATTERN)]
       .map((match) => match[0])
@@ -268,11 +355,34 @@ export function findUnsupportedEvaluationTokens(reply, context) {
     const signed = `${pawns >= 0 ? "+" : ""}${pawns.toFixed(2)}`;
     allowed.add(signed);
     allowed.add(signed.replace(".", ","));
+    const absolute = Math.abs(pawns).toFixed(2);
+    allowed.add(absolute);
+    allowed.add(absolute.replace(".", ","));
   });
-  const found = [
+  const signedOrMate = [
     ...reply.matchAll(/[+-]\s?\d+(?:[.,]\d+)?|(?:Matt in|M)\s?\d+/gi),
   ].map((match) => match[0].replace(/\s+/g, " ").trim());
-  return [...new Set(found.filter((token) => !allowed.has(token.toLowerCase())))];
+  const contextualDecimals = [
+    ...reply.matchAll(
+      /\b(?:bewertung|evaluation|vorteil|nachteil|bauern(?:einheiten)?)\D{0,24}([+-]?\d+(?:[.,]\d+)?)|([+-]?\d+(?:[.,]\d+)?)\s*(?:bauern(?:einheiten)?|bewertung|evaluation|vorteil|nachteil)\b/gi,
+    ),
+  ].map((match) => (match[1] || match[2] || "").replace(/\s+/g, "").trim());
+  const signedNumericMagnitudes = new Set(
+    signedOrMate
+      .filter((token) => /^[+-]/.test(token))
+      .map((token) => token.replace(/^[+-]\s*/, "")),
+  );
+  const found = [
+    ...signedOrMate,
+    ...contextualDecimals.filter(
+      (token) => !signedNumericMagnitudes.has(token.replace(/^[+-]\s*/, "")),
+    ),
+  ];
+  const canonical = (token) => token.toLowerCase().replace(/\s+/g, "");
+  const canonicalAllowed = new Set([...allowed].map(canonical));
+  return [...new Set(
+    found.filter((token) => !canonicalAllowed.has(canonical(token))),
+  )];
 }
 
 export const ENGINE_CONTEXT_MISSING_REPLY =

@@ -53,12 +53,13 @@ test("Das Brett unterstützt Fokus, Pfeiltasten und Enter als alternativen Zugwe
   assert.match(keyboardSource, /this\.handleMove\(source, square\)/);
 });
 
-test("Spielmodus zeigt nur eigene Genauigkeit und aktualisiert den Streak nach Feedback", () => {
+test("Spielmodus aktualisiert Feedback und Präzisions-Streak ohne Genauigkeitsfeld", () => {
   const accuracySource = methodSource("updateAccuracyDisplay", "openEngineSettings");
   const feedbackSource = methodSource("recordLatestPlayFeedback", "renderSuggestions");
   assert.match(accuracySource, /ownOnly/);
-  assert.match(accuracySource, /this\.whiteAccuracySideEl\.hidden/);
-  assert.match(accuracySource, /this\.blackAccuracySideEl\.hidden/);
+  assert.doesNotMatch(appSource, /accuracy-chip/);
+  assert.doesNotMatch(appSource, /whiteAccuracySideEl/);
+  assert.doesNotMatch(appSource, /blackAccuracySideEl/);
   assert.match(feedbackSource, /nextStrongMoveStreak/);
   assert.match(feedbackSource, /celebratePlayedPiece/);
   assert.match(appSource, /play-streak-track/);

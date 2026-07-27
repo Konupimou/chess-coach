@@ -1,6 +1,5 @@
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const FILES = "abcdefgh";
-let overlaySequence = 0;
 
 export const MOVE_ARROW_STYLES = Object.freeze([
   { color: "#6aa9ef", opacity: 0.92, width: 1.72 },
@@ -115,6 +114,39 @@ export function arrowGeometry(value, orientation = "white", endInset = 1.65, sta
   };
 }
 
+export function arrowHeadGeometry(geometry, shaftWidth = 1.5) {
+  if (!geometry) return null;
+  const deltaX = geometry.x2 - geometry.x1;
+  const deltaY = geometry.y2 - geometry.y1;
+  const distance = Math.hypot(deltaX, deltaY);
+  if (!distance) return null;
+
+  const unitX = deltaX / distance;
+  const unitY = deltaY / distance;
+  const headLength = clamp(3.35 + shaftWidth * 0.72, 4.05, 4.85);
+  const halfWidth = clamp(1.55 + shaftWidth * 0.55, 2.05, 2.75);
+  const baseX = geometry.x2 - unitX * headLength;
+  const baseY = geometry.y2 - unitY * headLength;
+  const perpendicularX = -unitY;
+  const perpendicularY = unitX;
+
+  return {
+    tip: { x: geometry.x2, y: geometry.y2 },
+    left: {
+      x: baseX + perpendicularX * halfWidth,
+      y: baseY + perpendicularY * halfWidth,
+    },
+    right: {
+      x: baseX - perpendicularX * halfWidth,
+      y: baseY - perpendicularY * halfWidth,
+    },
+    shaftEnd: {
+      x: geometry.x2 - unitX * headLength * 0.68,
+      y: geometry.y2 - unitY * headLength * 0.68,
+    },
+  };
+}
+
 export function normalizeArrowMoves(entries, limit = 5) {
   if (!Array.isArray(entries) || limit <= 0) return [];
   const normalized = new Map();
@@ -157,8 +189,6 @@ export class MoveArrowOverlay {
     this.visible = true;
     this.destroyed = false;
     this.resizeFrame = null;
-    this.markerPrefix = `move-arrow-${++overlaySequence}`;
-
     const documentRef = hostEl.ownerDocument || document;
     this.svg = documentRef.createElementNS(SVG_NAMESPACE, "svg");
     this.svg.classList.add("move-arrows");
@@ -237,25 +267,6 @@ export class MoveArrowOverlay {
     if (this.svg.hidden) return;
 
     const documentRef = this.hostEl.ownerDocument || document;
-    const definitions = documentRef.createElementNS(SVG_NAMESPACE, "defs");
-    MOVE_ARROW_STYLES.forEach((style, index) => {
-      const marker = documentRef.createElementNS(SVG_NAMESPACE, "marker");
-      marker.id = `${this.markerPrefix}-${index}`;
-      marker.setAttribute("viewBox", "0 0 10 10");
-      marker.setAttribute("refX", "8.6");
-      marker.setAttribute("refY", "5");
-      marker.setAttribute("markerUnits", "userSpaceOnUse");
-      marker.setAttribute("markerWidth", String(4.5 + style.width * 0.35));
-      marker.setAttribute("markerHeight", String(4.5 + style.width * 0.35));
-      marker.setAttribute("orient", "auto-start-reverse");
-      const tip = documentRef.createElementNS(SVG_NAMESPACE, "path");
-      tip.setAttribute("d", "M 0.8 1.1 L 9.2 5 L 0.8 8.9 L 3 5 z");
-      tip.setAttribute("fill", style.color);
-      marker.appendChild(tip);
-      definitions.appendChild(marker);
-    });
-    this.svg.appendChild(definitions);
-
     [...this.moves].reverse().forEach((move) => {
       const geometry = arrowGeometry(move, this.orientation);
       if (!geometry) return;
@@ -264,24 +275,42 @@ export class MoveArrowOverlay {
       const impact = Number.isFinite(move.impact) ? move.impact : 1;
       const width = Math.max(0.86, style.width * (0.76 + impact * 0.24));
       const opacity = Math.max(0.48, style.opacity * (0.8 + impact * 0.2));
+      const head = arrowHeadGeometry(geometry, width);
+      if (!head) return;
+      const shaftGeometry = {
+        ...geometry,
+        x2: head.shaftEnd.x,
+        y2: head.shaftEnd.y,
+      };
 
       const outline = documentRef.createElementNS(SVG_NAMESPACE, "line");
-      this.applyLineGeometry(outline, geometry);
+      this.applyLineGeometry(outline, shaftGeometry);
       outline.classList.add("move-arrow-outline");
       outline.setAttribute("stroke-width", String(width + 0.48));
       outline.setAttribute("opacity", String(Math.min(0.42, opacity)));
       this.svg.appendChild(outline);
 
       const arrow = documentRef.createElementNS(SVG_NAMESPACE, "line");
-      this.applyLineGeometry(arrow, geometry);
+      this.applyLineGeometry(arrow, shaftGeometry);
       arrow.classList.add("move-arrow-line");
       arrow.dataset.rank = String(move.rank);
       arrow.dataset.move = move.uci;
       arrow.setAttribute("stroke", style.color);
       arrow.setAttribute("stroke-width", String(width));
       arrow.setAttribute("opacity", String(opacity));
-      arrow.setAttribute("marker-end", `url(#${this.markerPrefix}-${styleIndex})`);
       this.svg.appendChild(arrow);
+
+      const arrowHead = documentRef.createElementNS(SVG_NAMESPACE, "path");
+      arrowHead.classList.add("move-arrow-head");
+      arrowHead.dataset.rank = String(move.rank);
+      arrowHead.dataset.move = move.uci;
+      arrowHead.setAttribute(
+        "d",
+        `M ${head.tip.x} ${head.tip.y} L ${head.left.x} ${head.left.y} L ${head.right.x} ${head.right.y} Z`,
+      );
+      arrowHead.setAttribute("fill", style.color);
+      arrowHead.setAttribute("opacity", String(opacity));
+      this.svg.appendChild(arrowHead);
     });
   }
 

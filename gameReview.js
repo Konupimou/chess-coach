@@ -66,6 +66,53 @@ export function buildPvFrames(fen, pv, limit = 8) {
   return frames;
 }
 
+export function legalUciMove(fen, uci) {
+  const frame = buildPvFrames(fen, [uci], 1)[0];
+  return frame || null;
+}
+
+export function legalPv(fen, pv, limit = 20) {
+  return buildPvFrames(fen, pv, limit);
+}
+
+export function verifiedMoveReview(move) {
+  if (!move || typeof move !== "object") return null;
+  const played = legalUciMove(move.fenBefore, move.playedUci);
+  if (!played) return null;
+  const suppliedPv = Array.isArray(move.bestPvUci) ? move.bestPvUci : [];
+  const bestLine = suppliedPv[0] === move.bestUci
+    ? suppliedPv
+    : [move.bestUci].filter(Boolean);
+  const bestFrames = legalPv(move.fenBefore, bestLine, 20);
+  const best = bestFrames[0] || null;
+  const suppliedContinuation = Array.isArray(move.playedContinuationUci)
+    && move.playedContinuationUci[0] === played.uci
+    ? move.playedContinuationUci
+    : [played.uci];
+  const continuationFrames = legalPv(move.fenBefore, suppliedContinuation, 20);
+  const quality = move.quality === "best" && played.uci !== best?.uci
+    ? "excellent"
+    : move.quality;
+  return {
+    ...move,
+    san: played.san,
+    playedUci: played.uci,
+    bestUci: best?.uci || "",
+    bestSan: best?.san || "",
+    bestPvUci: bestFrames.map((frame) => frame.uci),
+    bestPvSan: bestFrames.map((frame) => frame.san),
+    playedContinuationUci: continuationFrames.map((frame) => frame.uci),
+    playedContinuationSan: continuationFrames.map((frame) => frame.san),
+    ...(Object.hasOwn(move, "quality") ? { quality } : {}),
+  };
+}
+
+function verifiedBestSan(move) {
+  const verified = verifiedMoveReview(move);
+  if (!verified || verified.bestUci === verified.playedUci) return "";
+  return verified.bestSan;
+}
+
 export function scoreToWhiteCp(score) {
   if (Number.isFinite(score)) return clamp(Math.round(score), -MATE_CENTIPAWNS, MATE_CENTIPAWNS);
   if (!score || typeof score !== "object") return null;
@@ -152,35 +199,38 @@ export function calculateMoveAccuracy(beforeWhiteCp, afterWhiteCp, color) {
 
 export function explainMoveQuality(move) {
   if (!move || typeof move !== "object") return "Für diesen Zug liegt noch keine Bewertung vor.";
-  const san = typeof move.san === "string" ? move.san : "";
-  const bestSan = typeof move.bestSan === "string" && move.bestSan !== san
-    ? move.bestSan
-    : "";
+  const verified = verifiedMoveReview(move);
+  const bestSan = verifiedBestSan(verified);
+  const quality = move.quality === "best"
+    ? verified?.quality === "best"
+      ? "best"
+      : "excellent"
+    : move.quality;
 
-  if (move.quality === "best") {
+  if (quality === "best") {
     return "Entspricht der ersten Stockfish-Wahl; laut Bewertung geht kein messbarer Vorteil verloren.";
   }
-  if (move.quality === "excellent") {
+  if (quality === "excellent") {
     return bestSan
       ? `Weicht nur wenig von Stockfishs erster Wahl ${bestSan} ab.`
       : "Weicht laut Stockfish-Bewertung nur minimal von der besten Fortsetzung ab.";
   }
-  if (move.quality === "good") {
+  if (quality === "good") {
     return bestSan
       ? `Bleibt nah an Stockfishs erster Wahl ${bestSan}; der Bewertungsverlust ist klein.`
       : "Der Stockfish-Bewertungsverlust bleibt klein.";
   }
-  if (move.quality === "inaccuracy") {
+  if (quality === "inaccuracy") {
     return bestSan
       ? `Gibt etwas Vorteil ab; genauer war ${bestSan}.`
       : "Gibt etwas Vorteil ab und erlaubt dem Gegner mehr Gegenspiel.";
   }
-  if (move.quality === "mistake") {
+  if (quality === "mistake") {
     return bestSan
       ? `Verschlechtert die Stellung deutlich; ${bestSan} hielt besser dagegen.`
       : "Verschlechtert die Stellung deutlich und übersieht eine stärkere Fortsetzung.";
   }
-  if (move.quality === "blunder") {
+  if (quality === "blunder") {
     return bestSan
       ? `Kippt die Stellung; ${bestSan} hätte den großen Verlust vermieden.`
       : "Kippt die Stockfish-Bewertung deutlich; eine Motiv-Erklärung benötigt die zugehörige Engine-Variante.";
@@ -188,11 +238,77 @@ export function explainMoveQuality(move) {
   return "Die Enginebewertung dieses Zuges ist noch nicht vollständig.";
 }
 
+export function describeMoveAssessment(move) {
+  const verified = verifiedMoveReview(move);
+  if (!verified) return null;
+  const quality = Object.hasOwn(MOVE_QUALITY, verified.quality) ? verified.quality : "good";
+  const bestSan = verifiedBestSan(verified);
+  const descriptions = {
+    best: {
+      lead: "Das war der beste Zug.",
+      reason: "Du hast damit keinen messbaren Vorteil abgegeben.",
+    },
+    excellent: {
+      lead: "Das war sehr gut.",
+      reason: "Deine Stellung bleibt nahezu so stark wie mit der besten Möglichkeit.",
+    },
+    good: {
+      lead: "Das war gut.",
+      reason: "Deine Stellung bleibt stabil und der kleine Nachteil ist gut verkraftbar.",
+    },
+    inaccuracy: {
+      lead: "Das war etwas ungenau.",
+      reason: "Du gibst einen Teil deiner guten Stellung ab und erlaubst mehr Gegenspiel.",
+    },
+    mistake: {
+      lead: "Das war ein Fehler.",
+      reason: "Deine Stellung wird dadurch deutlich schwieriger.",
+    },
+    blunder: {
+      lead: "Das war ein großer Fehler.",
+      reason: "Die Stellung kippt dadurch deutlich zu deinen Ungunsten.",
+    },
+  };
+  return {
+    tone: MOVE_QUALITY[quality].tone,
+    label: MOVE_QUALITY[quality].label,
+    lead: descriptions[quality].lead,
+    reason: descriptions[quality].reason,
+    alternative: bestSan
+      ? `Statt ${verified.san} war ${bestSan} in der Stellung davor besser.`
+      : "",
+  };
+}
+
+export function groundedSuggestionReason({ rank = 1, san = "", uci = "" } = {}) {
+  const notation = typeof san === "string" ? san.trim() : "";
+  const move = typeof uci === "string" ? uci.toLowerCase() : "";
+  let idea = "";
+  if (/^O-O(?:-O)?[+#]?$/.test(notation)) {
+    idea = "Der Zug bringt den König in Sicherheit und aktiviert einen Turm.";
+  } else if (/[+#]$/.test(notation)) {
+    idea = "Der Zug greift den König direkt an und zwingt zu einer Antwort.";
+  } else if (notation.includes("x")) {
+    idea = "Der Zug nutzt einen möglichen Abtausch und verändert dadurch die Stellung konkret.";
+  } else if (/^[a-h][1-8][a-h][1-8][qrbn]$/.test(move)) {
+    idea = "Der Zug wandelt einen Bauern um und schafft dadurch unmittelbar neues Material.";
+  } else if (["d4", "e4", "d5", "e5"].includes(move.slice(2, 4))) {
+    idea = "Der Zug erhöht den Einfluss im Zentrum.";
+  }
+  const comparison = rank === 1
+    ? "Die gezeigte Fortsetzung bestätigt ihn als stärkste geprüfte Möglichkeit."
+    : "Die Idee bleibt spielbar, liegt aber hinter der ersten geprüften Möglichkeit.";
+  return [idea, comparison].filter(Boolean).join(" ");
+}
+
 export function analysisEntryFromInfo(info) {
   if (!info || typeof info !== "object") return null;
   const score = info.whiteScore || info.score;
   const whiteCp = scoreToWhiteCp(score);
   if (!Number.isFinite(whiteCp)) return null;
+  const suppliedPv = Array.isArray(info.pv) ? info.pv.slice(0, 20) : [];
+  const frames = buildPvFrames(info.fen, suppliedPv, 20);
+  if (frames.length === 0 || frames.length !== suppliedPv.length) return null;
   return {
     whiteCp,
     evaluation: score?.unit && Number.isFinite(score?.value)
@@ -207,7 +323,7 @@ export function analysisEntryFromInfo(info) {
         perspective: "white",
       },
     depth: Number.isFinite(info.depth) ? info.depth : null,
-    pv: Array.isArray(info.pv) ? info.pv.slice(0, 20) : [],
+    pv: frames.map((frame) => frame.uci),
     complete: true,
   };
 }
@@ -253,17 +369,32 @@ export function summarizeGameReview(path, evaluations, { depth = null, final = t
     const color = node?.move?.color;
     const metrics = calculateMoveAccuracy(beforeCp, afterCp, color);
     if (!metrics) continue;
-    const bestUci = Array.isArray(before?.pv) ? before.pv[0] || "" : "";
+    const fenBefore = nodes[index - 1]?.fen || "";
+    const bestFrames = buildPvFrames(
+      fenBefore,
+      Array.isArray(before?.pv) ? before.pv : [],
+      20,
+    );
+    const bestUci = bestFrames[0]?.uci || "";
+    const playedUci = node?.move
+      ? `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}`
+      : "";
+    const playedContinuationFrames = buildPvFrames(
+      fenBefore,
+      [
+        playedUci,
+        ...(Array.isArray(after?.pv) ? after.pv : []),
+      ].filter(Boolean),
+      20,
+    );
 
     const reportMove = {
       ply: index,
       moveNumber: Math.ceil(index / 2),
       color,
       san: node?.move?.san || "?",
-      playedUci: node?.move
-        ? `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}`
-        : "",
-      fenBefore: nodes[index - 1]?.fen || "",
+      playedUci,
+      fenBefore,
       fenAfter: node?.fen || "",
       beforeCp,
       afterCp,
@@ -279,18 +410,18 @@ export function summarizeGameReview(path, evaluations, { depth = null, final = t
       },
       evaluationDeltaCp: Math.round(afterCp - beforeCp),
       bestUci,
-      bestSan: uciToSan(nodes[index - 1]?.fen, bestUci),
-      bestPvUci: Array.isArray(before?.pv) ? before.pv.slice(0, 20) : [],
-      bestPvSan: buildPvFrames(
-        nodes[index - 1]?.fen || "",
-        Array.isArray(before?.pv) ? before.pv : [],
-        20,
-      ).map((frame) => frame.san),
+      bestSan: bestFrames[0]?.san || "",
+      bestPvUci: bestFrames.map((frame) => frame.uci),
+      bestPvSan: bestFrames.map((frame) => frame.san),
+      playedContinuationUci: playedContinuationFrames.map((frame) => frame.uci),
+      playedContinuationSan: playedContinuationFrames.map((frame) => frame.san),
       engineDepth: Number.isFinite(before?.depth) ? before.depth : null,
       accuracy: rounded(metrics.accuracy),
       lossCp: Math.round(metrics.lossCp),
       winPercentLoss: rounded(metrics.winPercentLoss, 2),
-      quality: metrics.quality,
+      quality: metrics.quality === "best" && playedUci !== bestUci
+        ? "excellent"
+        : metrics.quality,
     };
     reportMove.explanation = explainMoveQuality(reportMove);
     moves.push(reportMove);

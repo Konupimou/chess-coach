@@ -43,10 +43,24 @@ test("letzter eigener Zug wird anhand von Farbe und aktuellem Halbzug gefunden",
     { move: { color: "w" } },
     { move: { color: "b" } },
   ];
-  const expected = { ply: 2, color: "b", san: "Nc6" };
+  const expected = {
+    ply: 2,
+    color: "b",
+    san: "Nc6",
+    fenBefore: "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    playedUci: "b8c6",
+    bestUci: "b8c6",
+    bestPvUci: ["b8c6"],
+  };
   app.liveAccuracyReport = { moves: [expected] };
   app.gameReviewReport = null;
   app.savedGameReview = null;
 
-  assert.equal(app.getLastPerspectiveMoveReview(), expected);
+  assert.deepEqual(app.getLastPerspectiveMoveReview(), {
+    ...expected,
+    bestSan: "Nc6",
+    bestPvSan: ["Nc6"],
+    playedContinuationUci: ["b8c6"],
+    playedContinuationSan: ["Nc6"],
+  });
 });
