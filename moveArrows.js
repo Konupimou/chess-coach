@@ -195,7 +195,7 @@ export function normalizeArrowMoves(entries, limit = 5) {
     .slice(0, Math.min(limit, MOVE_ARROW_STYLES.length));
 }
 
-export function normalizeSquareHighlights(entries, limit = 6) {
+export function normalizeSquareHighlights(entries, limit = 12) {
   if (!Array.isArray(entries) || limit <= 0) return [];
   const normalized = new Map();
   entries.forEach((entry) => {

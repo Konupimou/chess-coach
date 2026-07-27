@@ -19,6 +19,9 @@ const PIECE_NAMES = Object.freeze({
 });
 const HOME_MINOR_SQUARES = new Set(["b1", "c1", "f1", "g1", "b8", "c8", "f8", "g8"]);
 const CENTER = new Set(["d4", "e4", "d5", "e5"]);
+const ALL_SQUARES = [...FILES].flatMap((file) => (
+  Array.from({ length: 8 }, (_, index) => `${file}${index + 1}`)
+));
 const UCI_PATTERN = /^[a-h][1-8][a-h][1-8][qrbn]?$/i;
 const MOTIF_PHRASES = Object.freeze({
   Matt: "ein Matt",
@@ -52,6 +55,43 @@ const squareAt = (file, rank) => (
     ? `${FILES[file]}${rank + 1}`
     : ""
 );
+const squaresAround = (square) => {
+  const file = squareFile(square);
+  const rank = squareRank(square);
+  return [-1, 0, 1].flatMap((fileStep) => (
+    [-1, 0, 1].map((rankStep) => (
+      fileStep || rankStep
+        ? squareAt(file + fileStep, rank + rankStep)
+        : ""
+    ))
+  )).filter(Boolean);
+};
+
+function passedPawnPath(game, square, color) {
+  if (!game || !square) return [];
+  const file = squareFile(square);
+  const rank = squareRank(square);
+  const direction = color === "w" ? 1 : -1;
+  const enemy = opposite(color);
+  const enemyPawnAhead = ALL_SQUARES.some((candidate) => {
+    const piece = game.get(candidate);
+    if (piece?.color !== enemy || piece.type !== "p") return false;
+    return (
+      Math.abs(squareFile(candidate) - file) <= 1
+      && (squareRank(candidate) - rank) * direction > 0
+    );
+  });
+  if (enemyPawnAhead) return [];
+  const path = [];
+  for (
+    let nextRank = rank + direction;
+    nextRank >= 0 && nextRank < 8;
+    nextRank += direction
+  ) {
+    path.push(squareAt(file, nextRank));
+  }
+  return path;
+}
 
 function loadGame(fen) {
   if (typeof fen !== "string" || !fen.trim()) return null;
@@ -91,9 +131,7 @@ function legalLineEvents(fen, pv, maximum = 16) {
     const checkAttackers = checkedKing
       ? game.attackers(checkedKing, move.color)
       : [];
-    const attackedTargets = [...FILES].flatMap((file) => (
-      Array.from({ length: 8 }, (_, index) => `${file}${index + 1}`)
-    ))
+    const attackedTargets = ALL_SQUARES
       .flatMap((square) => {
         const piece = game.get(square);
         if (
@@ -107,9 +145,54 @@ function legalLineEvents(fen, pv, maximum = 16) {
         }];
       })
       .sort((left, right) => right.value - left.value);
-    const controlledCenter = [...CENTER].filter((square) => (
+    const defendedTargets = ALL_SQUARES
+      .flatMap((square) => {
+        const piece = game.get(square);
+        if (
+          square === move.to
+          || piece?.color !== move.color
+          || piece.type === "k"
+          || !game.attackers(square, move.color).includes(move.to)
+        ) return [];
+        return [{
+          square,
+          piece: piece.type,
+          value: PIECE_VALUES[piece.type] || 0,
+        }];
+      })
+      .sort((left, right) => right.value - left.value);
+    const controlledSquares = ALL_SQUARES.filter((square) => (
       game.attackers(square, move.color).includes(move.to)
     ));
+    const controlledCenter = [...CENTER].filter((square) => (
+      controlledSquares.includes(square)
+    ));
+    const enemyKing = game.findPiece({
+      color: opposite(move.color),
+      type: "k",
+    })[0] || "";
+    const ownKing = game.findPiece({ color: move.color, type: "k" })[0] || "";
+    const enemyKingZone = enemyKing
+      ? [enemyKing, ...squaresAround(enemyKing)]
+      : [];
+    const controlledKingZone = enemyKingZone.filter((square) => (
+      controlledSquares.includes(square)
+    ));
+    const fileSquares = Array.from(
+      { length: 8 },
+      (_, index) => `${move.to[0]}${index + 1}`,
+    );
+    const filePawns = fileSquares
+      .map((square) => game.get(square))
+      .filter((piece) => piece?.type === "p");
+    const fileState = filePawns.length === 0
+      ? "open"
+      : filePawns.every((piece) => piece.color !== move.color)
+        ? "semi-open"
+        : "closed";
+    const passedPath = move.piece === "p"
+      ? passedPawnPath(game, move.to, move.color)
+      : [];
     events.push({
       index: events.length,
       uci,
@@ -127,7 +210,15 @@ function legalLineEvents(fen, pv, maximum = 16) {
       checkedKing,
       checkAttackers,
       attackedTargets,
+      defendedTargets,
+      controlledSquares,
       controlledCenter,
+      enemyKing,
+      ownKing,
+      controlledKingZone,
+      fileState,
+      fileSquares,
+      passedPath,
     });
   }
   return events;
@@ -169,6 +260,10 @@ function rayMotif(game, event) {
         name: "Fesselung",
         detail: `${PIECE_NAMES[first.type]} auf ${first.square} steht vor dem eigenen König und kann sich kaum lösen.`,
         targets: [first.square, second.square],
+        visualArrows: [
+          { from: event.to, to: first.square, role: "threat" },
+          { from: first.square, to: second.square, role: "danger" },
+        ],
       };
     }
     if (
@@ -181,6 +276,10 @@ function rayMotif(game, event) {
         name: "Spieß",
         detail: `Der König muss reagieren; dahinter steht ${PIECE_NAMES[second.type]} auf ${second.square}.`,
         targets: [first.square, second.square],
+        visualArrows: [
+          { from: event.to, to: first.square, role: "danger" },
+          { from: first.square, to: second.square, role: "threat" },
+        ],
       };
     }
   }
@@ -198,6 +297,11 @@ function firstMoveMotif(fen, events) {
       name: "Matt",
       detail: "Der gegnerische König hat keine legale Rettung mehr.",
       targets: [event.checkedKing].filter(Boolean),
+      visualArrows: event.checkAttackers.map((from) => ({
+        from,
+        to: event.checkedKing,
+        role: "danger",
+      })),
     };
   }
   if (event.promotion) {
@@ -205,6 +309,7 @@ function firstMoveMotif(fen, events) {
       name: "Umwandlung",
       detail: "Der Freibauer erreicht die letzte Reihe und wird zu einer neuen Figur.",
       targets: [event.to],
+      visualArrows: [],
     };
   }
   if (event.givesCheck && event.checkAttackers.length >= 2) {
@@ -212,6 +317,11 @@ function firstMoveMotif(fen, events) {
       name: "Doppelschach",
       detail: "Zwei Figuren greifen den König gleichzeitig an; nur ein Königszug kann beide Angriffe beantworten.",
       targets: [event.checkedKing].filter(Boolean),
+      visualArrows: event.checkAttackers.map((from) => ({
+        from,
+        to: event.checkedKing,
+        role: "danger",
+      })),
     };
   }
   if (
@@ -222,6 +332,11 @@ function firstMoveMotif(fen, events) {
       name: "Abzugsschach",
       detail: "Der gezogene Stein öffnet eine Linie, auf der eine andere Figur sofort Schach gibt.",
       targets: [event.checkedKing].filter(Boolean),
+      visualArrows: event.checkAttackers.map((from) => ({
+        from,
+        to: event.checkedKing,
+        role: "danger",
+      })),
     };
   }
 
@@ -235,6 +350,11 @@ function firstMoveMotif(fen, events) {
         .map((target) => `${PIECE_NAMES[target.piece]} auf ${target.square}`)
         .join(" und ")} an.`,
       targets: valuableTargets.slice(0, 2).map((target) => target.square),
+      visualArrows: valuableTargets.slice(0, 2).map((target) => ({
+        from: event.to,
+        to: target.square,
+        role: "threat",
+      })),
     };
   }
 
@@ -246,6 +366,11 @@ function firstMoveMotif(fen, events) {
       name: "Schlag mit Schach",
       detail: "Der Zug gewinnt ein Tempo, weil nach dem Schlag zuerst das Schach beantwortet werden muss.",
       targets: [event.checkedKing].filter(Boolean),
+      visualArrows: event.checkAttackers.map((from) => ({
+        from,
+        to: event.checkedKing,
+        role: "danger",
+      })),
     };
   }
   if (event.givesCheck) {
@@ -253,6 +378,11 @@ function firstMoveMotif(fen, events) {
       name: "Schach mit Tempo",
       detail: "Der König muss reagieren, bevor der Gegner seinen eigenen Plan fortsetzen kann.",
       targets: [event.checkedKing].filter(Boolean),
+      visualArrows: event.checkAttackers.map((from) => ({
+        from,
+        to: event.checkedKing,
+        role: "danger",
+      })),
     };
   }
   return null;
@@ -310,11 +440,18 @@ function strategicIdea(event) {
       explanation: "Die Rochade bringt den König aus dem Zentrum und verbindet gleichzeitig die Türme.",
     };
   }
-  if (HOME_MINOR_SQUARES.has(event.from) && ["n", "b"].includes(event.piece)) {
+  if (event.captured) {
     return {
-      kind: "development",
-      headline: "Eine Figur sinnvoll entwickeln",
-      explanation: `${event.san} bringt den ${PIECE_NAMES[event.piece]} ins Spiel und verbessert seine Wirkung auf die Stellung.`,
+      kind: "capture",
+      headline: "Die Spannung konkret auflösen",
+      explanation: `${event.san} verändert Material und Bauern- oder Figurenstruktur sofort. Die kurze Antwort zeigt, ob direkt zurückgeschlagen wird.`,
+    };
+  }
+  if (event.piece === "p" && event.passedPath.length > 0) {
+    return {
+      kind: "passed-pawn",
+      headline: "Den Freibauern voranbringen",
+      explanation: `${event.san} schiebt einen Bauern vor, dem auf seiner und den benachbarten Linien kein gegnerischer Bauer mehr entgegensteht.`,
     };
   }
   if (CENTER.has(event.to) && event.piece === "p") {
@@ -324,18 +461,66 @@ function strategicIdea(event) {
       explanation: `${event.san} besetzt ein wichtiges Zentrumsfeld und öffnet Wege für die eigenen Figuren.`,
     };
   }
-  if (event.captured) {
+  if (HOME_MINOR_SQUARES.has(event.from) && ["n", "b"].includes(event.piece)) {
     return {
-      kind: "capture",
-      headline: "Die Stellung konkret klären",
-      explanation: `${event.san} löst die Spannung sofort auf; die kurze Folge zeigt, was nach dem Gegenschlag übrig bleibt.`,
+      kind: "development",
+      headline: "Eine Figur sinnvoll entwickeln",
+      explanation: `${event.san} bringt den ${PIECE_NAMES[event.piece]} ins Spiel und verbessert seine Wirkung auf die Stellung.`,
+    };
+  }
+  if (
+    ["r", "q"].includes(event.piece)
+    && ["open", "semi-open"].includes(event.fileState)
+  ) {
+    return {
+      kind: "open-file",
+      headline: event.fileState === "open"
+        ? "Eine offene Linie besetzen"
+        : "Eine halboffene Linie nutzen",
+      explanation: `${event.san} stellt die Figur auf eine Linie, auf der kein eigener Bauer den Weg versperrt.`,
+    };
+  }
+  if (event.controlledKingZone.length >= 2) {
+    return {
+      kind: "king-pressure",
+      headline: "Den gegnerischen König einengen",
+      explanation: `${event.san} richtet die Figur auf mehrere Felder in der Nähe des gegnerischen Königs. Die Markierungen zeigen den tatsächlich kontrollierten Bereich.`,
+    };
+  }
+  if (event.attackedTargets.length > 0) {
+    const target = event.attackedTargets[0];
+    return {
+      kind: "pressure",
+      headline: "Druck auf eine Figur erzeugen",
+      explanation: `${event.san} greift ${PIECE_NAMES[target.piece]} auf ${target.square} direkt an. Der Gegner muss diesen Druck in seiner Antwort berücksichtigen.`,
+    };
+  }
+  if (event.defendedTargets.some((target) => target.value >= 3)) {
+    const target = event.defendedTargets.find((entry) => entry.value >= 3);
+    return {
+      kind: "defense",
+      headline: "Eine eigene Figur absichern",
+      explanation: `${event.san} unterstützt ${PIECE_NAMES[target.piece]} auf ${target.square} direkt und verbessert damit den Zusammenhalt der Stellung.`,
     };
   }
   if (event.piece === "p") {
+    const destinationRank = squareRank(event.to);
+    const gainsSpace = event.color === "w"
+      ? destinationRank >= 4
+      : destinationRank <= 3;
     return {
-      kind: "pawn",
-      headline: "Die Bauernstruktur verbessern",
-      explanation: `${event.san} verändert Raum und Felder dauerhaft. Entscheidend ist, welche Figuren davon profitieren.`,
+      kind: gainsSpace ? "space" : "pawn",
+      headline: gainsSpace
+        ? "Mehr Raum beanspruchen"
+        : "Die Bauernstruktur verändern",
+      explanation: `${event.san} verändert dauerhaft die Bauernstruktur und kontrolliert neue Felder. Diese Felder sind am Brett markiert.`,
+    };
+  }
+  if (event.piece === "k") {
+    return {
+      kind: "king",
+      headline: "Den König neu positionieren",
+      explanation: `${event.san} verändert die Königssicherheit und die Felder, die der König selbst kontrolliert.`,
     };
   }
   return {
@@ -345,30 +530,90 @@ function strategicIdea(event) {
   };
 }
 
-function strategicAnnotations(event, kind) {
+function strategicAnnotations(event, strategic) {
   const base = initialAnnotations(event, null);
   if (!event) return base;
+  const kind = strategic?.kind || "activity";
   const annotations = {
     arrows: [...base.arrows],
     highlights: [...base.highlights],
   };
+  const addArrow = (from, to, role = "concept", impact = 0.72) => {
+    if (!from || !to || from === to) return;
+    annotations.arrows.push({
+      move: `${from}${to}`,
+      rank: 2,
+      impact,
+      role,
+    });
+  };
+  const addHighlights = (squares, role = "concept", limit = 8) => {
+    squares.filter(Boolean).slice(0, limit).forEach((square) => {
+      annotations.highlights.push({ square, role });
+    });
+  };
 
   if (kind === "center") {
-    annotations.highlights.unshift(
-      ...[...CENTER].map((square) => ({ square, role: "concept" })),
+    addHighlights([...CENTER], "concept");
+  }
+
+  if (kind === "development" || kind === "activity") {
+    const relevant = event.controlledCenter.length > 0
+      ? event.controlledCenter
+      : event.controlledSquares.filter((square) => !event.defendedTargets.some(
+        (target) => target.square === square,
+      )).slice(0, 3);
+    relevant.slice(0, 3).forEach((square) => {
+      addArrow(event.to, square, "concept");
+    });
+    addHighlights(relevant, "concept", 3);
+  }
+
+  if (kind === "pawn" || kind === "space") {
+    const pawnInfluence = event.controlledSquares.slice(0, 2);
+    pawnInfluence.forEach((square) => addArrow(event.to, square, "concept"));
+    addHighlights(pawnInfluence, "concept", 2);
+  }
+
+  if (kind === "passed-pawn") {
+    addHighlights(event.passedPath, "concept", 7);
+    addArrow(
+      event.to,
+      event.passedPath.at(-1),
+      "concept",
+      0.86,
     );
   }
 
-  if (kind === "development" || kind === "activity" || kind === "pawn") {
-    event.controlledCenter.slice(0, 3).forEach((square) => {
-      annotations.arrows.push({
-        move: `${event.to}${square}`,
-        rank: 2,
-        impact: 0.72,
-        role: "concept",
-      });
-      annotations.highlights.unshift({ square, role: "concept" });
+  if (kind === "pressure") {
+    event.attackedTargets.slice(0, 2).forEach((target) => {
+      addArrow(event.to, target.square, "threat", 0.84);
+      addHighlights([target.square], "target");
     });
+  }
+
+  if (kind === "defense") {
+    event.defendedTargets
+      .filter((target) => target.value >= 3)
+      .slice(0, 2)
+      .forEach((target) => {
+        addArrow(event.to, target.square, "defense", 0.8);
+        addHighlights([target.square], "concept");
+      });
+  }
+
+  if (kind === "king-pressure") {
+    event.controlledKingZone.slice(0, 4).forEach((square) => {
+      addArrow(event.to, square, "threat", 0.76);
+    });
+    addHighlights(event.controlledKingZone, "danger", 5);
+    addHighlights([event.enemyKing], "danger", 1);
+  }
+
+  if (kind === "open-file") {
+    addHighlights(event.fileSquares, "concept", 8);
+    const targetRank = event.color === "w" ? "8" : "1";
+    addArrow(event.to, `${event.to[0]}${targetRank}`, "concept", 0.8);
   }
 
   if (kind === "castle") {
@@ -377,19 +622,63 @@ function strategicAnnotations(event, kind) {
     const rookMove = kingSide
       ? `h${homeRank}f${homeRank}`
       : `a${homeRank}d${homeRank}`;
-    annotations.arrows.push({
-      move: rookMove,
-      rank: 2,
-      impact: 0.78,
-      role: "defense",
+    addArrow(rookMove.slice(0, 2), rookMove.slice(2, 4), "defense", 0.78);
+    addHighlights([
+      rookMove.slice(2, 4),
+      event.ownKing,
+      ...squaresAround(event.ownKing),
+    ], "concept", 6);
+  }
+
+  if (kind === "king") {
+    addHighlights([event.ownKing, ...squaresAround(event.ownKing)], "concept", 6);
+  }
+
+  if (kind === "capture") {
+    addHighlights([event.to], "target", 1);
+  }
+
+  if (kind !== "center" && event.controlledCenter.length > 0) {
+    event.controlledCenter.slice(0, 2).forEach((square) => {
+      addArrow(event.to, square, "concept", 0.68);
     });
-    annotations.highlights.push({
-      square: rookMove.slice(2, 4),
-      role: "concept",
+    addHighlights(event.controlledCenter, "concept", 4);
+  }
+
+  if (kind !== "pressure" && event.attackedTargets.length > 0) {
+    event.attackedTargets.slice(0, 2).forEach((target) => {
+      addArrow(event.to, target.square, "threat", 0.8);
+      addHighlights([target.square], "target");
     });
   }
 
-  return annotations;
+  if (kind !== "defense") {
+    event.defendedTargets
+      .filter((target) => target.value >= 3)
+      .slice(0, 2)
+      .forEach((target) => {
+        addArrow(event.to, target.square, "defense", 0.72);
+        addHighlights([target.square], "concept");
+      });
+  }
+
+  if (kind !== "king-pressure" && event.controlledKingZone.length >= 2) {
+    addHighlights(event.controlledKingZone, "danger", 4);
+  }
+
+  return {
+    arrows: annotations.arrows.filter((arrow, index, entries) => (
+      entries.findIndex((candidate) => (
+        candidate.move === arrow.move && candidate.role === arrow.role
+      )) === index
+    )),
+    highlights: annotations.highlights.filter((highlight, index, entries) => (
+      entries.findIndex((candidate) => (
+        candidate.square === highlight.square
+        && candidate.role === highlight.role
+      )) === index
+    )),
+  };
 }
 
 function initialAnnotations(event, motif) {
@@ -400,15 +689,22 @@ function initialAnnotations(event, motif) {
     impact: 1,
     role: "primary",
   }];
-  (motif?.targets || [])
-    .filter((square) => square && square !== event.to)
-    .slice(0, 2)
-    .forEach((square) => {
+  const motifArrows = Array.isArray(motif?.visualArrows)
+    ? motif.visualArrows
+    : (motif?.targets || []).map((square) => ({
+      from: event.to,
+      to: square,
+      role: "threat",
+    }));
+  motifArrows
+    .filter(({ from, to }) => from && to && from !== to)
+    .slice(0, 4)
+    .forEach(({ from, to, role = "threat" }) => {
       arrows.push({
-        move: `${event.to}${square}`,
+        move: `${from}${to}`,
         rank: 2,
         impact: 0.82,
-        role: "threat",
+        role,
       });
     });
   const highlights = [
@@ -450,7 +746,7 @@ export function buildCoachVisualPlan({
     : strategic.explanation;
   const frameAnnotations = selected.map((event, index) => (
     !motif && index === 0
-      ? strategicAnnotations(event, strategic.kind)
+      ? strategicAnnotations(event, strategic)
       : initialAnnotations(
         event,
         motif?.eventIndex === index ? motif : null,
@@ -458,7 +754,7 @@ export function buildCoachVisualPlan({
   ));
   const persistentAnnotations = motif
     ? frameAnnotations[motif.eventIndex] || frameAnnotations.at(-1)
-    : strategicAnnotations(events[0], strategic.kind);
+    : strategicAnnotations(events[0], strategic);
 
   return {
     rank: Math.max(1, Number.parseInt(rank, 10) || 1),
