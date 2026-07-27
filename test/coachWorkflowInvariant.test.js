@@ -24,6 +24,16 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /verifiedInfo\.pvComplete/);
   assert.match(appSource, /!this\.suggestionState\.lines\.has\(1\)/);
   assert.match(styleSource, /\.suggestion-line\.is-primary \.suggestion-coach-popover\s*\{[\s\S]*?display:\s*grid/);
+  assert.match(appSource, /terminalPositionState\(fen\)/);
+  assert.match(appSource, /buildTerminalVisualPlan/);
+  assert.match(appSource, /formatPvWithMoveNumbers/);
+  assert.match(appSource, /isPrimary,/);
+});
+
+test("beendete Stellungen stoppen Enginevorschläge und erklären Matt regelbasiert", () => {
+  assert.match(appSource, /this\.suggestionState\.terminal\?\.status !== "ongoing"/);
+  assert.match(appSource, /kein Fluchtfeld/);
+  assert.match(appSource, /state\.terminal\?\.status/);
 });
 
 test("automatische Zugerklärungen bleiben im Schachcomputer und der Chat beginnt mit dem Nutzer", () => {

@@ -1732,6 +1732,39 @@ summary:focus-visible,
   margin-top: 5px;
 }
 
+.terminal-position-card {
+  display: grid;
+  gap: 4px;
+  margin: 5px -2px 0;
+  padding: 10px 11px;
+  border: 1px solid rgba(240, 184, 106, 0.38);
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(51, 39, 29, 0.82), rgba(28, 30, 43, 0.92));
+}
+
+.terminal-position-card strong {
+  color: #ffd28d;
+  font-size: 0.78rem;
+}
+
+.terminal-position-card p {
+  margin: 0;
+  color: #e4d8c6;
+  font-size: 0.72rem;
+  line-height: 1.42;
+}
+
+.terminal-position-card.is-stalemate,
+.terminal-position-card.is-draw {
+  border-color: rgba(147, 165, 200, 0.42);
+  background: linear-gradient(145deg, rgba(30, 39, 59, 0.88), rgba(17, 25, 42, 0.96));
+}
+
+.terminal-position-card.is-stalemate strong,
+.terminal-position-card.is-draw strong {
+  color: #c7d4ed;
+}
+
 .suggestions-card .lines * {
   color: #fff;
 }

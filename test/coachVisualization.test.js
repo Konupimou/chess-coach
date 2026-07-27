@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { Chess } from "chess.js";
 import {
   buildCoachVisualPlan,
+  buildTerminalVisualPlan,
   moveQualityPresentation,
 } from "../coachVisualization.js";
 
@@ -25,6 +26,14 @@ test("ruhige strategische Varianten bleiben kurz und legal", () => {
       .sort(),
     ["d4", "d5", "e4", "e5"],
   );
+});
+
+test("Matt-Visualisierung markiert König, Angreifer und Angriffspfeil", () => {
+  const plan = buildTerminalVisualPlan("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1");
+  assert.equal(plan.terminal, "checkmate");
+  assert.match(plan.headline, /Schachmatt/);
+  assert.ok(plan.persistentAnnotations.highlights.some((entry) => entry.role === "danger"));
+  assert.ok(plan.persistentAnnotations.arrows.some((entry) => entry.role === "threat"));
 });
 
 test("eine konkrete Springergabel wird benannt und am Brett markiert", () => {

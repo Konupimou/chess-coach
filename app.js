@@ -20,6 +20,7 @@ import {
   calculateMoveAccuracy,
   describeMoveAssessment,
   explainMoveQuality,
+  formatPvWithMoveNumbers,
   groundedSuggestionReason,
   legalPv,
   legalUciMove,
@@ -27,6 +28,7 @@ import {
   reviewDepthForPlies,
   summarizeGameReview,
   terminalWhiteCp,
+  terminalPositionState,
   uciToSan,
   verifiedSuggestionInfo,
   verifiedMoveReview,
@@ -91,6 +93,7 @@ import {
 } from "./coachExplanation.js";
 import {
   buildCoachVisualPlan,
+  buildTerminalVisualPlan,
   moveQualityPresentation,
 } from "./coachVisualization.js";
 
@@ -2079,19 +2082,25 @@ export class ChessApp {
       targetDepth,
       depth: 0,
       lines: new Map(),
+      terminal: terminalPositionState(fen),
     };
     this.expandedSuggestionRanks.clear();
     this.moveArrows?.clear();
     this.renderSuggestions();
-    let terminalCp = terminalWhiteCp(fen);
-    if (!Number.isFinite(terminalCp) && this.game.isDraw()) terminalCp = 0;
-    if (Number.isFinite(terminalCp)) {
+    const terminal = this.suggestionState.terminal;
+    if (terminal.status !== "ongoing" && terminal.status !== "invalid") {
+      this.lastEvalPawns = Number.isFinite(terminal.whiteCp)
+        ? terminal.whiteCp / 100
+        : null;
+      if (Number.isFinite(this.lastEvalPawns)) this.evalBar?.update?.(this.lastEvalPawns);
       this.currentNode.analysis = {
-        whiteCp: terminalCp,
+        whiteCp: terminal.whiteCp,
         depth: targetDepth,
         pv: [],
         complete: true,
+        terminal: terminal.status,
       };
+      this.currentNode.result = terminal.result;
       this.refreshLiveAccuracy();
       this.renderMoveList();
       this.renderSuggestions();
@@ -2150,6 +2159,7 @@ export class ChessApp {
     if (!info || !Array.isArray(info.pv) || info.pv.length === 0) return;
     if (!this.suggestionState || info.fen !== this.suggestionState.fen) return;
     if (!this.suggestionState.searchId || info.searchId !== this.suggestionState.searchId) return;
+    if (this.suggestionState.terminal?.status !== "ongoing") return;
     const verifiedInfo = verifiedSuggestionInfo(info, 20);
     if (!verifiedInfo) return;
     const index = info.multipv || 1;
@@ -2203,6 +2213,7 @@ export class ChessApp {
       && this.suggestionState
       && result.fen === this.suggestionState.fen
       && result.searchId === this.suggestionState.searchId
+      && this.suggestionState.terminal?.status === "ongoing"
     ) {
       const ponderFrames = legalPv(result.fen, [verifiedBestMove.uci, result.ponder], 2);
       this.suggestionState.bestMoveUci = verifiedBestMove.uci;
@@ -2808,15 +2819,13 @@ export class ChessApp {
     plan,
     explanation = "",
     variantLabel = "Beispielvariante",
+    isPrimary = false,
   } = {}) {
     if (!plan?.san?.length) return null;
     const popover = document.createElement("aside");
     popover.className = "suggestion-coach-popover";
     popover.setAttribute("role", "tooltip");
 
-    const eyebrow = document.createElement("span");
-    eyebrow.className = "suggestion-coach-popover-eyebrow";
-    eyebrow.textContent = plan.tactical ? "Taktik erkannt" : "Coach-Idee";
     const headline = document.createElement("strong");
     headline.className = "suggestion-coach-popover-title";
     headline.textContent = plan.headline;
@@ -2828,13 +2837,18 @@ export class ChessApp {
     const label = document.createElement("span");
     label.textContent = variantLabel;
     const moves = document.createElement("strong");
-    moves.textContent = plan.san.join(" ");
+    moves.textContent = formatPvWithMoveNumbers(
+      plan.fen || this.analysisFen,
+      plan.uci,
+      plan.uci?.length || 1,
+    ) || plan.san.join(" ");
     variation.append(label, moves);
 
     const hint = document.createElement("span");
     hint.className = "suggestion-coach-popover-hint";
     hint.textContent = "Klicken oder tippen zum Fixieren · erneut zum Lösen";
-    popover.append(eyebrow, headline, copy, variation, hint);
+    popover.append(headline, copy);
+    if (!isPrimary) popover.append(variation, hint);
     return popover;
   }
 
@@ -2991,6 +3005,26 @@ export class ChessApp {
         : "Rückblick auf deinen letzten Zug";
     }
 
+    const terminal = this.suggestionState?.terminal
+      || terminalPositionState(this.analysisFen || this.game.fen());
+    if (terminal.status !== "ongoing" && terminal.status !== "invalid") {
+      body.style.color = '#fff';
+      body.replaceChildren();
+      const plan = buildTerminalVisualPlan(terminal.fen || this.analysisFen || this.game.fen());
+      const terminalCard = document.createElement("div");
+      terminalCard.className = `terminal-position-card is-${terminal.status}`;
+      const title = document.createElement("strong");
+      title.textContent = plan?.headline || terminal.reason || "Partie beendet";
+      const copy = document.createElement("p");
+      copy.textContent = plan?.explanation || terminal.reason || "Es gibt keinen normalen Folgezug mehr.";
+      terminalCard.append(title, copy);
+      body.appendChild(terminalCard);
+      if (plan?.persistentAnnotations) {
+        this.moveArrows?.setAnnotations(plan.persistentAnnotations);
+      }
+      return;
+    }
+
     if (!ownTurn) {
       const path = this.getCurrentPath();
       const latest = this.latestComputerExplanation;
@@ -3100,7 +3134,9 @@ export class ChessApp {
       moves.className = 'moves';
       const sanMoves = plan?.san || this.pvToSanList(data.pv, data.fen).slice(0, 2);
       const collapsedMoves = sanMoves.length > 0 ? sanMoves[0] : '(kein legaler Zug)';
-      const completeMoves = sanMoves.length > 0 ? sanMoves.join(" ") : collapsedMoves;
+      const completeMoves = sanMoves.length > 0
+        ? (formatPvWithMoveNumbers(data.fen, data.pv, sanMoves.length) || sanMoves.join(" "))
+        : collapsedMoves;
       moves.textContent = isExpanded ? completeMoves : collapsedMoves;
 
       const reason = this.suggestionCoachReasons.get(idx);
@@ -3118,6 +3154,7 @@ export class ChessApp {
         plan,
         explanation: reason || plan?.explanation,
         variantLabel: plan?.tactical ? "Die Pointe" : "Kurze Hauptidee",
+        isPrimary,
       });
       if (popover) {
         popover.id = `suggestion-coach-${idx}`;
@@ -7097,6 +7134,17 @@ export class ChessApp {
       && requestFen === this.game.fen()
       && requestPathSignature === movePathSignature(this.getCurrentPath())
     );
+    const terminal = this.suggestionState?.fen === requestFen
+      ? this.suggestionState.terminal
+      : terminalPositionState(requestFen);
+    if (terminal?.status && !["ongoing", "invalid"].includes(terminal.status)) {
+      const reply = terminal.status === "checkmate"
+        ? `${terminal.reason} Der König steht im Schach, und kein legaler Zug kann ihn retten: kein Fluchtfeld, kein legaler Schlag gegen den Angreifer und kein Blockieren der Angriffslinie ist möglich.`
+        : terminal.reason;
+      this.appendChatMessage('assistant', reply);
+      this.setChatBusy(false);
+      return;
+    }
     const payload = {
       message: text,
       engineContext: this.buildAnalysisCoachEngineContext(),
@@ -7183,6 +7231,16 @@ export class ChessApp {
   buildPositionCoachEngineContext() {
     const state = this.suggestionState;
     if (!state?.lines) return null;
+    if (state.terminal?.status && !["ongoing", "invalid"].includes(state.terminal.status)) {
+      return {
+        source: "chess.js",
+        kind: "terminal",
+        fen: state.fen,
+        terminal: state.terminal,
+        lines: [],
+        primaryVariation: { uci: [], san: [] },
+      };
+    }
     const lines = Array.from(state.lines.entries())
       .sort(([left], [right]) => left - right)
       .map(([rank, data]) => {
@@ -7497,9 +7555,10 @@ export class ChessApp {
     if (["1-0", "0-1", "1/2-1/2"].includes(this.declaredGameResult)) {
       return this.declaredGameResult;
     }
-    if (this.game.isCheckmate()) return this.game.turn() === "w" ? "0-1" : "1-0";
-    if (this.game.isDraw()) return "1/2-1/2";
-    return "*";
+    const terminal = terminalPositionState(this.game.fen());
+    return terminal.status === "ongoing" || terminal.status === "invalid"
+      ? "*"
+      : terminal.result;
   }
 
   updateGameStatus() {

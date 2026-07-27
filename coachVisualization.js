@@ -758,6 +758,7 @@ export function buildCoachVisualPlan({
 
   return {
     rank: Math.max(1, Number.parseInt(rank, 10) || 1),
+    fen,
     headline,
     explanation,
     motif: motif?.name || "",
@@ -777,6 +778,62 @@ export function buildCoachVisualPlan({
     annotations: frameAnnotations[0],
     frameAnnotations,
     persistentAnnotations,
+  };
+}
+
+export function buildTerminalVisualPlan(fen) {
+  const game = loadGame(fen);
+  if (!game || !game.isGameOver()) return null;
+  const side = game.turn();
+  const king = game.findPiece({ color: side, type: "k" })[0] || "";
+  const attackers = king
+    ? game.attackers(king, opposite(side))
+    : [];
+  const adjacent = king ? squaresAround(king) : [];
+  const highlights = [
+    ...(king ? [{ square: king, role: game.isCheckmate() ? "danger" : "target" }] : []),
+    ...attackers.map((square) => ({ square, role: "target" })),
+    ...adjacent
+      .filter((square) => square !== king)
+      .filter((square) => game.attackers(square, opposite(side)).length > 0)
+      .slice(0, 8)
+      .map((square) => ({ square, role: "danger" })),
+  ];
+  const arrows = attackers.map((from) => ({
+    from,
+    to: king,
+    role: "threat",
+    rank: 1,
+  }));
+  const status = game.isCheckmate()
+    ? "checkmate"
+    : game.isStalemate()
+      ? "stalemate"
+      : "draw";
+  const sideName = side === "w" ? "Weiß" : "Schwarz";
+  const headline = status === "checkmate"
+    ? `Schachmatt: ${sideName} hat keinen legalen Ausweg`
+    : status === "stalemate"
+      ? `Patt: ${sideName} hat keinen legalen Zug`
+      : "Remisstellung";
+  const explanation = status === "checkmate"
+    ? `${sideName} steht im Schach. Die markierten Angreifer kontrollieren den König, und es bleibt kein legaler Flucht-, Schlag- oder Blockierzug.`
+    : status === "stalemate"
+      ? `${sideName} steht nicht im Schach, hat aber keinen legalen Zug mehr. Deshalb endet die Partie sofort remis.`
+      : "Die Stellung erfüllt eine Remisregel; es gibt keinen normalen Folgezug mehr.";
+  return {
+    rank: 1,
+    terminal: status,
+    headline,
+    explanation,
+    tactical: status === "checkmate",
+    ideaKind: status,
+    plyCount: 0,
+    uci: [],
+    san: [],
+    frames: [],
+    annotations: { arrows, highlights },
+    persistentAnnotations: { arrows, highlights },
   };
 }
 

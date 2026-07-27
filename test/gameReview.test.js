@@ -10,6 +10,7 @@ import {
   calculateMoveAccuracy,
   describeMoveAssessment,
   explainMoveQuality,
+  formatPvWithMoveNumbers,
   groundedSuggestionReason,
   legalPv,
   legalUciMove,
@@ -18,6 +19,7 @@ import {
   scoreToWhiteCp,
   summarizeGameReview,
   terminalWhiteCp,
+  terminalPositionState,
   verifiedMoveReview,
   verifiedSuggestionInfo,
 } from "../gameReview.js";
@@ -203,6 +205,34 @@ test("Matt, Score-Normalisierung und adaptive Tiefe sind begrenzt", () => {
   assert.equal(terminalWhiteCp("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"), 10_000);
   assert.equal(reviewDepthForPlies(20, 18), 14);
   assert.equal(reviewDepthForPlies(120, 15), 10);
+});
+
+test("terminaler Zustand unterscheidet Matt, Patt und laufende Partie", () => {
+  const mate = terminalPositionState("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1");
+  assert.equal(mate.status, "checkmate");
+  assert.equal(mate.result, "1-0");
+  assert.equal(mate.whiteCp, 10_000);
+  assert.match(mate.reason, /matt/i);
+
+  const stalemate = terminalPositionState("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1");
+  assert.equal(stalemate.status, "stalemate");
+  assert.equal(stalemate.result, "1/2-1/2");
+
+  assert.equal(terminalPositionState(START_FEN).status, "ongoing");
+});
+
+test("mehrzügige Varianten erhalten korrekte Zugnummern für Weiß und Schwarz", () => {
+  assert.equal(
+    formatPvWithMoveNumbers(START_FEN, ["e2e4", "e7e5", "g1f3", "b8c6"]),
+    "1. e4 1... e5 2. Nf3 2... Nc6",
+  );
+  assert.equal(
+    formatPvWithMoveNumbers(
+      "8/8/8/8/8/8/8/K6k b - - 0 6",
+      ["h1g1", "a1b1"],
+    ),
+    "6... Kg1 7. Kb1",
+  );
 });
 
 test("jede Zugqualität erhält eine kurze Begründung", () => {

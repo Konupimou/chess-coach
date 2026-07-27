@@ -147,16 +147,103 @@ export function scoreToWhiteCp(score) {
 }
 
 export function terminalWhiteCp(fen) {
-  if (typeof fen !== "string") return null;
+  const terminal = terminalPositionState(fen);
+  if (terminal.status === "checkmate") return terminal.whiteCp;
+  if (terminal.status === "draw" || terminal.status === "stalemate") return 0;
+  return null;
+}
+
+export function terminalPositionState(fen) {
+  if (typeof fen !== "string") return { status: "invalid", fen: "", whiteCp: null };
   const game = new Chess();
   try {
     game.load(fen);
   } catch {
-    return null;
+    return { status: "invalid", fen, whiteCp: null };
   }
-  if (game.isCheckmate()) return game.turn() === "w" ? -MATE_CENTIPAWNS : MATE_CENTIPAWNS;
-  if (game.isDraw()) return 0;
-  return null;
+  const sideToMove = game.turn();
+  const sideName = sideToMove === "w" ? "Weiß" : "Schwarz";
+  if (game.isCheckmate()) {
+    const winner = sideToMove === "w" ? "Schwarz" : "Weiß";
+    return {
+      status: "checkmate",
+      fen,
+      result: sideToMove === "w" ? "0-1" : "1-0",
+      whiteCp: sideToMove === "w" ? -MATE_CENTIPAWNS : MATE_CENTIPAWNS,
+      sideToMove,
+      sideName,
+      winner,
+      loser: sideName,
+      inCheck: true,
+      reason: `${sideName} steht matt. ${winner} gewinnt.`,
+    };
+  }
+  if (game.isStalemate()) {
+    return {
+      status: "stalemate",
+      fen,
+      result: "1/2-1/2",
+      whiteCp: 0,
+      sideToMove,
+      sideName,
+      inCheck: false,
+      reason: `${sideName} ist patt: kein legaler Zug, aber kein Schach.`,
+    };
+  }
+  if (game.isDraw()) {
+    let reason = "Remis nach den Schachregeln.";
+    if (game.isThreefoldRepetition()) reason = "Remis durch dreifache Stellungswiederholung.";
+    else if (game.isInsufficientMaterial()) reason = "Remis wegen unzureichenden Materials.";
+    else if (game.isDrawByFiftyMoves?.()) reason = "Remis nach der 50-Züge-Regel.";
+    return {
+      status: "draw",
+      fen,
+      result: "1/2-1/2",
+      whiteCp: 0,
+      sideToMove,
+      sideName,
+      inCheck: game.isCheck(),
+      reason,
+    };
+  }
+  return {
+    status: "ongoing",
+    fen,
+    result: "*",
+    whiteCp: null,
+    sideToMove,
+    sideName,
+    inCheck: game.isCheck(),
+  };
+}
+
+export function formatPvWithMoveNumbers(fen, pv, limit = 20) {
+  if (typeof fen !== "string" || !Array.isArray(pv) || pv.length === 0) return "";
+  const game = new Chess();
+  try {
+    game.load(fen);
+  } catch {
+    return "";
+  }
+  const tokens = [];
+  for (const raw of pv.slice(0, Math.max(1, limit))) {
+    if (typeof raw !== "string" || !/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(raw)) break;
+    const moveNumber = game.moveNumber();
+    const color = game.turn();
+    let move;
+    try {
+      move = game.move({
+        from: raw.slice(0, 2),
+        to: raw.slice(2, 4),
+        promotion: raw.length > 4 ? raw.slice(4).toLowerCase() : undefined,
+      });
+    } catch {
+      break;
+    }
+    if (!move) break;
+    tokens.push(`${moveNumber}${color === "w" ? "." : "..."} ${move.san}`);
+  }
+  return tokens.join(" ");
 }
 
 export function winPercentFromCp(cp) {
