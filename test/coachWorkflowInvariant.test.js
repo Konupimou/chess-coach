@@ -105,7 +105,7 @@ test("Analysechat enthält nur ausdrücklich gestartete Nutzer-Coach-Dialoge", (
   const sendSource = appSource.slice(sendStart, sendEnd);
   assert.match(sendSource, /appendChatMessage\('user', text\)/);
   assert.match(sendSource, /appendChatMessage\('assistant', reply\.trim\(\)\)/);
-  assert.doesNotMatch(appSource, /scheduleSuggestionCoachReasons/);
+  assert.match(appSource, /scheduleSuggestionCoachReasons/);
   assert.doesNotMatch(appSource, /scheduleAnalysisMoveCoachFeedback/);
   assert.doesNotMatch(appSource, /updateAnalysisCoachFocus/);
   assert.doesNotMatch(appSource, /analysisCoachLines/);

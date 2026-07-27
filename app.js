@@ -593,25 +593,7 @@ export class ChessApp {
       '</div>',
       '<div class="lines muted">Warten auf Analyse…</div>',
     ].join('');
-    const suggestionsHeading = this.suggestionsEl.querySelector('.suggestions-heading');
-    const perspective = document.createElement("div");
-    perspective.className = "analysis-perspective";
-    perspective.setAttribute("role", "group");
-    perspective.setAttribute("aria-label", "Deine Farbe und Brettansicht");
-    const perspectiveLabel = document.createElement("span");
-    perspectiveLabel.textContent = "Deine Sicht";
-    perspective.appendChild(perspectiveLabel);
     this.analysisPerspectiveButtons = {};
-    [["w", "Weiß"], ["b", "Schwarz"]].forEach(([color, label]) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "analysis-perspective-button";
-      button.textContent = label;
-      button.addEventListener("click", () => this.setAnalysisPerspective(color));
-      this.analysisPerspectiveButtons[color] = button;
-      perspective.appendChild(button);
-    });
-    suggestionsHeading?.appendChild(perspective);
     analysisColumn.appendChild(this.suggestionsEl);
 
     const chatWrapper = document.createElement('div');
@@ -5602,9 +5584,19 @@ export class ChessApp {
     this.accountState = nextState;
     this.updateAccountButton();
     this.refreshCoachContextAfterProfileChange();
-    this.showToast(
-      `${selectedGames.length} ${selectedGames.length === 1 ? "Partie" : "Partien"} importiert. Die Analyse kann jetzt gestartet werden.`,
-    );
+    if (records.length === 1) {
+      if (this.openSavedGame(records[0])) {
+        this.lichessReturnToAccount = false;
+        this.showToast("Partie importiert. Die Analyse startet jetzt.");
+        this.lichessImportDialog.close();
+        requestAnimationFrame(() => this.startFullGameReview());
+      } else {
+        this.showToast("Partie importiert. Du findest sie jetzt in deinem Profil.");
+        this.lichessImportDialog.close();
+      }
+      return;
+    }
+    this.showToast(`${selectedGames.length} Partien importiert.`);
     this.lichessImportDialog.close();
   }
 

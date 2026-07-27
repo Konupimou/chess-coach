@@ -94,7 +94,8 @@ test("Prompt trennt vertrauenswürdige Anweisungen von Stellungsdaten", () => {
   assert.match(prompt, /<stockfish_analysis>/);
   assert.match(prompt, /<opening_context>/);
   assert.match(prompt, /<chess_knowledge>/);
-  assert.match(prompt, /"concepts":\[\]/);
+  assert.match(prompt, /"concepts":\[\{/);
+  assert.match(prompt, /"basis":"position-evidence"/);
   assert.match(prompt, /"eco":"B90"/);
   assert.match(prompt, /"bestMove":\{"uci":"g1f3","san":"Nf3"\}/);
   assert.match(prompt, /<user_question>\nWarum ist Nf3 gut\?/);

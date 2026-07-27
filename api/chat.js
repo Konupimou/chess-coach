@@ -13,6 +13,9 @@ import {
 } from "../openingKnowledge.js";
 import { buildPositionEvidence } from "../positionEvidence.js";
 import { buildCoachKnowledgeContext } from "../knowledgeClaims.js";
+import {
+  buildCoachKnowledgeContext as buildOntologyContext,
+} from "../chessKnowledge/context.js";
 import { learnerProfileForCoach } from "../learnerProfile.js";
 import {
   MOVE_EXPLANATION_JSON_SCHEMA,
@@ -293,7 +296,10 @@ export function addOpeningNameToReply(reply, payload) {
   return `${intro}\n\n${reply.trim()}`;
 }
 
-export function normalizeChatPayload(body = {}) {
+export function normalizeChatPayload(input = {}) {
+  const body = input && typeof input === "object" && !Array.isArray(input)
+    ? input
+    : {};
   const message = asTrimmedString(body.message, MAX_MESSAGE_LENGTH);
   if (!message) {
     return { error: "Bitte gib eine Frage ein." };
@@ -316,6 +322,27 @@ export function normalizeChatPayload(body = {}) {
   };
 }
 
+function serializePromptData(value) {
+  return (JSON.stringify(value ?? null) || "null").replace(
+    /[<>&\u2028\u2029]/g,
+    (character) => ({
+      "<": "\\u003c",
+      ">": "\\u003e",
+      "&": "\\u0026",
+      "\u2028": "\\u2028",
+      "\u2029": "\\u2029",
+    })[character],
+  );
+}
+
+function escapePromptText(value) {
+  return String(value ?? "").replace(/[&<>]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+  })[character]);
+}
+
 export function buildPrompt({
   message,
   engineContext,
@@ -326,7 +353,7 @@ export function buildPrompt({
   gameReview,
 }) {
   const sections = [];
-  const knowledgeContext = buildCoachKnowledgeContext({ message, engineContext });
+  const knowledgeContext = buildOntologyContext({ message, engineContext });
 
   sections.push(
     `<stockfish_analysis>\n${serializePromptData(engineContext)}\n</stockfish_analysis>`,
@@ -336,6 +363,9 @@ export function buildPrompt({
   );
   sections.push(
     `<learner_profile>\n${JSON.stringify(learnerProfileForCoach(learnerProfile))}\n</learner_profile>`,
+  );
+  sections.push(
+    `<chess_knowledge>\n${serializePromptData(knowledgeContext)}\n</chess_knowledge>`,
   );
   const grounded = buildMoveExplanationContext({
     engineContext,
