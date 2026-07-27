@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   MOVE_ARROW_STYLES,
   arrowGeometry,
+  arrowPathGeometry,
   normalizeArrowMoves,
   parseUciMove,
   selectImpactArrowMoves,
@@ -68,6 +69,32 @@ test("Pfeile enden vor der Mitte des Zielfelds", () => {
     y1: 19.9,
     x2: 43.75,
     y2: 42.1,
+  });
+});
+
+test("Pfeilkopf und Schaft bilden eine geschlossene gemeinsame Geometrie", () => {
+  const geometry = arrowPathGeometry("e2e4", "white", 1.72);
+  assert.ok(geometry);
+  assert.match(geometry.path, /^M .+ Z$/);
+  assert.equal(geometry.points.length, 7);
+  geometry.points.forEach(({ x, y }) => {
+    assert.ok(Number.isFinite(x));
+    assert.ok(Number.isFinite(y));
+  });
+  assert.deepEqual(geometry.points[1], geometry.shaftJoin.left);
+  assert.deepEqual(geometry.points[5], geometry.shaftJoin.right);
+  assert.deepEqual(geometry.points[3], geometry.tip);
+});
+
+test("neue Pfeilgeometrie bleibt für Diagonalen, Springerzüge und gedrehtes Brett stabil", () => {
+  [
+    arrowPathGeometry("a1h8", "white", 1.2),
+    arrowPathGeometry("g1f3", "white", 1.72),
+    arrowPathGeometry("g1f3", "black", 1.72),
+  ].forEach((geometry) => {
+    assert.ok(geometry);
+    assert.ok(geometry.headLength > 0);
+    assert.ok(geometry.path.endsWith(" Z"));
   });
 });
 

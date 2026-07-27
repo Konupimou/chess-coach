@@ -56,6 +56,7 @@ import {
   openingCoachContext,
 } from "./openingRecognition.js";
 import { buildPlayerProfile } from "./playerProfile.js";
+import { technicalSuggestionReason } from "./suggestionReason.js";
 
 import {
   describeLiveMove,
@@ -455,7 +456,7 @@ export class ChessApp {
     chatWrapper.className = 'chat-wrapper';
     this.chatWrapper = chatWrapper;
     this.createChatPanel(chatWrapper);
-    analysisColumn.insertBefore(chatWrapper, this.suggestionsEl);
+    analysisColumn.appendChild(chatWrapper);
 
 
     const controls = document.createElement('dialog');
@@ -2373,6 +2374,7 @@ export class ChessApp {
 
     body.style.color = '#fff';
     body.innerHTML = '';
+    const bestData = lines[0]?.[1] || null;
     lines.forEach(([idx, data]) => {
       const row = document.createElement('div');
       row.className = 'suggestion-line';
@@ -2415,9 +2417,19 @@ export class ChessApp {
       const sanMoves = this.pvToSanList(data.pv, data.fen);
       moves.textContent = sanMoves.length > 0 ? sanMoves.join(' ') : '(keine Züge)';
 
+      const reason = document.createElement('p');
+      reason.className = 'suggestion-reason';
+      reason.textContent = technicalSuggestionReason({
+        rank: idx,
+        sanMoves,
+        score: data.whiteScore || data.score,
+        bestScore: bestData?.whiteScore || bestData?.score,
+        sideToMove: String(data.fen || this.game.fen()).split(' ')[1] === 'b' ? 'b' : 'w',
+      });
+
       row.setAttribute(
         'aria-label',
-        `Zugidee ${idx} am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
+        `Zugidee ${idx}: ${sanMoves.join(' ') || 'keine legalen Züge'}. ${reason.textContent}`,
       );
       row.title = 'Berühren oder mit der Tastatur fokussieren, um die Zugidee am Brett anzusehen.';
       row.addEventListener('pointerenter', () => this.startSuggestionPreview(data, row));
@@ -2427,6 +2439,7 @@ export class ChessApp {
 
       row.appendChild(header);
       row.appendChild(moves);
+      row.appendChild(reason);
       body.appendChild(row);
     });
   }
@@ -5402,6 +5415,7 @@ export class ChessApp {
     const panel = document.createElement('details');
     panel.id = 'coach-chat';
     panel.className = 'card chat-card coach-card';
+    panel.open = true;
     panel.setAttribute("aria-labelledby", "coach-chat-title");
 
     const header = document.createElement("summary");
@@ -5849,6 +5863,10 @@ export class ChessApp {
       this.board?.resize?.();
       this.evalBar?.resizeToBoard?.();
       this.moveArrows?.resize?.();
+      const analysisHeight = this.boardStack?.offsetHeight || this.boardEl?.offsetHeight;
+      if (analysisHeight) {
+        this.boardContainer?.style.setProperty("--analysis-height", `${analysisHeight}px`);
+      }
       this.updateBoardKeyboardHighlights();
     });
   }

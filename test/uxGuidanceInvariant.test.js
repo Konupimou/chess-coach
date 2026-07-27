@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 const pageSource = readFileSync(new URL("../app/page.js", import.meta.url), "utf8");
 const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const styleSource = readFileSync(new URL("../style.css", import.meta.url), "utf8");
+const evalBarSource = readFileSync(new URL("../evalBar.js", import.meta.url), "utf8");
 
 test("Einstieg bleibt auf den direkten Wechsel zwischen Spielen und Analyse reduziert", () => {
   assert.doesNotMatch(pageSource, /id="start-guide"/);
@@ -15,14 +16,31 @@ test("Einstieg bleibt auf den direkten Wechsel zwischen Spielen und Analyse redu
   assert.match(appSource, /setAppMode\("analysis"\)/);
 });
 
-test("Analyse zeigt eine technische Zugansicht und einen zunächst geschlossenen Coach", () => {
+test("Schachcomputer steht über dem standardmäßig geöffneten Coach", () => {
   assert.match(appSource, /document\.createElement\('details'\)/);
-  assert.doesNotMatch(appSource, /panel\.open = true/);
+  assert.match(appSource, /panel\.open = true/);
+  assert.ok(
+    appSource.indexOf("analysisColumn.appendChild(this.suggestionsEl)")
+      < appSource.indexOf("analysisColumn.appendChild(chatWrapper)"),
+  );
   assert.match(appSource, /Fragen zum Brett/);
   assert.match(appSource, /analysis-perspective-button/);
   assert.doesNotMatch(appSource, /analysis-coach-focus/);
-  assert.doesNotMatch(appSource, /suggestion-coach-reason/);
+  assert.match(appSource, /suggestion-reason/);
   assert.match(appSource, /Partie vollständig analysieren/);
+});
+
+test("Coach nutzt den Platz neben dem Brett und scrollt Nachrichten intern", () => {
+  assert.match(appSource, /--analysis-height/);
+  assert.match(styleSource, /#coach-chat\[open\][\s\S]*flex-direction: column/);
+  assert.match(styleSource, /#coach-chat \.chat-body[\s\S]*overflow-y: auto/);
+  assert.match(styleSource, /#coach-chat \.chat-body[\s\S]*min-height: 0/);
+});
+
+test("Bewertungsbalken trennt klares Schwarz von hellem Weiß", () => {
+  assert.match(evalBarSource, /this\.bar\.style\.background = '#05070b'/);
+  assert.match(evalBarSource, /this\.overlay\.style\.background = '#f5f7fa'/);
+  assert.doesNotMatch(evalBarSource, /linear-gradient\(#fff,#000\)/);
 });
 
 test("Eröffnungsdaten bleiben für Speicherung und Coach erhalten, aber ohne eigene Karte", () => {

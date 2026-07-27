@@ -350,13 +350,8 @@ summary:focus-visible,
 }
 
 .move-arrows *,
-.move-arrow-line,
-.move-arrow-outline {
+.move-arrow-shape {
   pointer-events: none;
-}
-
-.move-arrow-outline {
-  stroke: rgba(8, 12, 22, 0.58);
 }
 
 #board .analysis-key-piece {
@@ -425,6 +420,14 @@ summary:focus-visible,
   width: 100%;
   align-items: stretch;
   min-width: 0;
+}
+
+@media (min-width: 1101px) {
+  .analysis-column {
+    height: var(--analysis-height, 620px);
+    min-height: 0;
+    overflow: hidden;
+  }
 }
 
 .board-toolbar {
@@ -1296,6 +1299,12 @@ summary:focus-visible,
 }
 
 
+.chat-wrapper {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
 .coach-card {
   position: relative;
   overflow: hidden;
@@ -1329,6 +1338,14 @@ summary:focus-visible,
   color: var(--text-secondary);
   font-size: 1.1rem;
   transition: transform 160ms ease;
+}
+
+#coach-chat[open] {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
 }
 
 #coach-chat[open] .coach-chat-summary {
@@ -1403,7 +1420,9 @@ summary:focus-visible,
 
 #coach-chat .chat-body {
   display: grid;
-  max-height: 280px;
+  min-height: 0;
+  flex: 1 1 auto;
+  align-content: start;
   gap: 8px;
   overflow-y: auto;
   padding: 2px 3px 2px 0;
@@ -1500,8 +1519,23 @@ summary:focus-visible,
 }
 
 .suggestions-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
   background: rgba(17, 25, 43, 0.78);
   box-shadow: none;
+}
+
+@media (min-width: 1101px) {
+  .suggestions-card {
+    max-height: 52%;
+    flex: 0 1 auto;
+  }
+
+  .suggestions-card .lines {
+    min-height: 0;
+    overflow-y: auto;
+  }
 }
 
 .suggestions-heading {
@@ -1554,6 +1588,13 @@ summary:focus-visible,
 .suggestion-line span,
 .suggestion-line .moves {
   color: #fff;
+}
+
+.suggestions-card .suggestion-reason {
+  margin: 4px 0 0;
+  color: #a9c9ff !important;
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 #coach-chat textarea {
@@ -3023,16 +3064,16 @@ summary:focus-visible,
   }
 
   .analysis-column {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-direction: column;
   }
 
   #board-container.is-play-mode .analysis-column {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .chat-wrapper {
-    grid-row: span 2;
+    max-height: 520px;
   }
 }
 

@@ -1,6 +1,5 @@
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const FILES = "abcdefgh";
-let overlaySequence = 0;
 
 export const MOVE_ARROW_STYLES = Object.freeze([
   { color: "#6aa9ef", opacity: 0.92, width: 1.72 },
@@ -115,6 +114,51 @@ export function arrowGeometry(value, orientation = "white", endInset = 1.65, sta
   };
 }
 
+const rounded = (value) => Number(value.toFixed(3));
+
+export function arrowPathGeometry(value, orientation = "white", width = 1.5) {
+  const line = arrowGeometry(value, orientation);
+  if (!line || !Number.isFinite(width) || width <= 0) return null;
+  const deltaX = line.x2 - line.x1;
+  const deltaY = line.y2 - line.y1;
+  const distance = Math.hypot(deltaX, deltaY);
+  if (!distance) return null;
+
+  const unit = { x: deltaX / distance, y: deltaY / distance };
+  const normal = { x: -unit.y, y: unit.x };
+  const shaftHalf = width / 2;
+  const headLength = clamp(width * 3.4, 4.6, Math.min(7.4, distance * 0.42));
+  const headHalf = clamp(width * 1.72, 2.4, 4.4);
+  const join = {
+    x: line.x2 - unit.x * headLength,
+    y: line.y2 - unit.y * headLength,
+  };
+  const point = (base, offset) => ({
+    x: rounded(base.x + normal.x * offset),
+    y: rounded(base.y + normal.y * offset),
+  });
+  const start = { x: line.x1, y: line.y1 };
+  const tip = { x: rounded(line.x2), y: rounded(line.y2) };
+  const shaftJoin = {
+    left: point(join, shaftHalf),
+    right: point(join, -shaftHalf),
+  };
+  const points = [
+    point(start, shaftHalf),
+    shaftJoin.left,
+    point(join, headHalf),
+    tip,
+    point(join, -headHalf),
+    shaftJoin.right,
+    point(start, -shaftHalf),
+  ];
+  const path = points
+    .map(({ x, y }, index) => `${index === 0 ? "M" : "L"} ${x} ${y}`)
+    .join(" ") + " Z";
+
+  return { path, points, tip, shaftJoin, headLength: rounded(headLength) };
+}
+
 export function normalizeArrowMoves(entries, limit = 5) {
   if (!Array.isArray(entries) || limit <= 0) return [];
   const normalized = new Map();
@@ -157,13 +201,12 @@ export class MoveArrowOverlay {
     this.visible = true;
     this.destroyed = false;
     this.resizeFrame = null;
-    this.markerPrefix = `move-arrow-${++overlaySequence}`;
 
     const documentRef = hostEl.ownerDocument || document;
     this.svg = documentRef.createElementNS(SVG_NAMESPACE, "svg");
     this.svg.classList.add("move-arrows");
     this.svg.setAttribute("viewBox", "0 0 100 100");
-    this.svg.setAttribute("preserveAspectRatio", "none");
+    this.svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     this.svg.setAttribute("aria-hidden", "true");
     this.svg.setAttribute("focusable", "false");
     hostEl.appendChild(this.svg);
@@ -237,61 +280,27 @@ export class MoveArrowOverlay {
     if (this.svg.hidden) return;
 
     const documentRef = this.hostEl.ownerDocument || document;
-    const definitions = documentRef.createElementNS(SVG_NAMESPACE, "defs");
-    MOVE_ARROW_STYLES.forEach((style, index) => {
-      const marker = documentRef.createElementNS(SVG_NAMESPACE, "marker");
-      marker.id = `${this.markerPrefix}-${index}`;
-      marker.setAttribute("viewBox", "0 0 10 10");
-      marker.setAttribute("refX", "8.6");
-      marker.setAttribute("refY", "5");
-      marker.setAttribute("markerUnits", "userSpaceOnUse");
-      marker.setAttribute("markerWidth", String(4.5 + style.width * 0.35));
-      marker.setAttribute("markerHeight", String(4.5 + style.width * 0.35));
-      marker.setAttribute("orient", "auto-start-reverse");
-      const tip = documentRef.createElementNS(SVG_NAMESPACE, "path");
-      tip.setAttribute("d", "M 0.8 1.1 L 9.2 5 L 0.8 8.9 L 3 5 z");
-      tip.setAttribute("fill", style.color);
-      marker.appendChild(tip);
-      definitions.appendChild(marker);
-    });
-    this.svg.appendChild(definitions);
-
     [...this.moves].reverse().forEach((move) => {
-      const geometry = arrowGeometry(move, this.orientation);
-      if (!geometry) return;
       const styleIndex = Math.max(0, Math.min(move.rank - 1, MOVE_ARROW_STYLES.length - 1));
       const style = MOVE_ARROW_STYLES[styleIndex];
       const impact = Number.isFinite(move.impact) ? move.impact : 1;
       const width = Math.max(0.86, style.width * (0.76 + impact * 0.24));
       const opacity = Math.max(0.48, style.opacity * (0.8 + impact * 0.2));
+      const geometry = arrowPathGeometry(move, this.orientation, width);
+      if (!geometry) return;
 
-      const outline = documentRef.createElementNS(SVG_NAMESPACE, "line");
-      this.applyLineGeometry(outline, geometry);
-      outline.classList.add("move-arrow-outline");
-      outline.setAttribute("stroke-width", String(width + 0.48));
-      outline.setAttribute("opacity", String(Math.min(0.42, opacity)));
-      this.svg.appendChild(outline);
-
-      const arrow = documentRef.createElementNS(SVG_NAMESPACE, "line");
-      this.applyLineGeometry(arrow, geometry);
-      arrow.classList.add("move-arrow-line");
+      const arrow = documentRef.createElementNS(SVG_NAMESPACE, "path");
+      arrow.classList.add("move-arrow-shape");
       arrow.dataset.rank = String(move.rank);
       arrow.dataset.move = move.uci;
-      arrow.setAttribute("stroke", style.color);
-      arrow.setAttribute("stroke-width", String(width));
+      arrow.setAttribute("d", geometry.path);
+      arrow.setAttribute("fill", style.color);
+      arrow.setAttribute("stroke", "rgba(8, 12, 22, 0.68)");
+      arrow.setAttribute("stroke-width", "0.48");
+      arrow.setAttribute("stroke-linejoin", "round");
       arrow.setAttribute("opacity", String(opacity));
-      arrow.setAttribute("marker-end", `url(#${this.markerPrefix}-${styleIndex})`);
       this.svg.appendChild(arrow);
     });
-  }
-
-  applyLineGeometry(line, geometry) {
-    line.setAttribute("x1", String(geometry.x1));
-    line.setAttribute("y1", String(geometry.y1));
-    line.setAttribute("x2", String(geometry.x2));
-    line.setAttribute("y2", String(geometry.y2));
-    line.setAttribute("stroke-linecap", "round");
-    line.setAttribute("stroke-linejoin", "round");
   }
 
   destroy() {
