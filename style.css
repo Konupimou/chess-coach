@@ -152,124 +152,6 @@ summary:focus-visible,
   gap: 24px;
 }
 
-.start-guide {
-  position: relative;
-  overflow: hidden;
-  padding: 24px;
-  border: 1px solid rgba(240, 184, 106, 0.2);
-  border-radius: var(--radius-large);
-  background:
-    radial-gradient(circle at 95% 0, rgba(240, 184, 106, 0.12), transparent 35%),
-    linear-gradient(145deg, rgba(24, 34, 56, 0.97), rgba(13, 20, 35, 0.97));
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.24);
-}
-
-.start-guide-heading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.start-guide h2 {
-  margin: 2px 0 5px;
-  font-size: clamp(1.35rem, 3vw, 1.85rem);
-  letter-spacing: -0.02em;
-}
-
-.start-guide-heading p:last-child {
-  margin: 0;
-  color: var(--text-secondary);
-}
-
-.start-guide-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.start-guide-option {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  min-height: 104px;
-  padding: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-medium);
-  background: rgba(255, 255, 255, 0.035);
-  color: var(--text-primary);
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
-}
-
-.start-guide-option:hover {
-  border-color: rgba(240, 184, 106, 0.45);
-  background: rgba(240, 184, 106, 0.075);
-  transform: translateY(-2px);
-}
-
-.start-guide-option > span:nth-child(2) {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.start-guide-option strong {
-  font-size: 0.94rem;
-}
-
-.start-guide-option small {
-  color: var(--text-secondary);
-  font-size: 0.73rem;
-  line-height: 1.4;
-}
-
-.start-guide-icon {
-  display: grid;
-  width: 38px;
-  height: 38px;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--learning-soft);
-  color: #ffd59a;
-  font-size: 1.15rem;
-}
-
-.start-guide-change {
-  flex: 0 0 auto;
-  padding: 7px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.start-guide-selection {
-  margin: 10px 0 0;
-  color: #ffd59a;
-  font-size: 0.82rem;
-  font-weight: 750;
-}
-
-.start-guide.is-complete {
-  padding-block: 14px;
-  border-color: rgba(255, 255, 255, 0.09);
-  background: rgba(17, 25, 43, 0.84);
-  box-shadow: none;
-}
-
-.start-guide.is-complete .start-guide-heading > div > p:last-child {
-  display: none;
-}
-
-.start-guide.is-complete h2 {
-  font-size: 1rem;
-}
-
 .mode-context {
   display: flex;
   align-items: center;
@@ -1431,6 +1313,32 @@ summary:focus-visible,
   margin-bottom: 13px;
 }
 
+.coach-chat-summary {
+  margin: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.coach-chat-summary::-webkit-details-marker {
+  display: none;
+}
+
+.coach-chat-summary::after {
+  content: "⌄";
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  transition: transform 160ms ease;
+}
+
+#coach-chat[open] .coach-chat-summary {
+  margin-bottom: 13px;
+}
+
+#coach-chat[open] .coach-chat-summary::after {
+  transform: rotate(180deg);
+}
+
 .coach-avatar {
   display: grid;
   width: 40px;
@@ -1455,32 +1363,6 @@ summary:focus-visible,
   font-size: 0.72rem;
 }
 
-.analysis-coach-focus {
-  display: grid;
-  gap: 5px;
-  margin-bottom: 12px;
-  padding: 13px;
-  border: 1px solid rgba(240, 184, 106, 0.25);
-  border-radius: 13px;
-  background: rgba(240, 184, 106, 0.075);
-}
-
-.analysis-coach-focus-top > span {
-  color: #efbf7c;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.analysis-coach-focus-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 3px;
-}
-
 .analysis-perspective {
   display: inline-flex;
   align-items: center;
@@ -1499,7 +1381,7 @@ summary:focus-visible,
   white-space: nowrap;
 }
 
-.coach-card .analysis-perspective-button {
+.analysis-perspective-button {
   min-height: 26px;
   padding: 3px 7px;
   border: 0;
@@ -1510,57 +1392,13 @@ summary:focus-visible,
   font-size: 0.62rem;
 }
 
-.coach-card .analysis-perspective-button.is-active {
+.analysis-perspective-button.is-active {
   background: rgba(240, 184, 106, 0.17);
   color: #ffe0b3;
 }
 
-.coach-card .analysis-perspective-button:hover {
+.analysis-perspective-button:hover {
   box-shadow: none;
-}
-
-.analysis-coach-focus > strong {
-  font-size: 0.9rem;
-}
-
-.analysis-coach-focus p {
-  margin: 0;
-  color: #d8dfeb;
-  font-size: 0.74rem;
-  line-height: 1.45;
-}
-
-.analysis-coach-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 5px;
-}
-
-.analysis-coach-options span {
-  padding: 4px 7px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #cbd6e8;
-  font-size: 0.64rem;
-  font-weight: 700;
-}
-
-.analysis-coach-options span.is-best {
-  border-color: rgba(240, 184, 106, 0.28);
-  background: rgba(240, 184, 106, 0.1);
-  color: #ffe0b3;
-}
-
-.coach-card .analysis-coach-focus > button {
-  width: fit-content;
-  margin-top: 5px;
-  padding: 6px 9px;
-  border: 1px solid rgba(240, 184, 106, 0.24);
-  background: rgba(240, 184, 106, 0.08);
-  color: #f6d29f;
-  font-size: 0.68rem;
 }
 
 #coach-chat .chat-body {
@@ -1573,97 +1411,6 @@ summary:focus-visible,
   background: transparent;
   color: #fff;
   font-size: 0.82rem;
-}
-
-.opening-card {
-  padding: 0;
-  overflow: hidden;
-  border-color: rgba(124, 151, 194, 0.2);
-  background: rgba(14, 24, 42, 0.72);
-}
-
-.opening-card > summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.opening-card > summary::-webkit-details-marker {
-  display: none;
-}
-
-.opening-card > summary::after {
-  content: "⌄";
-  color: var(--muted);
-  font-size: 1rem;
-  transition: transform 160ms ease;
-}
-
-.opening-card[open] > summary::after {
-  transform: rotate(180deg);
-}
-
-.opening-card > summary > span:first-child {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.opening-card > summary strong {
-  overflow: hidden;
-  color: var(--text);
-  font-size: 0.95rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.opening-eco {
-  flex: 0 0 auto;
-  margin-left: auto;
-  padding: 4px 8px;
-  border: 1px solid rgba(120, 165, 255, 0.3);
-  border-radius: 999px;
-  color: #a9c7ff;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.opening-card-body {
-  display: grid;
-  gap: 7px;
-  padding: 0 16px 15px;
-  border-top: 1px solid rgba(124, 151, 194, 0.13);
-}
-
-.opening-card-body > :first-child {
-  padding-top: 12px;
-  color: var(--muted);
-}
-
-.opening-card-body p {
-  margin: 0;
-  color: var(--text-soft);
-  font-size: 0.86rem;
-  line-height: 1.45;
-}
-
-@media (max-width: 768px) {
-  .opening-card > summary {
-    min-height: 48px;
-    padding: 13px 14px;
-  }
-
-  .opening-card > summary strong {
-    max-width: min(64vw, 360px);
-  }
-
-  .opening-card-body {
-    padding-inline: 14px;
-  }
 }
 
 .coach-message {
@@ -1807,13 +1554,6 @@ summary:focus-visible,
 .suggestion-line span,
 .suggestion-line .moves {
   color: #fff;
-}
-
-.suggestion-coach-reason {
-  margin-top: 3px;
-  color: #a9c9ff !important;
-  font-size: 0.72rem;
-  line-height: 1.35;
 }
 
 #coach-chat textarea {
@@ -3278,14 +3018,6 @@ summary:focus-visible,
 }
 
 @media (max-width: 1100px) {
-  .start-guide-options {
-    grid-template-columns: 1fr;
-  }
-
-  .start-guide-option {
-    min-height: 82px;
-  }
-
   #board-container {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3335,29 +3067,9 @@ summary:focus-visible,
     gap: 16px;
   }
 
-  .start-guide {
-    margin-inline: 10px;
-    padding: 18px;
-    border-radius: 18px;
-  }
-
-  .start-guide-heading,
   .mode-context {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .start-guide-change {
-    align-self: flex-start;
-    min-height: 40px;
-  }
-
-  .start-guide-option {
-    min-height: 76px;
-  }
-
-  .start-guide-option small {
-    font-size: 0.7rem;
   }
 
   .mode-context {
@@ -3463,10 +3175,6 @@ summary:focus-visible,
     order: -2;
   }
 
-  .analysis-coach-focus-top {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 
   .play-mode-card {
     padding: 16px;
@@ -3659,27 +3367,6 @@ summary:focus-visible,
 }
 
 @media (max-width: 480px) {
-  .start-guide-heading .eyebrow,
-  .start-guide.is-complete .start-guide-heading > div {
-    display: none;
-  }
-
-  .start-guide.is-complete .start-guide-heading {
-    justify-content: flex-end;
-  }
-
-  .start-guide-options {
-    margin-top: 14px;
-  }
-
-  .start-guide-option {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .start-guide-option > span:last-child {
-    display: none;
-  }
-
   .mode-navigation-button {
     gap: 7px;
   }

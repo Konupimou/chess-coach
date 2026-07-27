@@ -6,34 +6,33 @@ const pageSource = readFileSync(new URL("../app/page.js", import.meta.url), "utf
 const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const styleSource = readFileSync(new URL("../style.css", import.meta.url), "utf8");
 
-test("Einstieg führt semantisch zu Spielen, Partieanalyse und Stellungsanalyse", () => {
-  assert.match(pageSource, /Was möchtest du heute verbessern\?/);
-  assert.match(pageSource, /id="start-play-button"/);
-  assert.match(pageSource, /id="start-game-analysis-button"/);
-  assert.match(pageSource, /id="start-position-button"/);
-  assert.match(appSource, /selectStartPath\("play"\)/);
-  assert.match(appSource, /selectStartPath\("game-analysis"\)/);
-  assert.match(appSource, /selectStartPath\("position"\)/);
+test("Einstieg bleibt auf den direkten Wechsel zwischen Spielen und Analyse reduziert", () => {
+  assert.doesNotMatch(pageSource, /id="start-guide"/);
+  assert.doesNotMatch(pageSource, /Was möchtest du heute verbessern\?/);
+  assert.match(pageSource, /id="play-mode-button"/);
+  assert.match(pageSource, /id="analysis-mode-button"/);
+  assert.match(appSource, /setAppMode\("play"\)/);
+  assert.match(appSource, /setAppMode\("analysis"\)/);
 });
 
-test("Coach steht in der Analyse vor technischen Zugideen", () => {
-  assert.match(appSource, /analysisColumn\.insertBefore\(chatWrapper, this\.suggestionsEl\)/);
-  assert.match(appSource, /Aktuelle Einschätzung/);
-  assert.match(appSource, /Deine Sicht/);
+test("Analyse zeigt eine technische Zugansicht und einen zunächst geschlossenen Coach", () => {
+  assert.match(appSource, /document\.createElement\('details'\)/);
+  assert.doesNotMatch(appSource, /panel\.open = true/);
+  assert.match(appSource, /Fragen zum Brett/);
   assert.match(appSource, /analysis-perspective-button/);
-  assert.match(appSource, /Ausführlicher erklären/);
-  assert.doesNotMatch(appSource, /Lernprinzip/);
-  assert.match(appSource, /review-technical-details/);
-  assert.match(appSource, /Technische Auswertung anzeigen/);
+  assert.doesNotMatch(appSource, /analysis-coach-focus/);
+  assert.doesNotMatch(appSource, /suggestion-coach-reason/);
+  assert.match(appSource, /Partie vollständig analysieren/);
 });
 
-test("Eröffnungskarte bleibt kompakt, lokal und nennt Abweichungen vorsichtig", () => {
-  assert.match(appSource, /createOpeningCard/);
+test("Eröffnungsdaten bleiben für Speicherung und Coach erhalten, aber ohne eigene Karte", () => {
+  assert.doesNotMatch(appSource, /createOpeningCard/);
+  assert.doesNotMatch(appSource, /opening-card/);
   assert.match(appSource, /loadOpeningBook/);
-  assert.match(appSource, /Lichess Chess Openings · lokal gespeichert/);
-  assert.match(appSource, /Diese Stellung wurde über eine abweichende Zugfolge erreicht/);
-  assert.match(appSource, /Der Zug kann trotzdem gut sein/);
-  assert.match(styleSource, /\.opening-card > summary/);
+  assert.match(appSource, /refreshOpeningRecognition/);
+  assert.match(appSource, /buildOpeningCoachContext/);
+  assert.match(appSource, /this\.gameSaveDraft\.opening = this\.openingRecognition\.displayName/);
+  assert.doesNotMatch(styleSource, /\.opening-card/);
 });
 
 test("Mobile Hierarchie nutzt große Ziele und einspaltige Coach-Bereiche", () => {

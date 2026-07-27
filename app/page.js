@@ -20,55 +20,6 @@ export default function HomePage() {
         </header>
 
         <main className="workbench">
-          <section
-            id="start-guide"
-            className="start-guide"
-            aria-labelledby="start-guide-title"
-          >
-            <div className="start-guide-heading">
-              <div>
-                <p className="eyebrow">Dein Training</p>
-                <h2 id="start-guide-title">Was möchtest du heute verbessern?</h2>
-                <p>Wähle einen Einstieg. Du kannst den Bereich später jederzeit wechseln.</p>
-              </div>
-              <button
-                id="start-guide-change"
-                className="start-guide-change"
-                type="button"
-                hidden
-              >
-                Auswahl ändern
-              </button>
-            </div>
-            <div id="start-guide-options" className="start-guide-options">
-              <button id="start-play-button" className="start-guide-option" type="button">
-                <span className="start-guide-icon" aria-hidden="true">♟</span>
-                <span>
-                  <strong>Eine Partie spielen</strong>
-                  <small>Gegen den Schachcomputer spielen und direkt aus deinen Zügen lernen.</small>
-                </span>
-                <span aria-hidden="true">→</span>
-              </button>
-              <button id="start-game-analysis-button" className="start-guide-option" type="button">
-                <span className="start-guide-icon" aria-hidden="true">◎</span>
-                <span>
-                  <strong>Eine eigene Partie analysieren</strong>
-                  <small>Züge eingeben, eine gespeicherte Partie öffnen oder von Lichess importieren.</small>
-                </span>
-                <span aria-hidden="true">→</span>
-              </button>
-              <button id="start-position-button" className="start-guide-option" type="button">
-                <span className="start-guide-icon" aria-hidden="true">⌁</span>
-                <span>
-                  <strong>Eine Stellung untersuchen</strong>
-                  <small>Varianten ausprobieren und Pläne mit dem Coach besprechen.</small>
-                </span>
-                <span aria-hidden="true">→</span>
-              </button>
-            </div>
-            <p id="start-guide-selection" className="start-guide-selection" role="status" hidden />
-          </section>
-
           <nav className="mode-navigation" aria-label="Chess-Coach-Bereich">
             <button
               id="play-mode-button"
