@@ -3109,7 +3109,7 @@ export class ChessApp {
         `${idx === 1 ? "Beste Idee" : `Alternative ${idx}`} erklären und am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
       );
       row.title = isPrimary
-        ? 'Hovern für die Coach-Erklärung, klicken zum Fixieren.'
+        ? 'Die Coach-Idee ist dauerhaft sichtbar; klicken zum Fixieren.'
         : 'Hovern für die Coach-Erklärung, klicken zum Aufklappen.';
 
       row.appendChild(header);

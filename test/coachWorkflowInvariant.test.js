@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+const styleSource = readFileSync(new URL("../style.css", import.meta.url), "utf8");
 
 test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /requestSuggestionCoachReasons/);
@@ -22,6 +23,7 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /verifiedSuggestionInfo\(info, 20\)/);
   assert.match(appSource, /verifiedInfo\.pvComplete/);
   assert.match(appSource, /!this\.suggestionState\.lines\.has\(1\)/);
+  assert.match(styleSource, /\.suggestion-line\.is-primary \.suggestion-coach-popover\s*\{[\s\S]*?display:\s*grid/);
 });
 
 test("automatische Zugerklärungen bleiben im Schachcomputer und der Chat beginnt mit dem Nutzer", () => {

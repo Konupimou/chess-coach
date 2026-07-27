@@ -1768,6 +1768,11 @@ summary:focus-visible,
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
+.suggestion-line.is-primary .suggestion-coach-popover {
+  display: grid;
+  animation: none;
+}
+
 .suggestion-line.is-expanded {
   background: rgba(90, 162, 255, 0.12);
   box-shadow: inset 3px 0 0 rgba(90, 162, 255, 0.72);
