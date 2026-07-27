@@ -15,6 +15,10 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /requestGroundedMoveExplanation/);
   assert.match(appSource, /computer-move-token/);
   assert.match(appSource, /startExplanationPreview/);
+  assert.match(appSource, /const isPrimary = idx === 1/);
+  assert.match(appSource, /isExpanded \? completeMoves : collapsedMoves/);
+  assert.match(appSource, /onToggleExpanded/);
+  assert.match(appSource, /expandedSuggestionRanks/);
 });
 
 test("automatische Zugerklärungen bleiben im Schachcomputer und der Chat beginnt mit dem Nutzer", () => {

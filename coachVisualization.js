@@ -31,8 +31,18 @@ const MOTIF_PHRASES = Object.freeze({
   Spieß: "einen Spieß",
   "Schlag mit Schach": "einen Schlag mit Schach",
   "Schach mit Tempo": "ein Schach mit Tempo",
-  Abtauschfolge: "eine Abtauschfolge",
 });
+const CONCRETE_FOLLOW_UP_MOTIFS = new Set([
+  "Matt",
+  "Umwandlung",
+  "Doppelschach",
+  "Abzugsschach",
+  "Gabel",
+  "Doppelangriff",
+  "Fesselung",
+  "Spieß",
+  "Schlag mit Schach",
+]);
 
 const opposite = (color) => (color === "w" ? "b" : "w");
 const squareFile = (square) => FILES.indexOf(square?.[0]);
@@ -97,6 +107,9 @@ function legalLineEvents(fen, pv, maximum = 16) {
         }];
       })
       .sort((left, right) => right.value - left.value);
+    const controlledCenter = [...CENTER].filter((square) => (
+      game.attackers(square, move.color).includes(move.to)
+    ));
     events.push({
       index: events.length,
       uci,
@@ -114,6 +127,7 @@ function legalLineEvents(fen, pv, maximum = 16) {
       checkedKing,
       checkAttackers,
       attackedTargets,
+      controlledCenter,
     });
   }
   return events;
@@ -241,103 +255,141 @@ function firstMoveMotif(fen, events) {
       targets: [event.checkedKing].filter(Boolean),
     };
   }
-  if (event.captured && events[1]?.captured) {
-    return {
-      name: "Abtauschfolge",
-      detail: "Die Pointe wird erst nach dem erwarteten Rückschlag vollständig sichtbar.",
-      targets: [event.to, events[1].to],
-    };
-  }
   return null;
 }
 
 function lineMotif(events) {
+  const immediate = firstMoveMotif(events[0]?.fenBefore, events);
+  if (immediate) return { ...immediate, eventIndex: 0 };
+
+  const firstMoveIsForcing = Boolean(
+    events[0]?.givesCheck
+    || events[0]?.givesMate
+    || events[0]?.captured
+    || events[0]?.promotion,
+  );
+  if (!firstMoveIsForcing) return null;
+
   const maximum = Math.min(8, events.length);
-  for (let index = 0; index < maximum; index += 1) {
+  for (let index = 1; index < maximum; index += 1) {
+    const previous = events[index - 1];
+    const forcingChainContinues = Boolean(
+      previous?.givesCheck
+      || previous?.givesMate
+      || previous?.captured
+      || previous?.promotion,
+    );
+    if (!forcingChainContinues) break;
     const motif = firstMoveMotif(
       events[index]?.fenBefore,
       events.slice(index),
     );
-    if (motif) return { ...motif, eventIndex: index };
+    if (motif && CONCRETE_FOLLOW_UP_MOTIFS.has(motif.name)) {
+      return { ...motif, eventIndex: index };
+    }
   }
   return null;
 }
 
 function chosenPlyCount(events, motif) {
-  if (events.length <= 2) return events.length;
   const maximum = Math.min(16, events.length);
-  const firstTacticalIndex = events
-    .slice(0, Math.min(5, maximum))
-    .findIndex((event) => (
-      event.givesCheck || event.givesMate || event.captured || event.promotion
-    ));
-  if (!motif && firstTacticalIndex < 0) return Math.min(2, maximum);
-
-  let lastForcing = Math.max(0, firstTacticalIndex);
-  let quietAfter = 0;
-  const minimumForMotif = motif
-    ? Math.min(maximum, (motif.eventIndex || 0) + 2)
-    : 0;
-  for (let index = 0; index < maximum; index += 1) {
-    const event = events[index];
-    const forcing = Boolean(
-      event.givesCheck || event.givesMate || event.captured || event.promotion,
-    );
-    if (forcing) {
-      lastForcing = index;
-      quietAfter = 0;
-    } else if (index > lastForcing) {
-      quietAfter += 1;
-    }
-    if (event.givesMate && index + 1 >= minimumForMotif) return index + 1;
-    if (
-      index >= 3
-      && quietAfter >= 2
-      && index + 1 >= minimumForMotif
-    ) return index + 1;
-  }
-  return maximum;
+  if (!motif) return Math.min(2, maximum);
+  return Math.min(maximum, Math.max(1, (motif.eventIndex || 0) + 1));
 }
 
 function strategicIdea(event) {
   if (!event) return {
+    kind: "activity",
     headline: "Den Zug am Brett verstehen",
     explanation: "Die kurze Antwortfolge zeigt, welche Aufgabe der Zug in dieser Stellung übernimmt.",
   };
   if (/^O-O(?:-O)?/.test(event.san)) {
     return {
+      kind: "castle",
       headline: "Den König sichern",
       explanation: "Die Rochade bringt den König aus dem Zentrum und verbindet gleichzeitig die Türme.",
     };
   }
   if (HOME_MINOR_SQUARES.has(event.from) && ["n", "b"].includes(event.piece)) {
     return {
+      kind: "development",
       headline: "Eine Figur sinnvoll entwickeln",
       explanation: `${event.san} bringt den ${PIECE_NAMES[event.piece]} ins Spiel und verbessert seine Wirkung auf die Stellung.`,
     };
   }
   if (CENTER.has(event.to) && event.piece === "p") {
     return {
+      kind: "center",
       headline: "Im Zentrum Raum gewinnen",
       explanation: `${event.san} besetzt ein wichtiges Zentrumsfeld und öffnet Wege für die eigenen Figuren.`,
     };
   }
   if (event.captured) {
     return {
+      kind: "capture",
       headline: "Die Stellung konkret klären",
       explanation: `${event.san} löst die Spannung sofort auf; die kurze Folge zeigt, was nach dem Gegenschlag übrig bleibt.`,
     };
   }
   if (event.piece === "p") {
     return {
+      kind: "pawn",
       headline: "Die Bauernstruktur verbessern",
       explanation: `${event.san} verändert Raum und Felder dauerhaft. Entscheidend ist, welche Figuren davon profitieren.`,
     };
   }
   return {
+    kind: "activity",
     headline: "Die Figur aktiver stellen",
     explanation: `${event.san} verbessert die Aufgabe des ${PIECE_NAMES[event.piece] || "Steins"}; die Antwort zeigt, worauf der Zug vorbereitet.`,
   };
+}
+
+function strategicAnnotations(event, kind) {
+  const base = initialAnnotations(event, null);
+  if (!event) return base;
+  const annotations = {
+    arrows: [...base.arrows],
+    highlights: [...base.highlights],
+  };
+
+  if (kind === "center") {
+    annotations.highlights.unshift(
+      ...[...CENTER].map((square) => ({ square, role: "concept" })),
+    );
+  }
+
+  if (kind === "development" || kind === "activity" || kind === "pawn") {
+    event.controlledCenter.slice(0, 3).forEach((square) => {
+      annotations.arrows.push({
+        move: `${event.to}${square}`,
+        rank: 2,
+        impact: 0.72,
+        role: "concept",
+      });
+      annotations.highlights.unshift({ square, role: "concept" });
+    });
+  }
+
+  if (kind === "castle") {
+    const homeRank = event.color === "w" ? "1" : "8";
+    const kingSide = event.to[0] === "g";
+    const rookMove = kingSide
+      ? `h${homeRank}f${homeRank}`
+      : `a${homeRank}d${homeRank}`;
+    annotations.arrows.push({
+      move: rookMove,
+      rank: 2,
+      impact: 0.78,
+      role: "defense",
+    });
+    annotations.highlights.push({
+      square: rookMove.slice(2, 4),
+      role: "concept",
+    });
+  }
+
+  return annotations;
 }
 
 function initialAnnotations(event, motif) {
@@ -397,11 +449,16 @@ export function buildCoachVisualPlan({
       : `Die gezeigte Folge mündet in ${motifPhrase}. ${motif.detail}`
     : strategic.explanation;
   const frameAnnotations = selected.map((event, index) => (
-    initialAnnotations(
-      event,
-      motif?.eventIndex === index ? motif : null,
-    )
+    !motif && index === 0
+      ? strategicAnnotations(event, strategic.kind)
+      : initialAnnotations(
+        event,
+        motif?.eventIndex === index ? motif : null,
+      )
   ));
+  const persistentAnnotations = motif
+    ? frameAnnotations[motif.eventIndex] || frameAnnotations.at(-1)
+    : strategicAnnotations(events[0], strategic.kind);
 
   return {
     rank: Math.max(1, Number.parseInt(rank, 10) || 1),
@@ -410,6 +467,7 @@ export function buildCoachVisualPlan({
     motif: motif?.name || "",
     motifForMover,
     tactical: Boolean(motif),
+    ideaKind: strategic.kind,
     plyCount,
     uci: selected.map((event) => event.uci),
     san: selected.map((event) => event.san),
@@ -422,6 +480,7 @@ export function buildCoachVisualPlan({
     })),
     annotations: frameAnnotations[0],
     frameAnnotations,
+    persistentAnnotations,
   };
 }
 

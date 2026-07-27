@@ -256,6 +256,7 @@ export class ChessApp {
     this.suggestionCoachTimer = null;
     this.suggestionCoachKey = "";
     this.suggestionCoachReasons = new Map();
+    this.expandedSuggestionRanks = new Set();
     this.suggestionCoachExplanation = null;
     this.suggestionCoachPositionEvidence = null;
     this.suggestionCoachBusy = false;
@@ -2077,6 +2078,7 @@ export class ChessApp {
       depth: 0,
       lines: new Map(),
     };
+    this.expandedSuggestionRanks.clear();
     this.moveArrows?.clear();
     this.renderSuggestions();
     let terminalCp = terminalWhiteCp(fen);
@@ -2826,7 +2828,9 @@ export class ChessApp {
     return popover;
   }
 
-  bindCoachPlanPreview(row, startPreview) {
+  bindCoachPlanPreview(row, startPreview, {
+    onToggleExpanded = null,
+  } = {}) {
     if (!row || typeof startPreview !== "function") return;
     row.setAttribute("aria-pressed", "false");
     let pointerInside = false;
@@ -2862,6 +2866,21 @@ export class ChessApp {
     row.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (typeof onToggleExpanded === "function") {
+        const expanded = row.getAttribute("aria-expanded") === "true";
+        const nextExpanded = !expanded;
+        row.setAttribute("aria-expanded", String(nextExpanded));
+        row.classList.toggle("is-expanded", nextExpanded);
+        onToggleExpanded(nextExpanded);
+        if (!nextExpanded) {
+          this.stopSuggestionPreview(row);
+          row.setAttribute("aria-pressed", "false");
+          return;
+        }
+        startPreview();
+        row.setAttribute("aria-pressed", "true");
+        return;
+      }
       const pinned = row.getAttribute("aria-pressed") === "true";
       if (pinned && this.previewState?.row === row) {
         this.stopSuggestionPreview(row);
@@ -3033,6 +3052,11 @@ export class ChessApp {
       });
       const row = document.createElement('div');
       row.className = 'suggestion-line';
+      const isPrimary = idx === 1;
+      const isExpanded = isPrimary || this.expandedSuggestionRanks.has(idx);
+      row.classList.toggle("is-primary", isPrimary);
+      row.classList.toggle("is-expanded", !isPrimary && isExpanded);
+      if (!isPrimary) row.setAttribute("aria-expanded", String(isExpanded));
       row.tabIndex = 0;
 
       const header = document.createElement('div');
@@ -3065,14 +3089,18 @@ export class ChessApp {
       const moves = document.createElement('div');
       moves.className = 'moves';
       const sanMoves = plan?.san || this.pvToSanList(data.pv, data.fen).slice(0, 2);
-      moves.textContent = sanMoves.length > 0 ? sanMoves[0] : '(kein legaler Zug)';
+      const collapsedMoves = sanMoves.length > 0 ? sanMoves[0] : '(kein legaler Zug)';
+      const completeMoves = sanMoves.length > 0 ? sanMoves.join(" ") : collapsedMoves;
+      moves.textContent = isExpanded ? completeMoves : collapsedMoves;
 
       const reason = this.suggestionCoachReasons.get(idx);
       row.setAttribute(
         'aria-label',
         `${idx === 1 ? "Beste Idee" : `Alternative ${idx}`} erklären und am Brett zeigen: ${sanMoves.join(' ') || 'keine legalen Züge'}`,
       );
-      row.title = 'Hovern für die Coach-Erklärung, klicken zum Fixieren.';
+      row.title = isPrimary
+        ? 'Hovern für die Coach-Erklärung, klicken zum Fixieren.'
+        : 'Hovern für die Coach-Erklärung, klicken zum Aufklappen.';
 
       row.appendChild(header);
       row.appendChild(moves);
@@ -3090,6 +3118,15 @@ export class ChessApp {
         this.bindCoachPlanPreview(
           row,
           () => this.startSuggestionPreview(data, row, plan),
+          isPrimary
+            ? {}
+            : {
+              onToggleExpanded: (expanded) => {
+                if (expanded) this.expandedSuggestionRanks.add(idx);
+                else this.expandedSuggestionRanks.delete(idx);
+                moves.textContent = expanded ? completeMoves : collapsedMoves;
+              },
+            },
         );
       }
       body.appendChild(row);
@@ -3647,13 +3684,15 @@ export class ChessApp {
     if (reducedMotion) {
       const last = frames[frames.length - 1];
       this.board.position(last.fen, false);
-      this.moveArrows?.setAnnotations({
-        arrows: [],
-        highlights: [
-          { square: last.from, role: "origin" },
-          { square: last.to, role: "destination" },
-        ],
-      });
+      this.moveArrows?.setAnnotations(
+        plan.persistentAnnotations || {
+          arrows: [],
+          highlights: [
+            { square: last.from, role: "origin" },
+            { square: last.to, role: "destination" },
+          ],
+        },
+      );
       if (this.previewBadge) {
         this.previewBadge.textContent = `${label} · ${plan.headline}`;
       }
@@ -3671,16 +3710,27 @@ export class ChessApp {
         arrows: [],
         highlights: [],
       };
+      const persistentAnnotations = (
+        !plan.tactical || index === frames.length - 1
+      )
+        ? plan.persistentAnnotations || { arrows: [], highlights: [] }
+        : { arrows: [], highlights: [] };
       this.moveArrows?.setAnnotations({
         arrows: [
           ...frameAnnotations.arrows.filter(
+            (arrow) => arrow.role !== "primary",
+          ),
+          ...persistentAnnotations.arrows.filter(
             (arrow) => arrow.role !== "primary",
           ),
           ...(next
             ? [{ rank: 1, move: next.uci, impact: 1, role: "primary" }]
             : []),
         ],
-        highlights: frameAnnotations.highlights,
+        highlights: [
+          ...persistentAnnotations.highlights,
+          ...frameAnnotations.highlights,
+        ],
       });
       if (this.previewBadge) {
         this.previewBadge.textContent =

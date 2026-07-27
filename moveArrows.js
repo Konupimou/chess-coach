@@ -14,13 +14,15 @@ export const MOVE_ARROW_ROLE_STYLES = Object.freeze({
   threat: Object.freeze({ color: "#f0b86a" }),
   danger: Object.freeze({ color: "#ff7474" }),
   defense: Object.freeze({ color: "#53e0a1" }),
+  concept: Object.freeze({ color: "#9a8cff" }),
 });
 
 export const SQUARE_HIGHLIGHT_STYLES = Object.freeze({
-  origin: Object.freeze({ fill: "#6aa9ef", opacity: 0.18, stroke: "#6aa9ef" }),
-  destination: Object.freeze({ fill: "#53e0a1", opacity: 0.25, stroke: "#53e0a1" }),
-  target: Object.freeze({ fill: "#f0b86a", opacity: 0.25, stroke: "#f0b86a" }),
-  danger: Object.freeze({ fill: "#ff7474", opacity: 0.25, stroke: "#ff7474" }),
+  origin: Object.freeze({ fill: "#6aa9ef", opacity: 0.72, stroke: "#6aa9ef" }),
+  destination: Object.freeze({ fill: "#53e0a1", opacity: 0.82, stroke: "#53e0a1" }),
+  target: Object.freeze({ fill: "#f0b86a", opacity: 0.84, stroke: "#f0b86a" }),
+  danger: Object.freeze({ fill: "#ff7474", opacity: 0.86, stroke: "#ff7474" }),
+  concept: Object.freeze({ fill: "#9a8cff", opacity: 0.76, stroke: "#9a8cff" }),
 });
 
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
@@ -331,20 +333,35 @@ export class MoveArrowOverlay {
       const bounds = squareBounds(highlight.square, this.orientation);
       const style = SQUARE_HIGHLIGHT_STYLES[highlight.role];
       if (!bounds || !style) return;
-      const square = documentRef.createElementNS(SVG_NAMESPACE, "rect");
+      const square = documentRef.createElementNS(SVG_NAMESPACE, "path");
       square.classList.add("coach-square-highlight");
       square.dataset.square = highlight.square;
       square.dataset.role = highlight.role;
-      square.setAttribute("x", String(bounds.x + 0.65));
-      square.setAttribute("y", String(bounds.y + 0.65));
-      square.setAttribute("width", String(bounds.width - 1.3));
-      square.setAttribute("height", String(bounds.height - 1.3));
-      square.setAttribute("rx", "1.35");
+      const outerInset = 0.62;
+      const innerInset = 1.72;
+      const outerLeft = bounds.x + outerInset;
+      const outerTop = bounds.y + outerInset;
+      const outerRight = bounds.x + bounds.width - outerInset;
+      const outerBottom = bounds.y + bounds.height - outerInset;
+      const innerLeft = bounds.x + innerInset;
+      const innerTop = bounds.y + innerInset;
+      const innerRight = bounds.x + bounds.width - innerInset;
+      const innerBottom = bounds.y + bounds.height - innerInset;
+      square.setAttribute(
+        "d",
+        [
+          `M ${outerLeft} ${outerTop}`,
+          `H ${outerRight} V ${outerBottom} H ${outerLeft} Z`,
+          `M ${innerLeft} ${innerTop}`,
+          `H ${innerRight} V ${innerBottom} H ${innerLeft} Z`,
+        ].join(" "),
+      );
+      square.setAttribute("fill-rule", "evenodd");
       square.setAttribute("fill", style.fill);
       square.setAttribute("fill-opacity", String(style.opacity));
       square.setAttribute("stroke", style.stroke);
-      square.setAttribute("stroke-opacity", "0.72");
-      square.setAttribute("stroke-width", "0.46");
+      square.setAttribute("stroke-opacity", "0.9");
+      square.setAttribute("stroke-width", "0.34");
       this.svg.appendChild(square);
     });
     [...this.moves].reverse().forEach((move) => {

@@ -18,6 +18,13 @@ test("ruhige strategische Varianten bleiben kurz und legal", () => {
   assert.equal(plan.plyCount, 2);
   assert.deepEqual(plan.san, ["e4", "e5"]);
   assert.match(plan.headline, /Zentrum/);
+  assert.deepEqual(
+    plan.persistentAnnotations.highlights
+      .filter((entry) => entry.role === "concept")
+      .map((entry) => entry.square)
+      .sort(),
+    ["d4", "d5", "e4", "e5"],
+  );
 });
 
 test("eine konkrete Springergabel wird benannt und am Brett markiert", () => {
@@ -29,6 +36,7 @@ test("eine konkrete Springergabel wird benannt und am Brett markiert", () => {
   assert.ok(plan);
   assert.equal(plan.tactical, true);
   assert.equal(plan.motif, "Gabel");
+  assert.equal(plan.plyCount, 1);
   assert.match(plan.explanation, /Gabel/);
   assert.deepEqual(
     plan.annotations.highlights
@@ -41,19 +49,22 @@ test("eine konkrete Springergabel wird benannt und am Brett markiert", () => {
     plan.annotations.arrows.filter((entry) => entry.role === "threat").length,
     2,
   );
+  assert.equal(plan.frames.at(-1).fen, plan.frames[0].fen);
 });
 
-test("eine spätere taktische Pointe verlängert die Variante nur bis zur Auflösung", () => {
+test("eine spätere Abtauschfolge macht einen strategischen Zug nicht zur Taktik", () => {
+  const game = new Chess();
+  game.move("d4");
   const plan = buildCoachVisualPlan({
-    fen: new Chess().fen(),
-    pv: ["e2e4", "d7d5", "e4d5", "d8d5", "b1c3", "d5d8", "g1f3"],
+    fen: game.fen(),
+    pv: ["d7d5", "c2c4", "e7e6", "c4d5", "e6d5", "g1f3"],
   });
 
   assert.ok(plan);
-  assert.equal(plan.motif, "Abtauschfolge");
-  assert.ok(plan.plyCount > 2);
-  assert.ok(plan.plyCount < 7);
-  assert.equal(plan.san.length, plan.plyCount);
+  assert.equal(plan.tactical, false);
+  assert.equal(plan.motif, "");
+  assert.equal(plan.plyCount, 2);
+  assert.deepEqual(plan.san, ["d5", "c4"]);
 });
 
 test("Zugbewertungen unterscheiden Gleichwertigkeit und Fehlerzeichen", () => {
