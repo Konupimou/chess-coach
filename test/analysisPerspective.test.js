@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { Chess } from "chess.js";
 import { ChessApp } from "../app.js";
 
 function analysisApp({ perspective = "w", turn = "w" } = {}) {
@@ -38,11 +39,13 @@ test("gegnerischer Zug verwendet die Bewertung des letzten eigenen Zuges", () =>
 
 test("letzter eigener Zug wird anhand von Farbe und aktuellem Halbzug gefunden", () => {
   const app = analysisApp({ perspective: "b", turn: "w" });
-  app.getCurrentPath = () => [
-    { move: null },
-    { move: { color: "w" } },
-    { move: { color: "b" } },
-  ];
+  const game = new Chess();
+  const path = [{ move: null, fen: game.fen() }];
+  const e4 = game.move("e4");
+  path.push({ move: e4, fen: game.fen() });
+  const nc6 = game.move("Nc6");
+  path.push({ move: nc6, fen: game.fen() });
+  app.getCurrentPath = () => path;
   const expected = {
     ply: 2,
     color: "b",
@@ -51,6 +54,7 @@ test("letzter eigener Zug wird anhand von Farbe und aktuellem Halbzug gefunden",
     playedUci: "b8c6",
     bestUci: "b8c6",
     bestPvUci: ["b8c6"],
+    fenAfter: path[2].fen,
   };
   app.liveAccuracyReport = { moves: [expected] };
   app.gameReviewReport = null;

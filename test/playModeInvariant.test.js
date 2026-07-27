@@ -3,9 +3,29 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+const moveListSource = readFileSync(
+  new URL("../MoveListView.js", import.meta.url),
+  "utf8",
+);
 
 function methodSource(name, nextName) {
   const start = appSource.indexOf(`  ${name}(`);
+  const end = appSource.indexOf(`  ${nextName}(`, start + 1);
+  assert.ok(start >= 0, `${name} fehlt`);
+  assert.ok(end > start, `${nextName} fehlt nach ${name}`);
+  return appSource.slice(start, end);
+}
+
+function methodSourceUntilAsync(name, nextName) {
+  const start = appSource.indexOf(`  ${name}(`);
+  const end = appSource.indexOf(`  async ${nextName}(`, start + 1);
+  assert.ok(start >= 0, `${name} fehlt`);
+  assert.ok(end > start, `${nextName} fehlt nach ${name}`);
+  return appSource.slice(start, end);
+}
+
+function asyncMethodSource(name, nextName) {
+  const start = appSource.indexOf(`  async ${name}(`);
   const end = appSource.indexOf(`  ${nextName}(`, start + 1);
   assert.ok(start >= 0, `${name} fehlt`);
   assert.ok(end > start, `${nextName} fehlt nach ${name}`);
@@ -83,10 +103,90 @@ test("Zuglisten-Hover zeigt nur eine temporäre Brettvorschau", () => {
   assert.match(stopSource, /this\.game\.fen\(\)/);
 });
 
+test("Klicknavigation animiert genau ein legales Ziel und beendet alte Vorschauen", () => {
+  const jumpSource = methodSource("jumpToFen", "getMainlineNodes");
+  assert.match(appSource, /moveSpeed: this\.reduceBoardMotion \? 0 : 360/);
+  assert.match(appSource, /onMoveEnd: \(\) => this\.handleBoardMoveEnd\(\)/);
+  assert.match(appSource, /onJump: \(fen, node\) => this\.jumpToFen\(fen, node\)/);
+  assert.match(jumpSource, /this\.stopAllBoardPreviews\(\)/);
+  assert.match(jumpSource, /root !== this\.moveTree/);
+  assert.match(jumpSource, /this\.animateBoardPosition\(node\.fen, \{ fromFen: sourceFen \}\)/);
+  assert.doesNotMatch(jumpSource, /this\.board\.position\(node\.fen\)/);
+});
+
+test("Coach-Zugtokens werden erneut gegen vollständig legale Evidenz geprüft", () => {
+  const resolveSource = methodSource("resolvedExplanationMoves", "moveTokenAliases");
+  const buttonSource = methodSource(
+    "createMovePreviewButton",
+    "renderInteractiveExplanationText",
+  );
+  const previewSource = methodSource("startExplanationPreview", "renderComputerExplanation");
+  assert.match(resolveSource, /line\.complete !== true/);
+  assert.match(resolveSource, /move\?\.legal !== true/);
+  assert.match(resolveSource, /move\.uci !== uci\[index\]/);
+  assert.match(buttonSource, /previewIsPinned/);
+  assert.match(buttonSource, /aria-pressed/);
+  assert.match(buttonSource, /pointerInside/);
+  assert.match(buttonSource, /focused/);
+  assert.match(buttonSource, /stopUnlessActive/);
+  assert.match(previewSource, /buildPvFrames\(fenBefore, uci, 8\)/);
+  assert.match(previewSource, /frames\.length !== uci\.length/);
+});
+
+test("Vorschauarten überlagern sich nicht und Escape übernimmt vertagte Updates", () => {
+  const suggestionSource = methodSource("startSuggestionPreview", "stopSuggestionPreview");
+  const moveListSource = methodSource("startMoveListPreview", "stopMoveListPreview");
+  const stopAllSource = methodSource("stopAllBoardPreviews", "formatScore");
+  assert.match(suggestionSource, /this\.stopAllBoardPreviews/);
+  assert.match(moveListSource, /this\.stopAllBoardPreviews/);
+  assert.match(stopAllSource, /hadDeferredSuggestionRender/);
+  assert.match(stopAllSource, /this\.renderSuggestions\(\)/);
+  assert.match(appSource, /event\.key === "Escape"[\s\S]*this\.stopAllBoardPreviews\(\)/);
+});
+
+test("Coach-Vorschauen verbinden Maus und Fokus und verwerfen überholte Requests", () => {
+  const renderSource = methodSource("renderSuggestions", "renderLastPerspectiveMoveAssessment");
+  const latestSource = methodSource(
+    "scheduleLatestMoveExplanation",
+    "buildAnalysisCoachEngineContext",
+  );
+  const scheduleSource = methodSourceUntilAsync(
+    "scheduleSuggestionCoachReasons",
+    "requestSuggestionCoachReasons",
+  );
+  const requestSource = asyncMethodSource(
+    "requestSuggestionCoachReasons",
+    "renderMoveArrows",
+  );
+
+  assert.match(renderSource, /let pointerInside = false/);
+  assert.match(renderSource, /let focused = false/);
+  assert.match(renderSource, /if \(!pointerInside && !focused\)/);
+  assert.match(moveListSource, /state = \{ pointer: false, focus: false \}/);
+  assert.match(moveListSource, /!state\.pointer && !state\.focus/);
+  assert.match(latestSource, /bundle\.key/);
+  assert.match(scheduleSource, /this\.suggestionCoachController\?\.abort\(\)/);
+  assert.match(scheduleSource, /this\.suggestionCoachKey = key/);
+  assert.match(scheduleSource, /this\.suggestionCoachExplanation = null/);
+  assert.ok(
+    scheduleSource.indexOf("this.suggestionCoachKey = key")
+      < scheduleSource.indexOf("window.setTimeout"),
+  );
+  assert.match(requestSource, /key !== this\.suggestionCoachKey/);
+});
+
 test("positive Spielzüge animieren die gesetzte Figur", () => {
   const source = methodSource("celebratePlayedPiece", "renderSuggestions");
   assert.match(source, /"best", "excellent", "good"/);
   assert.match(source, /\.square-\$\{square\}/);
   assert.match(source, /piece-success-pop/);
   assert.match(source, /move-success-square/);
+});
+
+test("Zugreviews müssen zum exakten Variantenpfad statt nur zur Halbzugzahl passen", () => {
+  const source = methodSource("verifiedReviewAtPath", "getLastPerspectiveMoveReview");
+  assert.match(source, /verified\.playedUci !== expectedUci/);
+  assert.match(source, /verified\.fenBefore !== parent\.fen/);
+  assert.match(source, /resultingFrame\.fen !== node\.fen/);
+  assert.match(source, /verified\.fenAfter && verified\.fenAfter !== node\.fen/);
 });

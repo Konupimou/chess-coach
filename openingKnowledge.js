@@ -419,6 +419,142 @@ export const OPENING_FAMILY_KNOWLEDGE = Object.freeze({
   }),
 });
 
+const variation = ({ idea, whitePlan, blackPlan, watchFor }) => Object.freeze({
+  idea,
+  whitePlan,
+  blackPlan,
+  watchFor,
+});
+
+export const OPENING_VARIATION_KNOWLEDGE = Object.freeze({
+  "Italian Game::Two Knights Defense": variation({
+    idea: "Schwarz entwickelt den Königsspringer mit Tempo gegen den e-Bauern; dadurch wird die Stellung früher konkret als in ruhigen italienischen Aufbauten.",
+    whitePlan: "Weiß entscheidet zwischen einem sofortigen Angriff auf den Königsflügel und einem soliden Zentrum mit vollständiger Entwicklung.",
+    blackPlan: "Schwarz nutzt aktive Figuren und greift das weiße Zentrum an, statt den e-Bauern nur passiv zu verteidigen.",
+    watchFor: "Frühe Angriffe funktionieren nur, wenn genug Figuren beteiligt sind und der eigene König nicht im Zentrum bleibt.",
+  }),
+  "Italian Game::Evans Gambit": variation({
+    idea: "Weiß bietet einen Flügelbauern an, um Zeit für Entwicklung und ein starkes Zentrum zu gewinnen.",
+    whitePlan: "Figuren schnell ins Spiel bringen, das Zentrum öffnen und die offenen Linien gegen den schwarzen König nutzen.",
+    blackPlan: "Den Entwicklungsvorsprung neutralisieren; der Mehrbauer ist erst wichtig, wenn der König sicher steht.",
+    watchFor: "Weitere Bauern dürfen nicht ohne neue Figurenunterstützung geopfert werden.",
+  }),
+  "Italian Game::Giuoco Piano": variation({
+    idea: "Beide Seiten entwickeln natürlich; der eigentliche Kampf dreht sich darum, wer das Zentrum unter besseren Bedingungen öffnet.",
+    whitePlan: "Mit c3 und d4 ein stabiles Zentrum vorbereiten oder die Figuren für einen ruhigen Königsangriff verbessern.",
+    blackPlan: "Das weiße Zentrum rechtzeitig bestreiten und mit aktiver Entwicklung ausgleichen.",
+    watchFor: "Ein verfrühter Angriff auf f7 ersetzt weder Entwicklung noch Königssicherheit.",
+  }),
+  "Ruy Lopez::Berlin Defense": variation({
+    idea: "Schwarz greift den weißen e-Bauern sofort an und ist bereit, für aktive Figuren eine vereinfachte Struktur zu akzeptieren.",
+    whitePlan: "Den kleinen Raumvorteil und die beweglicheren Bauern geduldig nutzen.",
+    blackPlan: "Die solide Struktur halten, Figuren aktivieren und rechtzeitig gegen das weiße Zentrum spielen.",
+    watchFor: "Das frühe Damentauschangebot bedeutet nicht automatisch ein einfaches Endspiel.",
+  }),
+  "Ruy Lopez::Closed": variation({
+    idea: "Das Zentrum bleibt zunächst geschlossen, damit beide Seiten ihre Figuren verbessern und Flügelpläne vorbereiten können.",
+    whitePlan: "Das Zentrum stützen und später am Königsflügel Raum gewinnen oder mit d4 öffnen.",
+    blackPlan: "Am Damenflügel Gegenspiel schaffen und den befreienden Zentrumsvorstoß vorbereiten.",
+    watchFor: "Wer am Flügel angreift, muss jederzeit einen gegnerischen Durchbruch im Zentrum beachten.",
+  }),
+  "Ruy Lopez::Exchange Variation": variation({
+    idea: "Weiß tauscht den Läufer gegen den Springer und setzt auf die langfristig günstigere Bauernstruktur.",
+    whitePlan: "Vereinfachen, ohne Aktivität abzugeben, und die Bauernmehrheit am Königsflügel beweglich halten.",
+    blackPlan: "Das Läuferpaar und aktive Figuren nutzen, bevor das weiße Strukturplus im Endspiel zählt.",
+    watchFor: "Der schwarze e-Bauer ist nicht automatisch sofort zu gewinnen.",
+  }),
+  "Sicilian Defense::Najdorf Variation": variation({
+    idea: "Schwarz verhindert störende Figurenzüge am Damenflügel und hält die Bauernstruktur flexibel; beide Seiten spielen häufig an verschiedenen Flügeln.",
+    whitePlan: "Den Entwicklungsvorsprung nutzen und je nach Aufbau im Zentrum oder am Königsflügel angreifen.",
+    blackPlan: "Über die halboffene c-Linie und am Damenflügel Gegenspiel erzeugen und den befreienden Zentrumsvorstoß vorbereiten.",
+    watchFor: "Ein Flügelangriff ohne gesichertes Zentrum kann durch einen Gegenstoß sofort gebremst werden.",
+  }),
+  "Sicilian Defense::Najdorf Variation, English Attack": variation({
+    idea: "Weiß baut mit dem Läufer auf e3, der Dame auf d2 und häufig langer Rochade einen direkten Königsangriff auf; Schwarz antwortet mit schnellem Gegenspiel am Damenflügel.",
+    whitePlan: "Die Figuren hinter dem Königsflügelangriff sammeln, erst dann Bauern vorziehen und schwarze Gegenstöße im Zentrum kontrollieren.",
+    blackPlan: "Ohne Zeitverlust die c-Linie und den Damenflügel öffnen und bei Gelegenheit das weiße Zentrum angreifen.",
+    watchFor: "Bei Rochaden auf verschiedenen Flügeln zählt jedes Tempo; langsame Figurenmanöver können den gegnerischen Angriff zuerst durchlassen.",
+  }),
+  "Sicilian Defense::Dragon Variation": variation({
+    idea: "Der fianchettierte schwarze Läufer richtet sich auf das Zentrum und den Damenflügel; oft entstehen Angriffe auf entgegengesetzten Flügeln.",
+    whitePlan: "Die lange Diagonale kontrollieren und bei entgegengesetzten Rochaden den Königsflügel öffnen.",
+    blackPlan: "Druck auf der c-Linie und der langen Diagonale aufbauen und das weiße Zentrum angreifen.",
+    watchFor: "Jedes Tempo zählt, weil beide Könige schnell unter direkten Angriff geraten können.",
+  }),
+  "Sicilian Defense::Scheveningen Variation": variation({
+    idea: "Schwarz baut ein kleines, flexibles Zentrum auf und wartet auf den richtigen Moment für einen befreienden Bauernzug.",
+    whitePlan: "Raum und Entwicklung nutzen, bevor Schwarz das Zentrum erfolgreich öffnet.",
+    blackPlan: "Die Figuren hinter der kompakten Struktur aufstellen und mit einem passenden Zentrumsvorstoß Gegenspiel schaffen.",
+    watchFor: "Zu passives Warten lässt Weiß den Raumvorteil ohne Gegenwehr ausbauen.",
+  }),
+  "Sicilian Defense::Alapin Variation": variation({
+    idea: "Weiß bereitet mit dem c-Bauern ein breites Zentrum vor und vermeidet viele scharfe offene Sizilianer.",
+    whitePlan: "Das Zentrum stabil aufbauen und die Figuren hinter den Bauern aktiv entwickeln.",
+    blackPlan: "Das weiße Zentrum sofort angreifen, bevor es vollständig befestigt ist.",
+    watchFor: "Der frühe c-Bauernzug nimmt dem Damenspringer sein natürlichstes Feld.",
+  }),
+  "French Defense::Winawer Variation": variation({
+    idea: "Schwarz bindet einen Verteidiger des weißen Zentrums und akzeptiert dafür oft ein Läuferpaar gegen strukturelle Ziele.",
+    whitePlan: "Raum und Läuferpaar für einen Königsangriff oder aktives Zentrumsspiel nutzen.",
+    blackPlan: "Die geschwächten Damenflügelbauern angreifen und die weiße Bauernkette an ihrer Basis treffen.",
+    watchFor: "Beide Seiten dürfen ihre typischen Ziele nicht verfolgen, ohne den gegnerischen Angriff am anderen Flügel zu beachten.",
+  }),
+  "French Defense::Advance Variation": variation({
+    idea: "Weiß schließt das Zentrum und gewinnt Raum; Schwarz greift anschließend die Basis der Bauernkette an.",
+    whitePlan: "Den Raum halten, Figuren hinter der Kette entwickeln und am Königsflügel spielen.",
+    blackPlan: "Mit Bauernhebeln das weiße Zentrum unter Druck setzen und am Damenflügel Gegenspiel schaffen.",
+    watchFor: "Weitere Bauernzüge dürfen die Entwicklung nicht vollständig verdrängen.",
+  }),
+  "French Defense::Tarrasch Variation": variation({
+    idea: "Weiß entwickelt den Damenspringer so, dass die Bauernstruktur flexibel bleibt und eine frühe Fesselung vermieden wird.",
+    whitePlan: "Harmonisch entwickeln und je nach schwarzer Reaktion Raum oder ein aktives Figurenspiel anstreben.",
+    blackPlan: "Das weiße Zentrum mit rechtzeitigem Gegenspiel herausfordern.",
+    watchFor: "Der Springer blockiert vorübergehend den Damenläufer und braucht daher einen klaren weiteren Aufbau.",
+  }),
+  "Queen's Gambit Declined::Exchange Variation": variation({
+    idea: "Der zentrale Tausch führt häufig zur Karlsbader Bauernstruktur mit klaren, langfristigen Plänen.",
+    whitePlan: "Am Damenflügel eine Bauernminorität vorstoßen oder im Zentrum und am Königsflügel aktiv werden.",
+    blackPlan: "Mit Figurenaktivität und einem Zentrumsvorstoß Gegenspiel schaffen.",
+    watchFor: "Der Minderheitsangriff ist ein Strukturplan, kein automatischer Zugablauf.",
+  }),
+  "Queen's Gambit Declined::Orthodox Defense": variation({
+    idea: "Schwarz hält das Zentrum solide und entwickelt zunächst bescheiden, bevor der Damenläufer befreit wird.",
+    whitePlan: "Den Raumvorteil nutzen und Druck auf das schwarze Zentrum erhöhen.",
+    blackPlan: "Den eingeschlossenen Läufer verbessern und sich mit einem Bauernhebel befreien.",
+    watchFor: "Reines Abwarten führt leicht zu einer passiven Stellung.",
+  }),
+  "King's Indian Defense::Sämisch Variation": variation({
+    idea: "Weiß baut ein besonders festes Bauernzentrum auf und hält verschiedene Angriffspläne offen.",
+    whitePlan: "Das Zentrum stützen und je nach Stellung am Königs- oder Damenflügel Raum gewinnen.",
+    blackPlan: "Das breite Zentrum rechtzeitig angreifen und die entstehenden dunklen Felder nutzen.",
+    watchFor: "Der feste Aufbau kostet Entwicklungstempo und kann den eigenen König länger im Zentrum halten.",
+  }),
+  "King's Indian Defense::Fianchetto Variation": variation({
+    idea: "Weiß stellt dem schwarzen Königsangriff einen soliden, langfristigen Fianchetto-Aufbau entgegen.",
+    whitePlan: "Das Zentrum kontrollieren und über die lange Diagonale sowie am Damenflügel Druck aufbauen.",
+    blackPlan: "Aktives Zentrumsspiel suchen, bevor Weiß seine Raumvorteile vollständig ordnet.",
+    watchFor: "Ein automatischer Königsangriff passt nicht zu jeder geschlossenen Struktur.",
+  }),
+  "Caro-Kann Defense::Advance Variation": variation({
+    idea: "Weiß gewinnt Raum, während Schwarz die Bauernkette angreift und den Damenläufer außerhalb der Kette entwickelt.",
+    whitePlan: "Den Raum halten und Figuren für einen Angriff oder einen günstigen Zentrumstausch aufstellen.",
+    blackPlan: "Die weiße Bauernbasis angreifen und sich ohne strukturelle Schwächen befreien.",
+    watchFor: "Raum ist nur ein Vorteil, wenn die Figuren dahinter aktive Felder finden.",
+  }),
+  "Caro-Kann Defense::Panov Attack": variation({
+    idea: "Die frühe Öffnung des Zentrums führt oft zu einem isolierten Damenbauern und aktivem Figurenspiel.",
+    whitePlan: "Aktivität, offene Linien und mögliche Zentrumsvorstöße nutzen, bevor der isolierte Bauer schwach wird.",
+    blackPlan: "Den Bauern blockieren, Figuren tauschen und seine langfristige Schwäche angreifen.",
+    watchFor: "Die Struktur verlangt aktives Spiel; bloßes Verteidigen macht den isolierten Bauern zum Ziel.",
+  }),
+  "Semi-Slav Defense::Meran Variation": variation({
+    idea: "Schwarz gibt das Zentrum nicht auf, entwickelt den Damenläufer aber aktiv und bereitet dynamisches Gegenspiel vor.",
+    whitePlan: "Den Entwicklungsvorsprung nutzen und das Zentrum unter günstigen Bedingungen öffnen.",
+    blackPlan: "Mit aktiven Bauernzügen am Damenflügel und im Zentrum die Figuren befreien.",
+    watchFor: "Das Öffnen der Stellung ist taktisch und verlangt vollständig entwickelte Figuren.",
+  }),
+});
+
 function copyList(value) {
   return Array.isArray(value) ? value.slice(0, 4) : [];
 }
@@ -441,6 +577,34 @@ export function openingKnowledgeForFamily(familyName) {
     commonMistakes: copyList(knowledge.commonMistakes),
     explanations: copyList(knowledge.explanations),
   };
+}
+
+export function openingKnowledgeForVariation(familyName, variationName) {
+  const familyKey = typeof familyName === "string" ? familyName.trim() : "";
+  const requestedVariation = typeof variationName === "string"
+    ? variationName.trim()
+    : "";
+  const variationKeys = [
+    requestedVariation,
+    requestedVariation.split(",")[0].trim(),
+  ].filter(Boolean);
+  const variationKey = variationKeys.find((candidate) => (
+    Object.hasOwn(
+      OPENING_VARIATION_KNOWLEDGE,
+      `${familyKey}::${candidate}`,
+    )
+  )) || "";
+  const knowledge = OPENING_VARIATION_KNOWLEDGE[`${familyKey}::${variationKey}`];
+  return knowledge
+    ? {
+      source: OPENING_KNOWLEDGE_SOURCE,
+      version: 1,
+      scope: "variation",
+      family: familyKey,
+      variation: variationKey,
+      ...knowledge,
+    }
+    : null;
 }
 
 export function hasOpeningKnowledge(value) {

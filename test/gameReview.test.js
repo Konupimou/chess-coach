@@ -277,7 +277,7 @@ test("Zugrückblicke verwerfen illegale Spielerzüge, Alternativen und PV-Reste"
 test("nicht belegte Coach-Erklärungen erhalten einen sicheren lokalen Ersatz", () => {
   assert.equal(
     groundedSuggestionReason({ rank: 1, san: "e4", uci: "e2e4" }),
-    "Der Zug erhöht den Einfluss im Zentrum. Die gezeigte Fortsetzung bestätigt ihn als stärkste geprüfte Möglichkeit.",
+    "Der Zug erhöht den Einfluss im Zentrum. Achte besonders darauf, wie die gezeigte Antwortfolge diese Idee unterstützt.",
   );
   assert.match(
     groundedSuggestionReason({ rank: 1, san: "Qh7+", uci: "d3h7" }),
@@ -285,7 +285,7 @@ test("nicht belegte Coach-Erklärungen erhalten einen sicheren lokalen Ersatz", 
   );
   assert.match(
     groundedSuggestionReason({ rank: 2, san: "Nf3", uci: "g1f3" }),
-    /hinter der ersten geprüften Möglichkeit/,
+    /erste Zugidee löst die Aufgaben/,
   );
 });
 

@@ -1,9 +1,9 @@
 const MAX_TEXT_LENGTH = 700;
 const MOVE_TOKEN_PATTERN =
-  /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|O-O(?:-O)?[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
+  /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|(?:O-O(?:-O)?|0-0(?:-0)?)[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
 
 export const MOVE_EXPLANATION_SCHEMA_VERSION = 2;
-export const MOVE_EXPLANATION_CACHE_VERSION = 2;
+export const MOVE_EXPLANATION_CACHE_VERSION = 3;
 
 const CLAIM_KINDS = Object.freeze([
   "assessment",
@@ -92,11 +92,13 @@ export const MOVE_EXPLANATION_JSON_SCHEMA = Object.freeze({
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["title", "text", "evidenceIds"],
+          required: ["claimKind", "title", "text", "evidenceIds", "moveRefs"],
           properties: {
+            claimKind: { type: "string", enum: CLAIM_KINDS },
             title: { type: "string", minLength: 1, maxLength: 80 },
             text: { type: "string", minLength: 1, maxLength: MAX_TEXT_LENGTH },
             evidenceIds: CLAIM_SCHEMA.properties.evidenceIds,
+            moveRefs: CLAIM_SCHEMA.properties.moveRefs,
           },
         },
       },
@@ -342,6 +344,169 @@ function validateClaimEvidence(claimKind, evidenceIds, records, errors, label) {
   }
 }
 
+function factContainsChange(record) {
+  const id = cleanText(record?.id, 120);
+  const fact = record?.fact;
+  if (!fact || typeof fact !== "object") return false;
+  if (id === "position.change.material") {
+    return Boolean(
+      fact.balanceWhiteMinusBlack
+      || Object.values(fact.byColor || {}).some((entry) => (
+        entry?.points
+        || Object.values(entry?.counts || {}).some((value) => value)
+      )),
+    );
+  }
+  if (id === "position.change.development") {
+    return Object.values(fact.byColor || {}).some((entry) => (
+      entry?.countDelta
+      || entry?.newlyOffOriginalSquares?.length
+      || entry?.returnedToOriginalSquare?.length
+    ));
+  }
+  if (id === "position.change.center") {
+    return Object.values(fact.byColor || {}).some((entry) => (
+      entry?.influencedSquareCountDelta
+      || entry?.newlyOccupiedSquares?.length
+      || entry?.noLongerOccupiedSquares?.length
+      || entry?.newlyAttackedSquares?.length
+      || entry?.noLongerAttackedSquares?.length
+    ));
+  }
+  if (id === "position.change.king_safety") {
+    return Boolean(
+      fact.castled
+      || Object.values(fact.byColor || {}).some((entry) => (
+        entry?.kingFrom !== entry?.kingTo
+        || entry?.newlyInCheck
+        || entry?.noLongerInCheck
+        || entry?.frontAdjacentFriendlyPawnCountDelta
+        || entry?.castlingRightsLost?.kingside
+        || entry?.castlingRightsLost?.queenside
+      )),
+    );
+  }
+  if (id === "position.change.files") {
+    return Boolean(
+      fact.newlyOpen?.length
+      || fact.noLongerOpen?.length
+      || Object.values(fact.byColor || {}).some((entry) => (
+        entry?.newlySemiOpen?.length || entry?.noLongerSemiOpen?.length
+      )),
+    );
+  }
+  if (id === "position.change.pawn_structure") {
+    return Object.values(fact.byColor || {}).some((entry) => (
+      entry?.islandCountDelta
+      || [
+        "newlyDoubledFiles",
+        "noLongerDoubledFiles",
+        "newlyIsolatedPawns",
+        "noLongerIsolatedPawns",
+        "newlyPassedPawns",
+        "noLongerPassedPawns",
+      ].some((key) => entry?.[key]?.length)
+    ));
+  }
+  if (id === "position.change.piece_safety") {
+    return [
+      "newlyAttacked",
+      "noLongerAttacked",
+      "newlyUndefended",
+      "noLongerUndefended",
+      "newlyAttackedAndUndefended",
+      "noLongerAttackedAndUndefended",
+    ].some((key) => fact[key]?.length);
+  }
+  if (id === "move.played.properties") {
+    return Boolean(
+      fact.capture
+      || fact.promotion
+      || fact.castle
+      || fact.givesCheck
+      || fact.givesCheckmate
+    );
+  }
+  return id.startsWith("move.played.");
+}
+
+function validateClaimContent(
+  text,
+  claimKind,
+  evidenceIds,
+  records,
+  errors,
+  label,
+) {
+  if (!["move_effect", "position_change"].includes(claimKind)) return;
+  const normalized = text.toLocaleLowerCase("de-DE");
+  const ids = new Set(evidenceIds);
+  const hasMeaningful = (id) => (
+    ids.has(id) && factContainsChange(records.get(id))
+  );
+  const requireChange = (pattern, evidenceId, description) => {
+    if (pattern.test(normalized) && !hasMeaningful(evidenceId)) {
+      errors.push(`${label}: ${description} ist durch den konkreten Beleg nicht nachgewiesen.`);
+    }
+  };
+
+  requireChange(
+    /\b(?:zentrum|zentral|zentrumsfeld|zentrumsfelder)\b/i,
+    "position.change.center",
+    "die behauptete Zentrumswirkung",
+  );
+  requireChange(
+    /\b(?:entwickl|ausgangsfeld|leichtfigur.*ins spiel)\w*/i,
+    "position.change.development",
+    "die behauptete Figurenentwicklung",
+  );
+  requireChange(
+    /(?:linie geöffnet|öffnet.{0,30}linie|offene[nrms]* [a-h]-?linie|halb(?:-| )offene[nrms]* [a-h]-?linie)/iu,
+    "position.change.files",
+    "die behauptete Linienöffnung",
+  );
+  requireChange(
+    /\b(?:bauernstruktur|freibauer|isoliert|doppelbauer|bauerninsel)\w*/i,
+    "position.change.pawn_structure",
+    "die behauptete Änderung der Bauernstruktur",
+  );
+  requireChange(
+    /\b(?:ungedeckt|angegriffen und ungedeckt|neu angegriffen)\b/i,
+    "position.change.piece_safety",
+    "die behauptete Änderung der Figurensicherheit",
+  );
+  if (
+    /\b(?:königssicherheit|rochad|könig.{0,24}sicher)\w*/i.test(normalized)
+    && !hasMeaningful("position.change.king_safety")
+    && !hasMeaningful("move.played.properties")
+  ) {
+    errors.push(`${label}: die behauptete Königssicherheit ist nicht konkret nachgewiesen.`);
+  }
+  if (
+    /\b(?:material|nimmt|schlägt)\w*/i.test(normalized)
+    && !hasMeaningful("position.change.material")
+    && !hasMeaningful("move.played.properties")
+  ) {
+    errors.push(`${label}: die behauptete Materialwirkung ist nicht konkret nachgewiesen.`);
+  }
+  if (/\b(?:raum|damenflügel|königsflügel|dauerhaft)\w*/i.test(normalized)) {
+    errors.push(`${label}: die räumliche oder langfristige Behauptung ist aus den Stellungsdaten nicht direkt ableitbar.`);
+  }
+
+  const fileMatch = normalized.match(/\b([a-h])-?linie\b/i);
+  if (fileMatch && ids.has("position.change.files")) {
+    const fact = records.get("position.change.files")?.fact;
+    const changedFiles = new Set([
+      ...(fact?.newlyOpen || []),
+      ...Object.values(fact?.byColor || {})
+        .flatMap((entry) => entry?.newlySemiOpen || []),
+    ]);
+    if (!changedFiles.has(fileMatch[1])) {
+      errors.push(`${label}: die genannte ${fileMatch[1]}-Linie wurde durch den Zug nicht geöffnet.`);
+    }
+  }
+}
+
 function validateStrongAssertions(
   text,
   claimKind,
@@ -424,6 +589,14 @@ function normalizeClaim(
   }
   if (claimKind) {
     validateClaimEvidence(claimKind, evidenceIds, evidenceRecords, errors, label);
+    validateClaimContent(
+      text,
+      claimKind,
+      evidenceIds,
+      evidenceRecords,
+      errors,
+      label,
+    );
     validateStrongAssertions(
       text,
       claimKind,
@@ -687,11 +860,11 @@ const PIECE_NAMES = Object.freeze({
 const QUALITY_COPY = Object.freeze({
   best: {
     headline: "Genau die richtige Entscheidung",
-    sentence: "Der Zug war die stärkste geprüfte Möglichkeit.",
+    sentence: "Der Zug löst die Anforderungen der Stellung sehr genau.",
   },
   excellent: {
     headline: "Eine sehr starke Entscheidung",
-    sentence: "Der Zug hält die Stellung fast genauso gut wie die beste geprüfte Möglichkeit.",
+    sentence: "Der Zug erhält die Qualität der Stellung nahezu vollständig.",
   },
   good: {
     headline: "Eine solide Entscheidung",
@@ -733,8 +906,8 @@ function assessmentCopy(engineContext, subject) {
     };
   }
   return {
-    headline: `${subject.san}: die beste geprüfte Idee`,
-    sentence: `${subject.san} ist in dieser Stellung die stärkste geprüfte Fortsetzung.`,
+    headline: `${subject.san}: der Plan dahinter`,
+    sentence: "Diese Wahl setzt die wichtigste konkrete Idee der Stellung sofort um.",
     evidenceIds: ["engine.best_move", "engine.pv.1"],
     claimKind: "assessment",
   };
@@ -798,7 +971,7 @@ function moveDescription(evidence) {
   if (move.castle) {
     return {
       ...base,
-      text: `${move.san} rochiert und stellt König und Turm gleichzeitig neu auf.`,
+      text: `${move.san} bringt den König in Sicherheit und zugleich den Turm näher ins Spiel.`,
       evidenceIds: [move.evidenceId, "position.change.king_safety"],
     };
   }
@@ -813,22 +986,22 @@ function moveDescription(evidence) {
   if (move.capture) {
     return {
       ...base,
-      text: `${move.san} bewegt den ${piece} und nimmt dabei gegnerisches Material.`,
+      text: `Mit ${move.san} wird der ${piece} aktiv und nimmt dabei gegnerisches Material.`,
       evidenceIds: [move.evidenceId, "position.change.material"],
     };
   }
   if (move.givesCheck) {
     return {
       ...base,
-      text: `${move.san} bewegt den ${piece} und gibt dem gegnerischen König Schach.`,
+      text: `${move.san} bringt den ${piece} mit Tempo ins Spiel, weil der König sofort reagieren muss.`,
       evidenceIds: [move.evidenceId, "move.played.properties"],
     };
   }
   return {
     ...base,
     text: move.piece === "p"
-      ? `${move.san} rückt den Bauern vor.`
-      : `${move.san} entwickelt oder verbessert die Stellung des ${piece}.`,
+      ? `Mit ${move.san} rückt der Bauer vor und verändert die Bauernstellung.`
+      : `Mit ${move.san} wechselt der ${piece} auf sein Zielfeld.`,
     evidenceIds: [move.evidenceId],
   };
 }
@@ -951,18 +1124,104 @@ function legalLineDescription(positionEvidence, learnerProfile, engineContext = 
   if (engineContext?.kind === "move_review" && line.moves[0]?.uci === subjectUci) {
     return {
       claimKind: "variation",
-      text: `Auf ${sans[0]} folgt in der geprüften Antwortfolge ${sans.slice(1).join(" ")}.`,
+      text: `Nach ${sans[0]} kann die Partie konkret mit ${sans.slice(1).join(" ")} weitergehen.`,
       evidenceIds: [line.evidenceId],
       moveRefs,
-      title: "Stärkste gegnerische Antwort",
+      title: "Konkrete Antwort",
     };
   }
   return {
     claimKind: "variation",
-    text: `Die geprüfte Hauptfortsetzung beginnt mit ${sans.join(" ")}.`,
+    text: `In der Folge ${sans.join(" ")} wird die Idee am Brett sichtbar.`,
     evidenceIds: [line.evidenceId],
     moveRefs,
-    title: "Stärkste Antwortfolge",
+    title: "Möglicher Verlauf",
+  };
+}
+
+function detailedChangeDescription(positionEvidence) {
+  const color = positionEvidence?.playedMove?.color;
+  const move = positionEvidence?.playedMove;
+  if (!color || !move) return null;
+  const development = positionEvidence.changes?.development?.byColor?.[color];
+  if (development?.newlyOffOriginalSquares?.length > 0) {
+    return {
+      claimKind: "position_change",
+      title: "Entwicklung im Detail",
+      text: "Die entwickelte Leichtfigur hat jetzt ihr ursprüngliches Feld verlassen.",
+      evidenceIds: ["position.change.development"],
+      moveRefs: [],
+    };
+  }
+  const center = positionEvidence.changes?.center?.byColor?.[color];
+  const occupiedCount = center?.newlyOccupiedSquares?.length || 0;
+  const attackedCount = center?.newlyAttackedSquares?.length || 0;
+  if (occupiedCount > 0 || attackedCount > 0) {
+    const effects = [
+      occupiedCount > 0
+        ? `${occupiedCount === 1 ? "ein Zentrumsfeld ist" : `${occupiedCount} Zentrumsfelder sind`} neu besetzt`
+        : "",
+      attackedCount > 0
+        ? `${attackedCount === 1 ? "ein Zentrumsfeld wird" : `${attackedCount} Zentrumsfelder werden`} zusätzlich angegriffen`
+        : "",
+    ].filter(Boolean);
+    return {
+      claimKind: "position_change",
+      title: "Zentrumsfelder",
+      text: `Im Zentrum gilt nun: ${effects.join("; ")}.`,
+      evidenceIds: ["position.change.center"],
+      moveRefs: [],
+    };
+  }
+  const files = positionEvidence.changes?.files;
+  if (files?.newlyOpen?.length > 0) {
+    return {
+      claimKind: "position_change",
+      title: "Geöffnete Linien",
+      text: `Durch den Zug ist nun die ${files.newlyOpen.join("- und ")}-Linie offen.`,
+      evidenceIds: ["position.change.files"],
+      moveRefs: [],
+    };
+  }
+  return {
+    claimKind: "move_effect",
+    title: "Konkreter Stellungswechsel",
+    text: `Mit ${move.san} wechselt die ${PIECE_NAMES[move.piece] || "Figur"} konkret ihr Feld.`,
+    evidenceIds: [move.evidenceId],
+    moveRefs: singleMoveReference(
+      positionEvidence,
+      move.uci,
+      { preferPlayed: true },
+    ),
+  };
+}
+
+function detailedLegalLineDescription(
+  positionEvidence,
+  learnerProfile,
+  engineContext = null,
+) {
+  const base = legalLineDescription(
+    positionEvidence,
+    learnerProfile,
+    engineContext,
+  );
+  const reference = base?.moveRefs?.[0];
+  if (!base || !reference?.lineEvidenceId || !reference.uci?.length) return null;
+  const line = positionEvidence.verifiedLines?.find(
+    (entry) => entry?.evidenceId === reference.lineEvidenceId,
+  );
+  const sans = line?.moves
+    ?.slice(reference.startPly, reference.startPly + reference.uci.length)
+    .map((move) => move.san)
+    .filter(Boolean);
+  if (!sans?.length) return null;
+  return {
+    claimKind: "variation",
+    title: "Zugfolge am Brett",
+    text: `Die legal geprüfte Folge umfasst ${sans.length} Halbzüge: ${sans.join(" ")}.`,
+    evidenceIds: [reference.lineEvidenceId],
+    moveRefs: [reference],
   };
 }
 
@@ -1017,17 +1276,19 @@ export function buildLocalMoveExplanation({
       ? openingContext.suggestedOpening
       : null;
   const openingName = cleanText(opening?.displayName, 240);
+  const openingAnnouncement = openingContext?.announcement;
   if (
     opening
     && opening?.source === "lichess-chess-openings"
     && openingName
+    && ["family", "variation"].includes(openingAnnouncement?.kind)
     && summary.length < 6
   ) {
     summary.splice(1, 0, {
       claimKind: "opening",
-      text: openingContext?.matched
-        ? `Die Stellung gehört zur Eröffnung ${openingName}.`
-        : `Mit diesem Zug geht die Partie in die Eröffnung ${openingName} über.`,
+      text: openingAnnouncement.transposition
+        ? `Per Zugumstellung ist jetzt ${openingAnnouncement.displayName || openingName} erreicht.`
+        : `Jetzt ist ${openingAnnouncement.displayName || openingName} erreicht.`,
       evidenceIds: [`opening.name:${cleanText(opening.eco, 3) || "known"}`],
       moveRefs: [],
     });
@@ -1046,9 +1307,12 @@ export function buildLocalMoveExplanation({
     });
   }
   const deepDive = [
-    changeDescription(positionEvidence),
-    legalLineDescription(positionEvidence, learnerProfile, engineContext),
-    alternativeDescription(positionEvidence, engineContext, subject),
+    detailedChangeDescription(positionEvidence),
+    detailedLegalLineDescription(
+      positionEvidence,
+      learnerProfile,
+      engineContext,
+    ),
   ].filter(Boolean).map((entry) => ({
     claimKind: entry.claimKind,
     title: entry.title || "Zugidee",
@@ -1157,6 +1421,27 @@ export function verifyMoveExplanation(
     );
     return { title, ...claim };
   });
+
+  const normalizedClaimTexts = new Set();
+  const allClaims = [...summary, ...deepDive];
+  allClaims.forEach((claim, index) => {
+    const normalizedText = cleanText(claim?.text)
+      .toLocaleLowerCase("de-DE")
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
+    if (!normalizedText) return;
+    if (normalizedClaimTexts.has(normalizedText)) {
+      errors.push(`Aussage ${index + 1}: wiederholt eine bereits verwendete Erklärung.`);
+    }
+    normalizedClaimTexts.add(normalizedText);
+  });
+  const comparativeClaims = allClaims.filter((claim) => (
+    /\b(?:beste|besten|stärkste|stärksten|erste wahl|besser|genauer)\b/i
+      .test(claim?.text || "")
+  ));
+  if (comparativeClaims.length > 1) {
+    errors.push("Die Erklärung wiederholt den Vergleich mit der besten Möglichkeit.");
+  }
 
   if (!cleanText(value.headline, 160)) errors.push("Überschrift fehlt.");
   const headline = expected.uci && expected.san
@@ -1335,6 +1620,21 @@ export function moveExplanationCacheKey({
       matchedPly: Number.parseInt(opening?.matchedPly, 10) || 0,
       source: cleanText(opening?.source, 80),
     },
+    announcement: openingContext?.announcement
+      ? {
+        id: cleanText(openingContext.announcement.id, 300),
+        kind: cleanText(openingContext.announcement.kind, 40),
+        triggerPly:
+          Number.parseInt(openingContext.announcement.triggerPly, 10) || 0,
+        familyKey: cleanText(openingContext.announcement.familyKey, 160),
+        variationKey: cleanText(openingContext.announcement.variationKey, 200),
+        displayName: cleanText(openingContext.announcement.displayName, 240),
+        transposition: openingContext.announcement.transposition === true,
+        sequenceExitMove: cleanUci(
+          openingContext.announcement.sequenceExitMove,
+        ),
+      }
+      : null,
     engineContext,
     citableEvidence,
   })}`;
@@ -1346,14 +1646,61 @@ export function moveExplanationToMarkdown(explanation, { deep = false } = {}) {
   const headline = cleanText(explanation.headline, 160);
   if (headline) lines.push(`**${headline}**`);
   const summary = Array.isArray(explanation.summary) ? explanation.summary : [];
-  const summaryText = summary.map((claim) => cleanText(claim?.text)).filter(Boolean).join(" ");
+  const summarySeen = new Set();
+  const summaryClaims = summary
+    .map((claim) => cleanText(claim?.text))
+    .filter((text) => {
+      if (!text) return false;
+      const normalized = text.toLocaleLowerCase("de-DE")
+        .replace(/[^\p{L}\p{N}]+/gu, " ")
+        .trim();
+      if (!normalized || summarySeen.has(normalized)) return false;
+      summarySeen.add(normalized);
+      return true;
+    });
+  const summaryText = summaryClaims.join(" ");
   if (summaryText) lines.push(summaryText);
   if (deep) {
+    const seen = new Set(summaryClaims.map((text) => text.toLocaleLowerCase("de-DE")));
     (Array.isArray(explanation.deepDive) ? explanation.deepDive : []).forEach((section) => {
       const title = cleanText(section?.title, 80);
       const text = cleanText(section?.text);
-      if (title && text) lines.push(`**${title}:** ${text}`);
+      const normalized = text.toLocaleLowerCase("de-DE");
+      if (title && text && !seen.has(normalized)) {
+        lines.push(`**${title}:** ${text}`);
+        seen.add(normalized);
+      }
     });
   }
   return lines.join("\n\n");
+}
+
+export function compactMoveExplanationClaims(explanation, { maximum = 2 } = {}) {
+  const claims = Array.isArray(explanation?.summary) ? explanation.summary : [];
+  const priority = new Map([
+    ["position_change", 0],
+    ["move_effect", 1],
+    ["principle", 2],
+    ["alternative", 3],
+    ["assessment", 4],
+    ["variation", 5],
+    ["opening", 6],
+  ]);
+  const seen = new Set();
+  return claims
+    .map((claim, index) => ({ claim, index }))
+    .filter(({ claim }) => {
+      const text = cleanText(claim?.text);
+      const normalized = text.toLocaleLowerCase("de-DE");
+      if (!text || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    })
+    .sort((left, right) => (
+      (priority.get(left.claim?.claimKind) ?? 99)
+      - (priority.get(right.claim?.claimKind) ?? 99)
+      || left.index - right.index
+    ))
+    .slice(0, Math.max(1, Math.min(4, Number.parseInt(maximum, 10) || 2)))
+    .map(({ claim }) => claim);
 }

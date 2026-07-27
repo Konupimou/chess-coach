@@ -248,6 +248,11 @@ function localizedSanVariants(san) {
   const source = text(san, 24);
   if (!source) return [];
   const variants = new Set([source, source.replace(/[+#]+$/, "")]);
+  if (/^O-O(?:-O)?[+#]?$/i.test(source)) {
+    const numeric = source.replace(/O/g, "0");
+    variants.add(numeric);
+    variants.add(numeric.replace(/[+#]+$/, ""));
+  }
   const map = { K: "K", Q: "D", R: "T", B: "L", N: "S" };
   if (map[source[0]]) {
     const localized = `${map[source[0]]}${source.slice(1)}`;
@@ -290,7 +295,87 @@ export function allowedEngineMoveTokens(context) {
 }
 
 const MOVE_TOKEN_PATTERN =
-  /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|O-O(?:-O)?[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
+  /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|(?:O-O(?:-O)?|0-0(?:-0)?)[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
+
+function normalizedMoveToken(value) {
+  return text(value, 24)
+    .replace(/[+#]+$/, "")
+    .replace(/^0-0-0$/i, "O-O-O")
+    .replace(/^0-0$/i, "O-O")
+    .toLowerCase();
+}
+
+function legalEngineMoveLines(context) {
+  const normalized = normalizeEngineContext(context);
+  if (!normalized) return [];
+  const lines = [];
+  const seen = new Set();
+  const add = (pv) => {
+    const uci = Array.isArray(pv?.uci) ? pv.uci : [];
+    const san = Array.isArray(pv?.san) ? pv.san : [];
+    if (uci.length === 0 || uci.length !== san.length) return;
+    const signature = uci.join(" ");
+    if (seen.has(signature)) return;
+    seen.add(signature);
+    lines.push(uci.map((move, index) => ({
+      uci: move,
+      san: san[index],
+    })));
+  };
+  add(normalized.primaryVariation);
+  normalized.lines.forEach((line) => add(line.pv));
+  add(normalized.moveReview?.pv);
+  normalized.reviewMoments.forEach((moment) => add(moment.pv));
+  return lines;
+}
+
+function tokenMatchesLineMove(token, move) {
+  const normalized = normalizedMoveToken(token);
+  if (!normalized) return false;
+  if (normalizedMoveToken(move?.uci) === normalized) return true;
+  return localizedSanVariants(move?.san)
+    .some((alias) => normalizedMoveToken(alias) === normalized);
+}
+
+function notationOnlySeparator(value) {
+  return value
+    .replace(/\d+\.(?:\.\.)?/g, "")
+    .replace(/[\s,;:()[\]{}\-–—→>]+/g, "") === "";
+}
+
+function unsupportedNotationSequences(reply, matches, context) {
+  if (matches.length < 2) return [];
+  const clusters = [];
+  let current = [matches[0]];
+  for (let index = 1; index < matches.length; index += 1) {
+    const previous = matches[index - 1];
+    const next = matches[index];
+    const between = reply.slice(
+      previous.index + previous[0].length,
+      next.index,
+    );
+    if (notationOnlySeparator(between)) {
+      current.push(next);
+    } else {
+      if (current.length > 1) clusters.push(current);
+      current = [next];
+    }
+  }
+  if (current.length > 1) clusters.push(current);
+  if (clusters.length === 0) return [];
+
+  const legalLines = legalEngineMoveLines(context);
+  return clusters
+    .filter((cluster) => !legalLines.some((line) => (
+      line.some((_, start) => (
+        start + cluster.length <= line.length
+        && cluster.every((match, offset) => (
+          tokenMatchesLineMove(match[0], line[start + offset])
+        ))
+      ))
+    )))
+    .map((cluster) => cluster.map((match) => match[0]).join(" "));
+}
 
 export function findUnsupportedMoveTokens(reply, context, openingContext = null) {
   if (typeof reply !== "string") return [];
@@ -313,11 +398,16 @@ export function findUnsupportedMoveTokens(reply, context, openingContext = null)
         checkedReply = checkedReply.split(name.trim()).join("");
       });
   }
-  return [...new Set(
-    [...checkedReply.matchAll(MOVE_TOKEN_PATTERN)]
-      .map((match) => match[0])
-      .filter((token) => !allowed.has(token) && !allowed.has(token.toLowerCase())),
-  )];
+  const matches = [...checkedReply.matchAll(MOVE_TOKEN_PATTERN)];
+  const unsupportedTokens = matches
+    .map((match) => match[0])
+    .filter((token) => !allowed.has(token) && !allowed.has(token.toLowerCase()));
+  const unsupportedSequences = unsupportedNotationSequences(
+    checkedReply,
+    matches,
+    context,
+  );
+  return [...new Set([...unsupportedTokens, ...unsupportedSequences])];
 }
 
 function engineEvaluations(context) {

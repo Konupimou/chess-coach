@@ -57,8 +57,36 @@ test("Coach-Zugwächter akzeptiert nur Stockfish-PV und deutsche Figurenkürzel"
     findUnsupportedMoveTokens("Ich würde stattdessen d4 und später Qh5 spielen.", context),
     ["d4", "Qh5"],
   );
+  assert.deepEqual(
+    findUnsupportedMoveTokens("Die Folge wäre Sf3 Lb5 Sc6.", context),
+    ["Sf3 Lb5 Sc6"],
+  );
+  assert.deepEqual(
+    findUnsupportedMoveTokens("Danach folgt 0-0-0.", context),
+    ["0-0-0"],
+  );
   assert.match(ENGINE_CONTEXT_MISSING_REPLY, /keinen konkreten Zug/);
   assert.doesNotMatch(ENGINE_CONTEXT_MISSING_REPLY, /Stockfish|Engine|PV|Centipawn/i);
+});
+
+test("die übliche Null-Schreibweise der Rochade ist nur bei legal gelieferter Rochade erlaubt", () => {
+  const castlingContext = {
+    source: "stockfish",
+    kind: "position",
+    fen: "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+    depth: 18,
+    evaluation: { unit: "cp", value: 0 },
+    bestMove: { uci: "e1g1", san: "O-O" },
+    primaryVariation: {
+      uci: ["e1g1", "e8c8"],
+      san: ["O-O", "O-O-O"],
+    },
+    lines: [],
+  };
+  assert.deepEqual(
+    findUnsupportedMoveTokens("0-0 0-0-0", castlingContext),
+    [],
+  );
 });
 
 test("Unvollständige oder fremde Analysedaten gelten nicht als Engine-Wahrheit", () => {

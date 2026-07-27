@@ -174,6 +174,6 @@ test("Namen werden strukturiert und konservativ übersetzt", () => {
   );
   assert.equal(
     displayOpeningName("Sicilian Defense: Najdorf Variation, English Attack"),
-    "Sizilianische Verteidigung: Najdorf-Variante, English Attack",
+    "Sizilianische Verteidigung: Najdorf-Variante, Englischer Angriff",
   );
 });

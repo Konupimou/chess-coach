@@ -96,6 +96,8 @@ test("Account-Daten werden pro Identität gespeichert und Spiele aktualisiert", 
   assert.deepEqual(loaded.games[0].metadata, {
     playerColor: "w",
     playedAt: "2026-07-25",
+    whitePlayer: "",
+    blackPlayer: "",
     opponent: "Stockfish · Schwer",
     opponentType: "engine",
     engineLevel: "hard",

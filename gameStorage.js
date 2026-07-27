@@ -47,6 +47,8 @@ function normalizeMetadata(metadata) {
   return {
     playerColor,
     playedAt,
+    whitePlayer: cleanText(metadata.whitePlayer, 80),
+    blackPlayer: cleanText(metadata.blackPlayer, 80),
     opponent: cleanText(metadata.opponent, 80),
     opponentType: metadata.opponentType === "engine" ? "engine" : "",
     engineLevel: ["easy", "medium", "hard", "expert"].includes(metadata.engineLevel)

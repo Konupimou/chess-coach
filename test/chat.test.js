@@ -71,6 +71,11 @@ test("Chat-Payload wird begrenzt und normalisiert", () => {
   assert.equal(result.value.openingContext.knowledge.family, "Sicilian Defense");
   assert.ok(result.value.openingContext.knowledge.whitePlans.length > 0);
   assert.ok(result.value.openingContext.knowledge.blackPlans.length > 0);
+  assert.equal(result.value.openingContext.variationKnowledge.scope, "variation");
+  assert.equal(
+    result.value.openingContext.variationKnowledge.variation,
+    "Najdorf Variation",
+  );
   assert.equal("entries" in result.value.openingContext, false);
   assert.equal(result.value.gameReview.overallAccuracy, 88.4);
   assert.equal(normalizeChatPayload({ message: "  " }).error, "Bitte gib eine Frage ein.");

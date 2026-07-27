@@ -40,9 +40,13 @@ test("Eröffnungserkennung bleibt lokal, wird aber nicht als eigene Karte angeze
   assert.match(appSource, /loadOpeningBook/);
   assert.match(appSource, /buildOpeningCoachContext/);
   assert.match(appSource, /this\.detectedOpeningEl/);
-  assert.match(appSource, /Eröffnung wird automatisch erkannt/);
-  assert.match(appSource, /this\.matchupEl/);
+  assert.match(appSource, /deriveOpeningLifecycle/);
+  assert.match(appSource, /gameLibraryModel/);
+  assert.match(appSource, /this\.whitePlayerInput/);
+  assert.match(appSource, /this\.blackPlayerInput/);
   assert.match(appSource, /board-more-actions/);
+  assert.match(appSource, /savedOpening !== savedAutomaticOpening/);
+  assert.match(appSource, /this\.openingManualOverride = Boolean/);
   assert.doesNotMatch(appSource, /Weiß am Zug/);
   assert.doesNotMatch(appSource, /accuracy-chip/);
   assert.doesNotMatch(appSource, /createOpeningCard/);

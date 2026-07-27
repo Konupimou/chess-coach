@@ -72,11 +72,14 @@ const COMPONENT_TRANSLATIONS = Object.freeze({
   "Accepted": "Angenommen",
   "Advance Variation": "Vorstoßvariante",
   "Classical Variation": "Klassische Variante",
+  "English Attack": "Englischer Angriff",
   "Exchange Variation": "Abtauschvariante",
   "Four Knights Variation": "Vierspringervariante",
   "Najdorf Variation": "Najdorf-Variante",
   "Open Variation": "Offene Variante",
   "Three Knights Variation": "Dreispringervariante",
+  "Two Knights Defense": "Zweispringerverteidigung",
+  "Yugoslav Attack": "Jugoslawischer Angriff",
 });
 
 function cleanText(value, maximum = 240) {
@@ -123,16 +126,19 @@ function translateComponent(value) {
   return COMPONENT_TRANSLATIONS[value] || value;
 }
 
+export function displayOpeningComponent(value) {
+  return cleanText(value)
+    .split(",")
+    .map((component) => translateComponent(cleanText(component)))
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function displayOpeningName(name) {
   const parsed = parseOpeningName(name);
   const family = FAMILY_TRANSLATIONS[parsed.family] || parsed.family;
-  const variation = translateComponent(parsed.variation);
-  const subvariation = parsed.subvariation
-    ? parsed.subvariation
-      .split(",")
-      .map((component) => translateComponent(cleanText(component)))
-      .join(", ")
-    : null;
+  const variation = displayOpeningComponent(parsed.variation);
+  const subvariation = displayOpeningComponent(parsed.subvariation);
   return [
     family,
     variation ? `: ${variation}` : "",

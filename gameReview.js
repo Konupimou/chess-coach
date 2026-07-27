@@ -296,8 +296,8 @@ export function groundedSuggestionReason({ rank = 1, san = "", uci = "" } = {}) 
     idea = "Der Zug erhöht den Einfluss im Zentrum.";
   }
   const comparison = rank === 1
-    ? "Die gezeigte Fortsetzung bestätigt ihn als stärkste geprüfte Möglichkeit."
-    : "Die Idee bleibt spielbar, liegt aber hinter der ersten geprüften Möglichkeit.";
+    ? "Achte besonders darauf, wie die gezeigte Antwortfolge diese Idee unterstützt."
+    : "Die Idee bleibt spielbar; die erste Zugidee löst die Aufgaben der Stellung etwas direkter.";
   return [idea, comparison].filter(Boolean).join(" ");
 }
 

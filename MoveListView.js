@@ -32,6 +32,9 @@ export class MoveListView {
     this.collapsed = new Set(); // remembers which move numbers are collapsed
     this._lastRoot = null;
     this._lastCurrent = null;
+    this._nodeKeys = new WeakMap();
+    this._nodesByKey = new Map();
+    this._nextNodeKey = 1;
 
     const boardEl = document.getElementById(afterElementId);
     let listEl = document.getElementById("move-list");
@@ -80,35 +83,63 @@ export class MoveListView {
       const hit = e.target.closest("[data-fen]");
       if (!hit) return;
       const fen = hit.getAttribute("data-fen");
-      if (fen) this.onJump(fen);
+      const node = this._nodesByKey.get(hit.getAttribute("data-node-key")) || null;
+      if (fen) this.onJump(fen, node);
+    });
+    this.container.addEventListener("keydown", (event) => {
+      if (!["Enter", " "].includes(event.key)) return;
+      const hit = event.target?.closest?.("[data-fen]");
+      if (!hit) return;
+      event.preventDefault();
+      const fen = hit.getAttribute("data-fen");
+      const node = this._nodesByKey.get(hit.getAttribute("data-node-key")) || null;
+      if (fen) this.onJump(fen, node);
     });
 
     const moveHit = (event) => event.target?.closest?.("[data-fen]") || null;
     const entersHit = (hit, relatedTarget) => (
       hit && !(relatedTarget instanceof Node && hit.contains(relatedTarget))
     );
+    const previewInputs = new WeakMap();
+    const previewInputState = (hit) => {
+      let state = previewInputs.get(hit);
+      if (!state) {
+        state = { pointer: false, focus: false };
+        previewInputs.set(hit, state);
+      }
+      return state;
+    };
+    const startPreviewInput = (hit, type) => {
+      const state = previewInputState(hit);
+      const wasActive = state.pointer || state.focus;
+      state[type] = true;
+      const fen = hit.getAttribute("data-fen");
+      if (!wasActive && fen) this.onPreview(fen, hit);
+    };
+    const stopPreviewInput = (hit, type) => {
+      const state = previewInputState(hit);
+      state[type] = false;
+      const fen = hit.getAttribute("data-fen");
+      if (!state.pointer && !state.focus && fen) this.onPreviewEnd(fen, hit);
+    };
     this.container.addEventListener("pointerover", (event) => {
       const hit = moveHit(event);
       if (!entersHit(hit, event.relatedTarget)) return;
-      const fen = hit.getAttribute("data-fen");
-      if (fen) this.onPreview(fen, hit);
+      startPreviewInput(hit, "pointer");
     });
     this.container.addEventListener("pointerout", (event) => {
       const hit = moveHit(event);
       if (!entersHit(hit, event.relatedTarget)) return;
-      const fen = hit.getAttribute("data-fen");
-      if (fen) this.onPreviewEnd(fen, hit);
+      stopPreviewInput(hit, "pointer");
     });
     this.container.addEventListener("focusin", (event) => {
       const hit = moveHit(event);
-      const fen = hit?.getAttribute("data-fen");
-      if (fen) this.onPreview(fen, hit);
+      if (hit) startPreviewInput(hit, "focus");
     });
     this.container.addEventListener("focusout", (event) => {
       const hit = moveHit(event);
       if (!entersHit(hit, event.relatedTarget)) return;
-      const fen = hit.getAttribute("data-fen");
-      if (fen) this.onPreviewEnd(fen, hit);
+      stopPreviewInput(hit, "focus");
     });
   }
 
@@ -141,6 +172,21 @@ export class MoveListView {
       : "";
   }
 
+  nodeKey(node) {
+    if (!node || typeof node !== "object") return "";
+    if (!(this._nodeKeys instanceof WeakMap)) this._nodeKeys = new WeakMap();
+    if (!(this._nodesByKey instanceof Map)) this._nodesByKey = new Map();
+    if (!Number.isInteger(this._nextNodeKey)) this._nextNodeKey = 1;
+    let key = this._nodeKeys.get(node);
+    if (!key) {
+      key = `move-${this._nextNodeKey}`;
+      this._nextNodeKey += 1;
+      this._nodeKeys.set(node, key);
+    }
+    this._nodesByKey.set(key, node);
+    return key;
+  }
+
   moveCell(node, currentNode) {
     if (!node) return "<td></td>";
     const annotation = this.annotationFor(node);
@@ -157,8 +203,11 @@ export class MoveListView {
     const detail = this._showExplanations
       ? `<small class="move-explanation${annotation?.quality ? "" : " is-pending"}">${escapeHtml(explanation || "Bewertung wird berechnet …")}</small>`
       : "";
+    const nodeKey = this.nodeKey(node);
     return [
       `<td class="${classes.join(" ")}" data-fen="${escapeHtml(node.fen)}"`,
+      ` data-node-key="${escapeHtml(nodeKey)}" role="button" tabindex="0"`,
+      ` aria-label="${escapeHtml(`Zug ${node.move.san} ansehen`)}"`,
       title ? ` title="${escapeHtml(title)}"` : "",
       ">",
       `<span class="move-san">${escapeHtml(node.move.san)}</span>`,
@@ -178,8 +227,11 @@ export class MoveListView {
       annotation?.label,
       annotation?.explanation,
     ].filter((value) => typeof value === "string" && value).join(" · ");
+    const nodeKey = this.nodeKey(node);
     return [
       `<span class="${classes.join(" ")}" data-fen="${escapeHtml(node.fen)}"`,
+      ` data-node-key="${escapeHtml(nodeKey)}" role="button" tabindex="0"`,
+      ` aria-label="${escapeHtml(`Variante ${node.move.san} ansehen`)}"`,
       title ? ` title="${escapeHtml(title)}"` : "",
       `>${escapeHtml(node.move.san)}</span>`,
     ].join("");
@@ -341,6 +393,7 @@ export class MoveListView {
     this._annotations = annotations instanceof Map ? annotations : new Map();
     this._showExplanations = Boolean(showExplanations);
     if (!this.container || !root) return;
+    this._nodesByKey = new Map();
 
     const nodes = this.getMainlineNodes(root);
 

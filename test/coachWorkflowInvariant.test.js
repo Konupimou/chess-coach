@@ -13,6 +13,53 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /selectImpactArrowMoves/);
   assert.match(appSource, /const engineContext = this\.buildPositionCoachEngineContext\(\)/);
   assert.match(appSource, /requestGroundedMoveExplanation/);
+  assert.match(appSource, /computer-move-token/);
+  assert.match(appSource, /startExplanationPreview/);
+});
+
+test("automatische Zugerklärungen bleiben im Schachcomputer und der Chat beginnt mit dem Nutzer", () => {
+  const scheduleStart = appSource.indexOf("  scheduleLatestMoveExplanation()");
+  const scheduleEnd = appSource.indexOf("  buildAnalysisCoachEngineContext()", scheduleStart);
+  const scheduleSource = appSource.slice(scheduleStart, scheduleEnd);
+  assert.ok(scheduleStart >= 0 && scheduleEnd > scheduleStart);
+  assert.match(scheduleSource, /this\.latestComputerExplanation =/);
+  assert.match(scheduleSource, /this\.renderSuggestions\(\)/);
+  assert.match(scheduleSource, /positionFenBefore/);
+  assert.match(scheduleSource, /positionFenAfter/);
+  assert.match(scheduleSource, /pathSignature/);
+  assert.doesNotMatch(scheduleSource, /appendChatMessage|chatMessages\.push/);
+  assert.doesNotMatch(appSource, /upsertMoveExplanationMessage/);
+
+  const sendStart = appSource.indexOf("  async sendChatMessage(text)");
+  const sendEnd = appSource.indexOf("  setChatBusy(", sendStart);
+  const sendSource = appSource.slice(sendStart, sendEnd);
+  assert.match(sendSource, /this\.appendChatMessage\('user', text\)/);
+});
+
+test("der Browser übernimmt keine alten Coach-Texte und cached nur geprüfte Serverquellen", () => {
+  const loadStart = appSource.indexOf("  loadMoveExplanationCache()");
+  const loadEnd = appSource.indexOf("  saveMoveExplanationCache()", loadStart);
+  const loadSource = appSource.slice(loadStart, loadEnd);
+  const saveStart = loadEnd;
+  const saveEnd = appSource.indexOf("  rememberMoveExplanation(", saveStart);
+  const saveSource = appSource.slice(saveStart, saveEnd);
+  const requestStart = appSource.indexOf("  async requestGroundedMoveExplanation({");
+  const requestEnd = appSource.indexOf("  createChatPanel(", requestStart);
+  const requestSource = appSource.slice(requestStart, requestEnd);
+
+  assert.ok(loadStart >= 0 && loadEnd > loadStart);
+  assert.ok(saveEnd > saveStart);
+  assert.ok(requestStart >= 0 && requestEnd > requestStart);
+  assert.match(appSource, /chess-coach\.move-explanations\.v3/);
+  assert.match(loadSource, /moveExplanationCache\.clear\(\)/);
+  assert.match(loadSource, /removeItem/);
+  assert.doesNotMatch(loadSource, /getItem/);
+  assert.doesNotMatch(saveSource, /setItem/);
+  assert.match(
+    requestSource,
+    /payload\.source === "ai"\s*\|\|\s*payload\.source === "cache"/,
+  );
+  assert.doesNotMatch(requestSource, /payload\.source === "local"/);
 });
 
 test("Live-Coach bewertet rechts oben, erlaubt Nachfragen und hält automatische Antworten aus dem Chat", () => {

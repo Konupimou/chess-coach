@@ -9,6 +9,7 @@ import {
 import {
   hasOpeningKnowledge,
   openingKnowledgeForFamily,
+  openingKnowledgeForVariation,
 } from "../openingKnowledge.js";
 import { buildPositionEvidence } from "../positionEvidence.js";
 import { buildCoachKnowledgeContext } from "../knowledgeClaims.js";
@@ -62,6 +63,7 @@ const SYSTEM_INSTRUCTIONS = [
   "Wenn eine vollständige Partieauswertung geliefert wird, stütze jeden konkreten Schachbezug auf die mitgelieferten Stockfish-Momente und formuliere sonst nur vorsichtige statistische Aussagen.",
   "Verwende Eröffnungsnamen ausschließlich aus <opening_context>. Erfinde niemals einen Eröffnungsnamen, ECO-Code, eine Variante oder Untervariante.",
   "Verwende spezifische Pläne, Bauernstrukturen, Entwicklungsideen und typische Fehler nur, wenn sie im Feld knowledge von <opening_context> stehen.",
+  "Wenn variationKnowledge vorhanden ist, nutze für die benannte Variante zuerst deren idea, whitePlan, blackPlan und watchFor; wiederhole sie nicht in späteren automatischen Zugerklärungen.",
   "Wenn knowledge den scope general trägt, kennzeichne die Hinweise als allgemeine Eröffnungsprinzipien und behaupte keine eröffnungsspezifische Theorie.",
   "Nenne aus dem Eröffnungswissen keine konkrete Zugfolge und stelle eine thematische Idee nicht als besten Zug der aktuellen Stellung dar.",
   "Eine nicht mehr erkannte gespeicherte Zugfolge bedeutet nicht, dass ein Zug schlecht ist oder dass die Schachtheorie endet.",
@@ -84,6 +86,9 @@ const MOVE_EXPLANATION_INSTRUCTIONS = [
   "Der erklärte subjectUci- und subjectSan-Zug muss exakt dem Feld playedMove in <position_evidence> entsprechen.",
   "Wenn der geprüfte Zug vom besten Engine-Zug abweicht, trenne klar zwischen dem gespielten Zug und der belegten besseren Möglichkeit.",
   "In der Eröffnungsphase erklärst du Pläne und Prinzipien aus <verified_knowledge> beziehungsweise <opening_context>; eine Enginebewertung allein ist kein Eröffnungsargument.",
+  "Nenne den Eröffnungsnamen in einer automatischen Zugerklärung nur, wenn <opening_context>.announcement den Typ family oder variation hat. Ohne dieses Ereignis wiederholst du den bekannten Namen nicht.",
+  "Wiederhole nicht mechanisch, dass der bereits als beste Idee markierte Zug der beste Zug ist. Beginne stattdessen wie ein menschlicher Coach mit seiner Aufgabe, zum Beispiel Figuren herausbringen, Raum schaffen oder eine konkrete Gefahr beantworten, sofern genau das belegt ist.",
+  "Formuliere flüssig und direkt. Vermeide Schablonen wie 'entwickelt oder verbessert die Figur' und erkläre stattdessen den konkreten, belegten Zweck.",
   "Passe Satzlänge, Begriffe und Variantenlänge an <learner_profile> an. Definiere seltene Fachbegriffe, wenn dieses Profil es verlangt.",
   "Schreibe vier bis sechs kurze, zusammenhängende Sätze in summary. Jeder Satz behandelt genau einen nachvollziehbaren Gedanken.",
   "deepDive ergänzt zwei bis fünf klar benannte Abschnitte und wiederholt die Kurzfassung nicht bloß.",
@@ -166,6 +171,28 @@ function sanitizeOpeningContext(value) {
     ? value.matchedBy
     : "unknown";
   const trustedSource = value.source === "lichess-chess-openings";
+  const rawAnnouncement = value.announcement;
+  const announcement = (
+    rawAnnouncement
+    && typeof rawAnnouncement === "object"
+    && ["family", "variation", "database_exit"].includes(rawAnnouncement.kind)
+  )
+    ? {
+      id: asTrimmedString(rawAnnouncement.id, 300),
+      kind: rawAnnouncement.kind,
+      triggerPly: Number.isInteger(rawAnnouncement.triggerPly)
+        ? Math.max(1, Math.min(300, rawAnnouncement.triggerPly))
+        : null,
+      familyKey: asTrimmedString(rawAnnouncement.familyKey, 120) || null,
+      familyDisplay: asTrimmedString(rawAnnouncement.familyDisplay, 160) || null,
+      variationKey: asTrimmedString(rawAnnouncement.variationKey, 180) || null,
+      displayName: asTrimmedString(rawAnnouncement.displayName, 240) || null,
+      transposition: rawAnnouncement.transposition === true,
+      sequenceExitMove: /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(rawAnnouncement.sequenceExitMove)
+        ? rawAnnouncement.sequenceExitMove
+        : null,
+    }
+    : null;
   const base = {
     matched: value.matched === true && trustedSource,
     currentPly: Math.max(0, Math.min(300, Number.parseInt(value.currentPly, 10) || 0)),
@@ -174,6 +201,7 @@ function sanitizeOpeningContext(value) {
     sequenceExitPly: Number.isInteger(value.sequenceExitPly)
       ? Math.max(1, Math.min(300, value.sequenceExitPly))
       : null,
+    announcement,
     source: trustedSource ? "lichess-chess-openings" : "",
   };
   const sanitizeSuggestedOpening = (suggested) => {
@@ -184,16 +212,18 @@ function sanitizeOpeningContext(value) {
       || suggested.source !== "lichess-chess-openings"
     ) return null;
     const family = asTrimmedString(suggested.family, 120) || null;
+    const variation = asTrimmedString(suggested.variation, 120) || null;
     return {
       matched: true,
       eco: /^[A-E]\d{2}$/.test(suggested.eco) ? suggested.eco : "",
       sourceName: asTrimmedString(suggested.sourceName, 240),
       displayName: asTrimmedString(suggested.displayName, 240),
       family,
-      variation: asTrimmedString(suggested.variation, 120) || null,
+      variation,
       subvariation: asTrimmedString(suggested.subvariation, 160) || null,
       source: "lichess-chess-openings",
       knowledge: openingKnowledgeForFamily(family),
+      variationKnowledge: openingKnowledgeForVariation(family, variation),
     };
   };
   const suggestedOpening = sanitizeSuggestedOpening(value.suggestedOpening);
@@ -205,18 +235,26 @@ function sanitizeOpeningContext(value) {
     };
   }
   const family = asTrimmedString(value.family, 120) || null;
+  const variation = asTrimmedString(value.variation, 120) || null;
+  const announcedVariation = announcement?.kind === "variation"
+    ? announcement.variationKey
+    : null;
   return {
     ...base,
     eco: /^[A-E]\d{2}$/.test(value.eco) ? value.eco : "",
     sourceName: asTrimmedString(value.sourceName, 240),
     displayName: asTrimmedString(value.displayName, 240),
     family,
-    variation: asTrimmedString(value.variation, 120) || null,
+    variation,
     subvariation: asTrimmedString(value.subvariation, 160) || null,
     matchedPly: Number.isInteger(value.matchedPly)
       ? Math.max(1, Math.min(300, value.matchedPly))
       : null,
     knowledge: openingKnowledgeForFamily(family),
+    variationKnowledge: openingKnowledgeForVariation(
+      family,
+      announcedVariation || variation,
+    ),
     suggestedOpening,
   };
 }
@@ -362,6 +400,44 @@ function openingKnowledgeClaims(openingContext, phase) {
   const knowledge = opening?.knowledge;
   if (!opening || !hasOpeningKnowledge(knowledge)) return [];
   const claims = [];
+  const variationKnowledge = (
+    openingContext?.announcement?.kind === "variation"
+    && opening?.variationKnowledge?.scope === "variation"
+  )
+    ? opening.variationKnowledge
+    : null;
+  if (variationKnowledge) {
+    [
+      ["idea", variationKnowledge.idea],
+      ["whitePlan", variationKnowledge.whitePlan],
+      ["blackPlan", variationKnowledge.blackPlan],
+      ["watchFor", variationKnowledge.watchFor],
+    ].forEach(([field, text]) => {
+      const principle = asTrimmedString(text, 500);
+      if (!principle) return;
+      claims.push({
+        id: `opening.variation.${field}`,
+        conceptIds: [`opening.variation.${field}`],
+        principle,
+        rationale: "Geprüftes, lokal gespeichertes Wissen für die erkannte Eröffnungsvariante.",
+        matchedFeatures: [
+          `opening.family:${asTrimmedString(opening.family, 120) || "general"}`,
+          `opening.variation:${asTrimmedString(opening.variation, 120) || "unknown"}`,
+        ],
+        confidence: 0.94,
+        reviewStatus: "reviewed",
+        sources: [{
+          id: variationKnowledge.source,
+          title: "Chess Coach Variantenwissen",
+          author: "Chess Coach",
+          publicationYear: 2026,
+          locator: `${variationKnowledge.family}: ${variationKnowledge.variation}`,
+          usage: "eigenständig formuliertes lokales Variantenwissen",
+          reviewStatus: "reviewed",
+        }],
+      });
+    });
+  }
   const add = (field, text, index = 0) => {
     const principle = asTrimmedString(text, 500);
     if (!principle) return;

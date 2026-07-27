@@ -78,3 +78,20 @@ test("Zugqualität färbt Zellen und Erklärungen werden sicher ausgegeben", () 
   assert.match(view.container.innerHTML, /&lt;ohne &quot;Risiko&quot;&gt;/);
   assert.doesNotMatch(view.container.innerHTML, /<ohne/);
 });
+
+test("identische Transpositions-FENs behalten unterschiedliche, tastaturfähige Baumziele", () => {
+  const game = new Chess();
+  const root = new MoveTreeNode({ fen: game.fen() });
+  const e4 = addMoveToTree(root, game.move("e4"), game.fen());
+  game.reset();
+  const d4 = addMoveToTree(root, game.move("d4"), game.fen());
+  d4.fen = e4.fen;
+
+  const view = createView();
+  view.render(root, d4);
+
+  assert.equal(view._nodesByKey.size, 2);
+  assert.deepEqual(new Set(view._nodesByKey.values()), new Set([e4, d4]));
+  assert.match(view.container.innerHTML, /data-node-key="move-\d+"/);
+  assert.match(view.container.innerHTML, /role="button" tabindex="0"/);
+});

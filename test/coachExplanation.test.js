@@ -5,8 +5,10 @@ import {
   buildLocalMoveExplanation,
   buildTrustedExplanationEvidence,
   collectEvidenceIds,
+  compactMoveExplanationClaims,
   MOVE_EXPLANATION_SCHEMA_VERSION,
   moveExplanationCacheKey,
+  moveExplanationToMarkdown,
   verifyMoveExplanation,
 } from "../coachExplanation.js";
 import { requestMoveExplanation } from "../api/chat.js";
@@ -305,6 +307,241 @@ test("Einzelzüge, vermischte Linien und unbelegte Taktikbehauptungen werden ver
   assert.ok(inventedResult.errors.some((error) => /nicht direkt bewiesen/.test(error)));
 });
 
+test("numerische Rochaden werden wie jede andere Zugnotation gegen legale Linien geprüft", () => {
+  const castlingFen = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
+  const castlingEvidence = buildPositionEvidence({
+    fenBefore: castlingFen,
+    playedUci: "e1g1",
+    lines: [{ rank: 1, pv: ["e1g1", "e8c8"] }],
+  });
+  const castlingContext = {
+    source: "stockfish",
+    kind: "position",
+    fen: castlingFen,
+    depth: 18,
+    evaluation: { unit: "cp", value: 0 },
+    bestMove: { uci: "e1g1", san: "O-O" },
+    primaryVariation: {
+      uci: ["e1g1", "e8c8"],
+      san: ["O-O", "O-O-O"],
+    },
+    lines: [{
+      rank: 1,
+      depth: 18,
+      evaluation: { unit: "cp", value: 0 },
+      bestMove: { uci: "e1g1", san: "O-O" },
+      pv: {
+        uci: ["e1g1", "e8c8"],
+        san: ["O-O", "O-O-O"],
+      },
+    }],
+  };
+  const trustedCastlingEvidence = buildTrustedExplanationEvidence({
+    positionEvidence: castlingEvidence,
+    engineContext: castlingContext,
+  });
+  const legalCastling = {
+    schemaVersion: MOVE_EXPLANATION_SCHEMA_VERSION,
+    subjectUci: "e1g1",
+    subjectSan: "O-O",
+    headline: "Die kurze Rochade",
+    summary: [
+      {
+        claimKind: "assessment",
+        text: "0-0 ist die stärkste geprüfte Möglichkeit.",
+        evidenceIds: ["engine.best_move"],
+        moveRefs: [{
+          lineEvidenceId: "engine.pv.1",
+          startPly: 0,
+          uci: ["e1g1"],
+        }],
+      },
+      {
+        claimKind: "move_effect",
+        text: "Mit 0-0 wird in dieser Stellung legal rochiert.",
+        evidenceIds: ["move.played.legal:e1g1", "move.played.properties"],
+        moveRefs: [{
+          lineEvidenceId: "move.played.legal:e1g1",
+          startPly: 0,
+          uci: ["e1g1"],
+        }],
+      },
+      {
+        claimKind: "position_change",
+        text: "Die Rochade verändert die Königssicherheit konkret.",
+        evidenceIds: ["position.change.king_safety"],
+        moveRefs: [],
+      },
+      {
+        claimKind: "variation",
+        text: "Die geprüfte Folge lautet 0-0 0-0-0.",
+        evidenceIds: ["engine.pv.1"],
+        moveRefs: [{
+          lineEvidenceId: "engine.pv.1",
+          startPly: 0,
+          uci: ["e1g1", "e8c8"],
+        }],
+      },
+    ],
+    deepDive: [
+      {
+        claimKind: "move_effect",
+        title: "Legalität",
+        text: "Die kurze Rochade ist in der geprüften Stellung legal.",
+        evidenceIds: ["move.played.legal:e1g1", "move.played.properties"],
+        moveRefs: [],
+      },
+      {
+        claimKind: "variation",
+        title: "Fortsetzung",
+        text: "Auf 0-0 folgt in der legal geprüften Linie 0-0-0.",
+        evidenceIds: ["engine.pv.1"],
+        moveRefs: [{
+          lineEvidenceId: "engine.pv.1",
+          startPly: 0,
+          uci: ["e1g1", "e8c8"],
+        }],
+      },
+    ],
+    confidence: "high",
+  };
+  const accepted = verifyMoveExplanation(legalCastling, {
+    positionEvidence: trustedCastlingEvidence,
+    engineContext: castlingContext,
+  });
+  assert.equal(accepted.valid, true, accepted.errors.join(" "));
+
+  const positionEvidence = evidenceFixture();
+  const trustedEvidence = buildTrustedExplanationEvidence({
+    positionEvidence,
+    engineContext,
+  });
+  const explanation = validStructuredExplanation();
+  explanation.summary[3].text = "In der geprüften Folge wird danach 0-0-0 gespielt.";
+
+  const result = verifyMoveExplanation(explanation, {
+    positionEvidence: trustedEvidence,
+    engineContext,
+  });
+
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.errors.some((error) => /Zugnotation|Teilfolge|legal/i.test(error)),
+    result.errors.join(" "),
+  );
+});
+
+test("ein Beleg zu einem anderen Stellungseffekt rechtfertigt keine konkrete Linienöffnung", () => {
+  const positionEvidence = evidenceFixture();
+  const trustedEvidence = buildTrustedExplanationEvidence({
+    positionEvidence,
+    engineContext,
+  });
+  const explanation = validStructuredExplanation();
+  explanation.summary[2] = {
+    claimKind: "position_change",
+    text: "Der Zug öffnet die h-Linie.",
+    evidenceIds: ["position.change.center"],
+    moveRefs: [],
+  };
+
+  const result = verifyMoveExplanation(explanation, {
+    positionEvidence: trustedEvidence,
+    engineContext,
+  });
+
+  assert.equal(result.valid, false);
+  assert.ok(
+    result.errors.some((error) => /Linienöffnung|nicht nachgewiesen/i.test(error)),
+    result.errors.join(" "),
+  );
+});
+
+test("ein ruhiger Figurenzug wird lokal als neutrale Brettveränderung beschrieben", () => {
+  const fen = "k7/8/8/8/8/8/6K1/8 w - - 0 1";
+  const positionEvidence = buildPositionEvidence({
+    fenBefore: fen,
+    playedUci: "g2h1",
+    lines: [{ rank: 1, pv: ["g2h1", "a8b7"] }],
+  });
+  const quietMoveContext = {
+    source: "stockfish",
+    kind: "position",
+    fen,
+    depth: 18,
+    evaluation: { unit: "cp", value: 0 },
+    bestMove: { uci: "g2h1", san: "Kh1" },
+    primaryVariation: {
+      uci: ["g2h1", "a8b7"],
+      san: ["Kh1", "Kb7"],
+    },
+    lines: [{
+      rank: 1,
+      depth: 18,
+      evaluation: { unit: "cp", value: 0 },
+      bestMove: { uci: "g2h1", san: "Kh1" },
+      pv: {
+        uci: ["g2h1", "a8b7"],
+        san: ["Kh1", "Kb7"],
+      },
+    }],
+  };
+
+  const explanation = buildLocalMoveExplanation({
+    positionEvidence,
+    engineContext: quietMoveContext,
+    learnerProfile,
+  });
+  const moveEffect = explanation?.summary.find(
+    (claim) => claim.claimKind === "move_effect",
+  );
+
+  assert.ok(explanation);
+  assert.ok(moveEffect);
+  assert.match(moveEffect.text, /Kh1|König/i);
+  assert.doesNotMatch(
+    moveEffect.text,
+    /\b(?:aktiv|verbessert|besser|sicher)\w*/i,
+  );
+});
+
+test("eine Erklärung wiederholt weder denselben Satz noch den Bestzug-Vergleich", () => {
+  const positionEvidence = evidenceFixture();
+  const trustedEvidence = buildTrustedExplanationEvidence({
+    positionEvidence,
+    engineContext,
+  });
+
+  const duplicate = validStructuredExplanation();
+  duplicate.summary[1] = structuredClone(duplicate.summary[0]);
+  const duplicateResult = verifyMoveExplanation(duplicate, {
+    positionEvidence: trustedEvidence,
+    engineContext,
+  });
+  assert.equal(duplicateResult.valid, false);
+  assert.ok(
+    duplicateResult.errors.some((error) => /wiederhol|doppelt/i.test(error)),
+    duplicateResult.errors.join(" "),
+  );
+
+  const repeatedComparison = validStructuredExplanation();
+  repeatedComparison.summary[1] = {
+    claimKind: "assessment",
+    text: "Diese Wahl ist ebenfalls die beste geprüfte Möglichkeit.",
+    evidenceIds: ["engine.best_move"],
+    moveRefs: [],
+  };
+  const comparisonResult = verifyMoveExplanation(repeatedComparison, {
+    positionEvidence: trustedEvidence,
+    engineContext,
+  });
+  assert.equal(comparisonResult.valid, false);
+  assert.ok(
+    comparisonResult.errors.some((error) => /Vergleich|beste Möglichkeit|wiederholt/i.test(error)),
+    comparisonResult.errors.join(" "),
+  );
+});
+
 test("der Cache-Digest ändert sich mit Variante, Bewertung und Wissensinhalt", () => {
   const firstEvidence = evidenceFixture();
   const changedEvidence = buildPositionEvidence({
@@ -345,7 +582,167 @@ test("der Cache-Digest ändert sich mit Variante, Bewertung und Wissensinhalt", 
 
   assert.notEqual(first, changedLine);
   assert.notEqual(first, changedKnowledge);
-  assert.match(first, /^v2:[a-f0-9]{64}$/);
+  assert.match(first, /^v3:[a-f0-9]{64}$/);
+});
+
+test("Eröffnungsankündigungen und Zugumstellungen gehören zum Cache-Schlüssel", () => {
+  const positionEvidence = evidenceFixture();
+  const baseOpening = {
+    matched: true,
+    eco: "B00",
+    displayName: "Königbauernspiel",
+    family: "King's Pawn Game",
+    source: "lichess-chess-openings",
+    matchedPly: 1,
+  };
+  const shared = {
+    fen: START_FEN,
+    subjectUci: "e2e4",
+    engineDepth: 18,
+    learnerProfile,
+    engineContext,
+    positionEvidence,
+  };
+  const withoutAnnouncement = moveExplanationCacheKey({
+    ...shared,
+    openingContext: baseOpening,
+  });
+  const familyAnnouncement = moveExplanationCacheKey({
+    ...shared,
+    openingContext: {
+      ...baseOpening,
+      announcement: {
+        kind: "family",
+        displayName: "Königbauernspiel",
+        triggerPly: 1,
+        transposition: false,
+      },
+    },
+  });
+  const variationAnnouncement = moveExplanationCacheKey({
+    ...shared,
+    openingContext: {
+      ...baseOpening,
+      announcement: {
+        kind: "variation",
+        displayName: "Königbauernspiel: Hauptvariante",
+        triggerPly: 1,
+        transposition: false,
+      },
+    },
+  });
+  const transpositionAnnouncement = moveExplanationCacheKey({
+    ...shared,
+    openingContext: {
+      ...baseOpening,
+      announcement: {
+        kind: "family",
+        displayName: "Königbauernspiel",
+        triggerPly: 1,
+        transposition: true,
+      },
+    },
+  });
+
+  assert.notEqual(withoutAnnouncement, familyAnnouncement);
+  assert.notEqual(familyAnnouncement, variationAnnouncement);
+  assert.notEqual(familyAnnouncement, transpositionAnnouncement);
+});
+
+test("kompakte Erklärungen priorisieren konkrete Wirkungen und Prinzipien", () => {
+  const explanation = {
+    summary: [
+      { claimKind: "assessment", text: "e4 ist stark." },
+      { claimKind: "opening", text: "Das ist ein Königbauernspiel." },
+      { claimKind: "variation", text: "Es kann e4 e5 Nf3 folgen." },
+      { claimKind: "principle", text: "Entwickle Figuren zügig." },
+      { claimKind: "move_effect", text: "Der Läufer auf f1 erhält eine offene Linie." },
+      { claimKind: "position_change", text: "Weiß kontrolliert danach zusätzlich d5 und f5." },
+    ],
+  };
+
+  const compact = compactMoveExplanationClaims(explanation, { maximum: 3 });
+
+  assert.deepEqual(
+    compact.map((claim) => claim.claimKind),
+    ["position_change", "move_effect", "principle"],
+  );
+});
+
+test("Markdown wiederholt wortgleiche Texte nicht im Deep Dive", () => {
+  const repeatedSummary = "Der Zug verstärkt sofort die Kontrolle im Zentrum.";
+  const repeatedDeepDive = "Achte danach auf die Entwicklung des Königsläufers.";
+  const markdown = moveExplanationToMarkdown({
+    headline: "Ein sinnvoller Entwicklungszug",
+    summary: [
+      { text: repeatedSummary },
+      { text: repeatedSummary },
+      { text: "Die Stellung bleibt dabei flexibel." },
+    ],
+    deepDive: [
+      { title: "Zentrum", text: repeatedSummary },
+      { title: "Entwicklung", text: repeatedDeepDive },
+      { title: "Noch einmal", text: repeatedDeepDive },
+    ],
+  }, { deep: true });
+
+  assert.equal(markdown.split(repeatedSummary).length - 1, 1);
+  assert.equal(markdown.split(repeatedDeepDive).length - 1, 1);
+  assert.doesNotMatch(markdown, /\*\*Zentrum:\*\*/);
+  assert.match(markdown, /\*\*Entwicklung:\*\*/);
+  assert.doesNotMatch(markdown, /\*\*Noch einmal:\*\*/);
+});
+
+test("lokale Erklärungen nennen Eröffnungswissen nur bei angekündigter Familie oder Variante", () => {
+  const positionEvidence = evidenceFixture();
+  const openingContext = {
+    matched: true,
+    eco: "B00",
+    displayName: "Königbauernspiel",
+    sourceName: "King's Pawn Game",
+    family: "King's Pawn Game",
+    source: "lichess-chess-openings",
+    matchedPly: 1,
+    currentPly: 1,
+  };
+  const withoutAnnouncement = buildLocalMoveExplanation({
+    positionEvidence,
+    engineContext,
+    learnerProfile,
+    openingContext,
+  });
+
+  assert.ok(withoutAnnouncement);
+  assert.equal(
+    withoutAnnouncement.summary.some((claim) => claim.claimKind === "opening"),
+    false,
+  );
+  assert.doesNotMatch(
+    withoutAnnouncement.summary.map((claim) => claim.text).join(" "),
+    /Königbauernspiel/,
+  );
+
+  for (const kind of ["family", "variation"]) {
+    const announced = buildLocalMoveExplanation({
+      positionEvidence,
+      engineContext,
+      learnerProfile,
+      openingContext: {
+        ...openingContext,
+        announcement: {
+          kind,
+          displayName: "Königbauernspiel",
+          transposition: false,
+        },
+      },
+    });
+    const openingClaims = announced.summary.filter(
+      (claim) => claim.claimKind === "opening",
+    );
+
+    assert.equal(openingClaims.length, 1, `Ankündigungsart ${kind}`);
+    assert.match(openingClaims[0].text, /Königbauernspiel/);
+  }
 });
 
 test("die Online-Vertiefung nutzt Structured Outputs und anschließend den Cache", async () => {

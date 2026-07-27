@@ -4,7 +4,9 @@ import {
   hasOpeningKnowledge,
   OPENING_FAMILY_KNOWLEDGE,
   OPENING_KNOWLEDGE_SOURCE,
+  OPENING_VARIATION_KNOWLEDGE,
   openingKnowledgeForFamily,
+  openingKnowledgeForVariation,
 } from "../openingKnowledge.js";
 
 const requiredLists = [
@@ -50,4 +52,22 @@ test("seltene oder noch unbekannte Familien erhalten nur allgemeine Prinzipien",
   assert.equal(knowledge.family, null);
   assert.match(knowledge.overview, /Zentrum/);
   assert.equal(hasOpeningKnowledge(knowledge), true);
+});
+
+test("häufige Varianten besitzen eigene Ideen, ohne unbekannte Varianten zu erfinden", () => {
+  assert.ok(Object.keys(OPENING_VARIATION_KNOWLEDGE).length >= 15);
+  const twoKnights = openingKnowledgeForVariation(
+    "Italian Game",
+    "Two Knights Defense",
+  );
+  assert.equal(twoKnights.scope, "variation");
+  assert.equal(twoKnights.family, "Italian Game");
+  assert.match(twoKnights.idea, /Königsspringer/);
+  assert.ok(twoKnights.whitePlan.length > 30);
+  assert.ok(twoKnights.blackPlan.length > 30);
+  assert.ok(twoKnights.watchFor.length > 30);
+  assert.equal(
+    openingKnowledgeForVariation("Italian Game", "Erfundene Variante"),
+    null,
+  );
 });

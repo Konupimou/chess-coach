@@ -94,6 +94,8 @@ export function lichessGameToSavedRecord(game, username, now = new Date()) {
   if (node === root) throw new Error("Partie enthält keine lesbaren Züge.");
 
   const result = gameResult(game);
+  const whiteName = playerDisplayName(game.players.white);
+  const blackName = playerDisplayName(game.players.black);
   node.result = result;
   const opponentName = playerDisplayName(opponent);
   const createdAt = playedAtDate.toISOString();
@@ -119,6 +121,8 @@ export function lichessGameToSavedRecord(game, username, now = new Date()) {
     metadata: {
       playerColor,
       playedAt,
+      whitePlayer: whiteName,
+      blackPlayer: blackName,
       opponent: opponentName,
       opponentType: "",
       engineLevel: "",

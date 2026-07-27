@@ -36,6 +36,8 @@ export function createGameSaveDraft(record = null, now = new Date()) {
     playedAt: /^\d{4}-\d{2}-\d{2}$/.test(metadata.playedAt)
       ? metadata.playedAt
       : dateInputValue(now),
+    whitePlayer: typeof metadata.whitePlayer === "string" ? metadata.whitePlayer : "",
+    blackPlayer: typeof metadata.blackPlayer === "string" ? metadata.blackPlayer : "",
     opponent: typeof metadata.opponent === "string" ? metadata.opponent : "",
     opponentType: metadata.opponentType === "engine" ? "engine" : "",
     engineLevel: ["easy", "medium", "hard", "expert"].includes(metadata.engineLevel)
