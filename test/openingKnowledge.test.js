@@ -5,6 +5,7 @@ import {
   OPENING_FAMILY_KNOWLEDGE,
   OPENING_KNOWLEDGE_SOURCE,
   OPENING_VARIATION_KNOWLEDGE,
+  openingGuidanceForPerspective,
   openingKnowledgeForFamily,
   openingKnowledgeForVariation,
 } from "../openingKnowledge.js";
@@ -52,6 +53,33 @@ test("seltene oder noch unbekannte Familien erhalten nur allgemeine Prinzipien",
   assert.equal(knowledge.family, null);
   assert.match(knowledge.overview, /Zentrum/);
   assert.equal(hasOpeningKnowledge(knowledge), true);
+});
+
+test("Eröffnungsdetails zeigen nur den Plan der gewählten Spielerfarbe", () => {
+  const white = openingGuidanceForPerspective({
+    familyName: "Sicilian Defense",
+    color: "w",
+  });
+  const black = openingGuidanceForPerspective({
+    familyName: "Sicilian Defense",
+    color: "b",
+  });
+
+  assert.equal(white.sideName, "Weiß");
+  assert.equal(black.sideName, "Schwarz");
+  assert.match(white.plan, /Entwicklungsvorsprung/);
+  assert.match(black.plan, /c-Linie/);
+  assert.notEqual(white.plan, black.plan);
+  assert.doesNotMatch(white.plan, /^Weiß:/);
+  assert.doesNotMatch(black.plan, /^Schwarz:/);
+});
+
+test("die Borg-Verteidigung besitzt eigenes statt allgemeines Eröffnungswissen", () => {
+  const knowledge = openingKnowledgeForFamily("Borg Defense");
+  assert.equal(knowledge.scope, "family");
+  assert.match(knowledge.overview, /riskante Antwort/);
+  assert.match(knowledge.blackPlans[0], /Königsflügel/);
+  assert.match(knowledge.whitePlans[0], /Zentrum/);
 });
 
 test("häufige Varianten besitzen eigene Ideen, ohne unbekannte Varianten zu erfinden", () => {

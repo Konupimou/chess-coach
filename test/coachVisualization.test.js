@@ -16,8 +16,8 @@ test("ruhige strategische Varianten bleiben kurz und legal", () => {
 
   assert.ok(plan);
   assert.equal(plan.tactical, false);
-  assert.equal(plan.plyCount, 2);
-  assert.deepEqual(plan.san, ["e4", "e5"]);
+  assert.equal(plan.plyCount, 1);
+  assert.deepEqual(plan.san, ["e4"]);
   assert.match(plan.headline, /Zentrum/);
   assert.deepEqual(
     plan.persistentAnnotations.highlights
@@ -72,8 +72,8 @@ test("eine spätere Abtauschfolge macht einen strategischen Zug nicht zur Taktik
   assert.ok(plan);
   assert.equal(plan.tactical, false);
   assert.equal(plan.motif, "");
-  assert.equal(plan.plyCount, 2);
-  assert.deepEqual(plan.san, ["d5", "c4"]);
+  assert.equal(plan.plyCount, 1);
+  assert.deepEqual(plan.san, ["d5"]);
 });
 
 test("Rochade zeigt Königsschutz und den dazugehörigen Turmzug", () => {

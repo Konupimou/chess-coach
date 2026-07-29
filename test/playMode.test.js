@@ -43,7 +43,7 @@ test("Live-Feedback nennt die Qualität knapp und verrät keinen nächsten Zug",
     tone: "best",
     badge: "Bester Zug",
     title: "12. Nf3",
-    detail: "Das war genau richtig.",
+    detail: "Sauber, genau richtig.",
   });
 
   const mistake = describeLiveMove({
@@ -57,6 +57,9 @@ test("Live-Feedback nennt die Qualität knapp und verrät keinen nächsten Zug",
   assert.equal(mistake.badge, "Fehler");
   assert.equal(mistake.title, "8… Qh4");
   assert.doesNotMatch(mistake.detail, /Nf6|besser war/i);
-  assert.equal(mistake.detail, "Das war ein Fehler. Dadurch wurde deine Stellung deutlich schlechter.");
+  assert.equal(
+    mistake.detail,
+    "Da läuft etwas schief. Deine Stellung wird danach deutlich schwieriger.",
+  );
   assert.doesNotMatch(mistake.detail, /Stockfish|Engine|PV|Centipawn/i);
 });

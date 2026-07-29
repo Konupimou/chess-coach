@@ -279,7 +279,7 @@ test("nur der tatsächlich erste Engine-Zug darf als bester Zug bezeichnet werde
 
   assert.equal(verified.quality, "excellent");
   assert.equal(assessment.label, "Sehr gut");
-  assert.equal(assessment.lead, "Das war sehr gut.");
+  assert.equal(assessment.lead, "Stark gespielt.");
   assert.match(assessment.alternative, /d4/);
   assert.doesNotMatch(assessment.lead, /beste[rn]? Zug/i);
   assert.match(explanation, /erster Wahl d4/);
@@ -323,8 +323,8 @@ test("Perspektivbewertung spricht gute und schlechte eigene Züge direkt an", ()
     {
       tone: "best",
       label: "Bester Zug",
-      lead: "Das war der beste Zug.",
-      reason: "Du hast damit keinen messbaren Vorteil abgegeben.",
+      lead: "Sauber, genau richtig.",
+      reason: "Der Zug passt hier richtig gut und gibt nichts her.",
       alternative: "",
     },
   );
@@ -336,11 +336,11 @@ test("Perspektivbewertung spricht gute und schlechte eigene Züge direkt an", ()
     quality: "mistake",
     bestPvUci: ["g1f3", "b8c6"],
   });
-  assert.equal(mistake.lead, "Das war ein Fehler.");
-  assert.match(mistake.reason, /deutlich schwieriger/);
+  assert.equal(mistake.lead, "Da läuft etwas schief.");
+  assert.match(mistake.reason, /unnötig schwer/);
   assert.equal(
     mistake.alternative,
-    "Statt Qh5 war Nf3 in der Stellung davor besser.",
+    "Besser geht’s in der Stellung davor mit Nf3.",
   );
 });
 
@@ -367,7 +367,7 @@ test("Zugrückblicke verwerfen illegale Spielerzüge, Alternativen und PV-Reste"
 test("nicht belegte Coach-Erklärungen erhalten einen sicheren lokalen Ersatz", () => {
   assert.equal(
     groundedSuggestionReason({ rank: 1, san: "e4", uci: "e2e4" }),
-    "Der Zug erhöht den Einfluss im Zentrum. Achte besonders darauf, wie die gezeigte Antwortfolge diese Idee unterstützt.",
+    "Der Zug erhöht den Einfluss im Zentrum. Der Zug packt die wichtigste Aufgabe der Stellung direkt an.",
   );
   assert.match(
     groundedSuggestionReason({ rank: 1, san: "Qh7+", uci: "d3h7" }),
@@ -375,7 +375,7 @@ test("nicht belegte Coach-Erklärungen erhalten einen sicheren lokalen Ersatz", 
   );
   assert.match(
     groundedSuggestionReason({ rank: 2, san: "Nf3", uci: "g1f3" }),
-    /erste Zugidee löst die Aufgaben/,
+    /erste Wahl trifft den Kern/,
   );
 });
 

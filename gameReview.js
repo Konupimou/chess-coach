@@ -346,28 +346,28 @@ export function describeMoveAssessment(move) {
   const bestSan = verifiedBestSan(verified);
   const descriptions = {
     best: {
-      lead: "Das war der beste Zug.",
-      reason: "Du hast damit keinen messbaren Vorteil abgegeben.",
+      lead: "Sauber, genau richtig.",
+      reason: "Der Zug passt hier richtig gut und gibt nichts her.",
     },
     excellent: {
-      lead: "Das war sehr gut.",
-      reason: "Deine Stellung bleibt nahezu so stark wie mit der besten Möglichkeit.",
+      lead: "Stark gespielt.",
+      reason: "Damit bleibst du praktisch genauso gut im Spiel wie mit der ersten Wahl.",
     },
     good: {
-      lead: "Das war gut.",
-      reason: "Deine Stellung bleibt stabil und der kleine Nachteil ist gut verkraftbar.",
+      lead: "Das passt.",
+      reason: "Die Stellung bleibt gut spielbar; da ist nichts Dramatisches passiert.",
     },
     inaccuracy: {
-      lead: "Das war etwas ungenau.",
-      reason: "Du gibst einen Teil deiner guten Stellung ab und erlaubst mehr Gegenspiel.",
+      lead: "Fast – da war noch etwas mehr drin.",
+      reason: "So gibst du ein bisschen von deiner guten Stellung her und lässt mehr Gegenspiel zu.",
     },
     mistake: {
-      lead: "Das war ein Fehler.",
-      reason: "Deine Stellung wird dadurch deutlich schwieriger.",
+      lead: "Da läuft etwas schief.",
+      reason: "Danach wird deine Stellung unnötig schwer zu spielen.",
     },
     blunder: {
-      lead: "Das war ein großer Fehler.",
-      reason: "Die Stellung kippt dadurch deutlich zu deinen Ungunsten.",
+      lead: "Uff, das tut weh.",
+      reason: "Damit kippt die Stellung klar gegen dich.",
     },
   };
   return {
@@ -376,7 +376,7 @@ export function describeMoveAssessment(move) {
     lead: descriptions[quality].lead,
     reason: descriptions[quality].reason,
     alternative: bestSan
-      ? `Statt ${verified.san} war ${bestSan} in der Stellung davor besser.`
+      ? `Besser geht’s in der Stellung davor mit ${bestSan}.`
       : "",
   };
 }
@@ -397,8 +397,8 @@ export function groundedSuggestionReason({ rank = 1, san = "", uci = "" } = {}) 
     idea = "Der Zug erhöht den Einfluss im Zentrum.";
   }
   const comparison = rank === 1
-    ? "Achte besonders darauf, wie die gezeigte Antwortfolge diese Idee unterstützt."
-    : "Die Idee bleibt spielbar; die erste Zugidee löst die Aufgaben der Stellung etwas direkter.";
+    ? "Der Zug packt die wichtigste Aufgabe der Stellung direkt an."
+    : "Die Idee funktioniert, aber die erste Wahl trifft den Kern der Stellung noch etwas besser.";
   return [idea, comparison].filter(Boolean).join(" ");
 }
 

@@ -35,6 +35,7 @@ const MAX_HISTORY_ITEMS = 300;
 const MAX_CONVERSATION_ITEMS = 10;
 const MAX_REVIEW_MOMENTS = 8;
 const MOVE_EXPLANATION_TASK = "move_explanation";
+const MOVE_EXPLANATION_STYLE_VERSION = "casual-error-first-v1";
 const MOVE_EXPLANATION_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const MOVE_EXPLANATION_CACHE_LIMIT = 300;
 const moveExplanationCache =
@@ -45,6 +46,10 @@ const SYSTEM_INSTRUCTIONS = [
   "Du berechnest keine Schachzüge selbst.",
   "Du bist ein freundlicher Schachcoach und verwendest ausschließlich die gelieferten Quellen: <opening_context> für Eröffnungswissen, <position_evidence> für Brettfakten, <verified_knowledge> für geprüfte Schachprinzipien und <stockfish_analysis> für konkrete Berechnung.",
   "Antworte auf Deutsch, sofern der Nutzer nicht ausdrücklich eine andere Sprache verwendet.",
+  "Sprich wie ein entspannter Coach, der direkt neben dem Brett sitzt: locker, klar, ermutigend und konsequent per du.",
+  "Nutze natürliche Alltagssprache wie «Sauber», «Da war mehr drin», «Schau mal» oder «Das Problem ist …», wenn sie passt. Übertreibe es nicht mit Slang.",
+  "Vermeide steife Formulierungen wie «zu Ungunsten», «die Anforderungen der Stellung», «diese Möglichkeit hielt die Stellung zusammen» oder «die ziehende Seite».",
+  "Schreibe kurze, gesprochene Sätze. Die Antwort soll wie ein echtes Gespräch klingen und nicht wie ein Prüfbericht.",
   "Bei Fragen zu Eröffnungsplänen, Bauernstrukturen, Entwicklung, typischen Fehlern oder dem Sinn einer Eröffnung antworte zuerst aus dem Feld knowledge in <opening_context>.",
   "Nenne bei Fragen nach dem besten ersten Zug, einem Eröffnungszug oder dem Plan den erkannten displayName der aktuellen Eröffnung kurz und natürlich.",
   "Wenn noch keine aktuelle Eröffnung erkannt ist, aber suggestedOpening vorhanden ist, erkläre kurz, dass der gelieferte beste Zug in diese Eröffnung führt, und nenne deren displayName.",
@@ -60,6 +65,8 @@ const SYSTEM_INSTRUCTIONS = [
   "Formuliere nie «ich denke» oder «ich würde spielen» und tue nie so, als hättest du selbst gerechnet.",
   "In normalen Erklärungen sprichst du nicht von Stockfish, Engine, PV, Centipawn, Evaluation, Initiative oder Kandidatenzügen. Nur wenn der Nutzer ausdrücklich nach technischen Details oder der Quelle fragt, darfst du diese Begriffe einfach erklären.",
   "Bewerte einen guten Zug zum Beispiel mit «Das war gut, weil …». Bei einer belegten besseren Wahl formuliere «Besser wäre [gelieferter Zug], weil …».",
+  "Bei einer Ungenauigkeit, einem Fehler oder Patzer erklärst du immer zuerst den gespielten Zug: Was lässt er liegen, welche konkrete Gefahr erlaubt er oder warum wird die Stellung dadurch schwerer? Erst danach nennst du die bessere Alternative und erklärst kurz, was sie besser löst.",
+  "Beginne eine Fehlererklärung niemals mit der besseren Alternative. Der Spieler soll zuerst verstehen, was am eigenen Zug nicht funktioniert hat.",
   "Wenn du einen konkreten Zug erwähnst, verwende die vollständige Notation mit Zugnummer aus den gelieferten Daten, zum Beispiel «12. Nf3» oder «12... Nf3». Erfinde keine Zugnummern.",
   "Passe Sprache, Satzlänge, Fachbegriffe und Variantentiefe an <learner_profile> an.",
   "Für Schachanfänger verwendest du kurze Sätze, einfache Wörter, höchstens einen Gedanken pro Satz und erklärst jeden unvermeidbaren Fachbegriff.",
@@ -79,6 +86,9 @@ const SYSTEM_INSTRUCTIONS = [
 const MOVE_EXPLANATION_INSTRUCTIONS = [
   "Du erklärst einen bereits legal geprüften Schachzug auf Deutsch.",
   "Die didaktische Methode ist eine eigenständige Zug-für-Zug-Erklärung: Was tut der Zug, warum ist das jetzt wichtig, wie antwortet der Gegner am stärksten, welche bessere Möglichkeit gab es gegebenenfalls und welches übertragbare Prinzip lernt der Spieler daraus.",
+  "Klinge wie ein lockerer, hilfreicher Coach am Brett. Nutze einfache gesprochene Sätze, direkte Du-Ansprache und natürliche Übergänge statt formeller Lehrbuchsprache.",
+  "Bei quality inaccuracy, mistake oder blunder kommt die Erklärung des gespielten Zuges immer vor jeder claimKind-alternative: zuerst das Problem, dann die bessere Möglichkeit.",
+  "Die erste konkrete Zugnotation einer Fehlererklärung darf nicht die Alternative sein; erkläre zuerst ohne Umweg, warum der gespielte subjectSan-Zug zu kurz greift.",
   "Imitiere keinen Autor und übernimm keinen Wortlaut aus Büchern. Formuliere vollständig eigenständig.",
   "Verwende ausschließlich Fakten aus <position_evidence>, konkrete Züge und Bewertungen aus <stockfish_analysis>, Eröffnungsnamen aus <opening_context> und Prinzipien aus <verified_knowledge>.",
   "Jede Aussage in summary und deepDive muss mindestens eine passende evidenceIds-Referenz aus den gelieferten Daten tragen.",
@@ -685,7 +695,8 @@ export async function requestMoveExplanation(
   const scope = typeof safetyIdentifier === "string" && safetyIdentifier.trim()
     ? safetyIdentifier.trim().slice(0, 160)
     : "";
-  const serverCacheKey = `${context.cacheKey}::${scope}`;
+  const serverCacheKey =
+    `${context.cacheKey}::${scope}::${MOVE_EXPLANATION_STYLE_VERSION}`;
   const cacheAllowed = Boolean(scope) || cache !== moveExplanationCache;
   const cached = cacheAllowed ? cacheRead(cache, serverCacheKey) : null;
   if (cached?.explanation) {

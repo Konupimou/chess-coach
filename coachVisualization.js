@@ -423,7 +423,7 @@ function lineMotif(events) {
 
 function chosenPlyCount(events, motif) {
   const maximum = Math.min(16, events.length);
-  if (!motif) return Math.min(2, maximum);
+  if (!motif) return Math.min(1, maximum);
   return Math.min(maximum, Math.max(1, (motif.eventIndex || 0) + 1));
 }
 
@@ -431,7 +431,7 @@ function strategicIdea(event) {
   if (!event) return {
     kind: "activity",
     headline: "Den Zug am Brett verstehen",
-    explanation: "Die kurze Antwortfolge zeigt, welche Aufgabe der Zug in dieser Stellung übernimmt.",
+    explanation: "Der vorgeschlagene Zug zeigt, welche Aufgabe in dieser Stellung besonders wichtig ist.",
   };
   if (/^O-O(?:-O)?/.test(event.san)) {
     return {
@@ -444,7 +444,7 @@ function strategicIdea(event) {
     return {
       kind: "capture",
       headline: "Die Spannung konkret auflösen",
-      explanation: `${event.san} verändert Material und Bauern- oder Figurenstruktur sofort. Die kurze Antwort zeigt, ob direkt zurückgeschlagen wird.`,
+      explanation: `${event.san} verändert Material und Bauern- oder Figurenstruktur sofort.`,
     };
   }
   if (event.piece === "p" && event.passedPath.length > 0) {
@@ -492,7 +492,7 @@ function strategicIdea(event) {
     return {
       kind: "pressure",
       headline: "Druck auf eine Figur erzeugen",
-      explanation: `${event.san} greift ${PIECE_NAMES[target.piece]} auf ${target.square} direkt an. Der Gegner muss diesen Druck in seiner Antwort berücksichtigen.`,
+      explanation: `${event.san} greift ${PIECE_NAMES[target.piece]} auf ${target.square} direkt an und erzeugt konkreten Druck.`,
     };
   }
   if (event.defendedTargets.some((target) => target.value >= 3)) {
@@ -526,7 +526,7 @@ function strategicIdea(event) {
   return {
     kind: "activity",
     headline: "Die Figur aktiver stellen",
-    explanation: `${event.san} verbessert die Aufgabe des ${PIECE_NAMES[event.piece] || "Steins"}; die Antwort zeigt, worauf der Zug vorbereitet.`,
+    explanation: `${event.san} verbessert die Aufgabe des ${PIECE_NAMES[event.piece] || "Steins"} und bereitet den weiteren Plan vor.`,
   };
 }
 

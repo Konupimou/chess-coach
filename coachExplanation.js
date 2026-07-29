@@ -859,28 +859,28 @@ const PIECE_NAMES = Object.freeze({
 
 const QUALITY_COPY = Object.freeze({
   best: {
-    headline: "Genau die richtige Entscheidung",
-    sentence: "Der Zug löst die Anforderungen der Stellung sehr genau.",
+    headline: "Sauber gespielt",
+    sentence: "Der Zug packt genau das an, was die Stellung gerade braucht.",
   },
   excellent: {
-    headline: "Eine sehr starke Entscheidung",
-    sentence: "Der Zug erhält die Qualität der Stellung nahezu vollständig.",
+    headline: "Stark gespielt",
+    sentence: "Der Zug hält deine Stellung praktisch genauso stark wie die erste Wahl.",
   },
   good: {
-    headline: "Eine solide Entscheidung",
-    sentence: "Der Zug bleibt gut spielbar und gibt nur wenig von der Stellungsqualität ab.",
+    headline: "Das passt",
+    sentence: "Der Zug ist gut spielbar und gibt kaum etwas her.",
   },
   inaccuracy: {
-    headline: "Eine kleine Ungenauigkeit",
-    sentence: "Der Zug lässt einen Teil der bisherigen Möglichkeiten ungenutzt.",
+    headline: "Fast, aber da war mehr drin",
+    sentence: "Der Zug lässt eine bessere Chance liegen.",
   },
   mistake: {
-    headline: "Hier war mehr Genauigkeit nötig",
-    sentence: "Der Zug verschlechtert die Stellung merklich.",
+    headline: "Da läuft etwas schief",
+    sentence: "Der Zug macht deine Stellung unnötig schwierig.",
   },
   blunder: {
-    headline: "Ein entscheidender Moment",
-    sentence: "Der Zug verändert die Stellung deutlich zu Ungunsten der ziehenden Seite.",
+    headline: "Uff, das tut weh",
+    sentence: "Der Zug lässt die Stellung klar gegen dich kippen.",
   },
 });
 
@@ -1233,7 +1233,7 @@ function alternativeDescription(positionEvidence, engineContext, subject) {
   if (moveRefs.length === 0) return null;
   return {
     claimKind: "alternative",
-    text: `Genauer war ${best.san}; diese Möglichkeit hielt die Stellung besser zusammen.`,
+    text: `Besser geht’s mit ${best.san}; damit bleibt deine Stellung deutlich besser zusammen.`,
     evidenceIds: ["engine.move_assessment", "engine.pv.1"],
     moveRefs,
     title: "Bessere Möglichkeit",
@@ -1393,6 +1393,24 @@ export function verifyMoveExplanation(
       errors,
       `Kurzsatz ${index + 1}`,
     ));
+  const reviewQuality = engineContext?.moveReview?.quality;
+  if (["inaccuracy", "mistake", "blunder"].includes(reviewQuality)) {
+    const alternativeIndex = summary.findIndex(
+      (claim) => claim?.claimKind === "alternative",
+    );
+    const problemIndex = summary.findIndex(
+      (claim) => ["assessment", "move_effect", "position_change"]
+        .includes(claim?.claimKind),
+    );
+    if (
+      alternativeIndex >= 0
+      && (problemIndex < 0 || alternativeIndex <= problemIndex)
+    ) {
+      errors.push(
+        "Die bessere Alternative darf erst nach der Erklärung des gespielten Fehlers kommen.",
+      );
+    }
+  }
 
   const deepSource = Array.isArray(value.deepDive) ? value.deepDive : [];
   if (deepSource.length < 2 || deepSource.length > 5) {

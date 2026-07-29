@@ -1550,6 +1550,14 @@ summary:focus-visible,
   transform: rotate(180deg);
 }
 
+.coach-chat-content {
+  position: absolute;
+  inset: 96px 16px 16px;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
 .coach-avatar {
   display: grid;
   width: 40px;
@@ -1576,6 +1584,7 @@ summary:focus-visible,
 
 #coach-chat .chat-body {
   display: grid;
+  flex: 1 1 auto;
   min-height: 0;
   gap: 8px;
   overflow-y: auto;
@@ -2056,6 +2065,58 @@ summary:focus-visible,
   font-size: 0.68rem;
 }
 
+.opening-milestone-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.opening-milestone-summary::-webkit-details-marker {
+  display: none;
+}
+
+.opening-milestone-summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: #b7c7df;
+  font-size: 0.58rem;
+  font-weight: 700;
+}
+
+.opening-milestone-summary > span::after {
+  display: inline-block;
+  color: #f5d2a3;
+  font-size: 0.8rem;
+  content: "⌄";
+  transition: transform 160ms ease;
+}
+
+.opening-milestone[open] .opening-milestone-summary > span::after {
+  transform: rotate(180deg);
+}
+
+.opening-milestone-details {
+  display: grid;
+  gap: 7px;
+  margin-top: 5px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(240, 184, 106, 0.16);
+}
+
+.opening-milestone-detail {
+  display: grid;
+  gap: 2px;
+}
+
+.opening-milestone-detail > strong {
+  color: #dce9fb !important;
+  font-size: 0.6rem;
+}
+
 .opening-milestone p {
   margin: 0;
   color: #c9d6eb !important;
@@ -2194,6 +2255,29 @@ button.computer-explanation-toggle:focus-visible,
   margin: 0;
   font-size: 0.72rem;
   line-height: 1.35;
+}
+
+.perspective-move-alternative {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 3px;
+  color: #c9d6eb;
+  font-size: 0.69rem;
+  line-height: 1.4;
+}
+
+.perspective-move-alternative > span:first-child {
+  color: #eef5ff;
+  font-weight: 750;
+}
+
+button.perspective-alternative-button,
+.suggestions-card .lines button.perspective-alternative-button {
+  color: #d8eaff;
+  font-size: 0.7rem;
+  font-weight: 800;
 }
 
 .perspective-move-assessment-lead {

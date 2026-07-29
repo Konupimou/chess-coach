@@ -48,6 +48,15 @@ const family = ({
 });
 
 export const OPENING_FAMILY_KNOWLEDGE = Object.freeze({
+  "Borg Defense": family({
+    overview: "Die Borg-Verteidigung ist eine sehr scharfe und riskante Antwort: Schwarz gewinnt früh Raum am Königsflügel, schwächt dafür aber die eigene Königsstellung.",
+    pawnStructures: ["Der vorgerückte schwarze g-Bauer kann den weißen Aufbau stören, hinterlässt aber schwache dunkle Felder und mögliche Angriffslinien gegen Schwarz.", "Das Zentrum bleibt zunächst Weiß überlassen und wird oft zum wichtigsten Gegengewicht gegen das schwarze Flügelspiel."],
+    development: ["Weiß kann das Zentrum besetzen und die Figuren mit Tempo gegen den unrochierten schwarzen König entwickeln.", "Schwarz muss den frühen Flügelzug durch schnelle Entwicklung und konkretes Gegenspiel rechtfertigen."],
+    whitePlans: ["Das Zentrum kontrolliert besetzen, zügig entwickeln und die geschwächten Felder am schwarzen Königsflügel im Blick behalten.", "Nicht vorschnell den g-Bauern jagen, sondern zuerst Königssicherheit und Figurenaktivität sichern."],
+    blackPlans: ["Den Raumgewinn am Königsflügel für aktives Figurenspiel nutzen und das weiße Zentrum früh unter Druck setzen.", "Den König flexibel sichern und vermeiden, dass der vorgerückte g-Bauer nur zu einer dauerhaften Schwäche wird."],
+    commonMistakes: ["Als Weiß sofort auf Bauerngewinn zu spielen und dabei Entwicklung oder Zentrum zu vernachlässigen.", "Als Schwarz weitere Flügelbauern vorzuschieben, ohne Figuren zu entwickeln oder das Zentrum zu bestreiten."],
+    explanations: ["Der ungewöhnliche g-Bauernzug greift nicht direkt das Zentrum an und lockert Felder vor dem schwarzen König.", "Die Eröffnung führt häufig zu unausgewogenen Stellungen, in denen Entwicklung und konkrete Taktik wichtiger sind als das Festhalten an Material."],
+  }),
   "Sicilian Defense": family({
     overview: "Die Sizilianische Verteidigung schafft sofort ein asymmetrisches Spiel: Weiß erhält häufig Raum, Schwarz aktives Gegenspiel.",
     pawnStructures: ["Schwarz tauscht oft den c-Bauern gegen den weißen d-Bauern und erhält dadurch die halboffene c-Linie.", "Weiße Raumvorteile im Zentrum stehen häufig schwarzem Druck am Damenflügel gegenüber."],
@@ -605,6 +614,48 @@ export function openingKnowledgeForVariation(familyName, variationName) {
       ...knowledge,
     }
     : null;
+}
+
+export function openingGuidanceForPerspective({
+  familyName,
+  variationName = "",
+  color = "w",
+} = {}) {
+  const perspective = color === "b" ? "b" : "w";
+  const sideName = perspective === "b" ? "Schwarz" : "Weiß";
+  const familyKnowledge = openingKnowledgeForFamily(familyName);
+  const variationKnowledge = openingKnowledgeForVariation(
+    familyName,
+    variationName,
+  );
+  const plans = perspective === "b"
+    ? familyKnowledge.blackPlans
+    : familyKnowledge.whitePlans;
+  const perspectiveMistake = familyKnowledge.commonMistakes.find((entry) => (
+    perspective === "b"
+      ? /^Als Schwarz\b/i.test(entry)
+      : /^Als Weiß\b/i.test(entry)
+  ));
+  const watchFor = variationKnowledge?.watchFor
+    || perspectiveMistake
+    || familyKnowledge.commonMistakes[0]
+    || "";
+
+  return {
+    sideName,
+    overview: variationKnowledge?.idea || familyKnowledge.overview,
+    character: familyKnowledge.pawnStructures[0]
+      || familyKnowledge.development[0]
+      || "",
+    plan: variationKnowledge
+      ? (
+        perspective === "b"
+          ? variationKnowledge.blackPlan
+          : variationKnowledge.whitePlan
+      )
+      : (plans[0] || ""),
+    watchFor: watchFor.replace(/^Als (?:Weiß|Schwarz)\s*/i, ""),
+  };
 }
 
 export function hasOpeningKnowledge(value) {

@@ -166,6 +166,32 @@ test("die lokale Erklärung enthält vier bis sechs belegte Sätze und behält d
   assert.doesNotMatch(pvSentence.text, /Nc6.*Nf3|Nf3.*e5|e5.*e4/);
 });
 
+test("bei Fehlern kommt die Erklärung des gespielten Zuges vor der Alternative", () => {
+  const reviewContext = {
+    ...engineContext,
+    kind: "move_review",
+    moveReview: {
+      playedMove: { uci: "e2e4", san: "e4" },
+      bestMove: { uci: "d2d4", san: "d4" },
+      quality: "mistake",
+      pv: { uci: ["d2d4", "d7d5"], san: ["d4", "d5"] },
+    },
+  };
+  const positionEvidence = evidenceFixture();
+  const trustedEvidence = buildTrustedExplanationEvidence({
+    positionEvidence,
+    engineContext: reviewContext,
+  });
+  const wrongOrder = validStructuredExplanation();
+  wrongOrder.summary[0].claimKind = "alternative";
+  const checked = verifyMoveExplanation(wrongOrder, {
+    positionEvidence: trustedEvidence,
+    engineContext: reviewContext,
+  });
+  assert.equal(checked.valid, false);
+  assert.ok(checked.errors.some((error) => /erst nach der Erklärung/.test(error)));
+});
+
 test("der Cache-Schlüssel ist unabhängig von Objektschlüssel-Reihenfolgen, aber positionssensitiv", () => {
   const positionEvidence = evidenceFixture();
   const shared = {

@@ -18,6 +18,12 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   assert.match(appSource, /startExplanationPreview/);
   assert.match(appSource, /const isPrimary = idx === 1/);
   assert.match(appSource, /isExpanded \? completeMoves : collapsedMoves/);
+  assert.match(appSource, /plan\?\.tactical \? sanMoves : sanMoves\.slice\(0, 1\)/);
+  assert.match(appSource, /onActivate: \(\) => this\.playSuggestionMove\(data, plan\)/);
+  assert.match(
+    appSource,
+    /playSuggestionMove\(data, suppliedPlan = null\)[\s\S]*this\.applyMove\(/,
+  );
   assert.match(appSource, /onToggleExpanded/);
   assert.match(appSource, /expandedSuggestionRanks/);
   assert.match(appSource, /verifiedSuggestionInfo\(info, 20\)/);
@@ -117,6 +123,18 @@ test("Analyseperspektive trennt eigene Zugoptionen von der Bewertung des letzten
   assert.match(appSource, /this\.game\.turn\(\) !== this\.getAnalysisPerspective\(\)/);
   assert.match(appSource, /Rückblick auf deinen letzten Zug/);
   assert.match(appSource, /describeMoveAssessment/);
+  assert.match(appSource, /perspective-alternative-button/);
+  assert.match(
+    appSource,
+    /playReviewedAlternative\(review\)[\s\S]*parentNode\.fen !== verified\.fenBefore[\s\S]*this\.applyMove\(/,
+  );
+  const assessmentStart = appSource.indexOf("  renderLastPerspectiveMoveAssessment(");
+  const assessmentEnd = appSource.indexOf("  getAnalysisPerspective()", assessmentStart);
+  const assessmentSource = appSource.slice(assessmentStart, assessmentEnd);
+  assert.ok(
+    assessmentSource.indexOf("reason.textContent")
+      < assessmentSource.indexOf("perspective-move-alternative"),
+  );
 });
 
 test("Analysechat enthält nur ausdrücklich gestartete Nutzer-Coach-Dialoge", () => {
