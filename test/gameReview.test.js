@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import { MoveTreeNode, addMoveToTree } from "../moveTree.js";
 import {
   analysisEntryFromInfo,
+  analysisEntryFromMultiPv,
   buildFallbackFeedback,
   buildLearningSummary,
   buildPvFrames,
@@ -59,6 +60,90 @@ test("Engine-Eintrag verwirft eine PV vollständig, sobald ein Zug im geprüften
     }),
     null,
   );
+});
+
+test("MultiPV-Eintrag bewahrt mindestens zwei bewertete Kandidatenlinien", () => {
+  const entry = analysisEntryFromMultiPv([
+    {
+      fen: START_FEN,
+      depth: 18,
+      multipv: 1,
+      whiteScore: { unit: "cp", value: 30 },
+      pv: ["e2e4", "e7e5"],
+    },
+    {
+      fen: START_FEN,
+      depth: 18,
+      multipv: 2,
+      whiteScore: { unit: "cp", value: 24 },
+      pv: ["d2d4", "d7d5"],
+    },
+  ]);
+
+  assert.equal(entry.complete, true);
+  assert.deepEqual(
+    entry.candidateLines.map((line) => ({
+      rank: line.rank,
+      value: line.evaluation.value,
+      first: line.pvUci[0],
+    })),
+    [
+      { rank: 1, value: 30, first: "e2e4" },
+      { rank: 2, value: 24, first: "d2d4" },
+    ],
+  );
+});
+
+test("Partiebericht speichert Kandidaten und eine eigene Fortsetzung des gespielten Zuges", () => {
+  const game = new Chess();
+  const root = new MoveTreeNode({ fen: game.fen() });
+  const d4 = addMoveToTree(root, game.move("d4"), game.fen());
+  const report = summarizeGameReview(
+    [root, d4],
+    [
+      {
+        whiteCp: 30,
+        evaluation: { unit: "cp", value: 30, perspective: "white" },
+        depth: 18,
+        pv: ["e2e4", "e7e5"],
+        candidateLines: [
+          {
+            rank: 1,
+            whiteCp: 30,
+            evaluation: { unit: "cp", value: 30, perspective: "white" },
+            pvUci: ["e2e4", "e7e5"],
+            pvSan: ["e4", "e5"],
+          },
+          {
+            rank: 2,
+            whiteCp: 24,
+            evaluation: { unit: "cp", value: 24, perspective: "white" },
+            pvUci: ["d2d4", "d7d5"],
+            pvSan: ["d4", "d5"],
+          },
+        ],
+      },
+      {
+        whiteCp: 24,
+        evaluation: { unit: "cp", value: 24, perspective: "white" },
+        depth: 18,
+        pv: ["d7d5"],
+        candidateLines: [{
+          rank: 1,
+          whiteCp: 24,
+          evaluation: { unit: "cp", value: 24, perspective: "white" },
+          pvUci: ["d7d5"],
+          pvSan: ["d5"],
+        }],
+      },
+    ],
+    { depth: 18, final: true },
+  );
+
+  assert.equal(report.version, 2);
+  assert.equal(report.moves[0].candidateLines.length, 2);
+  assert.deepEqual(report.moves[0].playedLine.pvUci, ["d2d4", "d7d5"]);
+  assert.equal(report.moves[0].playedLine.evaluation.perspective, "player");
 });
 
 test("PV-Vorschau erzeugt legale Frames, ohne die Ausgangsstellung zu verändern", () => {

@@ -2,8 +2,8 @@ const MAX_TEXT_LENGTH = 700;
 const MOVE_TOKEN_PATTERN =
   /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|(?:O-O(?:-O)?|0-0(?:-0)?)[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
 
-export const MOVE_EXPLANATION_SCHEMA_VERSION = 2;
-export const MOVE_EXPLANATION_CACHE_VERSION = 3;
+export const MOVE_EXPLANATION_SCHEMA_VERSION = 3;
+export const MOVE_EXPLANATION_CACHE_VERSION = 4;
 
 const CLAIM_KINDS = Object.freeze([
   "assessment",
@@ -56,6 +56,24 @@ const CLAIM_SCHEMA = Object.freeze({
   },
 });
 
+const SEMANTIC_CLAIM_SCHEMA = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: ["text", "evidenceIds", "moveRefs"],
+  properties: {
+    text: { type: "string", minLength: 1, maxLength: MAX_TEXT_LENGTH },
+    evidenceIds: CLAIM_SCHEMA.properties.evidenceIds,
+    moveRefs: CLAIM_SCHEMA.properties.moveRefs,
+  },
+});
+
+const NULLABLE_SEMANTIC_CLAIM_SCHEMA = Object.freeze({
+  anyOf: [
+    SEMANTIC_CLAIM_SCHEMA,
+    { type: "null" },
+  ],
+});
+
 export const MOVE_EXPLANATION_JSON_SCHEMA = Object.freeze({
   name: "grounded_move_explanation",
   strict: true,
@@ -66,9 +84,13 @@ export const MOVE_EXPLANATION_JSON_SCHEMA = Object.freeze({
       "schemaVersion",
       "subjectUci",
       "subjectSan",
-      "headline",
-      "summary",
-      "deepDive",
+      "verdict",
+      "moveIdea",
+      "opponentReply",
+      "concreteConsequence",
+      "alternative",
+      "comparison",
+      "takeaway",
       "confidence",
     ],
     properties: {
@@ -78,30 +100,13 @@ export const MOVE_EXPLANATION_JSON_SCHEMA = Object.freeze({
         pattern: "^[a-h][1-8][a-h][1-8][qrbn]?$",
       },
       subjectSan: { type: "string", minLength: 1, maxLength: 24 },
-      headline: { type: "string", minLength: 1, maxLength: 160 },
-      summary: {
-        type: "array",
-        minItems: 4,
-        maxItems: 6,
-        items: CLAIM_SCHEMA,
-      },
-      deepDive: {
-        type: "array",
-        minItems: 2,
-        maxItems: 5,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["claimKind", "title", "text", "evidenceIds", "moveRefs"],
-          properties: {
-            claimKind: { type: "string", enum: CLAIM_KINDS },
-            title: { type: "string", minLength: 1, maxLength: 80 },
-            text: { type: "string", minLength: 1, maxLength: MAX_TEXT_LENGTH },
-            evidenceIds: CLAIM_SCHEMA.properties.evidenceIds,
-            moveRefs: CLAIM_SCHEMA.properties.moveRefs,
-          },
-        },
-      },
+      verdict: SEMANTIC_CLAIM_SCHEMA,
+      moveIdea: SEMANTIC_CLAIM_SCHEMA,
+      opponentReply: NULLABLE_SEMANTIC_CLAIM_SCHEMA,
+      concreteConsequence: NULLABLE_SEMANTIC_CLAIM_SCHEMA,
+      alternative: NULLABLE_SEMANTIC_CLAIM_SCHEMA,
+      comparison: NULLABLE_SEMANTIC_CLAIM_SCHEMA,
+      takeaway: NULLABLE_SEMANTIC_CLAIM_SCHEMA,
       confidence: {
         type: "string",
         enum: ["high", "medium", "limited"],
@@ -271,11 +276,24 @@ function normalizeMoveRefs(value, lines, errors, label) {
 
 function moveTokensMatchReferences(tokens, moveRefs) {
   const referencedMoves = moveRefs.flatMap((reference) => reference.resolvedMoves);
-  if (tokens.length === 0) return referencedMoves.length === 0;
-  if (referencedMoves.length !== tokens.length) return false;
-  return tokens.every((token, index) => (
-    tokenMatchesPly(token, { moves: referencedMoves }, index)
-  ));
+  if (referencedMoves.length === 0) {
+    return tokens.every((token) => /^[a-h][1-8]$/i.test(token));
+  }
+  let tokenIndex = 0;
+  for (let moveIndex = 0; moveIndex < referencedMoves.length; moveIndex += 1) {
+    let found = false;
+    while (tokenIndex < tokens.length) {
+      const token = tokens[tokenIndex];
+      tokenIndex += 1;
+      if (tokenMatchesPly(token, { moves: referencedMoves }, moveIndex)) {
+        found = true;
+        break;
+      }
+      if (!/^[a-h][1-8]$/i.test(token)) return false;
+    }
+    if (!found) return false;
+  }
+  return tokens.slice(tokenIndex).every((token) => /^[a-h][1-8]$/i.test(token));
 }
 
 function evidenceSupportsClaimKind(record, claimKind) {
@@ -288,21 +306,29 @@ function evidenceSupportsClaimKind(record, claimKind) {
   const isOpeningKnowledge = id.startsWith("opening.knowledge.");
   if (claimKind === "assessment") {
     return ["engine.best_move", "engine.move_assessment"].includes(id)
-      || id.startsWith("engine.pv.");
+      || id.startsWith("engine.pv.")
+      || id.startsWith("engine.move_comparison");
   }
   if (claimKind === "move_effect") {
     return id.startsWith("move.played.")
       || kind.startsWith("move.")
-      || id.startsWith("position.change.");
+      || id.startsWith("position.change.")
+      || id.startsWith("engine.move_comparison");
   }
   if (claimKind === "position_change") {
     return id.startsWith("position.change.")
-      || kind.startsWith("position.");
+      || kind.startsWith("position.")
+      || id.startsWith("engine.move_comparison");
   }
-  if (claimKind === "variation") return id.startsWith("engine.pv.");
+  if (claimKind === "variation") {
+    return id.startsWith("engine.pv.")
+      || id === "engine.played_line"
+      || id.startsWith("engine.move_comparison");
+  }
   if (claimKind === "alternative") {
     return ["engine.best_move", "engine.move_assessment"].includes(id)
-      || id.startsWith("engine.pv.");
+      || id.startsWith("engine.pv.")
+      || id.startsWith("engine.move_comparison");
   }
   if (claimKind === "opening") {
     return id.startsWith("opening.name:") || isOpeningKnowledge;
@@ -326,6 +352,7 @@ function validateClaimEvidence(claimKind, evidenceIds, records, errors, label) {
     claimKind === "assessment"
     && !ids.has("engine.best_move")
     && !ids.has("engine.move_assessment")
+    && ![...ids].some((id) => id.startsWith("engine.move_comparison"))
   ) {
     errors.push(`${label}: Zugbewertung benötigt den konkreten Bewertungsbeleg.`);
   }
@@ -333,12 +360,17 @@ function validateClaimEvidence(claimKind, evidenceIds, records, errors, label) {
     claimKind === "alternative"
     && !ids.has("engine.best_move")
     && !ids.has("engine.move_assessment")
+    && ![...ids].some((id) => id.startsWith("engine.move_comparison"))
   ) {
     errors.push(`${label}: Alternative benötigt den belegten besten Zug.`);
   }
   if (
     claimKind === "variation"
-    && !recordsForClaim.some((record) => record.id.startsWith("engine.pv."))
+    && !recordsForClaim.some((record) => (
+      record.id.startsWith("engine.pv.")
+      || record.id === "engine.played_line"
+      || record.id.startsWith("engine.move_comparison")
+    ))
   ) {
     errors.push(`${label}: Variante benötigt eine legal verifizierte Linie.`);
   }
@@ -441,11 +473,18 @@ function validateClaimContent(
   if (!["move_effect", "position_change"].includes(claimKind)) return;
   const normalized = text.toLocaleLowerCase("de-DE");
   const ids = new Set(evidenceIds);
+  const hasComparisonEvidence = [...ids].some(
+    (id) => id.startsWith("engine.move_comparison"),
+  );
   const hasMeaningful = (id) => (
     ids.has(id) && factContainsChange(records.get(id))
   );
   const requireChange = (pattern, evidenceId, description) => {
-    if (pattern.test(normalized) && !hasMeaningful(evidenceId)) {
+    if (
+      pattern.test(normalized)
+      && !hasMeaningful(evidenceId)
+      && !hasComparisonEvidence
+    ) {
       errors.push(`${label}: ${description} ist durch den konkreten Beleg nicht nachgewiesen.`);
     }
   };
@@ -547,8 +586,16 @@ function validateStrongAssertions(
   }
   if (claimKind === "alternative") {
     const firstReferenced = cleanUci(referencedMoves[0]?.uci);
-    if (!bestUci || firstReferenced !== bestUci) {
-      errors.push(`${label}: genannte Alternative ist nicht der belegte beste Zug.`);
+    const playedUci = cleanUci(engineContext?.moveReview?.playedMove?.uci);
+    const rankTwoUci = cleanUci(
+      engineContext?.lines?.find((line) => Number.parseInt(line?.rank, 10) === 2)
+        ?.bestMove?.uci,
+    );
+    const expectedAlternative = playedUci && playedUci === bestUci
+      ? rankTwoUci
+      : bestUci;
+    if (!expectedAlternative || firstReferenced !== expectedAlternative) {
+      errors.push(`${label}: genannte Alternative ist nicht der belegte beste Zug beziehungsweise Rang-2-Vergleich.`);
     }
   }
   if (
@@ -1000,8 +1047,8 @@ function moveDescription(evidence) {
   return {
     ...base,
     text: move.piece === "p"
-      ? `Mit ${move.san} rückt der Bauer vor und verändert die Bauernstellung.`
-      : `Mit ${move.san} wechselt der ${piece} auf sein Zielfeld.`,
+      ? `${move.san} zieht den Bauern von ${move.from} nach ${move.to}.`
+      : `${move.san} bringt den ${piece} von ${move.from} nach ${move.to}.`,
     evidenceIds: [move.evidenceId],
   };
 }
@@ -1076,13 +1123,7 @@ function changeDescription(evidence) {
       title: "Konkrete Wirkung",
     };
   }
-  return {
-    claimKind: "variation",
-    text: "Sein genauer Wert zeigt sich vor allem in der geprüften Fortsetzung.",
-    evidenceIds: ["engine.pv.1"],
-    moveRefs: [],
-    title: "Konkrete Idee",
-  };
+  return null;
 }
 
 function legalLineDescription(positionEvidence, learnerProfile, engineContext = null) {
@@ -1186,7 +1227,7 @@ function detailedChangeDescription(positionEvidence) {
   return {
     claimKind: "move_effect",
     title: "Konkreter Stellungswechsel",
-    text: `Mit ${move.san} wechselt die ${PIECE_NAMES[move.piece] || "Figur"} konkret ihr Feld.`,
+    text: `${move.san} bringt die ${PIECE_NAMES[move.piece] || "Figur"} von ${move.from} nach ${move.to}.`,
     evidenceIds: [move.evidenceId],
     moveRefs: singleMoveReference(
       positionEvidence,
@@ -1233,18 +1274,134 @@ function alternativeDescription(positionEvidence, engineContext, subject) {
   if (moveRefs.length === 0) return null;
   return {
     claimKind: "alternative",
-    text: `Besser geht’s mit ${best.san}; damit bleibt deine Stellung deutlich besser zusammen.`,
+    text: `${best.san} ist die genauere Alternative; der konkrete Unterschied steht in der geprüften Antwortfolge.`,
     evidenceIds: ["engine.move_assessment", "engine.pv.1"],
     moveRefs,
     title: "Bessere Möglichkeit",
   };
 }
 
+function semanticClaim(text, evidenceIds, moveRefs = []) {
+  const cleaned = cleanText(text);
+  return cleaned
+    ? {
+      text: cleaned,
+      evidenceIds: [...new Set(evidenceIds.filter(Boolean))],
+      moveRefs,
+    }
+    : null;
+}
+
+function pieceName(type) {
+  return PIECE_NAMES[type] || "Figur";
+}
+
+function effectText(facts, san) {
+  const effects = Array.isArray(facts?.immediateEffects) ? facts.immediateEffects : [];
+  const first = (type) => effects.find((effect) => effect.type === type);
+  if (first("gives_checkmate")) return `${san} setzt den gegnerischen König matt.`;
+  if (first("gives_check")) return `${san} gibt sofort Schach und zwingt den König zu einer Antwort.`;
+  const capture = first("capture");
+  if (capture) {
+    return `${san} nimmt auf ${capture.square} ${capture.capturedPiece === "p" ? "einen Bauern" : `eine ${pieceName(capture.capturedPiece)}`}.`;
+  }
+  const castle = first("castles");
+  if (castle) {
+    return `${san} rochiert ${castle.side === "kingside" ? "kurz" : "lang"}: Der König verlässt die Mitte und der Turm kommt ins Spiel.`;
+  }
+  const developed = first("develops_piece");
+  if (developed) {
+    return `${san} entwickelt den ${pieceName(developed.piece)} nach ${developed.square}.`;
+  }
+  const occupied = first("occupies_center");
+  const controlled = effects.find(
+    (effect) => (
+      effect.type === "controls_new_square"
+      && effect.square !== occupied?.square
+    ),
+  );
+  if (occupied && controlled) {
+    return `${san} besetzt ${occupied.square} und kontrolliert zusätzlich ${controlled.square}.`;
+  }
+  if (occupied) return `${san} besetzt das Zentrumsfeld ${occupied.square}.`;
+  if (controlled) return `${san} übernimmt neu die Kontrolle über ${controlled.square}.`;
+  const opened = first("opens_file") || first("creates_semi_open_file");
+  if (opened) return `${san} öffnet die ${opened.file}-Linie für die Schwerfiguren.`;
+  const loose = first("piece_attacked_and_undefended");
+  if (loose) {
+    return `${san} lässt den ${pieceName(loose.piece)} auf ${loose.square} angegriffen und ungedeckt stehen.`;
+  }
+  const moved = first("moves_piece");
+  if (!moved) return "";
+  return moved.piece === "p"
+    ? `${san} zieht den Bauern von ${moved.from} nach ${moved.to}.`
+    : `${san} bringt den ${pieceName(moved.piece)} von ${moved.from} nach ${moved.to}.`;
+}
+
+function lineMoveReference(positionEvidence, line, startPly, length = 1) {
+  if (!line?.evidenceId || !Array.isArray(line.moves)) return [];
+  const uci = line.moves
+    .slice(startPly, startPly + length)
+    .map((move) => cleanUci(move?.uci))
+    .filter(Boolean);
+  return uci.length === length
+    ? [{ lineEvidenceId: line.evidenceId, startPly, uci }]
+    : [];
+}
+
+function comparisonDifferenceText(comparison) {
+  if (comparison?.onlyMove) {
+    return "Schon die zweitbeste geprüfte Möglichkeit fällt klar ab; deshalb ist hier Genauigkeit besonders wichtig.";
+  }
+  const differences = Array.isArray(comparison?.differences) ? comparison.differences : [];
+  const difference = differences[0];
+  if (!difference) return "";
+  if (difference.type === "allows_check") {
+    const reply = comparison.played?.opponentBestReply;
+    return `Der entscheidende Unterschied: Der gespielte Zug erlaubt ${reply?.san || "ein sofortiges Schach"}${reply?.givesCheckmate ? " mit Matt" : " mit Schach"}, die bessere Fortsetzung nicht.`;
+  }
+  if (difference.type === "allows_checkmate") {
+    return `Der entscheidende Unterschied: Nach dem gespielten Zug folgt ${comparison.played?.opponentBestReply?.san || "Matt"}, die bessere Fortsetzung verhindert das.`;
+  }
+  if (difference.type === "material_outcome") {
+    return "Der entscheidende Unterschied zeigt sich beim Material: In der geprüften Folge schneidet die bessere Fortsetzung konkret besser ab.";
+  }
+  if (difference.type === "develops_piece") {
+    return `Der entscheidende Unterschied: Die Alternative entwickelt eine Figur nach ${difference.square}, der gespielte Zug nicht.`;
+  }
+  if (difference.type === "avoids_loose_piece") {
+    return `Der entscheidende Unterschied: Die Alternative vermeidet, dass die Figur auf ${difference.square} ungedeckt bleibt.`;
+  }
+  if (difference.type === "improves_king_safety") {
+    return "Der entscheidende Unterschied: Die Alternative bringt den König direkt aus der Mitte.";
+  }
+  if (difference.type === "improves_center_control") {
+    return `Der entscheidende Unterschied liegt im Zentrum: Die Alternative greift ${difference.square || "ein wichtiges Feld"} direkt an.`;
+  }
+  return "";
+}
+
+function takeawayText(comparison) {
+  const types = new Set((comparison?.differences || []).map((difference) => difference.type));
+  if (types.has("allows_check") || types.has("allows_checkmate")) {
+    return "Lernregel: Prüfe vor deinem Zug immer zuerst alle gegnerischen Schachs.";
+  }
+  if (types.has("material_outcome") || types.has("avoids_loose_piece")) {
+    return "Lernregel: Kontrolliere nach jedem Kandidatenzug, ob eine Figur angegriffen und ungedeckt bleibt.";
+  }
+  if (types.has("develops_piece")) {
+    return "Lernregel: Wenn nichts Taktisches brennt, entwickle eine Figur mit einer konkreten Aufgabe.";
+  }
+  if (types.has("improves_king_safety")) {
+    return "Lernregel: Bring den König in Sicherheit, bevor du am Flügel weitere Bauern ziehst.";
+  }
+  return null;
+}
+
 export function buildLocalMoveExplanation({
   positionEvidence = null,
   engineContext = null,
   openingContext = null,
-  learnerProfile = null,
 } = {}) {
   if (!positionEvidence?.valid) return null;
   const trusted = buildTrustedExplanationEvidence({
@@ -1253,95 +1410,146 @@ export function buildLocalMoveExplanation({
     openingContext,
   });
   const subject = resolveExplanationSubject(positionEvidence, engineContext);
-  if (!subject.uci || !subject.san) return null;
-  const assessment = assessmentCopy(engineContext, subject);
-  const assessmentRefs = textMoveTokens(assessment.sentence).length > 0
-    ? singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true })
-    : [];
-  const summary = [
-    {
-      claimKind: assessment.claimKind,
-      text: assessment.sentence,
-      evidenceIds: assessment.evidenceIds,
-      moveRefs: assessmentRefs,
-    },
-    moveDescription(positionEvidence),
-    changeDescription(positionEvidence),
-    legalLineDescription(positionEvidence, learnerProfile, engineContext),
-    alternativeDescription(positionEvidence, engineContext, subject),
-  ].filter(Boolean);
-  const opening = openingContext?.matched
-    ? openingContext
-    : openingContext?.suggestedOpening?.matched
-      ? openingContext.suggestedOpening
-      : null;
-  const openingName = cleanText(opening?.displayName, 240);
-  const openingAnnouncement = openingContext?.announcement;
-  if (
-    opening
-    && opening?.source === "lichess-chess-openings"
-    && openingName
-    && ["family", "variation"].includes(openingAnnouncement?.kind)
-    && summary.length < 6
-  ) {
-    summary.splice(1, 0, {
-      claimKind: "opening",
-      text: openingAnnouncement.transposition
-        ? `Per Zugumstellung ist jetzt ${openingAnnouncement.displayName || openingName} erreicht.`
-        : `Jetzt ist ${openingAnnouncement.displayName || openingName} erreicht.`,
-      evidenceIds: [`opening.name:${cleanText(opening.eco, 3) || "known"}`],
-      moveRefs: [],
-    });
+  const comparison = positionEvidence.moveComparison;
+  if (!subject.uci || !subject.san || !comparison?.played) return null;
+  const review = engineContext?.moveReview;
+  const assessmentEvidenceId = review ? "engine.move_assessment" : "engine.best_move";
+  const quality = review?.quality || "good";
+  let verdictText = comparison.explanationType === "best_move"
+    ? "Das ist hier die genaueste Wahl."
+    : comparison.explanationType === "equivalent"
+      ? "Das ist praktisch genauso gut wie die erste Wahl."
+      : quality === "blunder"
+        ? "Das ist ein schwerer Fehler, weil die geprüfte Antwortfolge die Stellung klar kippen lässt."
+        : quality === "mistake"
+          ? "Das ist ein Fehler, weil die stärkste Antwort deine Stellung konkret verschlechtert."
+          : quality === "inaccuracy"
+            ? "Das ist etwas ungenau, weil du eine präzisere Möglichkeit auslässt."
+            : "Der Zug ist spielbar, löst die wichtigste Aufgabe aber nicht so genau wie die Alternative.";
+  const playedLine = positionEvidence.verifiedLines?.find(
+    (line) => line.moves?.[0]?.uci === subject.uci,
+  );
+  const primaryDifference = comparison.differences?.[0];
+  if (["inaccuracy", "mistake", "blunder"].includes(quality)) {
+    if (primaryDifference?.type === "allows_check") {
+      verdictText = `Das Problem: Der Zug erlaubt sofort ${playedLine?.moves?.[1]?.san || "ein Schach"}.`;
+    } else if (primaryDifference?.type === "allows_checkmate") {
+      verdictText = `Das Problem: Der Zug lässt ${playedLine?.moves?.[1]?.san || "eine direkte Mattfolge"} zu.`;
+    } else if (primaryDifference?.type === "material_outcome") {
+      verdictText = "Das Problem: In der geprüften Antwortfolge schneidet dein Zug beim Material schlechter ab.";
+    } else if (primaryDifference?.type === "avoids_loose_piece") {
+      verdictText = `Das Problem: Die Figur auf ${primaryDifference.square} bleibt nach deinem Zug locker stehen.`;
+    }
   }
-  while (summary.length < 4) {
-    const completeLine = positionEvidence.verifiedLines?.find(
-      (line) => line?.legal === true && line?.complete === true,
-    );
-    summary.push({
-      claimKind: "variation",
-      text: "Für die weitere Entscheidung bleibt die verifizierte Hauptfortsetzung der sichere Bezugspunkt.",
-      evidenceIds: completeLine
-        ? [completeLine.evidenceId]
-        : [positionEvidence.playedMove.evidenceId],
-      moveRefs: [],
-    });
+  const opponent = comparison.played.opponentBestReply;
+  const opponentMove = playedLine?.moves?.[1];
+  const opponentText = opponent
+    ? `Darauf kommt am stärksten ${opponent.san}${opponent.givesCheckmate ? " mit Matt" : opponent.givesCheck ? " mit Schach" : opponent.capture ? ` und einem Schlag auf ${opponent.capture.square}` : ""}.`
+    : "";
+  let consequence = null;
+  if (opponent?.givesCheckmate) {
+    consequence = "Du musst die Mattdrohung sofort beantworten.";
+  } else if (opponent?.givesCheck) {
+    consequence = "Du musst sofort auf das Schach reagieren und verlierst dadurch Zeit für deinen eigenen Plan.";
+  } else if (comparison.played.materialBalanceDelta < 0) {
+    consequence = "In der geprüften Folge geht für dich Material verloren.";
+  } else if (opponent?.capture) {
+    consequence = `Die stärkste Antwort nimmt auf ${opponent.capture.square} Material.`;
   }
-  const deepDive = [
-    detailedChangeDescription(positionEvidence),
-    detailedLegalLineDescription(
-      positionEvidence,
-      learnerProfile,
-      engineContext,
-    ),
-  ].filter(Boolean).map((entry) => ({
-    claimKind: entry.claimKind,
-    title: entry.title || "Zugidee",
-    text: entry.text,
-    evidenceIds: entry.evidenceIds,
-    moveRefs: entry.moveRefs,
-  }));
-  if (deepDive.length < 2) {
-    deepDive.push({
-      claimKind: "move_effect",
-      title: "Am Brett prüfen",
-      text: "Vergleiche die Stellung vor und nach dem Zug und folge anschließend der verifizierten Hauptfortsetzung.",
-      evidenceIds: [positionEvidence.playedMove.evidenceId],
-      moveRefs: [],
-    });
+  const alternative = comparison.alternative;
+  const alternativeLine = alternative
+    ? positionEvidence.verifiedLines?.find(
+      (line) => line.moves?.[0]?.uci === alternative.move?.uci,
+    )
+    : null;
+  const alternativeIdea = alternative
+    ? effectText(
+      {
+        immediateEffects: alternative.immediateEffects
+          || (alternative.move?.uci === comparison.best.move?.uci
+            ? comparison.best.immediateEffects
+            : []),
+      },
+      alternative.move.san,
+    )
+    : "";
+  let alternativeText = "";
+  if (alternative) {
+    if (comparison.onlyMove && subject.uci === comparison.best.move?.uci) {
+      alternativeText = `${alternative.move.san} ist die nächste geprüfte Möglichkeit, fällt aber klar ab. ${alternativeIdea}`;
+    } else if (alternative.relation === "equivalent") {
+      alternativeText = `${alternative.move.san} war praktisch gleichwertig. ${alternativeIdea}`;
+    } else if (alternative.relation === "inferior") {
+      alternativeText = `${alternative.move.san} war ebenfalls möglich, aber etwas weniger genau. ${alternativeIdea}`;
+    } else if (alternative.relation === "only_move") {
+      alternativeText = `${alternative.move.san} war hier der einzige Zug, der die Stellung hält. ${alternativeIdea}`;
+    } else {
+      alternativeText = alternativeIdea
+        ? `Genauer war ${alternative.move.san}: ${alternativeIdea}`
+        : `${alternative.move.san} war die genauere Alternative. Der konkrete Unterschied zeigt sich in der geprüften Antwortfolge.`;
+    }
   }
+  const differenceText = comparisonDifferenceText(comparison);
   const candidate = {
     schemaVersion: MOVE_EXPLANATION_SCHEMA_VERSION,
     subjectUci: subject.uci,
     subjectSan: subject.san,
-    headline: assessment.headline,
-    summary: summary.slice(0, 6),
-    deepDive: deepDive.slice(0, 5),
+    verdict: semanticClaim(
+      verdictText,
+      [assessmentEvidenceId, "engine.move_comparison"],
+      ["allows_check", "allows_checkmate"].includes(primaryDifference?.type)
+        ? lineMoveReference(positionEvidence, playedLine, 1)
+        : [],
+    ),
+    moveIdea: semanticClaim(
+      effectText(comparison.played, subject.san),
+      [positionEvidence.playedMove.evidenceId, "engine.move_comparison"],
+      singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true }),
+    ),
+    opponentReply: opponentText
+      ? semanticClaim(
+        opponentText,
+        [playedLine?.evidenceId, "engine.move_comparison"].filter(Boolean),
+        opponentMove ? lineMoveReference(positionEvidence, playedLine, 1) : [],
+      )
+      : null,
+    concreteConsequence: consequence
+      ? semanticClaim(
+        consequence,
+        [playedLine?.evidenceId, "engine.move_comparison"].filter(Boolean),
+      )
+      : null,
+    alternative: alternativeText
+      ? semanticClaim(
+        alternativeText,
+        [alternativeLine?.evidenceId, assessmentEvidenceId, "engine.move_comparison"]
+          .filter(Boolean),
+        lineMoveReference(positionEvidence, alternativeLine, 0),
+      )
+      : null,
+    comparison: differenceText
+      ? semanticClaim(
+        differenceText,
+        ["engine.move_comparison.differences", "engine.move_comparison"],
+        ["allows_check", "allows_checkmate"].includes(primaryDifference?.type)
+          ? lineMoveReference(positionEvidence, playedLine, 1)
+          : [],
+      )
+      : null,
+    takeaway: takeawayText(comparison)
+      ? semanticClaim(
+        takeawayText(comparison),
+        ["engine.move_comparison.differences"],
+      )
+      : null,
     confidence: (
-      positionEvidence.verifiedLines?.some((line) => line?.legal && line?.complete)
+      positionEvidence.candidateLines?.length >= 2
       && (Number.parseInt(engineContext?.depth, 10) || 0) >= 15
     )
       ? "high"
-      : "medium",
+      : positionEvidence.candidateLines?.length >= 1
+        ? "medium"
+        : "limited",
   };
   const checked = verifyMoveExplanation(candidate, {
     positionEvidence: trusted,
@@ -1372,76 +1580,71 @@ export function verifyMoveExplanation(
   if (normalizeToken(subjectSan) !== normalizeToken(expected.san)) {
     errors.push("Der erklärte SAN-Zug stimmt nicht überein.");
   }
-  if (value.schemaVersion !== MOVE_EXPLANATION_SCHEMA_VERSION) {
-    errors.push("Unbekannte Erklärungsversion.");
-  }
-
   const evidenceRecords = evidenceRecordMap(positionEvidence, knowledgeContext);
   const legalLines = verifiedLineMap(positionEvidence);
-  const summarySource = Array.isArray(value.summary) ? value.summary : [];
-  if (summarySource.length < 4 || summarySource.length > 6) {
-    errors.push("Die Kurzfassung muss vier bis sechs belegte Sätze enthalten.");
+  const legacy = Array.isArray(value.summary);
+  const legacyClaim = (kinds) => value.summary?.find(
+    (claim) => kinds.includes(claim?.claimKind),
+  ) || null;
+  const source = legacy
+    ? {
+      verdict: legacyClaim(["assessment"]),
+      moveIdea: legacyClaim(["move_effect", "position_change"]),
+      opponentReply: legacyClaim(["variation"]),
+      concreteConsequence: null,
+      alternative: legacyClaim(["alternative"]),
+      comparison: null,
+      takeaway: legacyClaim(["principle"]),
+    }
+    : value;
+  if (!legacy && value.schemaVersion !== MOVE_EXPLANATION_SCHEMA_VERSION) {
+    errors.push("Unbekannte Erklärungsversion.");
   }
-  const summary = summarySource
-    .slice(0, 6)
-    .map((claim, index) => normalizeClaim(
-      claim,
+  if (legacy && ![2, MOVE_EXPLANATION_SCHEMA_VERSION].includes(value.schemaVersion)) {
+    errors.push("Unbekannte Erklärungsversion.");
+  }
+  const fieldKinds = {
+    verdict: "assessment",
+    moveIdea: "move_effect",
+    opponentReply: "variation",
+    concreteConsequence: "variation",
+    alternative: "alternative",
+    comparison: "position_change",
+    takeaway: "position_change",
+  };
+  const required = new Set(["verdict", "moveIdea"]);
+  const normalized = {};
+  Object.entries(fieldKinds).forEach(([field, claimKind]) => {
+    const claim = source[field];
+    if (claim == null) {
+      if (required.has(field)) errors.push(`${field}: Pflichtfeld fehlt.`);
+      normalized[field] = null;
+      return;
+    }
+    const checked = normalizeClaim(
+      { ...claim, claimKind },
       evidenceRecords,
       legalLines,
       engineContext,
       expected,
       errors,
-      `Kurzsatz ${index + 1}`,
-    ));
-  const reviewQuality = engineContext?.moveReview?.quality;
-  if (["inaccuracy", "mistake", "blunder"].includes(reviewQuality)) {
-    const alternativeIndex = summary.findIndex(
-      (claim) => claim?.claimKind === "alternative",
+      field,
     );
-    const problemIndex = summary.findIndex(
-      (claim) => ["assessment", "move_effect", "position_change"]
-        .includes(claim?.claimKind),
-    );
-    if (
-      alternativeIndex >= 0
-      && (problemIndex < 0 || alternativeIndex <= problemIndex)
-    ) {
-      errors.push(
-        "Die bessere Alternative darf erst nach der Erklärung des gespielten Fehlers kommen.",
-      );
-    }
-  }
-
-  const deepSource = Array.isArray(value.deepDive) ? value.deepDive : [];
-  if (deepSource.length < 2 || deepSource.length > 5) {
-    errors.push("Die Vertiefung muss zwei bis fünf Abschnitte enthalten.");
-  }
-  const deepDive = deepSource.slice(0, 5).map((section, index) => {
-    const title = cleanText(section?.title, 80);
-    if (!title) errors.push(`Vertiefung ${index + 1}: Überschrift fehlt.`);
-    if (textMoveTokens(title).length > 0) {
-      errors.push(`Vertiefung ${index + 1}: Zugnotation gehört in den belegten Text, nicht in die Überschrift.`);
-    }
-    if (
-      /\b(?:gewinn|verlust|matt|schach|patzer|fehler)\b/i.test(title)
-      && !["assessment", "alternative"].includes(section?.claimKind)
-    ) {
-      errors.push(`Vertiefung ${index + 1}: wertende Überschrift ist nicht passend belegt.`);
-    }
-    const claim = normalizeClaim(
-      section,
-      evidenceRecords,
-      legalLines,
-      engineContext,
-      expected,
-      errors,
-      `Vertiefung ${index + 1}`,
-    );
-    return { title, ...claim };
+    normalized[field] = {
+      text: checked.text,
+      evidenceIds: checked.evidenceIds,
+      moveRefs: checked.moveRefs,
+    };
   });
-
+  if (
+    ["inaccuracy", "mistake", "blunder"].includes(engineContext?.moveReview?.quality)
+    && normalized.alternative
+    && !normalized.verdict?.text
+  ) {
+    errors.push("Die bessere Alternative darf erst nach der Erklärung des gespielten Fehlers kommen.");
+  }
+  const allClaims = Object.values(normalized).filter(Boolean);
   const normalizedClaimTexts = new Set();
-  const allClaims = [...summary, ...deepDive];
   allClaims.forEach((claim, index) => {
     const normalizedText = cleanText(claim?.text)
       .toLocaleLowerCase("de-DE")
@@ -1453,18 +1656,6 @@ export function verifyMoveExplanation(
     }
     normalizedClaimTexts.add(normalizedText);
   });
-  const comparativeClaims = allClaims.filter((claim) => (
-    /\b(?:beste|besten|stärkste|stärksten|erste wahl|besser|genauer)\b/i
-      .test(claim?.text || "")
-  ));
-  if (comparativeClaims.length > 1) {
-    errors.push("Die Erklärung wiederholt den Vergleich mit der besten Möglichkeit.");
-  }
-
-  if (!cleanText(value.headline, 160)) errors.push("Überschrift fehlt.");
-  const headline = expected.uci && expected.san
-    ? assessmentCopy(engineContext, expected).headline
-    : "";
   const confidence = ["high", "medium", "limited"].includes(value.confidence)
     ? value.confidence
     : "limited";
@@ -1479,9 +1670,7 @@ export function verifyMoveExplanation(
         schemaVersion: MOVE_EXPLANATION_SCHEMA_VERSION,
         subjectUci,
         subjectSan,
-        headline,
-        summary,
-        deepDive,
+        ...normalized,
         confidence,
       },
   };
@@ -1660,6 +1849,35 @@ export function moveExplanationCacheKey({
 
 export function moveExplanationToMarkdown(explanation, { deep = false } = {}) {
   if (!explanation || typeof explanation !== "object") return "";
+  if (explanation.schemaVersion === MOVE_EXPLANATION_SCHEMA_VERSION) {
+    const labels = {
+      verdict: "",
+      moveIdea: "",
+      alternative: "Alternative",
+      opponentReply: "Stärkste Antwort",
+      concreteConsequence: "Konkrete Folge",
+      comparison: "Der Unterschied",
+      takeaway: "Merksatz",
+    };
+    const fields = [
+      "verdict",
+      "moveIdea",
+      "alternative",
+      ...(deep
+        ? ["opponentReply", "concreteConsequence", "comparison", "takeaway"]
+        : []),
+    ];
+    const lines = [];
+    const seen = new Set();
+    fields.forEach((field) => {
+      const text = cleanText(explanation[field]?.text);
+      const normalized = text.toLocaleLowerCase("de-DE");
+      if (!text || seen.has(normalized)) return;
+      seen.add(normalized);
+      lines.push(labels[field] ? `**${labels[field]}:** ${text}` : text);
+    });
+    return lines.join("\n\n");
+  }
   const lines = [];
   const headline = cleanText(explanation.headline, 160);
   if (headline) lines.push(`**${headline}**`);
@@ -1694,6 +1912,21 @@ export function moveExplanationToMarkdown(explanation, { deep = false } = {}) {
 }
 
 export function compactMoveExplanationClaims(explanation, { maximum = 2 } = {}) {
+  if (explanation?.schemaVersion === MOVE_EXPLANATION_SCHEMA_VERSION) {
+    return [
+      explanation.verdict
+        ? { ...explanation.verdict, claimKind: "assessment", semanticField: "verdict" }
+        : null,
+      explanation.moveIdea
+        ? { ...explanation.moveIdea, claimKind: "move_effect", semanticField: "moveIdea" }
+        : null,
+      explanation.alternative
+        ? { ...explanation.alternative, claimKind: "alternative", semanticField: "alternative" }
+        : null,
+    ]
+      .filter(Boolean)
+      .slice(0, Math.max(1, Math.min(4, Number.parseInt(maximum, 10) || 2)));
+  }
   const claims = Array.isArray(explanation?.summary) ? explanation.summary : [];
   const priority = new Map([
     ["position_change", 0],

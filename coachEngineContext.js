@@ -60,7 +60,7 @@ export function normalizeEngineEvaluation(value) {
   return {
     unit,
     value: Math.round(numeric),
-    perspective: "white",
+    perspective: value.perspective === "player" ? "player" : "white",
   };
 }
 
@@ -158,6 +158,10 @@ function normalizeMoveReview(value, fen) {
     accuracy: finite(value.accuracy, 0, 100),
     lossCp: finite(value.lossCp, 0, 100_000),
     pv,
+    onlyMove: value.onlyMove === true,
+    onlyMoveEvidence: value.onlyMoveEvidence && typeof value.onlyMoveEvidence === "object"
+      ? value.onlyMoveEvidence
+      : null,
   };
 }
 
@@ -182,6 +186,12 @@ export function normalizeEngineContext(value) {
   const pv = primaryVariation.uci.length > 0
     ? primaryVariation
     : primary?.pv || { uci: [], san: [] };
+  const playedLine = normalizePv(
+    value.playedLine
+      ? { uci: value.playedLine.uci || value.playedLine.pvUci || [] }
+      : null,
+    fen,
+  );
   const reviewMoments = Array.isArray(value.reviewMoments)
     ? value.reviewMoments
       .slice(0, MAX_REVIEW_MOMENTS)
@@ -208,6 +218,12 @@ export function normalizeEngineContext(value) {
     bestMove,
     primaryVariation: pv,
     lines,
+    playedLine: playedLine.uci.length > 0
+      ? {
+        evaluation: normalizeEngineEvaluation(value.playedLine?.evaluation),
+        ...playedLine,
+      }
+      : null,
     moveReview: normalizeMoveReview(value.moveReview, fen),
     reviewMoments,
   };
@@ -281,6 +297,7 @@ export function allowedEngineMoveTokens(context) {
     addMove(line.bestMove);
     addPv(line.pv);
   });
+  addPv(normalized.playedLine);
   if (normalized.moveReview) {
     addMove(normalized.moveReview.playedMove);
     addMove(normalized.moveReview.bestMove);
@@ -324,6 +341,7 @@ function legalEngineMoveLines(context) {
   };
   add(normalized.primaryVariation);
   normalized.lines.forEach((line) => add(line.pv));
+  add(normalized.playedLine);
   add(normalized.moveReview?.pv);
   normalized.reviewMoments.forEach((moment) => add(moment.pv));
   return lines;

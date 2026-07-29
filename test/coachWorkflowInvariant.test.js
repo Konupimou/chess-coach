@@ -80,7 +80,7 @@ test("der Browser übernimmt keine alten Coach-Texte und cached nur geprüfte Se
   assert.ok(loadStart >= 0 && loadEnd > loadStart);
   assert.ok(saveEnd > saveStart);
   assert.ok(requestStart >= 0 && requestEnd > requestStart);
-  assert.match(appSource, /chess-coach\.move-explanations\.v3/);
+  assert.match(appSource, /chess-coach\.move-explanations\.v4/);
   assert.match(loadSource, /moveExplanationCache\.clear\(\)/);
   assert.match(loadSource, /removeItem/);
   assert.doesNotMatch(loadSource, /getItem/);
@@ -162,6 +162,56 @@ test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett"
   assert.match(appSource, /navigateReviewJourney/);
   assert.match(appSource, /analysis-key-piece/);
   assert.match(appSource, /analysis-danger-square/);
+});
+
+test("Vollanalyse sammelt zwei Kandidaten und lädt KI-Texte erst beim Öffnen eines Zuges", () => {
+  const reviewStart = appSource.indexOf("  async startFullGameReview(");
+  const reviewEnd = appSource.indexOf("  attachLocalMoveExplanations(", reviewStart);
+  const reviewSource = appSource.slice(reviewStart, reviewEnd);
+  const attachStart = reviewEnd;
+  const attachEnd = appSource.indexOf("  async requestCoachGameFeedback(", attachStart);
+  const attachSource = appSource.slice(attachStart, attachEnd);
+
+  assert.match(reviewSource, /multiPV:\s*2/);
+  assert.match(appSource, /analysisEntryFromMultiPv/);
+  assert.match(attachSource, /buildLocalMoveExplanationBundle/);
+  assert.doesNotMatch(attachSource, /requestGroundedMoveExplanation/);
+  assert.match(appSource, /item\.setAttribute\("aria-expanded", "true"\)/);
+  assert.match(appSource, /requestReviewJourneyCoach/);
+});
+
+test("Zugerklärungen lassen sich dauerhaft zwischen lokaler und KI-Fassung umschalten", () => {
+  const requestStart = appSource.indexOf("  async requestGroundedMoveExplanation({");
+  const requestEnd = appSource.indexOf("  createChatPanel(", requestStart);
+  const requestSource = appSource.slice(requestStart, requestEnd);
+
+  assert.match(appSource, /chess-coach\.ai-move-explanations\.enabled/);
+  assert.match(appSource, /\["Nur lokal", false\]/);
+  assert.match(appSource, /\["Mit KI", true\]/);
+  assert.match(appSource, /aria-label", "Art der Zugerklärung"/);
+  assert.match(appSource, /coachLocalExplanation/);
+  assert.match(
+    requestSource,
+    /if \(!this\.aiMoveExplanationsEnabled\)[\s\S]*explanation: bundle\.localExplanation[\s\S]*source: "local"/,
+  );
+  assert.match(
+    appSource,
+    /if \(!this\.aiMoveExplanationsEnabled\) return;[\s\S]*requestGroundedMoveExplanation/,
+  );
+  assert.match(styleSource, /\.review-explanation-mode-button\[aria-pressed="true"\]/);
+});
+
+test("Computererklärung zeigt semantisch Urteil, Idee und Alternative ungefiltert", () => {
+  const start = appSource.indexOf("  renderComputerExplanation({");
+  const end = appSource.indexOf("  createSuggestionCoachPopover(", start);
+  const source = appSource.slice(start, end);
+
+  assert.match(source, /\["verdict", "assessment"\]/);
+  assert.match(source, /\["moveIdea", "move_effect"\]/);
+  assert.match(source, /\["alternative", "alternative"\]/);
+  assert.match(source, /\["opponentReply", "variation"\]/);
+  assert.match(source, /\["comparison", "position_change"\]/);
+  assert.match(source, /\["takeaway", "principle"\]/);
 });
 
 test("Account bietet Gesamtanalyse und Lichess-Massenimport als ausdrückliche Aktionen", () => {

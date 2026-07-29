@@ -104,6 +104,45 @@ export function verifiedMoveReview(move) {
     ? move.playedContinuationUci
     : [played.uci];
   const continuationFrames = legalPv(move.fenBefore, suppliedContinuation, 20);
+  const candidateLines = (Array.isArray(move.candidateLines) ? move.candidateLines : [])
+    .slice(0, 5)
+    .flatMap((line, index) => {
+      const frames = legalPv(move.fenBefore, line?.pvUci || [], 20);
+      if (frames.length === 0 || frames.length !== (line?.pvUci || []).length) return [];
+      return [{
+        rank: Math.max(1, Number.parseInt(line.rank, 10) || index + 1),
+        evaluation: line.evaluation || null,
+        pvUci: frames.map((frame) => frame.uci),
+        pvSan: frames.map((frame) => frame.san),
+      }];
+    })
+    .sort((left, right) => left.rank - right.rank);
+  const suppliedPlayedLine = move.playedLine;
+  const playedLineFrames = legalPv(
+    move.fenBefore,
+    Array.isArray(suppliedPlayedLine?.pvUci)
+      ? suppliedPlayedLine.pvUci
+      : suppliedContinuation,
+    20,
+  );
+  const playedLine = (
+    playedLineFrames[0]?.uci === played.uci
+    && playedLineFrames.length === (
+      Array.isArray(suppliedPlayedLine?.pvUci)
+        ? suppliedPlayedLine.pvUci.length
+        : suppliedContinuation.length
+    )
+  )
+    ? {
+      evaluation: suppliedPlayedLine?.evaluation || null,
+      pvUci: playedLineFrames.map((frame) => frame.uci),
+      pvSan: playedLineFrames.map((frame) => frame.san),
+    }
+    : {
+      evaluation: null,
+      pvUci: continuationFrames.map((frame) => frame.uci),
+      pvSan: continuationFrames.map((frame) => frame.san),
+    };
   const quality = move.quality === "best" && played.uci !== best?.uci
     ? "excellent"
     : move.quality;
@@ -117,6 +156,8 @@ export function verifiedMoveReview(move) {
     bestPvSan: bestFrames.map((frame) => frame.san),
     playedContinuationUci: continuationFrames.map((frame) => frame.uci),
     playedContinuationSan: continuationFrames.map((frame) => frame.san),
+    ...(Array.isArray(move.candidateLines) ? { candidateLines } : {}),
+    ...(move.playedLine && typeof move.playedLine === "object" ? { playedLine } : {}),
     ...(Object.hasOwn(move, "quality") ? { quality } : {}),
   };
 }
@@ -424,9 +465,97 @@ export function analysisEntryFromInfo(info) {
         perspective: "white",
       },
     depth: Number.isFinite(info.depth) ? info.depth : null,
+    rank: Math.max(1, Number.parseInt(info.multipv, 10) || 1),
     pv: frames.map((frame) => frame.uci),
+    pvSan: frames.map((frame) => frame.san),
     complete: true,
   };
+}
+
+export function analysisEntryFromMultiPv(infos, { requiredLines = 2 } = {}) {
+  const requested = Math.max(1, Math.min(5, Number.parseInt(requiredLines, 10) || 2));
+  const byRank = new Map();
+  (Array.isArray(infos) ? infos : []).forEach((info) => {
+    const entry = info?.pv && Object.hasOwn(info, "whiteCp")
+      ? info
+      : analysisEntryFromInfo(info);
+    if (!entry?.complete || !Array.isArray(entry.pv) || entry.pv.length === 0) return;
+    const rank = Math.max(1, Number.parseInt(entry.rank ?? info?.multipv, 10) || 1);
+    const previous = byRank.get(rank);
+    if (!previous || (entry.depth || 0) >= (previous.depth || 0)) {
+      byRank.set(rank, { ...entry, rank });
+    }
+  });
+  const candidateLines = [...byRank.values()]
+    .sort((left, right) => left.rank - right.rank)
+    .slice(0, requested)
+    .map((entry) => ({
+      rank: entry.rank,
+      evaluation: entry.evaluation,
+      whiteCp: entry.whiteCp,
+      depth: entry.depth,
+      pvUci: [...entry.pv],
+      pvSan: Array.isArray(entry.pvSan) ? [...entry.pvSan] : [],
+    }));
+  const primary = candidateLines.find((line) => line.rank === 1) || candidateLines[0];
+  if (!primary) return null;
+  return {
+    whiteCp: primary.whiteCp,
+    evaluation: primary.evaluation,
+    depth: primary.depth,
+    pv: [...primary.pvUci],
+    pvSan: [...primary.pvSan],
+    candidateLines,
+    complete: candidateLines.length >= requested,
+  };
+}
+
+function evaluationForPlayer(evaluation, whiteCp, color) {
+  const sign = color === "b" ? -1 : 1;
+  if (evaluation?.unit === "mate" && Number.isFinite(evaluation.value)) {
+    return {
+      unit: "mate",
+      value: Math.round(evaluation.value * sign),
+      perspective: "player",
+    };
+  }
+  const cp = Number.isFinite(whiteCp)
+    ? whiteCp
+    : evaluation?.unit === "cp" && Number.isFinite(evaluation.value)
+      ? evaluation.value
+      : null;
+  return Number.isFinite(cp)
+    ? { unit: "cp", value: Math.round(cp * sign), perspective: "player" }
+    : null;
+}
+
+function normalizedCandidateLines(entry, fen, color) {
+  const supplied = Array.isArray(entry?.candidateLines) && entry.candidateLines.length > 0
+    ? entry.candidateLines
+    : Array.isArray(entry?.pv) && entry.pv.length > 0
+      ? [{
+        rank: 1,
+        evaluation: entry.evaluation,
+        whiteCp: entry.whiteCp,
+        depth: entry.depth,
+        pvUci: entry.pv,
+        pvSan: entry.pvSan,
+      }]
+      : [];
+  return supplied.flatMap((line, index) => {
+    const frames = buildPvFrames(fen, line?.pvUci || line?.pv || [], 20);
+    if (frames.length === 0) return [];
+    return [{
+      rank: Math.max(1, Number.parseInt(line.rank, 10) || index + 1),
+      evaluation: evaluationForPlayer(
+        line.evaluation,
+        Number.isFinite(line.whiteCp) ? line.whiteCp : scoreToWhiteCp(line.evaluation),
+        color,
+      ),
+      pvUci: frames.map((frame) => frame.uci),
+      pvSan: frames.map((frame) => frame.san),
+    }];
+  }).sort((left, right) => left.rank - right.rank);
 }
 
 export function uciToSan(fen, uci) {
@@ -493,9 +622,13 @@ export function summarizeGameReview(
     const metrics = calculateMoveAccuracy(beforeCp, afterCp, color);
     if (!metrics) continue;
     const fenBefore = nodes[index - 1]?.fen || "";
+    const candidateLines = normalizedCandidateLines(before, fenBefore, color);
+    const bestCandidate = candidateLines.find((line) => line.rank === 1)
+      || candidateLines[0]
+      || null;
     const bestFrames = buildPvFrames(
       fenBefore,
-      Array.isArray(before?.pv) ? before.pv : [],
+      bestCandidate?.pvUci || (Array.isArray(before?.pv) ? before.pv : []),
       20,
     );
     const bestUci = bestFrames[0]?.uci || "";
@@ -509,6 +642,31 @@ export function summarizeGameReview(
         ...(Array.isArray(after?.pv) ? after.pv : []),
       ].filter(Boolean),
       20,
+    );
+    const playedCandidate = candidateLines.find(
+      (line) => line.pvUci[0] === playedUci,
+    );
+    const playedEvaluation = evaluationForPlayer(
+      after?.evaluation,
+      afterCp,
+      color,
+    );
+    const playedLine = {
+      evaluation: playedCandidate?.evaluation || playedEvaluation,
+      pvUci: playedCandidate?.pvUci || playedContinuationFrames.map((frame) => frame.uci),
+      pvSan: playedCandidate?.pvSan || playedContinuationFrames.map((frame) => frame.san),
+    };
+    const secondCandidate = candidateLines.find((line) => line.rank === 2) || null;
+    const candidateGapCp = (
+      bestCandidate?.evaluation?.unit === "cp"
+      && secondCandidate?.evaluation?.unit === "cp"
+    )
+      ? bestCandidate.evaluation.value - secondCandidate.evaluation.value
+      : null;
+    const onlyLegalMove = Number.isInteger(before?.legalMoveCount)
+      && before.legalMoveCount === 1;
+    const onlyMove = onlyLegalMove || (
+      Number.isFinite(candidateGapCp) && candidateGapCp >= 150
     );
 
     const reportMove = {
@@ -538,6 +696,14 @@ export function summarizeGameReview(
       bestPvSan: bestFrames.map((frame) => frame.san),
       playedContinuationUci: playedContinuationFrames.map((frame) => frame.uci),
       playedContinuationSan: playedContinuationFrames.map((frame) => frame.san),
+      candidateLines,
+      playedLine,
+      onlyMove,
+      onlyMoveEvidence: onlyLegalMove
+        ? { type: "only_legal_move", legalMoveCount: 1 }
+        : onlyMove
+          ? { type: "candidate_gap", gapCp: Math.round(candidateGapCp) }
+          : null,
       engineDepth: Number.isFinite(before?.depth) ? before.depth : null,
       accuracy: rounded(metrics.accuracy),
       lossCp: Math.round(metrics.lossCp),
@@ -561,7 +727,7 @@ export function summarizeGameReview(
   const lossValues = moves.map((move) => move.lossCp);
 
   return {
-    version: 1,
+    version: 2,
     generatedAt: new Date().toISOString(),
     final: Boolean(final),
     depth: Number.isFinite(depth) ? depth : null,

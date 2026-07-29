@@ -156,3 +156,220 @@ test("eine direkt als Zugliste übergebene PV wird ebenfalls geprüft", () => {
     ["e4", "e5"],
   );
 });
+
+test("Vergleichsevidenz trennt besten, gleichwertigen und gespielten Zug", () => {
+  const evidence = buildPositionEvidence({
+    fenBefore: START_FEN,
+    playedUci: "d2d4",
+    candidateLines: [
+      {
+        rank: 1,
+        evaluation: { unit: "cp", value: 30, perspective: "white" },
+        pvUci: ["e2e4", "e7e5"],
+      },
+      {
+        rank: 2,
+        evaluation: { unit: "cp", value: 24, perspective: "white" },
+        pvUci: ["d2d4", "d7d5"],
+      },
+    ],
+    playedLine: {
+      evaluation: { unit: "cp", value: 24, perspective: "white" },
+      pvUci: ["d2d4", "d7d5"],
+    },
+    lossCp: 6,
+  });
+
+  assert.equal(evidence.moveComparison.played.move.uci, "d2d4");
+  assert.equal(evidence.moveComparison.best.move.uci, "e2e4");
+  assert.equal(evidence.moveComparison.alternative.relation, "equivalent");
+  assert.equal(evidence.moveComparison.explanationType, "equivalent");
+  assert.equal(evidence.moveComparison.lossCp, 6);
+});
+
+test("die bessere Linie belegt eine konkrete Figurenentwicklung", () => {
+  const evidence = buildPositionEvidence({
+    fenBefore: START_FEN,
+    playedUci: "a2a3",
+    candidateLines: [
+      {
+        rank: 1,
+        evaluation: { unit: "cp", value: 35, perspective: "white" },
+        pvUci: ["g1f3", "g8f6"],
+      },
+      {
+        rank: 2,
+        evaluation: { unit: "cp", value: 0, perspective: "white" },
+        pvUci: ["a2a3", "g8f6"],
+      },
+    ],
+  });
+
+  assert.ok(
+    evidence.moveComparison.differences.some(
+      (difference) => (
+        difference.type === "develops_piece"
+        && difference.piece === "n"
+        && difference.square === "f3"
+      ),
+    ),
+  );
+});
+
+test("ein Bauernzug kann ein konkret belegtes gegnerisches Schach erlauben", () => {
+  const game = new Chess();
+  game.move("f3");
+  game.move("e5");
+  const evidence = buildPositionEvidence({
+    fenBefore: game.fen(),
+    playedUci: "g2g4",
+    candidateLines: [
+      {
+        rank: 1,
+        evaluation: { unit: "cp", value: 10, perspective: "white" },
+        pvUci: ["e2e4", "b8c6"],
+      },
+      {
+        rank: 2,
+        evaluation: { unit: "cp", value: 0, perspective: "white" },
+        pvUci: ["g1h3", "b8c6"],
+      },
+    ],
+    playedLine: {
+      evaluation: { unit: "mate", value: -1, perspective: "white" },
+      pvUci: ["g2g4", "d8h4"],
+    },
+    lossCp: 10_000,
+  });
+
+  assert.equal(evidence.moveComparison.played.opponentBestReply.san, "Qh4#");
+  assert.ok(
+    evidence.moveComparison.differences.some(
+      (difference) => difference.type === "allows_check",
+    ),
+  );
+  assert.ok(
+    evidence.moveComparison.differences.some(
+      (difference) => difference.type === "allows_checkmate",
+    ),
+  );
+});
+
+test("Materialverlust innerhalb der geprüften Linie wird vergleichbar", () => {
+  const fen = "3q2k1/8/8/8/8/8/3Q4/6K1 w - - 0 1";
+  const evidence = buildPositionEvidence({
+    fenBefore: fen,
+    playedUci: "d2d3",
+    candidateLines: [
+      {
+        rank: 1,
+        evaluation: { unit: "cp", value: 0, perspective: "white" },
+        pvUci: ["d2e3"],
+      },
+      {
+        rank: 2,
+        evaluation: { unit: "cp", value: -900, perspective: "white" },
+        pvUci: ["d2d3", "d8d3"],
+      },
+    ],
+    playedLine: {
+      evaluation: { unit: "cp", value: -900, perspective: "white" },
+      pvUci: ["d2d3", "d8d3"],
+    },
+    lossCp: 900,
+  });
+
+  assert.equal(evidence.moveComparison.played.materialBalanceDelta, -9);
+  assert.ok(
+    evidence.moveComparison.differences.some(
+      (difference) => difference.type === "material_outcome",
+    ),
+  );
+});
+
+test("Rochade und konkrete Bauernstruktur bleiben in beiden Vergleichsarmen messbar", () => {
+  const castling = buildPositionEvidence({
+    fenBefore: "r3k2r/5ppp/8/8/8/8/5PPP/R3K2R w KQkq - 0 1",
+    playedUci: "e1g1",
+    candidateLines: [
+      {
+        rank: 1,
+        evaluation: { unit: "cp", value: 20, perspective: "white" },
+        pvUci: ["e1g1", "e8g8"],
+      },
+      {
+        rank: 2,
+        evaluation: { unit: "cp", value: 0, perspective: "white" },
+        pvUci: ["e1c1", "e8c8"],
+      },
+    ],
+  });
+  assert.ok(
+    castling.moveComparison.played.immediateEffects.some(
+      (effect) => effect.type === "castles",
+    ),
+  );
+
+  const pawnStructure = buildPositionEvidence({
+    fenBefore: "7k/8/8/8/2p5/3P4/2P5/7K w - - 0 1",
+    playedUci: "d3c4",
+    candidateLines: [{
+      rank: 1,
+      evaluation: { unit: "cp", value: 50, perspective: "white" },
+      pvUci: ["d3c4", "h8g7"],
+    }],
+  });
+  assert.ok(
+    pawnStructure.moveComparison.played.immediateEffects.some(
+      (effect) => effect.type === "creates_doubled_pawns",
+    ),
+  );
+});
+
+test("onlyMove und Bewertungsperspektive werden aus belegten Kandidaten abgeleitet", () => {
+  const onlyMove = buildPositionEvidence({
+    fenBefore: START_FEN,
+    playedUci: "e2e4",
+    candidateLines: [
+      {
+        rank: 1,
+        evaluation: { unit: "cp", value: 100, perspective: "white" },
+        pvUci: ["e2e4", "e7e5"],
+      },
+      {
+        rank: 2,
+        evaluation: { unit: "cp", value: -100, perspective: "white" },
+        pvUci: ["d2d4", "d7d5"],
+      },
+    ],
+    onlyMove: true,
+    onlyMoveEvidence: { type: "candidate_gap", gapCp: 200 },
+  });
+  assert.equal(onlyMove.moveComparison.onlyMove, true);
+  assert.deepEqual(onlyMove.moveComparison.onlyMoveEvidence, {
+    type: "candidate_gap",
+    gapCp: 200,
+  });
+
+  const game = new Chess();
+  game.move("e4");
+  const black = buildPositionEvidence({
+    fenBefore: game.fen(),
+    playedUci: "e7e5",
+    candidateLines: [
+      {
+        rank: 1,
+        evaluation: { unit: "cp", value: 20, perspective: "white" },
+        pvUci: ["e7e5", "g1f3"],
+      },
+      {
+        rank: 2,
+        evaluation: { unit: "cp", value: 40, perspective: "white" },
+        pvUci: ["d7d5", "e4d5"],
+      },
+    ],
+  });
+  assert.equal(black.moveComparison.best.evaluation.perspective, "player");
+  assert.equal(black.moveComparison.best.evaluation.value, -20);
+  assert.equal(black.moveComparison.alternative.evaluation.value, -40);
+});

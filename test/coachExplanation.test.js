@@ -68,66 +68,38 @@ function validStructuredExplanation() {
     schemaVersion: MOVE_EXPLANATION_SCHEMA_VERSION,
     subjectUci: "e2e4",
     subjectSan: "e4",
-    headline: "e4: ein klarer Griff ins Zentrum",
-    summary: [
-      {
-        claimKind: "assessment",
-        text: "e4 ist hier die stärkste geprüfte Möglichkeit.",
-        evidenceIds: ["engine.best_move"],
-        moveRefs: [{
-          lineEvidenceId: "engine.pv.1",
-          startPly: 0,
-          uci: ["e2e4"],
-        }],
-      },
-      {
-        claimKind: "move_effect",
-        text: "Der Bauernzug ist in dieser Stellung legal.",
-        evidenceIds: ["move.played.legal:e2e4"],
-        moveRefs: [],
-      },
-      {
-        claimKind: "position_change",
-        text: "Er vergrößert sofort den weißen Einfluss im Zentrum.",
-        evidenceIds: ["position.change.center"],
-        moveRefs: [],
-      },
-      {
-        claimKind: "variation",
-        text: "Die geprüfte Fortsetzung beginnt mit e4 e5 Nf3 Nc6.",
-        evidenceIds: ["engine.pv.1"],
-        moveRefs: [{
-          lineEvidenceId: "engine.pv.1",
-          startPly: 0,
-          uci: ["e2e4", "e7e5", "g1f3", "b8c6"],
-        }],
-      },
-    ],
-    deepDive: [
-      {
-        claimKind: "position_change",
-        title: "Zentrum",
-        text: "Weiß beeinflusst nach dem Zug zusätzliche zentrale Felder.",
-        evidenceIds: ["position.change.center"],
-        moveRefs: [],
-      },
-      {
-        claimKind: "variation",
-        title: "Antwortfolge",
-        text: "In der geprüften Linie folgen auf e4 die Züge e5 Nf3 Nc6.",
-        evidenceIds: ["engine.pv.1"],
-        moveRefs: [{
-          lineEvidenceId: "engine.pv.1",
-          startPly: 0,
-          uci: ["e2e4", "e7e5", "g1f3", "b8c6"],
-        }],
-      },
-    ],
+    verdict: {
+      text: "e4 ist hier die stärkste geprüfte Möglichkeit.",
+      evidenceIds: ["engine.best_move"],
+      moveRefs: [{
+        lineEvidenceId: "engine.pv.1",
+        startPly: 0,
+        uci: ["e2e4"],
+      }],
+    },
+    moveIdea: {
+      text: "Der Zug besetzt e4 und kontrolliert d5.",
+      evidenceIds: ["position.change.center"],
+      moveRefs: [],
+    },
+    opponentReply: {
+      text: "Die geprüfte Fortsetzung beginnt mit e4 e5 Nf3 Nc6.",
+      evidenceIds: ["engine.pv.1"],
+      moveRefs: [{
+        lineEvidenceId: "engine.pv.1",
+        startPly: 0,
+        uci: ["e2e4", "e7e5", "g1f3", "b8c6"],
+      }],
+    },
+    concreteConsequence: null,
+    alternative: null,
+    comparison: null,
+    takeaway: null,
     confidence: "high",
   };
 }
 
-test("die lokale Erklärung enthält vier bis sechs belegte Sätze und behält die legale PV-Reihenfolge", () => {
+test("die lokale Erklärung füllt nur belegte semantische Felder", () => {
   const positionEvidence = evidenceFixture();
   const explanation = buildLocalMoveExplanation({
     positionEvidence,
@@ -142,10 +114,20 @@ test("die lokale Erklärung enthält vier bis sechs belegte Sätze und behält d
 
   assert.equal(positionEvidence.valid, true);
   assert.ok(explanation);
-  assert.ok(explanation.summary.length >= 4);
-  assert.ok(explanation.summary.length <= 6);
+  assert.equal(explanation.schemaVersion, 3);
+  assert.ok(explanation.verdict);
+  assert.ok(explanation.moveIdea);
+  const claims = [
+    explanation.verdict,
+    explanation.moveIdea,
+    explanation.opponentReply,
+    explanation.concreteConsequence,
+    explanation.alternative,
+    explanation.comparison,
+    explanation.takeaway,
+  ].filter(Boolean);
   assert.ok(
-    explanation.summary.every(
+    claims.every(
       (sentence) => (
         typeof sentence.text === "string"
         && sentence.text.trim().length > 0
@@ -155,15 +137,10 @@ test("die lokale Erklärung enthält vier bis sechs belegte Sätze und behält d
     ),
   );
 
-  const pvSentence = explanation.summary.find(
-    (sentence) => (
-      sentence.evidenceIds.includes("engine.pv.1")
-      && /e5/.test(sentence.text)
-    ),
-  );
+  const pvSentence = explanation.opponentReply;
   assert.ok(pvSentence);
-  assert.match(pvSentence.text, /e4.*e5.*Nf3.*Nc6/);
-  assert.doesNotMatch(pvSentence.text, /Nc6.*Nf3|Nf3.*e5|e5.*e4/);
+  assert.match(pvSentence.text, /e5/);
+  assert.doesNotMatch(pvSentence.text, /Nc6.*Nf3|Nf3.*e5/);
 });
 
 test("bei Fehlern kommt die Erklärung des gespielten Zuges vor der Alternative", () => {
@@ -183,7 +160,12 @@ test("bei Fehlern kommt die Erklärung des gespielten Zuges vor der Alternative"
     engineContext: reviewContext,
   });
   const wrongOrder = validStructuredExplanation();
-  wrongOrder.summary[0].claimKind = "alternative";
+  wrongOrder.verdict = null;
+  wrongOrder.alternative = {
+    text: "d4 wäre besser.",
+    evidenceIds: ["engine.move_assessment"],
+    moveRefs: [],
+  };
   const checked = verifyMoveExplanation(wrongOrder, {
     positionEvidence: trustedEvidence,
     engineContext: reviewContext,
@@ -247,7 +229,7 @@ test("die Erklärungsprüfung verwirft fremde Belege, einen falschen Zug und ver
   assert.equal(valid.valid, true, valid.errors.join(" "));
 
   const unknownEvidence = structuredClone(base);
-  unknownEvidence.summary[0].evidenceIds = ["evidence.erfunden"];
+  unknownEvidence.verdict.evidenceIds = ["evidence.erfunden"];
   const unknownResult = verifyMoveExplanation(unknownEvidence, {
     positionEvidence: trustedEvidence,
     engineContext,
@@ -267,7 +249,7 @@ test("die Erklärungsprüfung verwirft fremde Belege, einen falschen Zug und ver
   assert.ok(fakeSubjectResult.errors.some((error) => /SAN-Zug/.test(error)));
 
   const reversedLine = structuredClone(base);
-  reversedLine.summary[3].text =
+  reversedLine.opponentReply.text =
     "Die angebliche Fortsetzung lautet e4 Nf3 e5 Nc6.";
   const reversedResult = verifyMoveExplanation(reversedLine, {
     positionEvidence: trustedEvidence,
@@ -287,8 +269,7 @@ test("Einzelzüge, vermischte Linien und unbelegte Taktikbehauptungen werden ver
   });
 
   const illegalFirstMove = validStructuredExplanation();
-  illegalFirstMove.summary[0] = {
-    claimKind: "alternative",
+  illegalFirstMove.alternative = {
     text: "Besser war e5.",
     evidenceIds: ["engine.pv.1", "engine.best_move"],
     moveRefs: [{
@@ -305,8 +286,8 @@ test("Einzelzüge, vermischte Linien und unbelegte Taktikbehauptungen werden ver
   assert.ok(illegalResult.errors.some((error) => /nicht der belegte beste Zug/.test(error)));
 
   const skippedPly = validStructuredExplanation();
-  skippedPly.summary[3].text = "Die Fortsetzung beginnt mit e4 Nf3.";
-  skippedPly.summary[3].moveRefs[0].uci = ["e2e4", "g1f3"];
+  skippedPly.opponentReply.text = "Die Fortsetzung beginnt mit e4 Nf3.";
+  skippedPly.opponentReply.moveRefs[0].uci = ["e2e4", "g1f3"];
   const skippedResult = verifyMoveExplanation(skippedPly, {
     positionEvidence: trustedEvidence,
     engineContext,
@@ -315,8 +296,7 @@ test("Einzelzüge, vermischte Linien und unbelegte Taktikbehauptungen werden ver
   assert.ok(skippedResult.errors.some((error) => /zusammenhängende Teilfolge/.test(error)));
 
   const inventedWin = validStructuredExplanation();
-  inventedWin.summary[3] = {
-    claimKind: "variation",
+  inventedWin.opponentReply = {
     text: "Nach e4 gewinnt Weiß sofort eine Dame.",
     evidenceIds: ["engine.pv.1"],
     moveRefs: [{
@@ -443,7 +423,7 @@ test("numerische Rochaden werden wie jede andere Zugnotation gegen legale Linien
     engineContext,
   });
   const explanation = validStructuredExplanation();
-  explanation.summary[3].text = "In der geprüften Folge wird danach 0-0-0 gespielt.";
+  explanation.opponentReply.text = "In der geprüften Folge wird danach 0-0-0 gespielt.";
 
   const result = verifyMoveExplanation(explanation, {
     positionEvidence: trustedEvidence,
@@ -464,8 +444,7 @@ test("ein Beleg zu einem anderen Stellungseffekt rechtfertigt keine konkrete Lin
     engineContext,
   });
   const explanation = validStructuredExplanation();
-  explanation.summary[2] = {
-    claimKind: "position_change",
+  explanation.comparison = {
     text: "Der Zug öffnet die h-Linie.",
     evidenceIds: ["position.change.center"],
     moveRefs: [],
@@ -518,9 +497,7 @@ test("ein ruhiger Figurenzug wird lokal als neutrale Brettveränderung beschrieb
     engineContext: quietMoveContext,
     learnerProfile,
   });
-  const moveEffect = explanation?.summary.find(
-    (claim) => claim.claimKind === "move_effect",
-  );
+  const moveEffect = explanation?.moveIdea;
 
   assert.ok(explanation);
   assert.ok(moveEffect);
@@ -539,7 +516,7 @@ test("eine Erklärung wiederholt weder denselben Satz noch den Bestzug-Vergleich
   });
 
   const duplicate = validStructuredExplanation();
-  duplicate.summary[1] = structuredClone(duplicate.summary[0]);
+  duplicate.moveIdea = structuredClone(duplicate.verdict);
   const duplicateResult = verifyMoveExplanation(duplicate, {
     positionEvidence: trustedEvidence,
     engineContext,
@@ -551,8 +528,7 @@ test("eine Erklärung wiederholt weder denselben Satz noch den Bestzug-Vergleich
   );
 
   const repeatedComparison = validStructuredExplanation();
-  repeatedComparison.summary[1] = {
-    claimKind: "assessment",
+  repeatedComparison.moveIdea = {
     text: "Diese Wahl ist ebenfalls die beste geprüfte Möglichkeit.",
     evidenceIds: ["engine.best_move"],
     moveRefs: [],
@@ -608,7 +584,7 @@ test("der Cache-Digest ändert sich mit Variante, Bewertung und Wissensinhalt", 
 
   assert.notEqual(first, changedLine);
   assert.notEqual(first, changedKnowledge);
-  assert.match(first, /^v3:[a-f0-9]{64}$/);
+  assert.match(first, /^v4:[a-f0-9]{64}$/);
 });
 
 test("Eröffnungsankündigungen und Zugumstellungen gehören zum Cache-Schlüssel", () => {
@@ -719,7 +695,7 @@ test("Markdown wiederholt wortgleiche Texte nicht im Deep Dive", () => {
   assert.doesNotMatch(markdown, /\*\*Noch einmal:\*\*/);
 });
 
-test("lokale Erklärungen nennen Eröffnungswissen nur bei angekündigter Familie oder Variante", () => {
+test("Zugerklärungen wiederholen keine separaten Eröffnungsankündigungen", () => {
   const positionEvidence = evidenceFixture();
   const openingContext = {
     matched: true,
@@ -739,12 +715,8 @@ test("lokale Erklärungen nennen Eröffnungswissen nur bei angekündigter Famili
   });
 
   assert.ok(withoutAnnouncement);
-  assert.equal(
-    withoutAnnouncement.summary.some((claim) => claim.claimKind === "opening"),
-    false,
-  );
   assert.doesNotMatch(
-    withoutAnnouncement.summary.map((claim) => claim.text).join(" "),
+    moveExplanationToMarkdown(withoutAnnouncement, { deep: true }),
     /Königbauernspiel/,
   );
 
@@ -762,12 +734,11 @@ test("lokale Erklärungen nennen Eröffnungswissen nur bei angekündigter Famili
         },
       },
     });
-    const openingClaims = announced.summary.filter(
-      (claim) => claim.claimKind === "opening",
+    assert.ok(announced, `Ankündigungsart ${kind}`);
+    assert.doesNotMatch(
+      moveExplanationToMarkdown(announced, { deep: true }),
+      /Königbauernspiel/,
     );
-
-    assert.equal(openingClaims.length, 1, `Ankündigungsart ${kind}`);
-    assert.match(openingClaims[0].text, /Königbauernspiel/);
   }
 });
 
@@ -851,11 +822,11 @@ test("eine ungültige strukturierte Antwort fällt sicher auf die lokale Erklär
   assert.equal(malformed.cached, false);
   assert.equal(malformed.reason, "invalid_structured_json");
   assert.ok(malformed.explanation);
-  assert.ok(malformed.explanation.summary.length >= 4);
-  assert.ok(malformed.explanation.summary.length <= 6);
+  assert.ok(malformed.explanation.verdict);
+  assert.ok(malformed.explanation.moveIdea);
 
   const fabricated = validStructuredExplanation();
-  fabricated.summary[0].evidenceIds = ["evidence.erfunden"];
+  fabricated.verdict.evidenceIds = ["evidence.erfunden"];
   const ungrounded = await requestMoveExplanation(
     {
       engineContext,
@@ -877,4 +848,171 @@ test("eine ungültige strukturierte Antwort fällt sicher auf die lokale Erklär
   assert.equal(ungrounded.source, "local");
   assert.equal(ungrounded.reason, "evidence_validation_failed");
   assert.ok(ungrounded.explanation);
+});
+
+test("lokaler Fallback erklärt erst das erlaubte Schach und dann die Alternative", () => {
+  const game = new Chess();
+  game.move("f3");
+  game.move("e5");
+  const fen = game.fen();
+  const candidateLines = [
+    {
+      rank: 1,
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      pvUci: ["g2g3", "b8c6"],
+    },
+    {
+      rank: 2,
+      evaluation: { unit: "cp", value: -20, perspective: "white" },
+      pvUci: ["g1h3", "b8c6"],
+    },
+  ];
+  const positionEvidence = buildPositionEvidence({
+    fenBefore: fen,
+    playedUci: "g2g4",
+    candidateLines,
+    playedLine: {
+      evaluation: { unit: "mate", value: -1, perspective: "white" },
+      pvUci: ["g2g4", "d8h4"],
+    },
+    lossCp: 10_000,
+  });
+  const context = {
+    source: "stockfish",
+    kind: "move_review",
+    fen,
+    depth: 18,
+    bestMove: { uci: "g2g3", san: "g3" },
+    primaryVariation: { uci: ["g2g3", "b8c6"], san: ["g3", "Nc6"] },
+    lines: candidateLines.map((line) => ({
+      rank: line.rank,
+      depth: 18,
+      evaluation: line.evaluation,
+      bestMove: {
+        uci: line.pvUci[0],
+        san: line.rank === 1 ? "g3" : "Nh3",
+      },
+      pv: {
+        uci: line.pvUci,
+        san: line.rank === 1 ? ["g3", "Nc6"] : ["Nh3", "Nc6"],
+      },
+    })),
+    playedLine: {
+      evaluation: { unit: "mate", value: -1, perspective: "player" },
+      uci: ["g2g4", "d8h4"],
+      san: ["g4", "Qh4#"],
+    },
+    moveReview: {
+      playedMove: { uci: "g2g4", san: "g4" },
+      bestMove: { uci: "g2g3", san: "g3" },
+      quality: "blunder",
+      lossCp: 10_000,
+      pv: { uci: ["g2g3", "b8c6"], san: ["g3", "Nc6"] },
+    },
+  };
+  const explanation = buildLocalMoveExplanation({
+    positionEvidence,
+    engineContext: context,
+  });
+
+  assert.ok(explanation);
+  assert.match(explanation.verdict.text, /Qh4#/);
+  assert.match(explanation.opponentReply.text, /Qh4#/);
+  assert.match(explanation.alternative.text, /g3/);
+  assert.match(explanation.comparison.text, /Schach|Matt/i);
+  assert.match(explanation.takeaway.text, /gegnerischen Schachs/i);
+  assert.doesNotMatch(
+    moveExplanationToMarkdown(explanation, { deep: true }),
+    /wechselt auf|verändert die Bauernstellung|sicherer Bezugspunkt/i,
+  );
+});
+
+test("bei knapper Faktenlage bleiben optionale Felder null statt Fülltext zu erzeugen", () => {
+  const fen = "k7/8/8/8/8/8/6K1/8 w - - 0 1";
+  const positionEvidence = buildPositionEvidence({
+    fenBefore: fen,
+    playedUci: "g2h1",
+    candidateLines: [{
+      rank: 1,
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      pvUci: ["g2h1", "a8b7"],
+    }],
+  });
+  const context = {
+    source: "stockfish",
+    kind: "position",
+    fen,
+    depth: 12,
+    evaluation: { unit: "cp", value: 0, perspective: "white" },
+    bestMove: { uci: "g2h1", san: "Kh1" },
+    primaryVariation: { uci: ["g2h1", "a8b7"], san: ["Kh1", "Kb7"] },
+    lines: [{
+      rank: 1,
+      depth: 12,
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      bestMove: { uci: "g2h1", san: "Kh1" },
+      pv: { uci: ["g2h1", "a8b7"], san: ["Kh1", "Kb7"] },
+    }],
+  };
+  const explanation = buildLocalMoveExplanation({ positionEvidence, engineContext: context });
+
+  assert.ok(explanation.verdict);
+  assert.ok(explanation.moveIdea);
+  assert.equal(explanation.alternative, null);
+  assert.equal(explanation.comparison, null);
+  assert.equal(explanation.takeaway, null);
+});
+
+test("onlyMove wird erklärt, ohne eine künstlich gleichwertige Alternative zu behaupten", () => {
+  const candidateLines = [
+    {
+      rank: 1,
+      evaluation: { unit: "cp", value: 100, perspective: "white" },
+      pvUci: ["e2e4", "e7e5"],
+    },
+    {
+      rank: 2,
+      evaluation: { unit: "cp", value: -100, perspective: "white" },
+      pvUci: ["d2d4", "d7d5"],
+    },
+  ];
+  const positionEvidence = buildPositionEvidence({
+    fenBefore: START_FEN,
+    playedUci: "e2e4",
+    candidateLines,
+    onlyMove: true,
+    onlyMoveEvidence: { type: "candidate_gap", gapCp: 200 },
+  });
+  const context = {
+    ...engineContext,
+    kind: "move_review",
+    lines: candidateLines.map((line) => ({
+      rank: line.rank,
+      depth: 18,
+      evaluation: line.evaluation,
+      bestMove: {
+        uci: line.pvUci[0],
+        san: line.rank === 1 ? "e4" : "d4",
+      },
+      pv: {
+        uci: line.pvUci,
+        san: line.rank === 1 ? ["e4", "e5"] : ["d4", "d5"],
+      },
+    })),
+    moveReview: {
+      playedMove: { uci: "e2e4", san: "e4" },
+      bestMove: { uci: "e2e4", san: "e4" },
+      quality: "best",
+      lossCp: 0,
+      onlyMove: true,
+      onlyMoveEvidence: { type: "candidate_gap", gapCp: 200 },
+      pv: { uci: ["e2e4", "e7e5"], san: ["e4", "e5"] },
+    },
+  };
+  const explanation = buildLocalMoveExplanation({ positionEvidence, engineContext: context });
+
+  assert.ok(explanation);
+  assert.match(explanation.alternative.text, /fällt aber klar ab/);
+  assert.doesNotMatch(explanation.alternative.text, /gleichwertig/);
+  assert.match(explanation.comparison.text, /zweitbeste.*fällt klar ab/i);
 });

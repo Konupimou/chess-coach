@@ -14,6 +14,7 @@ import {
 import {
   MOVE_QUALITY,
   analysisEntryFromInfo,
+  analysisEntryFromMultiPv,
   buildFallbackFeedback,
   buildLearningSummary,
   buildPvFrames,
@@ -128,6 +129,7 @@ function compactReviewForStorage(review) {
     if (!move || typeof move !== "object") return move;
     const {
       coachExplanation: _coachExplanation,
+      coachLocalExplanation: _coachLocalExplanation,
       coachExplanationKey: _coachExplanationKey,
       ...compact
     } = move;
@@ -269,7 +271,9 @@ export class ChessApp {
     this.suggestionExplanationExpanded = false;
     this.moveExplanationControllers = new Map();
     this.moveExplanationCache = new Map();
-    this.moveExplanationStorageKey = "chess-coach.move-explanations.v3";
+    this.moveExplanationStorageKey = "chess-coach.move-explanations.v4";
+    this.aiMoveExplanationsStorageKey = "chess-coach.ai-move-explanations.enabled";
+    this.aiMoveExplanationsEnabled = true;
     this.coachGameGeneration = 1;
     this.previewState = null;
     this.moveListPreviewState = null;
@@ -327,6 +331,13 @@ export class ChessApp {
       this.browserStorage = window.localStorage;
     } catch {
       this.browserStorage = null;
+    }
+    try {
+      this.aiMoveExplanationsEnabled = this.browserStorage?.getItem(
+        this.aiMoveExplanationsStorageKey,
+      ) !== "false";
+    } catch {
+      this.aiMoveExplanationsEnabled = true;
     }
     this.loadMoveExplanationCache();
     this.accountState = loadAccountState(
@@ -2783,6 +2794,7 @@ export class ChessApp {
 
     const claims = document.createElement("div");
     claims.className = "computer-explanation-claims";
+    const semantic = explanation.schemaVersion === 3;
     const isConcreteClaim = (claim) => {
       const text = String(claim?.text || "").trim();
       if (!text) return false;
@@ -2792,16 +2804,38 @@ export class ChessApp {
       return !/sichere(?:n|r)? Bezugspunkt|vergleiche die Stellung|genauer Wert zeigt|verifizierte Hauptfortsetzung/i
         .test(text);
     };
-    const summary = expanded
-      ? (explanation.summary || []).filter(
-        isConcreteClaim,
-      )
-      : compactMoveExplanationClaims(explanation, { maximum: 4 })
-        .filter(isConcreteClaim)
-        .slice(0, 2);
+    const semanticClaims = semantic
+      ? [
+        ["verdict", "assessment"],
+        ["moveIdea", "move_effect"],
+        ["alternative", "alternative"],
+        ...(expanded
+          ? [
+            ["opponentReply", "variation"],
+            ["concreteConsequence", "variation"],
+            ["comparison", "position_change"],
+            ["takeaway", "principle"],
+          ]
+          : []),
+      ].flatMap(([field, claimKind]) => (
+        explanation[field]
+          ? [{ ...explanation[field], claimKind, semanticField: field }]
+          : []
+      ))
+      : [];
+    const summary = semantic
+      ? semanticClaims
+      : expanded
+        ? (explanation.summary || []).filter(isConcreteClaim)
+        : compactMoveExplanationClaims(explanation, { maximum: 4 })
+          .filter(isConcreteClaim)
+          .slice(0, 2);
     const selected = [];
     const seen = new Set();
-    [...summary, ...(expanded ? explanation.deepDive || [] : [])].forEach((claim) => {
+    [
+      ...summary,
+      ...(!semantic && expanded ? explanation.deepDive || [] : []),
+    ].forEach((claim) => {
       const text = String(claim?.text || "").trim();
       const key = text.toLocaleLowerCase("de-DE");
       if (!text || seen.has(key)) return;
@@ -2817,7 +2851,11 @@ export class ChessApp {
     });
     section.appendChild(claims);
 
-    if (typeof onToggle === "function" && (explanation.deepDive?.length || 0) > 0) {
+    const hasDetails = semantic
+      ? ["opponentReply", "concreteConsequence", "comparison", "takeaway"]
+        .some((field) => Boolean(explanation[field]))
+      : (explanation.deepDive?.length || 0) > 0;
+    if (typeof onToggle === "function" && hasDetails) {
       const toggle = document.createElement("button");
       toggle.type = "button";
       toggle.className = "computer-explanation-toggle";
@@ -3586,7 +3624,9 @@ export class ChessApp {
       positionFenBefore,
       positionFenAfter,
       pathSignature,
-      explanation: bundle.explanation,
+      explanation: this.aiMoveExplanationsEnabled
+        ? bundle.explanation
+        : bundle.localExplanation,
       positionEvidence: bundle.positionEvidence,
       source: this.moveExplanationCache.has(bundle.key) ? "client-cache" : "local",
       gameGeneration: this.coachGameGeneration,
@@ -3594,6 +3634,8 @@ export class ChessApp {
     this.computerExplanationExpanded = false;
     this.renderSuggestions();
     if (
+      !this.aiMoveExplanationsEnabled
+      ||
       this.moveExplanationCache.has(bundle.key)
       || this.moveExplanationControllers.has(bundle.key)
     ) return;
@@ -4301,13 +4343,20 @@ export class ChessApp {
       || !info
       || info.searchId !== pending.searchId
       || info.fen !== pending.fen
-      || (info.multipv || 1) !== 1
     ) return;
     const entry = analysisEntryFromInfo(info);
     if (!entry) return;
-    pending.latest = entry;
-    if (info.depth && info.depth >= pending.depth) {
-      pending.resolve(entry);
+    pending.entries.set(entry.rank || 1, entry);
+    const ready = [...pending.entries.values()]
+      .filter((candidate) => (candidate.depth || 0) >= pending.depth);
+    const combined = analysisEntryFromMultiPv(ready, {
+      requiredLines: pending.requiredLines,
+    });
+    if (combined?.complete) {
+      pending.resolve({
+        ...combined,
+        legalMoveCount: pending.legalMoveCount,
+      });
     }
   }
 
@@ -4318,6 +4367,14 @@ export class ChessApp {
       return Promise.reject(error);
     }
     return new Promise((resolve, reject) => {
+      let legalMoveCount = 2;
+      try {
+        const game = new Chess(fen);
+        legalMoveCount = game.moves().length;
+      } catch {
+        legalMoveCount = 2;
+      }
+      const requiredLines = Math.max(1, Math.min(2, legalMoveCount));
       const searchId = this.reviewEngine.evaluate(fen, depth);
       if (!searchId) {
         reject(new Error('Stockfish konnte die Stellung nicht starten.'));
@@ -4333,7 +4390,9 @@ export class ChessApp {
         fen,
         depth,
         searchId,
-        latest: null,
+        legalMoveCount,
+        requiredLines,
+        entries: new Map(),
         resolve: (entry) => {
           window.clearTimeout(timeout);
           if (this.reviewPendingSearch?.searchId === searchId) this.reviewPendingSearch = null;
@@ -4403,7 +4462,7 @@ export class ChessApp {
         depth,
         threads: 1,
         hashMB: 32,
-        multiPV: 1,
+        multiPV: 2,
         onInfo: (info) => this.handleReviewEngineInfo(info),
         onError: (error) => {
           this.reviewPendingSearch?.reject(error);
@@ -4506,8 +4565,9 @@ export class ChessApp {
         engineContext,
         openingContext,
       );
-      if (bundle?.explanation) {
-        storedMove.coachExplanation = bundle.explanation;
+      if (bundle?.localExplanation) {
+        storedMove.coachLocalExplanation = bundle.localExplanation;
+        storedMove.coachExplanation = bundle.localExplanation;
         storedMove.coachExplanationKey = bundle.key;
       }
     });
@@ -4740,9 +4800,53 @@ export class ChessApp {
 
     const currentReportPath = this.getCurrentPath();
     if (report.moves?.length > 0) {
+      const movesHeader = document.createElement("div");
+      movesHeader.className = "review-moves-header";
       const movesHeading = document.createElement("h3");
       movesHeading.textContent = "Zug für Zug";
-      this.feedbackBodyEl.appendChild(movesHeading);
+      const explanationMode = document.createElement("div");
+      explanationMode.className = "review-explanation-mode";
+      explanationMode.setAttribute("role", "group");
+      explanationMode.setAttribute("aria-label", "Art der Zugerklärung");
+      [
+        ["Nur lokal", false],
+        ["Mit KI", true],
+      ].forEach(([label, enabled]) => {
+        const modeButton = document.createElement("button");
+        modeButton.type = "button";
+        modeButton.textContent = label;
+        modeButton.className = "review-explanation-mode-button";
+        modeButton.setAttribute(
+          "aria-pressed",
+          String(this.aiMoveExplanationsEnabled === enabled),
+        );
+        modeButton.addEventListener("click", () => {
+          if (this.aiMoveExplanationsEnabled === enabled) return;
+          this.aiMoveExplanationsEnabled = enabled;
+          try {
+            this.browserStorage?.setItem(
+              this.aiMoveExplanationsStorageKey,
+              String(enabled),
+            );
+          } catch {
+            // Die Auswahl gilt dann nur für die laufende Sitzung.
+          }
+          if (!enabled) {
+            this.moveExplanationControllers.forEach((controller) => controller.abort());
+            this.moveExplanationControllers.clear();
+          }
+          this.renderFeedbackReport(report, feedback);
+        });
+        explanationMode.appendChild(modeButton);
+      });
+      movesHeader.append(movesHeading, explanationMode);
+      this.feedbackBodyEl.appendChild(movesHeader);
+      const modeHint = document.createElement("p");
+      modeHint.className = "review-explanation-mode-hint";
+      modeHint.textContent = this.aiMoveExplanationsEnabled
+        ? "Die ausführliche KI-Fassung wird erst geladen, wenn du einen Zug öffnest."
+        : "Alle Zugerklärungen bleiben lokal – es wird keine KI-Fassung angefragt.";
+      this.feedbackBodyEl.appendChild(modeHint);
       const moveExplanations = document.createElement("div");
       moveExplanations.className = "review-move-explanations";
       report.moves.forEach((storedMove) => {
@@ -4754,10 +4858,10 @@ export class ChessApp {
         if (!move) return;
         const moveNode = currentReportPath[move.ply];
         const quality = MOVE_QUALITY[move.quality];
-        const item = document.createElement("button");
-        item.type = "button";
+        const item = document.createElement("article");
         item.className = `review-move-explanation quality-${quality?.tone || "good"}`;
-        const top = document.createElement("span");
+        const top = document.createElement("button");
+        top.type = "button";
         top.className = "review-move-explanation-top";
         const title = document.createElement("strong");
         title.textContent = `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
@@ -4766,15 +4870,80 @@ export class ChessApp {
         top.append(title, badge);
         const reason = document.createElement("span");
         reason.className = "review-move-reason";
-        const groundedSummary = move.coachExplanation?.summary
-          ?.map((claim) => claim?.text)
-          .filter(Boolean)
-          .join(" ");
-        reason.textContent = groundedSummary || explainMoveQuality(move);
-        item.append(top, reason);
-        item.addEventListener("click", () => {
+        const displayedExplanation = this.aiMoveExplanationsEnabled
+          ? move.coachExplanation
+          : move.coachLocalExplanation || move.coachExplanation;
+        const groundedSummary = displayedExplanation?.schemaVersion === 3
+          ? [
+            displayedExplanation.verdict?.text,
+            displayedExplanation.moveIdea?.text,
+            displayedExplanation.alternative?.text,
+          ].filter(Boolean).join(" ")
+          : displayedExplanation?.summary
+            ?.map((claim) => claim?.text)
+            .filter(Boolean)
+            .join(" ");
+        const collapsedText = groundedSummary || explainMoveQuality(move);
+        reason.textContent = collapsedText;
+        const actions = document.createElement("div");
+        actions.className = "review-move-explanation-actions";
+        const showOnBoard = document.createElement("button");
+        showOnBoard.type = "button";
+        showOnBoard.className = "review-move-board-button";
+        showOnBoard.textContent = "Am Brett zeigen";
+        showOnBoard.addEventListener("click", () => {
           this.feedbackDialog.close();
           this.jumpToFen(moveNode.fen, moveNode);
+        });
+        actions.appendChild(showOnBoard);
+        item.append(top, reason, actions);
+        item.setAttribute("aria-expanded", "false");
+        top.setAttribute("aria-expanded", "false");
+        top.addEventListener("click", async () => {
+          if (item.getAttribute("aria-expanded") === "true") {
+            item.setAttribute("aria-expanded", "false");
+            top.setAttribute("aria-expanded", "false");
+            reason.textContent = collapsedText;
+            return;
+          }
+          item.setAttribute("aria-expanded", "true");
+          top.setAttribute("aria-expanded", "true");
+          if (displayedExplanation) {
+            reason.replaceChildren();
+            renderChatMarkup(
+              reason,
+              moveExplanationToMarkdown(displayedExplanation, { deep: true }),
+            );
+          }
+          if (!this.aiMoveExplanationsEnabled) return;
+          const engineContext = this.buildMoveCoachEngineContext(move);
+          const openingContext = this.buildOpeningCoachContext(
+            currentReportPath.slice(0, Math.min(currentReportPath.length, move.ply + 1)),
+          );
+          try {
+            const result = await this.requestGroundedMoveExplanation({
+              engineContext,
+              openingContext,
+              history: currentReportPath
+                .slice(1, move.ply + 1)
+                .map((node) => node.move?.san)
+                .filter(Boolean),
+              clientKey: move.coachExplanationKey || "",
+            });
+            if (
+              !result?.explanation
+              || !this.aiMoveExplanationsEnabled
+              || !item.isConnected
+            ) return;
+            storedMove.coachExplanation = result.explanation;
+            reason.replaceChildren();
+            renderChatMarkup(
+              reason,
+              moveExplanationToMarkdown(result.explanation, { deep: true }),
+            );
+          } catch {
+            // Die sofort sichtbare lokale Vergleichserklärung bleibt erhalten.
+          }
         });
         moveExplanations.appendChild(item);
       });
@@ -4901,11 +5070,14 @@ export class ChessApp {
     const bestMove = move.bestSan && move.bestSan !== move.san
       ? ` Der blaue Pfeil zeigt die stärkere Idee mit ${move.bestSan}.`
       : "";
-    if (move.coachExplanation) {
+    const displayedExplanation = this.aiMoveExplanationsEnabled
+      ? move.coachExplanation
+      : move.coachLocalExplanation || move.coachExplanation;
+    if (displayedExplanation) {
       this.reviewJourneyCoachEl.replaceChildren();
       renderChatMarkup(
         this.reviewJourneyCoachEl,
-        moveExplanationToMarkdown(move.coachExplanation),
+        moveExplanationToMarkdown(displayedExplanation),
       );
     } else {
       this.reviewJourneyCoachEl.textContent =
@@ -4923,7 +5095,11 @@ export class ChessApp {
     if (!journey || this.coachConfigured === false) return;
     const generation = this.coachGameGeneration;
     const gameId = this.activeGameId;
-    const momentKey = reviewJourneyMomentKey(journey, move);
+    const explanationMode = this.aiMoveExplanationsEnabled ? "ai" : "local";
+    const momentKey = [
+      reviewJourneyMomentKey(journey, move),
+      explanationMode,
+    ].join("|");
     journey.coachTexts ||= new Map();
     if (journey.coachTexts.has(momentKey)) {
       this.reviewJourneyCoachEl.replaceChildren();
@@ -4960,7 +5136,11 @@ export class ChessApp {
       ) return;
       journey.coachTexts.set(momentKey, reply);
       const current = journey.moments[journey.index];
-      if (reviewJourneyMomentKey(journey, current) === momentKey) {
+      const currentMomentKey = [
+        reviewJourneyMomentKey(journey, current),
+        explanationMode,
+      ].join("|");
+      if (currentMomentKey === momentKey) {
         this.reviewJourneyCoachEl.replaceChildren();
         renderChatMarkup(this.reviewJourneyCoachEl, reply);
       }
@@ -6459,16 +6639,27 @@ export class ChessApp {
       depth,
       threads: 1,
       hashMB: 32,
-      multiPV: 1,
+      multiPV: 2,
       onInfo: (info) => {
         if (
           !pending
           || info?.searchId !== pending.searchId
           || info?.fen !== pending.fen
-          || (info?.multipv || 1) !== 1
         ) return;
         const entry = analysisEntryFromInfo(info);
-        if (entry && (!info.depth || info.depth >= pending.depth)) pending.resolve(entry);
+        if (!entry) return;
+        pending.entries.set(entry.rank || 1, entry);
+        const ready = [...pending.entries.values()]
+          .filter((candidate) => (candidate.depth || 0) >= pending.depth);
+        const combined = analysisEntryFromMultiPv(ready, {
+          requiredLines: pending.requiredLines,
+        });
+        if (combined?.complete) {
+          pending.resolve({
+            ...combined,
+            legalMoveCount: pending.legalMoveCount,
+          });
+        }
       },
       onError: (error) => pending?.reject(error),
     });
@@ -6476,6 +6667,14 @@ export class ChessApp {
     const cache = new Map();
     const evaluations = [];
     const analyzeFen = (fen) => new Promise((resolve, reject) => {
+      let legalMoveCount = 2;
+      try {
+        const game = new Chess(fen);
+        legalMoveCount = game.moves().length;
+      } catch {
+        legalMoveCount = 2;
+      }
+      const requiredLines = Math.max(1, Math.min(2, legalMoveCount));
       const searchId = engine.evaluate(fen, depth);
       if (!searchId) {
         reject(new Error("Stockfish konnte eine Hintergrundanalyse nicht starten."));
@@ -6489,6 +6688,9 @@ export class ChessApp {
         fen,
         depth,
         searchId,
+        legalMoveCount,
+        requiredLines,
+        entries: new Map(),
         resolve: (entry) => {
           window.clearTimeout(timeout);
           if (pending?.searchId === searchId) pending = null;
@@ -7036,6 +7238,7 @@ export class ChessApp {
     this.moveExplanationCache.clear();
     try {
       this.browserStorage?.removeItem?.("chess-coach.move-explanations.v2");
+      this.browserStorage?.removeItem?.("chess-coach.move-explanations.v3");
       this.browserStorage?.removeItem?.(this.moveExplanationStorageKey);
     } catch {
       // Gesperrter Browser-Speicher darf den Coach nicht blockieren.
@@ -7049,7 +7252,11 @@ export class ChessApp {
   }
 
   rememberMoveExplanation(key, explanation) {
-    if (!key || !explanation || !Array.isArray(explanation.summary)) return;
+    if (
+      !key
+      || !explanation
+      || (!explanation.verdict && !Array.isArray(explanation.summary))
+    ) return;
     this.moveExplanationCache.delete(key);
     this.moveExplanationCache.set(key, explanation);
     while (this.moveExplanationCache.size > 120) {
@@ -7067,6 +7274,7 @@ export class ChessApp {
     const lines = Array.isArray(engineContext.lines)
       ? engineContext.lines.map((line) => ({
         rank: line.rank,
+        evaluation: line.evaluation || null,
         pv: line.pv?.uci || [],
       }))
       : [];
@@ -7076,7 +7284,16 @@ export class ChessApp {
     const positionEvidence = buildPositionEvidence({
       fenBefore: engineContext.fen,
       playedUci,
-      lines,
+      candidateLines: lines,
+      playedLine: engineContext.playedLine
+        ? {
+          evaluation: engineContext.playedLine.evaluation || null,
+          pvUci: engineContext.playedLine.uci || [],
+        }
+        : null,
+      lossCp: engineContext.moveReview?.lossCp,
+      onlyMove: engineContext.moveReview?.onlyMove === true,
+      onlyMoveEvidence: engineContext.moveReview?.onlyMoveEvidence || null,
       pvLimit: 20,
     });
     if (
@@ -7121,6 +7338,13 @@ export class ChessApp {
     const bundle = this.buildLocalMoveExplanationBundle(engineContext, openingContext);
     if (!bundle) return null;
     const key = clientKey || bundle.key;
+    if (!this.aiMoveExplanationsEnabled) {
+      return {
+        explanation: bundle.localExplanation,
+        source: "local",
+        clientKey: key,
+      };
+    }
     if (this.moveExplanationCache.has(key)) {
       return {
         explanation: this.moveExplanationCache.get(key),
@@ -7564,6 +7788,10 @@ export class ChessApp {
       accuracy: Number.isFinite(verified.accuracy) ? verified.accuracy : null,
       lossCp: Number.isFinite(verified.lossCp) ? verified.lossCp : null,
       pv: { uci: pvUci, san: pvSan },
+      candidateLines: verified.candidateLines,
+      playedLine: verified.playedLine,
+      onlyMove: verified.onlyMove === true,
+      onlyMoveEvidence: verified.onlyMoveEvidence || null,
     };
     const playedContinuationUci = Array.isArray(verified.playedContinuationUci)
       ? verified.playedContinuationUci
@@ -7571,29 +7799,33 @@ export class ChessApp {
     const playedContinuationSan = Array.isArray(verified.playedContinuationSan)
       ? verified.playedContinuationSan
       : [];
-    const lines = [];
-    if (pvUci.length > 0) {
+    const lines = (Array.isArray(verified.candidateLines)
+      ? verified.candidateLines
+      : [])
+      .map((line) => ({
+        rank: line.rank,
+        depth: moveReview.depth,
+        evaluation: line.evaluation,
+        bestMove: line.pvUci?.[0]
+          ? {
+            uci: line.pvUci[0],
+            san: line.pvSan?.[0] || uciToSan(verified.fenBefore, line.pvUci[0]),
+            notation: notationFor(line.pvUci[0]),
+          }
+          : null,
+        pv: {
+          uci: line.pvUci || [],
+          san: line.pvSan || [],
+        },
+      }))
+      .filter((line) => line.bestMove && line.pv.uci.length > 0);
+    if (lines.length === 0 && pvUci.length > 0) {
       lines.push({
         rank: 1,
         depth: moveReview.depth,
         evaluation: moveReview.evaluationBefore,
         bestMove,
         pv: moveReview.pv,
-      });
-    }
-    if (
-      playedContinuationUci.length > 1
-      && playedContinuationUci.join(" ") !== pvUci.join(" ")
-    ) {
-      lines.push({
-        rank: 2,
-        depth: moveReview.depth,
-        evaluation: moveReview.evaluationAfter,
-        bestMove: moveReview.playedMove,
-        pv: {
-          uci: playedContinuationUci,
-          san: playedContinuationSan,
-        },
       });
     }
     return {
@@ -7605,6 +7837,11 @@ export class ChessApp {
       bestMove,
       primaryVariation: moveReview.pv,
       lines,
+      playedLine: {
+        evaluation: verified.playedLine?.evaluation || moveReview.evaluationAfter,
+        uci: verified.playedLine?.pvUci || playedContinuationUci,
+        san: verified.playedLine?.pvSan || playedContinuationSan,
+      },
       moveReview,
     };
   }

@@ -3029,6 +3029,49 @@ button.perspective-alternative-button,
   padding-right: 3px;
 }
 
+.review-moves-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.review-moves-header h3 {
+  margin: 0;
+}
+
+.review-explanation-mode {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid rgba(125, 181, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(8, 16, 30, 0.58);
+}
+
+.review-explanation-mode-button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.review-explanation-mode-button[aria-pressed="true"] {
+  background: rgba(83, 153, 255, 0.22);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px rgba(125, 181, 255, 0.28);
+}
+
+.review-explanation-mode-hint {
+  margin: -2px 0 9px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
 .review-move-explanation {
   display: flex;
   min-width: 0;
@@ -3040,7 +3083,7 @@ button.perspective-alternative-button,
   background: rgba(255, 255, 255, 0.035);
   color: var(--text-primary);
   text-align: left;
-  cursor: pointer;
+  cursor: default;
 }
 
 .review-move-explanation:hover {
@@ -3069,6 +3112,13 @@ button.perspective-alternative-button,
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .review-move-explanation-top > span {
@@ -3081,6 +3131,26 @@ button.perspective-alternative-button,
   color: var(--text-secondary);
   font-size: 0.72rem;
   line-height: 1.4;
+}
+
+.review-move-explanation[aria-expanded="true"] {
+  grid-column: 1 / -1;
+}
+
+.review-move-explanation-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.review-move-board-button {
+  padding: 5px 8px;
+  border: 1px solid rgba(125, 181, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(83, 153, 255, 0.09);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
 }
 
 .critical-list {
@@ -4064,6 +4134,11 @@ button.perspective-alternative-button,
 
   .review-move-explanations {
     grid-template-columns: 1fr;
+  }
+
+  .review-moves-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .modal-dialog {
