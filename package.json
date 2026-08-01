@@ -16,8 +16,13 @@
     "site:preview": "npm run site:build && opennextjs-cloudflare preview",
     "openings:import": "node scripts/import-lichess-openings.mjs",
     "openings:check": "node scripts/check-opening-data.mjs",
+    "pgn:index": "node scripts/build-coach-pgn-index.mjs",
+    "pgn:check": "node scripts/check-coach-pgn-index.mjs",
+    "pgn:training-export": "node scripts/build-coach-pgn-index.mjs --training-output=data/pgn/coach-pgn-training.json",
+    "pgn:analyze": "node scripts/analyze-coach-annotations.mjs",
+    "pgn:evaluate": "node scripts/evaluate-concept-transfer.mjs",
     "test": "node --test",
-    "check": "npm run test && npm run build"
+    "check": "npm run pgn:check && npm run test && npm run build"
   },
   "engines": {
     "node": ">=22"

@@ -162,6 +162,9 @@ function normalizeMoveReview(value, fen) {
     onlyMoveEvidence: value.onlyMoveEvidence && typeof value.onlyMoveEvidence === "object"
       ? value.onlyMoveEvidence
       : null,
+    moveNecessity: value.moveNecessity && typeof value.moveNecessity === "object"
+      ? value.moveNecessity
+      : null,
   };
 }
 
@@ -398,6 +401,13 @@ function unsupportedNotationSequences(reply, matches, context) {
 export function findUnsupportedMoveTokens(reply, context, openingContext = null) {
   if (typeof reply !== "string") return [];
   const allowed = allowedEngineMoveTokens(context);
+  const openingMoves = Array.isArray(openingContext?.continuations)
+    ? openingContext.continuations
+    : [];
+  openingMoves.forEach((move) => {
+    if (typeof move?.uci === "string") allowed.add(move.uci.toLowerCase());
+    localizedSanVariants(move?.san).forEach((value) => allowed.add(value));
+  });
   let checkedReply = reply;
   if (openingContext?.matched === true) {
     [openingContext.sourceName, openingContext.displayName]
@@ -416,15 +426,25 @@ export function findUnsupportedMoveTokens(reply, context, openingContext = null)
         checkedReply = checkedReply.split(name.trim()).join("");
       });
   }
-  const matches = [...checkedReply.matchAll(MOVE_TOKEN_PATTERN)];
+  const matches = [...checkedReply.matchAll(MOVE_TOKEN_PATTERN)].filter((match) => {
+    if (!/^[a-h][1-8]$/i.test(match[0])) return true;
+    const before = checkedReply.slice(Math.max(0, match.index - 42), match.index);
+    const after = checkedReply.slice(
+      match.index + match[0].length,
+      match.index + match[0].length + 24,
+    );
+    return !(
+      /(?:feld(?:es)?|quadrat|auf|von|nach|bis|über|kontrolliert(?:\s+(?:neu|zusätzlich|direkt|auch))?|besetzt|deckt|greift|bauer(?:n|ns)?|springer|läufer|turm|dame|könig)\s+$/iu
+        .test(before)
+      || /^\s*(?:-|als feld|wird kontrolliert|ist besetzt)/iu.test(after)
+    );
+  });
   const unsupportedTokens = matches
     .map((match) => match[0])
     .filter((token) => !allowed.has(token) && !allowed.has(token.toLowerCase()));
-  const unsupportedSequences = unsupportedNotationSequences(
-    checkedReply,
-    matches,
-    context,
-  );
+  const unsupportedSequences = openingMoves.length > 0
+    ? []
+    : unsupportedNotationSequences(checkedReply, matches, context);
   return [...new Set([...unsupportedTokens, ...unsupportedSequences])];
 }
 
@@ -472,7 +492,7 @@ export function findUnsupportedEvaluationTokens(reply, context) {
   ].map((match) => match[0].replace(/\s+/g, " ").trim());
   const contextualDecimals = [
     ...reply.matchAll(
-      /\b(?:bewertung|evaluation|vorteil|nachteil|bauern(?:einheiten)?)\D{0,24}([+-]?\d+(?:[.,]\d+)?)|([+-]?\d+(?:[.,]\d+)?)\s*(?:bauern(?:einheiten)?|bewertung|evaluation|vorteil|nachteil)\b/gi,
+      /\b(?:bewertung|evaluation|vorteil|nachteil|bauern(?:einheiten)?)\D{0,24}(?<![a-h])([+-]?\d+(?:[.,]\d+)?)|(?<![a-h])([+-]?\d+(?:[.,]\d+)?)\s*(?:bauern(?:einheiten)?|bewertung|evaluation|vorteil|nachteil)\b/gi,
     ),
   ].map((match) => (match[1] || match[2] || "").replace(/\s+/g, "").trim());
   const signedNumericMagnitudes = new Set(

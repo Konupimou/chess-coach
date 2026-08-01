@@ -59,17 +59,17 @@ export function describeLiveMove(move) {
     : move.san || "Dein Zug";
   let message;
   if (quality === "best") {
-    message = "Sauber, genau richtig.";
+    message = "Das war der beste Zug.";
   } else if (quality === "excellent") {
-    message = "Stark gespielt.";
+    message = "Das war ein starker Zug.";
   } else if (quality === "good") {
-    message = "Passt, das ist gut spielbar.";
+    message = "Der Zug passt.";
   } else if (quality === "inaccuracy") {
-    message = "Fast – da war noch ein bisschen mehr drin. Gleich siehst du, was besser ging.";
+    message = "Etwas ungenau. Da war ein besserer Zug.";
   } else if (quality === "mistake") {
-    message = "Da läuft etwas schief. Deine Stellung wird danach deutlich schwieriger.";
+    message = "Das ist ein klarer Fehler. Deine Stellung wird deutlich schlechter.";
   } else {
-    message = "Uff, das tut weh. Danach kippt die Stellung klar gegen dich.";
+    message = "Das ist ein grober Fehler. Deine Stellung wird viel schlechter.";
   }
 
   return {

@@ -65,8 +65,37 @@ test("Coach-Zugwächter akzeptiert nur Stockfish-PV und deutsche Figurenkürzel"
     findUnsupportedMoveTokens("Danach folgt 0-0-0.", context),
     ["0-0-0"],
   );
+  assert.deepEqual(
+    findUnsupportedMoveTokens(
+      "Der Springer auf f3 kontrolliert d4 und greift den Bauern e5 an.",
+      context,
+    ),
+    [],
+  );
+  assert.deepEqual(
+    findUnsupportedMoveTokens("Der Zug kontrolliert zusätzlich d5.", context),
+    [],
+  );
   assert.match(ENGINE_CONTEXT_MISSING_REPLY, /keinen konkreten Zug/);
   assert.doesNotMatch(ENGINE_CONTEXT_MISSING_REPLY, /Stockfish|Engine|PV|Centipawn/i);
+});
+
+test("mehrere Eröffnungsoptionen dürfen ohne Engine-Rangliste genannt werden", () => {
+  const openingContext = {
+    matched: true,
+    continuations: [
+      { uci: "g1f3", san: "Nf3" },
+      { uci: "f1c4", san: "Bc4" },
+    ],
+  };
+  assert.deepEqual(
+    findUnsupportedMoveTokens("Du kannst Nf3 oder Bc4 spielen.", null, openingContext),
+    [],
+  );
+  assert.deepEqual(
+    findUnsupportedMoveTokens("Du kannst Nf3 oder d4 spielen.", null, openingContext),
+    ["d4"],
+  );
 });
 
 test("die übliche Null-Schreibweise der Rochade ist nur bei legal gelieferter Rochade erlaubt", () => {
@@ -304,6 +333,10 @@ test("Bewertungswächter übernimmt nur tatsächlich gelieferte Centipawn- und M
   );
   assert.deepEqual(
     findUnsupportedEvaluationTokens("Der belegte Vorteil beträgt 0,32 Bauern.", context),
+    [],
+  );
+  assert.deepEqual(
+    findUnsupportedEvaluationTokens("Der Springer greift den Bauern e5 an.", context),
     [],
   );
   const mateContext = {

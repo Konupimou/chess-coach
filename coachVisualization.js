@@ -340,7 +340,10 @@ function firstMoveMotif(fen, events) {
     };
   }
 
-  const valuableTargets = event.attackedTargets.filter((target) => target.value >= 1);
+  // Zwei geometrisch angegriffene Bauern sind noch kein lehrreicher
+  // Doppelangriff. Das Motiv wird nur gezeigt, wenn tatsächlich mindestens
+  // zwei Figuren von Springerwert oder höher gleichzeitig angegriffen werden.
+  const valuableTargets = event.attackedTargets.filter((target) => target.value >= 3);
   if (valuableTargets.length >= 2) {
     const name = ["n", "p"].includes(event.piece) ? "Gabel" : "Doppelangriff";
     return {
@@ -534,6 +537,10 @@ function strategicAnnotations(event, strategic) {
   const base = initialAnnotations(event, null);
   if (!event) return base;
   const kind = strategic?.kind || "activity";
+  // Bei einer normalen Entwicklung ist nur der tatsächlich gespielte Zug
+  // gemeint. Kontrollierte Felder wie d4 oder e5 sehen sonst wie weitere
+  // Zugempfehlungen aus.
+  if (kind === "development") return base;
   const annotations = {
     arrows: [...base.arrows],
     highlights: [...base.highlights],
@@ -765,6 +772,7 @@ export function buildCoachVisualPlan({
     motifForMover,
     tactical: Boolean(motif),
     ideaKind: strategic.kind,
+    piece: events[0].piece,
     plyCount,
     uci: selected.map((event) => event.uci),
     san: selected.map((event) => event.san),
@@ -860,7 +868,7 @@ export function moveQualityPresentation({
     excellent: { symbol: "!", label: "Sehr gut", tone: "excellent" },
     good: { symbol: "✓", label: "Gut", tone: "good" },
     inaccuracy: { symbol: "?!", label: "Ungenauigkeit", tone: "inaccuracy" },
-    mistake: { symbol: "?", label: "Fehler", tone: "mistake" },
+    mistake: { symbol: "?", label: "Klarer Fehler", tone: "mistake" },
     blunder: { symbol: "??", label: "Grober Fehler", tone: "blunder" },
   };
   return presentations[quality] || presentations.good;

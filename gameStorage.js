@@ -16,6 +16,11 @@ function cleanRating(value) {
   return Number.isInteger(rating) && rating >= 100 && rating <= 4_000 ? rating : null;
 }
 
+function normalizeCoachPreferences(value) {
+  const rating = cleanRating(value?.rating);
+  return [800, 1000, 1400, 1800].includes(rating) ? { rating } : null;
+}
+
 function cloneJsonObject(value) {
   if (!value || typeof value !== "object") return null;
   try {
@@ -82,6 +87,9 @@ export function createAccountState(profile = {}, now = new Date().toISOString())
       name,
       email,
       source: profile.source === "sites" ? "sites" : "local",
+      ...(normalizeCoachPreferences(profile.coachPreferences)
+        ? { coachPreferences: normalizeCoachPreferences(profile.coachPreferences) }
+        : {}),
     },
     createdAt: now,
     updatedAt: now,
@@ -146,6 +154,13 @@ export function loadAccountState(storage, key, profile = {}) {
         email: cleanText(profile.email, 254).toLowerCase()
           || cleanText(storedProfile.email, 254).toLowerCase(),
         source: profile.source === "sites" || storedProfile.source === "sites" ? "sites" : "local",
+        ...(normalizeCoachPreferences(
+          profile.coachPreferences || storedProfile.coachPreferences,
+        ) ? {
+          coachPreferences: normalizeCoachPreferences(
+            profile.coachPreferences || storedProfile.coachPreferences,
+          ),
+        } : {}),
       },
       createdAt: cleanText(parsed.createdAt, 40) || fallback.createdAt,
       updatedAt: cleanText(parsed.updatedAt, 40) || fallback.updatedAt,

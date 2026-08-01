@@ -8,6 +8,7 @@ import {
   detectOpeningFromPath,
   displayOpeningName,
   normalizeFenToEpd,
+  openingContinuationsForPath,
   openingCoachContext,
   parseOpeningName,
 } from "../openingRecognition.js";
@@ -50,6 +51,22 @@ test("der vorgeschlagene erste Zug liefert bereits einen Eröffnungsnamen", () =
   assert.equal(result.sourceName, "King's Pawn Game");
   assert.equal(result.displayName, "Königbauernspiel");
   assert.equal(result.matchedPly, 1);
+});
+
+test("das Eröffnungsbuch liefert mehrere gleichberechtigte Fortsetzungen", () => {
+  const initial = openingContinuationsForPath(pathFromUci(""), book, { limit: 5 });
+  assert.ok(initial.length >= 3);
+  assert.ok(initial.every((entry) => entry.source === "lichess-chess-openings"));
+  assert.ok(initial.every((entry) => entry.variationCount > 0));
+  assert.ok(initial.some((entry) => entry.uci === "e2e4"));
+
+  const afterE4E5 = openingContinuationsForPath(
+    pathFromUci("e2e4 e7e5"),
+    book,
+    { limit: 5 },
+  );
+  assert.ok(afterE4E5.length >= 2);
+  assert.ok(afterE4E5.some((entry) => entry.uci === "g1f3"));
 });
 
 for (const [label, sequence, eco, sourceFragment] of cases) {

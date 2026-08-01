@@ -149,6 +149,9 @@ npm run site:build    # OpenNext-Artefakt für Sites erzeugen
 npm run site:package  # deploybares Sites-Archiv erzeugen
 npm run openings:check   # eingecheckten lokalen ECO-Index prüfen
 npm run openings:import  # Index bewusst aus den gepinnten TSV-Dateien neu erzeugen
+npm run pgn:index        # kommentierte PGNs anonymisiert und nach Phase indexieren
+npm run pgn:check        # Laufzeitindex und Such-Buckets prüfen
+npm run pgn:evaluate     # Konzepttransfer und Suchlatenz messen
 ```
 
 ## Bedienung
@@ -161,6 +164,9 @@ npm run openings:import  # Index bewusst aus den gepinnten TSV-Dateien neu erzeu
 - „Analyse“: frei ziehen, Varianten untersuchen, beste Züge anzeigen und den
   hervorgehobenen Stockfish-Erklärer befragen; die Zugliste färbt Bewertungen
   von Grün bis Rot und erklärt jeden analysierten Zug kurz
+- „Coach-Analyse“: eine vollständige Partie nach Eröffnung, Mittelspiel,
+  Schlüsselmomenten und Endspiel nachbesprechen; gute Entscheidungen,
+  Lernpunkte und konkrete Übungen werden ausdrücklich hervorgehoben
 - vollständige Partieanalyse: geführte Schlüsselmomente, persönliches
   Abschlussfeedback, vorsichtig abgeleitetes Lernziel und konkrete nächste Übung
 - Figuren ziehen: neue Hauptlinie oder Variante anlegen
@@ -196,7 +202,9 @@ Neuladen erhalten.
 - `openingRecognition.js`: normalisierte EPD-/Zugfolgen-Erkennung,
   Zugumstellungen und deutsche Darstellung
 - `scripts/import-lichess-openings.mjs`: reproduzierbarer TSV-Import
+- `scripts/build-coach-pgn-index.mjs`: lokaler, deduplizierter Wissensindex aus kommentierten PGNs
 - `data/openings/source/`: gepinnte Originaldaten und CC0-Lizenz
+- `data/pgn/coach-pgn-index.json`: kompakter Laufzeitindex für exakte und konzeptuell ähnliche PGN-Stellungen
 - `public/data/openings/`: verzögert geladener kompakter Laufzeitindex
 - `gameStorage.js`: zyklusfreie Spielstände und browserlokale Account-Persistenz
 - `playerProfile.js`: aggregierte Spielerstatistiken und Bestpartien-Ranking
@@ -251,6 +259,41 @@ gefunden wird, ist der Zug deshalb nicht automatisch schlecht. Stockfish
 bewertet die konkrete Stellung; die ECO-Daten liefern ausschließlich Name,
 Code, Variante, Untervariante und den Erkennungsweg. An den Coach wird nur
 dieser einzelne erkannte Kontext übergeben, niemals die gesamte Datenbank.
+
+## Lokales PGN-Erklärwissen
+
+Kommentierte PGN-Dateien im Ordner `database/` können mit
+`npm run pgn:index` in einen kompakten Laufzeitindex umgewandelt werden. Der
+Importer liest nur Kommentare, überspringt bytegleiche Quelldateien und
+begrenzt die Einträge pro Datei und Stellung. Unkommentierte Partien landen
+nicht im Index. `npm run pgn:check` prüft anschließend Format, FENs,
+Phasenkategorien, Themen und Größenlimits des erzeugten Index.
+
+Der Coach sucht zunächst die exakte Stellung. Fehlt sie, vergleicht er über
+vorberechnete Such-Buckets farbnormalisierte Bauernstrukturen, Material,
+Königssicherheit und erkannte Stellungskonzepte. Bei ähnlichen Stellungen darf
+er nur einen ausdrücklich ausgewiesenen Plan übertragen und muss Unterschiede
+und Abbruchbedingungen beachten. Bei abweichender taktischer Realität wird der
+Transfer gesperrt. Die konkrete Frage priorisiert passende Themen wie Taktik,
+Entwicklung, Bauernstruktur oder Endspiel. Der Coach formuliert die Hinweise
+eigenständig und passt ihre Sprache an die eingestellte Elo-Stufe an. Die PGNs ersetzen keine Analyse:
+konkrete Zugempfehlungen, Varianten, Bewertungen und taktische Behauptungen
+stammen weiterhin ausschließlich aus den geprüften Stockfish-Daten.
+
+Die Originaldateien in `database/` werden nicht verändert. Die daraus
+erzeugten Laufzeit- und Trainingsartefakte enthalten dagegen keine Datei- oder
+Werktitel, Autoren-, Spieler- oder Annotatornamen. Kommentare werden knapp
+zusammengefasst und in Eröffnung, Mittelspiel, Endspiel oder Sonstiges
+einsortiert. Technische Hash-IDs sichern weiterhin Deduplizierung und
+Reproduzierbarkeit, werden dem Coach aber nicht als inhaltliche Quelle gezeigt.
+
+Der Parser liest Kommentare, NAGs und verschachtelte Varianten.
+`npm run pgn:training-export` erzeugt getrennte, anonymisierte und noch
+ungeprüfte Trainingskandidaten; `npm run pgn:analyze` prüft priorisierte Kandidaten
+fortsetzbar mit Stockfish. Automatisch erzeugt, automatisch verifiziert und
+menschlich freigegeben bleiben getrennte Lebenszyklen. Details, aktuelle
+Importzahlen und Grenzen stehen in [docs/coach-knowledge-pipeline.md](docs/coach-knowledge-pipeline.md),
+die Messwerte in [reports/concept-transfer-evaluation.md](reports/concept-transfer-evaluation.md).
 
 Der Lichess-Zugriff verwendet einen sicheren HTTP-only-Cookie, fordert keine
 Spiel- oder Schreibrechte an und importiert ausschließlich abgeschlossene

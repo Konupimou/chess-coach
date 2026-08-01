@@ -1,4 +1,6 @@
 export const DEFAULT_LEARNER_RATING = 1200;
+export const DEFAULT_COACH_RATING = 1000;
+export const COACH_RATING_OPTIONS = Object.freeze([800, 1000, 1400, 1800]);
 
 export const LEARNER_LEVELS = Object.freeze({
   beginner: Object.freeze({
@@ -110,6 +112,81 @@ const LIMITS_BY_LEVEL = Object.freeze({
   }),
 });
 
+const LEVEL_RATING = Object.freeze({
+  beginner: 800,
+  intermediate: 1400,
+  advanced: 1800,
+  expert: 2200,
+});
+
+const RESPONSE_STYLE_BY_RATING = Object.freeze({
+  800: Object.freeze({
+    id: "foundations",
+    goal: "Grobe Fehler vermeiden und eine feste Denkstruktur vor jedem Zug aufbauen.",
+    priorityOrder: Object.freeze([
+      "Matt und unmittelbare Mattdrohungen",
+      "ungedeckte oder angegriffene Dame und Türme",
+      "ungedeckte oder angegriffene Springer und Läufer",
+      "direkte Schlagzüge, Drohungen und einfache Taktiken",
+      "Königssicherheit und Entwicklung",
+      "erst danach einfache strategische Ideen",
+    ]),
+    thinkingChecklist: Object.freeze([
+      "Bin ich im Schach?",
+      "Was droht mein Gegner?",
+      "Habe ich ein Schach oder einen sicheren Schlagzug?",
+      "Hängt eine meiner Figuren?",
+      "Ist mein geplanter Zug nach der gegnerischen Antwort sicher?",
+    ]),
+    focus: "Nur den wichtigsten konkreten Fehler erklären. Figuren und Felder nennen; unmittelbare Gefahren haben Vorrang vor Strategie.",
+    language: "Wie ein Freund am Brett: sehr kurze Sätze, normale Alltagswörter und direkte Du-Ansprache; jeden unvermeidbaren Schachbegriff kurz erklären.",
+    calculation: "Höchstens eine kurze, legal belegte Variante mit maximal 3 Halbzügen zeigen und die gegnerische Antwort erklären.",
+    feedbackMethod: "Bei einem groben Fehler zuerst mit einer einfachen Frage auf die Gefahr lenken. Den besten Zug erst nennen, wenn der Nutzer die Lösung verlangt oder die Gefahr nicht erkennt.",
+    answerRules: Object.freeze({
+      mainIdeas: 1,
+      maximumCorePoints: 3,
+      normalSentenceRange: Object.freeze([3, 6]),
+      maximumNewTerms: 1,
+      useConcreteSquaresAndPieces: true,
+      hideEngineNumbersUnlessRequested: true,
+    }),
+    simpleMaterialValues: Object.freeze({
+      pawn: 1,
+      knight: 3,
+      bishop: 3,
+      rook: 5,
+      queen: 9,
+    }),
+    avoid: Object.freeze([
+      "lange Varianten",
+      "mehrere gleichwertige Ideen",
+      "kleine positionelle Ungenauigkeiten ohne direkte Folge",
+      "komplizierte Bauernstrukturen und Eröffnungstheorie",
+      "abstrakte Aussagen ohne konkrete Figur oder konkretes Feld",
+      "steife Wörter wie «geprüfte Antwortfolge», «Anforderungen der Stellung» oder «konkret verschlechtert»",
+      "Lob-Floskeln wie «Sauber» oder «genau das war gefragt»",
+    ]),
+  }),
+  1000: Object.freeze({
+    id: "building",
+    focus: "Einfache taktische Motive und grundlegende Pläne mit ihrem direkten Warum erklären.",
+    language: "Klare Alltagssprache; seltene Fachbegriffe kurz erklären.",
+    calculation: "Höchstens eine kurze Variante mit bis zu 4 Halbzügen zeigen.",
+  }),
+  1400: Object.freeze({
+    id: "club",
+    focus: "Konkrete Varianten mit positionellen Plänen, Zugmöglichkeiten und typischen Motiven verbinden.",
+    language: "Übliche Schachbegriffe verwenden und nur weniger geläufige Begriffe erklären.",
+    calculation: "Bis zu 2 relevante Varianten mit jeweils höchstens 6 Halbzügen zeigen.",
+  }),
+  1800: Object.freeze({
+    id: "advanced",
+    focus: "Präzise Unterschiede zwischen konkreten Möglichkeiten, Zugreihenfolgen und langfristigen Folgen herausarbeiten.",
+    language: "Knapp und präzise formulieren; gängige Schachterminologie ohne Definition verwenden.",
+    calculation: "Bis zu 3 relevante Varianten mit jeweils höchstens 8 Halbzügen zeigen.",
+  }),
+});
+
 const PERF_WEIGHTS = Object.freeze({
   rapid: 1,
   classical: 1,
@@ -168,6 +245,55 @@ function cloneLimits(level) {
     deep: { ...limits.deep },
     variations: { ...limits.variations },
     terminology: { ...limits.terminology },
+  };
+}
+
+export function normalizeCoachRating(value, fallback = DEFAULT_COACH_RATING) {
+  const rating = finiteRating(value);
+  return COACH_RATING_OPTIONS.includes(rating) ? rating : fallback;
+}
+
+function responseStyleForRating(value) {
+  const rating = finiteRating(value) ?? DEFAULT_LEARNER_RATING;
+  const target = rating <= 800
+    ? 800
+    : rating <= 1000
+      ? 1000
+      : rating <= 1400
+        ? 1400
+        : 1800;
+  return { ...RESPONSE_STYLE_BY_RATING[target] };
+}
+
+function explanationLimitsForRating(level, rating) {
+  const limits = cloneLimits(level);
+  if (level === "expert" && (finiteRating(rating) ?? 0) >= 2200) return limits;
+  const style = responseStyleForRating(rating);
+  const variationLimits = {
+    foundations: { maximumLines: 1, maximumPliesPerLine: 3 },
+    building: { maximumLines: 1, maximumPliesPerLine: 4 },
+    club: { maximumLines: 2, maximumPliesPerLine: 6 },
+    advanced: { maximumLines: 3, maximumPliesPerLine: 8 },
+  }[style.id];
+  const foundationsLimits = style.id === "foundations"
+    ? {
+      short: {
+        ...limits.short,
+        minimumSentences: 3,
+        maximumSentences: 6,
+        maximumWordsPerSentence: 16,
+      },
+      deep: {
+        ...limits.deep,
+        maximumSections: 3,
+        maximumSentencesPerSection: 2,
+      },
+    }
+    : null;
+  return {
+    ...limits,
+    ...(foundationsLimits || {}),
+    variations: { ...limits.variations, ...variationLimits },
   };
 }
 
@@ -465,6 +591,7 @@ export function buildLearnerProfile(input = {}) {
   const level = manual.level || ratingToLearnerLevel(rating);
   const manualRating = manual.rating !== null;
   const manualLevel = manual.level !== null;
+  const explanationRating = manualLevel ? LEVEL_RATING[level] : rating;
 
   return {
     rating,
@@ -485,7 +612,8 @@ export function buildLearnerProfile(input = {}) {
       count: automatic.evidenceCount,
       sources: [...automatic.evidenceSources],
     },
-    explanationLimits: cloneLimits(level),
+    explanationLimits: explanationLimitsForRating(level, explanationRating),
+    responseStyle: responseStyleForRating(explanationRating),
   };
 }
 
@@ -505,9 +633,13 @@ export function learnerProfileForCoach(value) {
       : buildLearnerProfile(value);
   const rating = finiteRating(profile.rating) ?? DEFAULT_LEARNER_RATING;
   const level = cleanLevel(profile.level) || ratingToLearnerLevel(rating);
+  const explanationRating = level !== ratingToLearnerLevel(rating)
+    ? LEVEL_RATING[level]
+    : rating;
   return {
     rating,
     level,
-    explanationLimits: cloneLimits(level),
+    explanationLimits: explanationLimitsForRating(level, explanationRating),
+    responseStyle: responseStyleForRating(explanationRating),
   };
 }

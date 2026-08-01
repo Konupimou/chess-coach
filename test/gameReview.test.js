@@ -6,6 +6,7 @@ import {
   analysisEntryFromInfo,
   analysisEntryFromMultiPv,
   buildFallbackFeedback,
+  buildCoachPhaseSummary,
   buildLearningSummary,
   buildPvFrames,
   calculateMoveAccuracy,
@@ -17,6 +18,7 @@ import {
   legalUciMove,
   pathToNode,
   reviewDepthForPlies,
+  reviewPhaseForMove,
   scoreToWhiteCp,
   summarizeGameReview,
   terminalWhiteCp,
@@ -28,6 +30,33 @@ import {
 const START_FEN = new Chess().fen();
 const AFTER_E4_E5_FEN =
   "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2";
+
+test("Coach-Analyse trennt Eröffnung, Mittelspiel und Endspiel anhand der Stellung", () => {
+  const opening = { moveNumber: 3, fenBefore: START_FEN };
+  const middlegame = {
+    moveNumber: 18,
+    fenBefore: "r1bq1rk1/ppp2ppp/2n2n2/3pp3/3P4/2P1PN2/PP1NBPPP/R2Q1RK1 w - - 0 18",
+  };
+  const endgame = {
+    moveNumber: 42,
+    fenBefore: "8/8/8/4k3/8/4K3/4P3/8 w - - 0 42",
+  };
+  assert.equal(reviewPhaseForMove(opening), "opening");
+  assert.equal(reviewPhaseForMove(middlegame), "middlegame");
+  assert.equal(reviewPhaseForMove(endgame), "endgame");
+
+  const phases = buildCoachPhaseSummary({
+    playerColor: "w",
+    moves: [
+      { ...opening, color: "w", san: "Nf3", quality: "excellent", winPercentLoss: 0 },
+      { ...middlegame, color: "w", san: "Re1", quality: "mistake", winPercentLoss: 8 },
+      { ...endgame, color: "w", san: "Kf4", quality: "best", winPercentLoss: 0 },
+    ],
+  });
+  assert.deepEqual(phases.map((phase) => phase.id), ["opening", "middlegame", "endgame"]);
+  assert.match(phases[0].positive, /Nf3/);
+  assert.match(phases[1].focus, /Re1/);
+});
 
 test("Engine-Eintrag bewahrt Mattwert, Tiefe und vollständige Hauptvariante", () => {
   const pv = [
@@ -365,9 +394,9 @@ test("nur der tatsächlich erste Engine-Zug darf als bester Zug bezeichnet werde
   assert.equal(verified.quality, "excellent");
   assert.equal(assessment.label, "Sehr gut");
   assert.equal(assessment.lead, "Stark gespielt.");
-  assert.match(assessment.alternative, /d4/);
+  assert.equal(assessment.alternative, "Genauso gut geht in der Stellung davor d4.");
   assert.doesNotMatch(assessment.lead, /beste[rn]? Zug/i);
-  assert.match(explanation, /erster Wahl d4/);
+  assert.equal(explanation, "d4 ist eine genauso gute Möglichkeit.");
   assert.doesNotMatch(explanation, /Entspricht der ersten Stockfish-Wahl/);
 });
 
@@ -388,7 +417,7 @@ test("gleiche Bewertung bei einem anderen Zug wird im Partiebericht höchstens s
   assert.equal(report.moves[0].bestUci, "d2d4");
   assert.equal(report.moves[0].accuracy, 100);
   assert.equal(report.moves[0].quality, "excellent");
-  assert.match(report.moves[0].explanation, /erster Wahl d4/);
+  assert.match(report.moves[0].explanation, /genauso gute Möglichkeit/);
   assert.doesNotMatch(
     report.moves[0].explanation,
     /Entspricht der ersten Stockfish-Wahl/,
@@ -408,7 +437,7 @@ test("Perspektivbewertung spricht gute und schlechte eigene Züge direkt an", ()
     {
       tone: "best",
       label: "Bester Zug",
-      lead: "Sauber, genau richtig.",
+      lead: "Das war der beste Zug.",
       reason: "Der Zug passt hier richtig gut und gibt nichts her.",
       alternative: "",
     },
@@ -421,8 +450,8 @@ test("Perspektivbewertung spricht gute und schlechte eigene Züge direkt an", ()
     quality: "mistake",
     bestPvUci: ["g1f3", "b8c6"],
   });
-  assert.equal(mistake.lead, "Da läuft etwas schief.");
-  assert.match(mistake.reason, /unnötig schwer/);
+  assert.equal(mistake.lead, "Das ist ein klarer Fehler.");
+  assert.match(mistake.reason, /deutlich schlechter/);
   assert.equal(
     mistake.alternative,
     "Besser geht’s in der Stellung davor mit Nf3.",

@@ -214,6 +214,73 @@ function pathMoveToUci(move) {
   return UCI_PATTERN.test(uci) ? uci : "";
 }
 
+function sequenceStartsWith(sequence, prefix) {
+  return prefix.every((move, index) => sequence[index] === move);
+}
+
+export function openingContinuationsForPath(path, book, { limit = 5 } = {}) {
+  const nodes = Array.isArray(path) ? path : [];
+  if (!book?.entries || nodes.length === 0) return [];
+  const played = nodes.slice(1).map((node) => pathMoveToUci(node?.move));
+  if (played.some((move) => !move)) return [];
+  const prefixKey = played.join(" ");
+  if (prefixKey && !book.sequencePrefixes?.has(prefixKey)) return [];
+
+  let game;
+  try {
+    game = new Chess(nodes.at(-1)?.fen || undefined);
+  } catch {
+    return [];
+  }
+  const legalMoves = new Map(game.moves({ verbose: true }).map((move) => [
+    `${move.from}${move.to}${move.promotion || ""}`,
+    move.san,
+  ]));
+  const grouped = new Map();
+  book.entries.forEach((entry) => {
+    const sequence = cleanText(entry?.[2], 2_000).split(/\s+/).filter(Boolean);
+    if (sequence.length <= played.length || !sequenceStartsWith(sequence, played)) return;
+    const uci = sequence[played.length];
+    const san = legalMoves.get(uci);
+    if (!san) return;
+    const current = grouped.get(uci) || {
+      uci,
+      san,
+      variationCount: 0,
+      openings: new Map(),
+      source: OPENING_SOURCE,
+    };
+    current.variationCount += 1;
+    const name = displayOpeningName(cleanText(entry?.[1]));
+    if (name) {
+      const remainingMoves = sequence.length - played.length - 1;
+      const previousDistance = current.openings.get(name);
+      if (!Number.isInteger(previousDistance) || remainingMoves < previousDistance) {
+        current.openings.set(name, remainingMoves);
+      }
+    }
+    grouped.set(uci, current);
+  });
+
+  return [...grouped.values()]
+    .sort((left, right) => (
+      right.variationCount - left.variationCount
+      || left.san.localeCompare(right.san, "de")
+    ))
+    .slice(0, Math.max(1, Math.min(8, Number.parseInt(limit, 10) || 5)))
+    .map((entry) => ({
+      ...entry,
+      openings: [...entry.openings.entries()]
+        .sort((left, right) => (
+          left[1] - right[1]
+          || left[0].length - right[0].length
+          || left[0].localeCompare(right[0], "de")
+        ))
+        .slice(0, 1)
+        .map(([name]) => name),
+    }));
+}
+
 function unknownResult(currentPly, extra = {}) {
   return {
     ...EMPTY_RESULT,

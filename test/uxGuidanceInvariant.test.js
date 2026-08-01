@@ -7,11 +7,25 @@ const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const styleSource = readFileSync(new URL("../style.css", import.meta.url), "utf8");
 const evalBarSource = readFileSync(new URL("../evalBar.js", import.meta.url), "utf8");
 
-test("Bereichsnavigation führt direkt zu Spielen und Analyse", () => {
+test("Bereichsnavigation führt direkt zu Spielen, Analyse und Coach-Analyse", () => {
   assert.match(pageSource, /id="play-mode-button"/);
   assert.match(pageSource, /id="analysis-mode-button"/);
+  assert.match(pageSource, /id="coach-analysis-mode-button"/);
+  assert.match(pageSource, /Coach-Analyse/);
   assert.doesNotMatch(pageSource, /Was möchtest du heute verbessern\?/);
   assert.doesNotMatch(pageSource, /id="start-guide"/);
+});
+
+test("Coach-Analyse besitzt einen eigenen geführten Arbeitsbereich", () => {
+  assert.match(appSource, /createCoachAnalysisPanel/);
+  assert.match(appSource, /Verstehe deine Partie – nicht nur die Bewertung/);
+  assert.match(appSource, /Eröffnung/);
+  assert.match(appSource, /Mittelspiel/);
+  assert.match(appSource, /Schlüsselmomente/);
+  assert.match(appSource, /Endspiel/);
+  assert.match(appSource, /ein bis drei konkrete Lernpunkte/);
+  assert.match(appSource, /this\.setAppMode\("coach"\)/);
+  assert.match(styleSource, /\.coach-analysis-card/);
 });
 
 test("Schachcomputer steht in der Analyse vor dem Coach", () => {

@@ -3,31 +3,32 @@ import assert from "node:assert/strict";
 import { Chess } from "chess.js";
 import { ChessApp } from "../app.js";
 
-function analysisApp({ perspective = "w", turn = "w" } = {}) {
+function analysisApp({ perspective = "w", turn = "w", mode = "continue" } = {}) {
   const app = Object.create(ChessApp.prototype);
   app.analysisPerspective = perspective;
+  app.analysisCoachMode = mode;
   app.game = { turn: () => turn };
   return app;
 }
 
-test("eigener Zug verwendet die aktuelle Stellung als Coach-Kontext", () => {
-  const app = analysisApp({ perspective: "w", turn: "w" });
+test("Weiterspielen verwendet unabhängig von der Zugfarbe die aktuelle Stellung", () => {
+  const app = analysisApp({ perspective: "w", turn: "b", mode: "continue" });
   const positionContext = { kind: "position" };
   app.buildPositionCoachEngineContext = () => positionContext;
   app.buildMoveCoachEngineContext = () => {
-    throw new Error("Zugreview darf bei eigenem Zug nicht verwendet werden");
+    throw new Error("Zugreview darf im Weiterspielen-Modus nicht verwendet werden");
   };
 
   assert.equal(app.buildAnalysisCoachEngineContext(), positionContext);
 });
 
-test("gegnerischer Zug verwendet die Bewertung des letzten eigenen Zuges", () => {
-  const app = analysisApp({ perspective: "w", turn: "b" });
+test("Zug verstehen verwendet unabhängig von der Zugfarbe den letzten Zug", () => {
+  const app = analysisApp({ perspective: "b", turn: "b", mode: "review" });
   const reviewedMove = { ply: 3, color: "w", san: "Nf3" };
   const moveContext = { kind: "move_review" };
-  app.getLastPerspectiveMoveReview = () => reviewedMove;
+  app.getLatestVerifiedMoveReview = () => reviewedMove;
   app.buildPositionCoachEngineContext = () => {
-    throw new Error("Aktuelle Zugoptionen dürfen hier nicht als Nutzerempfehlung dienen");
+    throw new Error("Aktuelle Zugoptionen dürfen im Zug-verstehen-Modus nicht verwendet werden");
   };
   app.buildMoveCoachEngineContext = (move) => {
     assert.equal(move, reviewedMove);
@@ -37,7 +38,14 @@ test("gegnerischer Zug verwendet die Bewertung des letzten eigenen Zuges", () =>
   assert.equal(app.buildAnalysisCoachEngineContext(), moveContext);
 });
 
-test("letzter eigener Zug wird anhand von Farbe und aktuellem Halbzug gefunden", () => {
+test("Coach-Modus fällt ohne gespeicherten Wert auf Weiterspielen zurück", () => {
+  const app = analysisApp({ mode: "unknown" });
+  assert.equal(app.getAnalysisCoachMode(), "continue");
+  app.analysisCoachMode = "review";
+  assert.equal(app.getAnalysisCoachMode(), "review");
+});
+
+test("der letzte Zug wird ohne Farbfilter anhand des aktuellen Halbzuges gefunden", () => {
   const app = analysisApp({ perspective: "b", turn: "w" });
   const game = new Chess();
   const path = [{ move: null, fen: game.fen() }];
@@ -60,7 +68,7 @@ test("letzter eigener Zug wird anhand von Farbe und aktuellem Halbzug gefunden",
   app.gameReviewReport = null;
   app.savedGameReview = null;
 
-  assert.deepEqual(app.getLastPerspectiveMoveReview(), {
+  assert.deepEqual(app.getLatestVerifiedMoveReview(), {
     ...expected,
     bestSan: "Nc6",
     bestPvSan: ["Nc6"],

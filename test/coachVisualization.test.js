@@ -61,6 +61,20 @@ test("eine konkrete Springergabel wird benannt und am Brett markiert", () => {
   assert.equal(plan.frames.at(-1).fen, plan.frames[0].fen);
 });
 
+test("Qxd4 ist ein einfacher Schlagzug und kein Doppelangriff auf zwei Bauern", () => {
+  const plan = buildCoachVisualPlan({
+    fen: "r1bqkbnr/pppp1ppp/8/8/3nP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",
+    pv: ["d1d4"],
+  });
+
+  assert.ok(plan);
+  assert.equal(plan.tactical, false);
+  assert.equal(plan.motif, "");
+  assert.equal(plan.ideaKind, "capture");
+  assert.doesNotMatch(plan.headline, /Doppelangriff/);
+  assert.deepEqual(plan.san, ["Qxd4"]);
+});
+
 test("eine spätere Abtauschfolge macht einen strategischen Zug nicht zur Taktik", () => {
   const game = new Chess();
   game.move("d4");
@@ -96,23 +110,24 @@ test("Rochade zeigt Königsschutz und den dazugehörigen Turmzug", () => {
   );
 });
 
-test("eine Entwicklungsregel zeigt zusätzlich die konkret kontrollierten Zentrumsfelder", () => {
+test("eine Entwicklungsregel zeigt nur den tatsächlich gespielten Entwicklungszug", () => {
   const plan = buildCoachVisualPlan({
     fen: new Chess().fen(),
     pv: ["g1f3", "g8f6"],
   });
 
   assert.equal(plan.ideaKind, "development");
-  assert.deepEqual(
-    plan.persistentAnnotations.highlights
-      .filter((entry) => (
-        entry.role === "concept"
-        && ["d4", "e4", "d5", "e5"].includes(entry.square)
-      ))
-      .map((entry) => entry.square)
-      .sort(),
-    ["d4", "e5"],
-  );
+  assert.equal(plan.piece, "n");
+  assert.deepEqual(plan.persistentAnnotations.arrows, [{
+    move: "g1f3",
+    rank: 1,
+    impact: 1,
+    role: "primary",
+  }]);
+  assert.deepEqual(plan.persistentAnnotations.highlights, [
+    { square: "g1", role: "origin" },
+    { square: "f3", role: "destination" },
+  ]);
 });
 
 test("offene Linien werden als vollständiger Wirkungsraum markiert", () => {
@@ -232,6 +247,10 @@ test("Zugbewertungen unterscheiden Gleichwertigkeit und Fehlerzeichen", () => {
   assert.deepEqual(
     moveQualityPresentation({ quality: "inaccuracy", lossCp: 55 }),
     { symbol: "?!", label: "Ungenauigkeit", tone: "inaccuracy" },
+  );
+  assert.deepEqual(
+    moveQualityPresentation({ quality: "mistake", lossCp: 180 }),
+    { symbol: "?", label: "Klarer Fehler", tone: "mistake" },
   );
   assert.equal(
     moveQualityPresentation({ quality: "blunder", lossCp: 320 }).symbol,

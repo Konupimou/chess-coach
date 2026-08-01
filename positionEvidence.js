@@ -1,6 +1,10 @@
 import { Chess, SQUARES } from "chess.js";
+import {
+  classifyMoveNecessity,
+  evaluationToPlayerCp,
+} from "./moveNecessity.js";
 
-export const POSITION_EVIDENCE_VERSION = 2;
+export const POSITION_EVIDENCE_VERSION = 3;
 
 export const EVIDENCE_KINDS = Object.freeze({
   legalMove: "move.legal",
@@ -21,6 +25,8 @@ export const EVIDENCE_KINDS = Object.freeze({
   pieceSafetyChange: "position.piece_safety.change",
   principalVariation: "engine.pv.legal",
   moveComparison: "engine.move_comparison",
+  danger: "position.danger",
+  tacticalMotif: "position.tactical_motif",
 });
 
 const COLORS = Object.freeze(["w", "b"]);
@@ -671,8 +677,650 @@ function moveDescriptor(move, gameAfter, evidenceId) {
     castle: kingside ? "kingside" : queenside ? "queenside" : "",
     givesCheck: gameAfter.isCheck(),
     givesCheckmate: gameAfter.isCheckmate(),
+    givesStalemate: gameAfter.isStalemate(),
     fenBefore: move.before,
     fenAfter: move.after,
+  };
+}
+
+function gameWithTurn(fen, color) {
+  const parts = String(fen || "").trim().split(/\s+/);
+  if (parts.length < 6 || !COLORS.includes(color)) return null;
+  parts[1] = color;
+  parts[3] = "-";
+  return loadGame(parts.join(" "));
+}
+
+function rayTacticalMotifs(game, move) {
+  if (!game || !move || !["b", "r", "q"].includes(move.piece)) return [];
+  const diagonal = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+  const straight = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const directions = move.piece === "b"
+    ? diagonal
+    : move.piece === "r"
+      ? straight
+      : [...diagonal, ...straight];
+  const startFile = squareFileIndex(move.to);
+  const startRank = squareRank(move.to);
+  const enemy = opposite(move.color);
+  const motifs = [];
+  for (const [fileStep, rankStep] of directions) {
+    const encountered = [];
+    for (let distance = 1; distance < 8; distance += 1) {
+      const fileIndex = startFile + fileStep * distance;
+      const rank = startRank + rankStep * distance;
+      if (fileIndex < 0 || fileIndex >= FILES.length || rank < 1 || rank > 8) break;
+      const square = `${FILES[fileIndex]}${rank}`;
+      const piece = game.get(square);
+      if (piece) encountered.push({ ...piece, square });
+      if (encountered.length >= 2) break;
+    }
+    const [first, second] = encountered;
+    if (first?.color !== enemy || second?.color !== enemy) continue;
+    if (second.type === "k" && first.type !== "k") {
+      motifs.push({
+        type: "pin",
+        attacker: { piece: move.piece, square: move.to },
+        pinned: { piece: first.type, square: first.square },
+        king: { square: second.square },
+      });
+    } else if (
+      first.type === "k"
+      && second.type !== "k"
+      && PIECE_VALUES[second.type] >= 3
+    ) {
+      motifs.push({
+        type: "skewer",
+        attacker: { piece: move.piece, square: move.to },
+        king: { square: first.square },
+        target: { piece: second.type, square: second.square },
+      });
+    }
+  }
+  return motifs;
+}
+
+function tacticalMotifsAfterMove(game, move) {
+  if (!game || !move) return [];
+  const enemy = opposite(move.color);
+  const attackedTargets = pieceInventory(game)
+    .filter((piece) => (
+      piece.color === enemy
+      && game.attackers(piece.square, move.color).includes(move.to)
+    ))
+    .map((piece) => ({
+      piece: piece.type,
+      square: piece.square,
+      value: PIECE_VALUES[piece.type],
+    }))
+    .filter((piece) => piece.piece === "k" || piece.value >= 3)
+    .sort((left, right) => right.value - left.value);
+  const motifs = [];
+  if (attackedTargets.length >= 2) {
+    motifs.push({
+      type: ["p", "n"].includes(move.piece) ? "fork" : "double_attack",
+      attacker: { piece: move.piece, square: move.to },
+      targets: attackedTargets.slice(0, 4),
+    });
+  }
+  motifs.push(...rayTacticalMotifs(game, move));
+  const enemyKing = game.findPiece({ color: enemy, type: "k" })[0] || "";
+  const checkAttackers = enemyKing ? game.attackers(enemyKing, move.color) : [];
+  if (move.givesCheck && checkAttackers.length >= 2) {
+    motifs.push({
+      type: "double_check",
+      attackers: checkAttackers,
+      king: enemyKing,
+    });
+  } else if (move.givesCheck && !checkAttackers.includes(move.to)) {
+    motifs.push({
+      type: "discovered_check",
+      movedPiece: { piece: move.piece, from: move.from, to: move.to },
+      attacker: checkAttackers[0] || "",
+      king: enemyKing,
+    });
+  }
+  if (move.givesCheckmate) {
+    motifs.push({
+      type: "checkmate",
+      attacker: { piece: move.piece, square: move.to },
+      target: `${enemy}_king`,
+    });
+  } else if (move.givesCheck && move.capture) {
+    motifs.push({
+      type: "capture_with_check",
+      attacker: { piece: move.piece, square: move.to },
+      capture: move.capture,
+    });
+  }
+  if (move.promotion) {
+    motifs.push({
+      type: "promotion_tactic",
+      square: move.to,
+      piece: move.promotion,
+    });
+  }
+  if (move.givesStalemate) {
+    motifs.push({ type: "stalemate_resource", sideWithNoMoves: enemy });
+  }
+  if (
+    move.givesCheckmate
+    && enemyKing
+    && squareRank(enemyKing) === (enemy === "w" ? 1 : 8)
+  ) {
+    motifs.push({
+      type: "back_rank_mate",
+      king: enemyKing,
+      attacker: { piece: move.piece, square: move.to },
+    });
+  }
+
+  const enemyGame = gameWithTurn(game.fen(), enemy);
+  attackedTargets
+    .filter((target) => target.piece !== "k" && target.value >= 3)
+    .forEach((target) => {
+      if (enemyGame?.moves({ square: target.square, verbose: true }).length === 0) {
+        motifs.push({
+          type: "trapped_piece",
+          attacker: { piece: move.piece, square: move.to },
+          target,
+        });
+      }
+    });
+
+  const beforeGame = loadGame(move.fenBefore);
+  if (beforeGame) {
+    const discoveredTargets = pieceInventory(game)
+      .filter((piece) => piece.color === enemy && piece.type !== "k")
+      .map((piece) => {
+        const beforeAttackers = new Set(beforeGame.attackers(piece.square, move.color));
+        const newAttackers = game.attackers(piece.square, move.color)
+          .filter((square) => square !== move.to && !beforeAttackers.has(square));
+        return newAttackers.length > 0
+          ? {
+            piece: piece.type,
+            square: piece.square,
+            attackers: newAttackers,
+          }
+          : null;
+      })
+      .filter(Boolean);
+    if (discoveredTargets.length > 0) {
+      motifs.push({
+        type: "discovered_attack",
+        movedPiece: { piece: move.piece, from: move.from, to: move.to },
+        targets: discoveredTargets,
+      });
+    }
+
+    const overloaded = pieceInventory(game)
+      .filter((piece) => piece.color === enemy && piece.type !== "k")
+      .map((defender) => {
+        const duties = pieceInventory(game)
+          .filter((target) => (
+            target.color === enemy
+            && target.square !== defender.square
+            && target.type !== "k"
+            && game.attackers(target.square, move.color).length > 0
+          ))
+          .filter((target) => {
+            const defenders = game.attackers(target.square, enemy);
+            return defenders.length === 1 && defenders[0] === defender.square;
+          })
+          .map((target) => ({
+            piece: target.type,
+            square: target.square,
+          }));
+        return duties.length >= 2
+          ? {
+            defender: { piece: defender.type, square: defender.square },
+            duties,
+          }
+          : null;
+      })
+      .filter(Boolean);
+    overloaded.forEach((entry) => {
+      motifs.push({ type: "overload", ...entry });
+    });
+
+    const wasAttacked = beforeGame.attackers(move.from, enemy).length > 0;
+    if (wasAttacked && attackedTargets.some((target) => target.value > PIECE_VALUES[move.piece])) {
+      motifs.push({
+        type: "counterattack",
+        movedPiece: { piece: move.piece, from: move.from, to: move.to },
+        targets: attackedTargets.filter(
+          (target) => target.value > PIECE_VALUES[move.piece],
+        ),
+      });
+    }
+    if (move.capture) {
+      const capturedSquare = move.capture.square;
+      const defendedTargets = pieceInventory(beforeGame)
+        .filter((piece) => (
+          piece.color === enemy
+          && piece.square !== capturedSquare
+          && piece.type !== "k"
+          && beforeGame.attackers(piece.square, enemy).includes(capturedSquare)
+        ))
+        .map((piece) => ({ piece: piece.type, square: piece.square }));
+      if (defendedTargets.length > 0) {
+        motifs.push({
+          type: "removes_defender",
+          removed: {
+            piece: move.capture.capturedPiece,
+            square: capturedSquare,
+          },
+          previouslyDefended: defendedTargets,
+        });
+      }
+    }
+  }
+  return motifs;
+}
+
+function dangerFeature(fen, threatenedColor, evidenceId, { hypothetical = false } = {}) {
+  const attacker = opposite(threatenedColor);
+  const source = hypothetical ? gameWithTurn(fen, attacker) : loadGame(fen);
+  if (!source || source.turn() !== attacker) {
+    return {
+      evidenceId,
+      threatenedColor,
+      attacker,
+      hypothetical,
+      legalChecks: [],
+      legalCaptures: [],
+      matingMoves: [],
+      materialThreats: [],
+      tacticalMotifs: [],
+      attackedAndUndefended: [],
+    };
+  }
+  const snapshot = positionSnapshot(source, "danger");
+  const legalChecks = [];
+  const legalCaptures = [];
+  const matingMoves = [];
+  const tacticalMotifs = [];
+  for (const candidate of source.moves({ verbose: true })) {
+    const game = loadGame(source.fen());
+    const played = moveFromUci(
+      game,
+      `${candidate.from}${candidate.to}${candidate.promotion || ""}`,
+    );
+    if (!played) continue;
+    const descriptor = moveDescriptor(
+      played,
+      game,
+      `${evidenceId}.move:${candidate.from}${candidate.to}${candidate.promotion || ""}`,
+    );
+    const compact = {
+      uci: descriptor.uci,
+      san: descriptor.san,
+      piece: descriptor.piece,
+      from: descriptor.from,
+      to: descriptor.to,
+      capture: descriptor.capture,
+      givesCheck: descriptor.givesCheck,
+      givesCheckmate: descriptor.givesCheckmate,
+    };
+    if (descriptor.givesCheck || descriptor.givesCheckmate) legalChecks.push(compact);
+    if (descriptor.givesCheckmate) matingMoves.push(compact);
+    if (descriptor.capture) legalCaptures.push(compact);
+    tacticalMotifsAfterMove(game, descriptor).forEach((motif) => {
+      tacticalMotifs.push({ move: compact, motif });
+    });
+  }
+  const attackedAndUndefended = snapshot.pieceSafety.byColor[threatenedColor]
+    .attackedAndUndefended
+    .map((piece) => compactPiece({ ...piece, color: threatenedColor }));
+  return {
+    evidenceId,
+    threatenedColor,
+    attacker,
+    hypothetical,
+    legalChecks,
+    legalCaptures,
+    matingMoves,
+    materialThreats: legalCaptures.filter(
+      (move) => PIECE_VALUES[move.capture?.capturedPiece] >= 3,
+    ),
+    tacticalMotifs,
+    attackedAndUndefended,
+  };
+}
+
+function dangerItemKey(item) {
+  if (!item || typeof item !== "object") return "";
+  const type = item.type || item.motif?.type || "";
+  const move = item.move || item;
+  const target = item.target
+    || item.capture?.square
+    || move.capture?.square
+    || item.square
+    || item.motif?.target?.square
+    || item.motif?.pinned?.square
+    || "";
+  const piece = item.piece
+    || item.capture?.capturedPiece
+    || move.capture?.capturedPiece
+    || item.motif?.target?.piece
+    || item.motif?.pinned?.piece
+    || "";
+  return [type, move.uci || "", piece, target].join("|");
+}
+
+function dangerItems(feature) {
+  return [
+    ...(feature.matingMoves || []).map((move) => ({ type: "mate", move })),
+    ...(feature.legalChecks || [])
+      .filter((move) => !move.givesCheckmate)
+      .map((move) => ({ type: "check", move })),
+    ...(feature.materialThreats || []).map((move) => ({
+      type: "material_capture",
+      move,
+      capture: move.capture,
+    })),
+    ...(feature.attackedAndUndefended || []).map((piece) => ({
+      type: "loose_piece",
+      piece: piece.piece,
+      square: piece.square,
+      attackers: piece.attackers,
+    })),
+    ...(feature.tacticalMotifs || []).map((entry) => ({
+      type: entry.motif?.type || "tactical_motif",
+      move: entry.move,
+      motif: entry.motif,
+    })),
+  ];
+}
+
+function compareDangers(before, after) {
+  const beforeItems = dangerItems(before);
+  const afterItems = dangerItems(after);
+  const beforeKeys = new Set(beforeItems.map(dangerItemKey));
+  const afterKeys = new Set(afterItems.map(dangerItemKey));
+  return {
+    dangerAlreadyExisted: beforeItems,
+    dangerCreatedByMove: afterItems.filter((item) => !beforeKeys.has(dangerItemKey(item))),
+    dangerIgnoredByMove: afterItems.filter((item) => beforeKeys.has(dangerItemKey(item))),
+    dangerPreventedByMove: beforeItems.filter((item) => !afterKeys.has(dangerItemKey(item))),
+  };
+}
+
+function purposeSummary(facts) {
+  const effects = facts?.immediateEffects || [];
+  const first = (type) => effects.find((effect) => effect.type === type);
+  if (first("gives_checkmate")) return "setzt den gegnerischen König matt";
+  if (first("gives_check")) return "gibt dem gegnerischen König Schach";
+  const capture = first("capture");
+  if (capture) return `schlägt auf ${capture.square}`;
+  const castle = first("castles");
+  if (castle) {
+    return `rochiert ${castle.side === "kingside" ? "kurz" : "lang"} und aktiviert den Turm`;
+  }
+  const development = first("develops_piece");
+  if (development) {
+    return `entwickelt die Figur nach ${development.square}`;
+  }
+  const pawnBreak = first("pawn_break");
+  if (pawnBreak) return `setzt einen Bauernhebel gegen ${pawnBreak.targets.join(" und ")} an`;
+  const outpost = first("creates_outpost");
+  if (outpost) return `setzt die Figur auf den gestützten Außenposten ${outpost.square}`;
+  const rookFile = first("rook_on_open_file") || first("rook_on_semi_open_file");
+  if (rookFile) return `stellt den Turm auf die ${rookFile.file}-Linie`;
+  const king = first("king_centralization");
+  if (king) return `führt den König im Endspiel von ${king.from} näher ins Zentrum nach ${king.to}`;
+  const center = first("occupies_center");
+  if (center) return `besetzt das Zentrumsfeld ${center.square}`;
+  const control = first("controls_new_square");
+  if (control) return `kontrolliert neu das Zentrumsfeld ${control.square}`;
+  const file = first("opens_file") || first("creates_semi_open_file");
+  if (file) return `öffnet die ${file.file}-Linie`;
+  const activity = first("improves_piece_activity");
+  if (activity) {
+    return `erhöht die legalen Zugmöglichkeiten der Figur auf ${activity.square} von ${activity.beforeMobility} auf ${activity.afterMobility}`;
+  }
+  const loose = first("piece_attacked_and_undefended");
+  if (loose) {
+    return `greift die ungedeckte Figur auf ${loose.square} an`;
+  }
+  const moved = first("moves_piece");
+  return moved
+    ? `bringt ${moved.piece} von ${moved.from} nach ${moved.to}`
+    : "";
+}
+
+function strategicMotifsFor(facts, fenBefore) {
+  const motifs = [];
+  const effects = facts?.immediateEffects || [];
+  const addFromEffect = (effectType, motifType) => {
+    effects.filter((effect) => effect.type === effectType).forEach((effect) => {
+      motifs.push({ type: motifType, effect });
+    });
+  };
+  addFromEffect("develops_piece", "development");
+  addFromEffect("castles", "castling");
+  addFromEffect("occupies_center", "center_control");
+  addFromEffect("controls_new_square", "center_control");
+  addFromEffect("opens_file", "open_file");
+  addFromEffect("creates_semi_open_file", "semi_open_file");
+  addFromEffect("creates_doubled_pawns", "doubled_pawns");
+  addFromEffect("creates_isolated_pawn", "isolated_pawn");
+  addFromEffect("creates_passed_pawn", "passed_pawn");
+  addFromEffect("improves_piece_activity", "piece_activity");
+  addFromEffect("reduces_piece_activity", "passive_piece");
+  addFromEffect("pawn_break", "pawn_break");
+  addFromEffect("creates_outpost", "outpost");
+  addFromEffect("rook_on_open_file", "rook_on_open_file");
+  addFromEffect("rook_on_semi_open_file", "rook_on_semi_open_file");
+  addFromEffect("bad_bishop", "bad_bishop");
+  addFromEffect("active_bishop", "active_bishop");
+  addFromEffect("king_centralization", "king_activity");
+  const firstMove = facts?.lineEvents?.[0];
+  const fullmoveNumber = Number.parseInt(String(fenBefore || "").split(/\s+/)[5], 10);
+  if (
+    firstMove?.piece === "q"
+    && Number.isFinite(fullmoveNumber)
+    && fullmoveNumber <= 10
+  ) {
+    motifs.push({
+      type: "early_queen_move",
+      piece: "q",
+      from: firstMove.from,
+      to: firstMove.to,
+    });
+  }
+  return motifs;
+}
+
+function positionPhase(snapshot, fen) {
+  const queens = (
+    snapshot?.material?.byColor?.w?.counts?.q || 0
+  ) + (
+    snapshot?.material?.byColor?.b?.counts?.q || 0
+  );
+  const totalPoints = (
+    snapshot?.material?.byColor?.w?.points || 0
+  ) + (
+    snapshot?.material?.byColor?.b?.points || 0
+  );
+  const fullmove = Number.parseInt(String(fen || "").split(/\s+/)[5], 10) || 1;
+  if (queens === 0 || totalPoints <= 26) return "endgame";
+  if (fullmove <= 12) return "opening";
+  return "middlegame";
+}
+
+function qualityFromInput(input, comparison) {
+  const supplied = String(input?.quality || "");
+  if (["best", "excellent", "good", "inaccuracy", "mistake", "blunder"].includes(supplied)) {
+    return supplied;
+  }
+  const loss = Number.isFinite(comparison?.lossCp) ? comparison.lossCp : 0;
+  if (comparison?.played?.move?.uci === comparison?.best?.move?.uci) return "best";
+  if (loss <= 20) return "excellent";
+  if (loss <= 50) return "good";
+  if (loss <= 100) return "inaccuracy";
+  if (loss <= 200) return "mistake";
+  return "blunder";
+}
+
+function lessonFromAnalysis(dangers, tacticalMotifs, strategicMotifs) {
+  const dangerTypes = new Set(
+    [
+      ...(dangers?.dangerCreatedByMove || []),
+      ...(dangers?.dangerIgnoredByMove || []),
+    ].map((danger) => danger.type),
+  );
+  const tacticalTypes = new Set(
+    (tacticalMotifs || []).map((entry) => entry?.motif?.type || entry?.type),
+  );
+  const strategicTypes = new Set((strategicMotifs || []).map((entry) => entry.type));
+  if (dangerTypes.has("mate") || dangerTypes.has("check")) {
+    return {
+      questionToAsk: "Welche Schachs hat der Gegner nach meinem Kandidatenzug?",
+      takeaway: "Prüfe vor dem Ziehen zuerst alle gegnerischen Schachs.",
+    };
+  }
+  if (
+    dangerTypes.has("material_capture")
+    || dangerTypes.has("loose_piece")
+    || tacticalTypes.has("fork")
+    || tacticalTypes.has("pin")
+    || tacticalTypes.has("skewer")
+  ) {
+    return {
+      questionToAsk: "Welche meiner Figuren sind danach angegriffen oder ungedeckt?",
+      takeaway: "Kontrolliere nach jedem Kandidatenzug Schachs, Schlagzüge und Doppelangriffe.",
+    };
+  }
+  if (strategicTypes.has("development")) {
+    return {
+      questionToAsk: "Welche konkrete Aufgabe bekommt die entwickelte Figur?",
+      takeaway: "Entwickle Figuren mit Einfluss auf ein konkretes Feld oder eine konkrete Gefahr.",
+    };
+  }
+  if (strategicTypes.has("castling")) {
+    return {
+      questionToAsk: "Kann ich meinen König sichern, bevor ich einen neuen Plan beginne?",
+      takeaway: "Nutze die Rochade, wenn sie den König sichert und zugleich einen Turm aktiviert.",
+    };
+  }
+  return {
+    questionToAsk: "Was ändert mein Zug konkret, und was ist danach die stärkste Antwort?",
+    takeaway: "Wenn kein konkreter Unterschied belegbar ist, rechne die stärkste Antwortfolge weiter.",
+  };
+}
+
+function differenceSummary(comparison) {
+  const difference = comparison?.differences?.[0];
+  if (!difference) return "";
+  if (difference.type === "allows_check" || difference.type === "allows_checkmate") {
+    const reply = comparison.played?.opponentBestReply;
+    return `Der gespielte Zug erlaubt ${reply?.san || "ein gegnerisches Schach"}, die Alternative nicht.`;
+  }
+  if (difference.type === "material_outcome") {
+    return `Nach demselben Horizont von ${comparison.comparisonHorizon} Halbzügen ist die Materialbilanz der Alternative besser.`;
+  }
+  if (difference.type === "develops_piece") {
+    return `Die Alternative entwickelt eine Figur nach ${difference.square}; der gespielte Zug tut das nicht.`;
+  }
+  if (difference.type === "avoids_loose_piece") {
+    return `Die Alternative vermeidet die ungedeckte Figur auf ${difference.square}.`;
+  }
+  if (difference.type === "improves_king_safety") {
+    return "Die Alternative bringt den König unmittelbar aus der Mitte.";
+  }
+  if (difference.type === "improves_center_control") {
+    return `Die Alternative gewinnt konkret Einfluss auf ${difference.square}.`;
+  }
+  if (difference.type === "allows_material_threat") {
+    return `Der gespielte Zug erlaubt einen Schlag auf ${difference.square}, die Alternative nicht.`;
+  }
+  if (difference.type === "allows_tactical_motif") {
+    return `Der gespielte Zug erlaubt das konkrete Motiv ${difference.motif}, die Alternative nicht.`;
+  }
+  return "";
+}
+
+function buildCoachAnalysis(input, comparison, dangers, beforeSnapshot) {
+  if (!comparison?.played) return null;
+  const strategicMotifs = strategicMotifsFor(comparison.played, input.fenBefore);
+  if (dangers?.dangerPreventedByMove?.length > 0) {
+    strategicMotifs.push({
+      type: "prophylaxis",
+      preventedDangers: dangers.dangerPreventedByMove,
+    });
+  }
+  const strongestReplyUci = comparison.played.opponentBestReply?.uci || "";
+  const relevantDangers = (dangers?.dangerCreatedByMove || []).filter((danger) => {
+    const dangerMove = danger.move?.uci || danger.uci || "";
+    return (
+      ["mate", "loose_piece"].includes(danger.type)
+      || (strongestReplyUci && dangerMove === strongestReplyUci)
+    );
+  });
+  const tacticalMotifs = [
+    ...(comparison.played.tacticalMotifs || []),
+    ...relevantDangers
+      .filter((danger) => (
+        ["mate", "check", "material_capture", "fork", "double_attack", "pin", "skewer"]
+          .includes(danger.type)
+      )),
+  ];
+  const phase = positionPhase(beforeSnapshot, input.fenBefore);
+  const forced = comparison.moveNecessity?.onlyMove === true;
+  const explanationType = forced
+    ? "forced"
+    : tacticalMotifs.length > 0 && strategicMotifs.length > 0
+      ? "mixed"
+      : tacticalMotifs.length > 0
+        ? "tactical"
+        : phase === "opening"
+          ? "opening"
+          : phase === "endgame"
+            ? "endgame"
+            : "strategic";
+  const confidence = (
+    Number.parseInt(input.engineDepth, 10) >= 15
+    && input.candidateLines?.length >= 2
+  )
+    ? "high"
+    : input.candidateLines?.length >= 2
+      ? "medium"
+      : "limited";
+  const alternative = comparison.alternative;
+  const concreteDifference = differenceSummary(comparison);
+  return {
+    verdict: {
+      quality: qualityFromInput(input, comparison),
+      confidence,
+      explanationType,
+    },
+    movePurpose: {
+      summary: purposeSummary(comparison.played),
+      concreteEffects: comparison.played.immediateEffects,
+    },
+    threatBeforeMove: {
+      existed: dangers.dangerAlreadyExisted.length > 0,
+      threats: dangers.dangerAlreadyExisted,
+      evidence: ["position.danger.before"],
+    },
+    playedMoveConsequences: {
+      immediateEffects: comparison.played.immediateEffects,
+      strongestOpponentReply: comparison.played.opponentBestReply,
+      tacticalConsequences: tacticalMotifs,
+      strategicConsequences: strategicMotifs,
+      newDangers: dangers.dangerCreatedByMove,
+      preventedDangers: dangers.dangerPreventedByMove,
+      ignoredDangers: dangers.dangerIgnoredByMove,
+    },
+    alternative: {
+      move: alternative?.move || null,
+      relation: alternative?.relation || "none",
+      purpose: alternative ? purposeSummary(alternative) : "",
+      concreteDifference,
+      strongestOpponentReply: alternative?.opponentBestReply || null,
+    },
+    lesson: lessonFromAnalysis(dangers, tacticalMotifs, strategicMotifs),
   };
 }
 
@@ -851,6 +1499,129 @@ function compactPiece(record) {
   };
 }
 
+function legalMobilityFrom(fen, color, square) {
+  const game = gameWithTurn(fen, color);
+  if (!game || !square) return 0;
+  return game.moves({ square, verbose: true }).length;
+}
+
+function squareColor(square) {
+  return (squareFileIndex(square) + squareRank(square)) % 2;
+}
+
+function positionalMoveEffects(move) {
+  const beforeGame = loadGame(move.fenBefore);
+  const afterGame = loadGame(move.fenAfter);
+  if (!beforeGame || !afterGame) return [];
+  const effects = [];
+  const beforeMobility = legalMobilityFrom(move.fenBefore, move.color, move.from);
+  const afterMobility = legalMobilityFrom(move.fenAfter, move.color, move.to);
+  if (move.piece !== "p" && afterMobility > beforeMobility) {
+    effects.push({
+      type: "improves_piece_activity",
+      piece: move.piece,
+      square: move.to,
+      beforeMobility,
+      afterMobility,
+    });
+  } else if (move.piece !== "p" && afterMobility < beforeMobility) {
+    effects.push({
+      type: "reduces_piece_activity",
+      piece: move.piece,
+      square: move.to,
+      beforeMobility,
+      afterMobility,
+    });
+  }
+
+  if (move.piece === "p") {
+    const attackedEnemyPawns = pieceInventory(afterGame)
+      .filter((piece) => (
+        piece.color === opposite(move.color)
+        && piece.type === "p"
+        && afterGame.attackers(piece.square, move.color).includes(move.to)
+      ))
+      .map((piece) => piece.square);
+    if (attackedEnemyPawns.length > 0) {
+      effects.push({
+        type: "pawn_break",
+        pawn: move.to,
+        targets: attackedEnemyPawns,
+      });
+    }
+  }
+
+  if (move.piece === "r") {
+    const piecesOnFile = pieceInventory(afterGame)
+      .filter((piece) => piece.type === "p" && piece.square[0] === move.to[0]);
+    const friendlyPawns = piecesOnFile.filter((piece) => piece.color === move.color);
+    const enemyPawns = piecesOnFile.filter((piece) => piece.color !== move.color);
+    if (friendlyPawns.length === 0 && enemyPawns.length === 0) {
+      effects.push({ type: "rook_on_open_file", square: move.to, file: move.to[0] });
+    } else if (friendlyPawns.length === 0 && enemyPawns.length > 0) {
+      effects.push({ type: "rook_on_semi_open_file", square: move.to, file: move.to[0] });
+    }
+  }
+
+  if (["n", "b"].includes(move.piece)) {
+    const ownPawnDefenders = afterGame.attackers(move.to, move.color)
+      .filter((square) => afterGame.get(square)?.type === "p");
+    const enemyPawnAttackers = afterGame.attackers(move.to, opposite(move.color))
+      .filter((square) => afterGame.get(square)?.type === "p");
+    const advanced = move.color === "w" ? squareRank(move.to) >= 5 : squareRank(move.to) <= 4;
+    if (advanced && ownPawnDefenders.length > 0 && enemyPawnAttackers.length === 0) {
+      effects.push({
+        type: "creates_outpost",
+        piece: move.piece,
+        square: move.to,
+        pawnDefenders: ownPawnDefenders,
+      });
+    }
+  }
+
+  if (move.piece === "b") {
+    const ownPawnsOnColor = pieceInventory(afterGame).filter((piece) => (
+      piece.color === move.color
+      && piece.type === "p"
+      && squareColor(piece.square) === squareColor(move.to)
+    )).length;
+    if (afterMobility <= 3 && ownPawnsOnColor >= 3) {
+      effects.push({
+        type: "bad_bishop",
+        square: move.to,
+        mobility: afterMobility,
+        ownPawnsOnColor,
+      });
+    } else if (afterMobility >= 6 && ownPawnsOnColor <= 2) {
+      effects.push({
+        type: "active_bishop",
+        square: move.to,
+        mobility: afterMobility,
+        ownPawnsOnColor,
+      });
+    }
+  }
+
+  if (move.piece === "k") {
+    const material = materialFeature(pieceInventory(afterGame), "temporary.material");
+    const totalPoints = material.byColor.w.points + material.byColor.b.points;
+    const centerDistance = (square) => Math.min(
+      ...CORE_CENTER.map((center) => (
+        Math.abs(squareFileIndex(square) - squareFileIndex(center))
+        + Math.abs(squareRank(square) - squareRank(center))
+      )),
+    );
+    if (totalPoints <= 20 && centerDistance(move.to) < centerDistance(move.from)) {
+      effects.push({
+        type: "king_centralization",
+        from: move.from,
+        to: move.to,
+      });
+    }
+  }
+  return effects;
+}
+
 function immediateEffects(move, changes) {
   const effects = [{
     type: "moves_piece",
@@ -901,6 +1672,7 @@ function immediateEffects(move, changes) {
   (changes.pieceSafety?.newlyAttackedAndUndefended || []).forEach((piece) => {
     effects.push({ type: "piece_attacked_and_undefended", ...compactPiece(piece) });
   });
+  effects.push(...positionalMoveEffects(move));
   return effects;
 }
 
@@ -910,12 +1682,16 @@ function materialBalanceFor(snapshot, color) {
   return Number.isFinite(own) && Number.isFinite(opponent) ? own - opponent : 0;
 }
 
-function lineFacts(fenBefore, line, evaluation) {
+function lineFacts(fenBefore, line, evaluation, { horizon = null } = {}) {
   if (!line?.moves?.length) return null;
   const game = loadGame(fenBefore);
   if (!game) return null;
+  const comparableHorizon = Number.isInteger(horizon)
+    ? Math.max(1, Math.min(horizon, line.moves.length))
+    : line.moves.length;
+  const comparedMoves = line.moves.slice(0, comparableHorizon);
   const initial = positionSnapshot(game, "line_before");
-  const firstRaw = line.moves[0]?.uci;
+  const firstRaw = comparedMoves[0]?.uci;
   const firstMove = moveFromUci(game, firstRaw);
   if (!firstMove) return null;
   const first = moveDescriptor(firstMove, game, line.moves[0].evidenceId);
@@ -930,10 +1706,131 @@ function lineFacts(fenBefore, line, evaluation) {
     pieceSafety: pieceSafetyChange(initial.pieceSafety, afterFirst.pieceSafety, first),
   };
   const lineEvents = [first];
-  for (const descriptor of line.moves.slice(1)) {
+  const tacticalMotifs = tacticalMotifsAfterMove(game, first)
+    .map((motif) => ({ ply: 0, move: first.uci, motif }));
+  for (const descriptor of comparedMoves.slice(1)) {
     const move = moveFromUci(game, descriptor.uci);
     if (!move) break;
-    lineEvents.push(moveDescriptor(move, game, descriptor.evidenceId));
+    const event = moveDescriptor(move, game, descriptor.evidenceId);
+    lineEvents.push(event);
+    tacticalMotifsAfterMove(game, event).forEach((motif) => {
+      tacticalMotifs.push({
+        ply: lineEvents.length - 1,
+        move: event.uci,
+        motif,
+      });
+    });
+  }
+  lineEvents.forEach((event, index) => {
+    const previous = lineEvents[index - 1];
+    if (
+      index > 0
+      && previous?.capture
+      && event.givesCheck
+      && !event.capture
+    ) {
+      tacticalMotifs.push({
+        ply: index,
+        move: event.uci,
+        motif: {
+          type: "zwischenzug",
+          previousCapture: previous.uci,
+          checkMove: event.uci,
+        },
+      });
+    }
+    if (previous?.capture && event.capture) {
+      tacticalMotifs.push({
+        ply: index,
+        move: event.uci,
+        motif: {
+          type: "forced_capture_sequence",
+          moves: [previous.uci, event.uci],
+        },
+      });
+    }
+  });
+  const firstMotifs = tacticalMotifs
+    .filter((entry) => entry.ply === 0)
+    .map((entry) => entry.motif);
+  const firstRemovesDefender = firstMotifs.find(
+    (motif) => motif.type === "removes_defender",
+  );
+  const thirdMove = lineEvents[2];
+  if (
+    firstRemovesDefender
+    && thirdMove?.capture
+    && firstRemovesDefender.previouslyDefended.some(
+      (target) => target.square === thirdMove.to,
+    )
+  ) {
+    tacticalMotifs.push({
+      ply: 2,
+      move: thirdMove.uci,
+      motif: {
+        type: "deflection",
+        defenderMove: first.uci,
+        targetMove: thirdMove.uci,
+        removedDefender: firstRemovesDefender.removed,
+        target: thirdMove.to,
+      },
+    });
+  }
+  const reply = lineEvents[1];
+  if (
+    reply?.capture?.square === first.to
+    && thirdMove
+    && (thirdMove.givesCheckmate || thirdMove.capture)
+  ) {
+    const firstPieceValue = PIECE_VALUES[first.piece] || 0;
+    const replyCapturedValue = PIECE_VALUES[reply.capture.capturedPiece] || 0;
+    const thirdCapturedValue = PIECE_VALUES[thirdMove.capture?.capturedPiece] || 0;
+    const yieldsConcreteGain = (
+      thirdMove.givesCheckmate
+      || thirdCapturedValue > replyCapturedValue
+      || firstPieceValue <= replyCapturedValue
+    );
+    if (yieldsConcreteGain) {
+      tacticalMotifs.push({
+        ply: 2,
+        move: thirdMove.uci,
+        motif: {
+          type: "sacrifice",
+          offeredMove: first.uci,
+          acceptingMove: reply.uci,
+          payoffMove: thirdMove.uci,
+          payoff: thirdMove.givesCheckmate ? "checkmate" : "material",
+        },
+      });
+      tacticalMotifs.push({
+        ply: 2,
+        move: thirdMove.uci,
+        motif: {
+          type: "decoy",
+          offeredSquare: first.to,
+          acceptingMove: reply.uci,
+          payoffMove: thirdMove.uci,
+        },
+      });
+    }
+  }
+  if (first.capture && reply?.capture?.square === first.to) {
+    const gained = PIECE_VALUES[first.capture.capturedPiece] || 0;
+    const conceded = PIECE_VALUES[reply.capture.capturedPiece] || 0;
+    tacticalMotifs.push({
+      ply: 1,
+      move: reply.uci,
+      motif: {
+        type: gained > conceded
+          ? "favorable_exchange"
+          : gained < conceded
+            ? "unfavorable_exchange"
+            : "equal_exchange",
+        sequence: [first.uci, reply.uci],
+        gained,
+        conceded,
+      },
+    });
   }
   const resulting = positionSnapshot(game, "line_result");
   return {
@@ -959,9 +1856,11 @@ function lineFacts(fenBefore, line, evaluation) {
       capture: event.capture,
       givesCheck: event.givesCheck,
       givesCheckmate: event.givesCheckmate,
+      givesStalemate: event.givesStalemate,
       castle: event.castle,
       promotion: event.promotion,
     })),
+    tacticalMotifs,
     resultingPosition: {
       fen: resulting.fen,
       material: resulting.material,
@@ -970,21 +1869,13 @@ function lineFacts(fenBefore, line, evaluation) {
       files: resulting.files,
       pawnStructure: resulting.pawnStructure,
     },
+    suppliedLineLength: line.moves.length,
+    comparisonHorizon: comparableHorizon,
+    horizonComplete: comparableHorizon === line.moves.length,
     changes,
     materialBalanceDelta:
       materialBalanceFor(resulting, first.color) - materialBalanceFor(initial, first.color),
   };
-}
-
-function evaluationCp(evaluation) {
-  if (evaluation?.unit === "cp" && Number.isFinite(evaluation.value)) {
-    return evaluation.value;
-  }
-  if (evaluation?.unit === "mate" && Number.isFinite(evaluation.value)) {
-    if (evaluation.value === 0) return 0;
-    return evaluation.value > 0 ? 100_000 : -100_000;
-  }
-  return null;
 }
 
 function evaluationForPlayer(evaluation, color) {
@@ -1076,15 +1967,21 @@ function buildMoveComparison(input, verifiedLines, playedMove) {
     || verifiedLines.find((line) => line.role === "played")
     || null;
   if (!bestLine || !playedLine) return null;
+  const commonHorizon = Math.max(
+    1,
+    Math.min(playedLine.moves.length, bestLine.moves.length),
+  );
   const played = lineFacts(
     input.fenBefore,
     playedLine,
     evaluationForPlayer(playedLine.evaluation, playedMove.color),
+    { horizon: commonHorizon },
   );
   const best = lineFacts(
     input.fenBefore,
     bestLine,
     evaluationForPlayer(bestLine.evaluation, playedMove.color),
+    { horizon: commonHorizon },
   );
   if (!played || !best) return null;
   const second = candidates.find((line) => line.rank === 2) || null;
@@ -1096,31 +1993,73 @@ function buildMoveComparison(input, verifiedLines, playedMove) {
       evaluationForPlayer(alternativeLine.evaluation, playedMove.color),
     )
     : null;
-  const playedCp = evaluationCp(played.evaluation);
-  const alternativeCp = evaluationCp(alternativeFacts?.evaluation);
+  const playedCp = evaluationToPlayerCp(played.evaluation);
+  const alternativeCp = evaluationToPlayerCp(alternativeFacts?.evaluation);
   const equivalent = Number.isFinite(playedCp)
     && Number.isFinite(alternativeCp)
     && Math.abs(playedCp - alternativeCp) <= 20;
-  const bestCp = evaluationCp(best.evaluation);
-  const secondCp = evaluationCp(
-    candidates.find((line) => line.rank === 2)?.evaluation
-      ? evaluationForPlayer(
-        candidates.find((line) => line.rank === 2).evaluation,
-        playedMove.color,
-      )
-      : null,
-  );
-  const derivedGap = Number.isFinite(bestCp) && Number.isFinite(secondCp)
-    ? bestCp - secondCp
+  const secondEvaluation = candidates.find((line) => line.rank === 2)?.evaluation
+    ? evaluationForPlayer(
+      candidates.find((line) => line.rank === 2).evaluation,
+      playedMove.color,
+    )
     : null;
-  const onlyLegalMove = input.onlyMoveEvidence?.type === "only_legal_move"
-    && input.onlyMoveEvidence?.legalMoveCount === 1;
-  const onlyMove = onlyLegalMove || (
-    input.onlyMove === true
-    && Number.isFinite(derivedGap)
-    && derivedGap >= 150
-  );
+  const legalMoveCount = input.onlyMoveEvidence?.type === "only_legal_move"
+    && input.onlyMoveEvidence?.legalMoveCount === 1
+    ? 1
+    : null;
+  const moveNecessity = classifyMoveNecessity({
+    bestEvaluation: best.evaluation,
+    secondEvaluation,
+    legalMoveCount,
+  });
+  const onlyMove = moveNecessity.onlyMove;
   const differences = compareLineFacts(played, best);
+  for (const danger of input.dangers?.dangerCreatedByMove || []) {
+    const reply = danger.move || danger;
+    const difference = danger.type === "mate"
+      ? {
+        type: "allows_checkmate",
+        side: "played",
+        move: reply.uci || "",
+        target: `${playedMove.color}_king`,
+      }
+      : danger.type === "check"
+        ? {
+          type: "allows_check",
+          side: "played",
+          move: reply.uci || "",
+          target: `${playedMove.color}_king`,
+        }
+        : danger.type === "material_capture"
+          ? {
+            type: "allows_material_threat",
+            side: "played",
+            move: reply.uci || "",
+            piece: danger.capture?.capturedPiece || reply.capture?.capturedPiece || "",
+            square: danger.capture?.square || reply.capture?.square || "",
+          }
+          : ["fork", "double_attack", "pin", "skewer"].includes(danger.type)
+            ? {
+              type: "allows_tactical_motif",
+              motif: danger.type,
+              side: "played",
+              move: reply.uci || "",
+            }
+            : null;
+    if (
+      difference
+      && !differences.some((entry) => (
+        entry.type === difference.type
+        && entry.move === difference.move
+      ))
+    ) {
+      differences.push(difference);
+    }
+  }
+  differences.forEach((difference, index) => {
+    difference.evidenceId = `engine.move_comparison.difference.${index + 1}`;
+  });
   return {
     played,
     best,
@@ -1140,15 +2079,28 @@ function buildMoveComparison(input, verifiedLines, playedMove) {
       }
       : null,
     differences,
+    comparisonHorizon: commonHorizon,
+    materialComparison: {
+      horizon: commonHorizon,
+      equalLength: played.comparisonHorizon === best.comparisonHorizon,
+      playedDelta: played.materialBalanceDelta,
+      bestDelta: best.materialBalanceDelta,
+    },
     lossCp: Number.isFinite(input.lossCp) ? Math.max(0, Math.round(input.lossCp)) : 0,
     onlyMove,
-    onlyMoveEvidence: onlyLegalMove
-      ? { type: "only_legal_move", legalMoveCount: 1 }
-      : onlyMove
-        ? { type: "candidate_gap", gapCp: Math.round(derivedGap) }
-        : null,
+    moveNecessity,
+    onlyMoveEvidence: moveNecessity.onlyMove
+      ? {
+        type: moveNecessity.type,
+        legalMoveCount,
+        gapCp: moveNecessity.gapCp,
+        bestCp: moveNecessity.bestCp,
+        secondCp: moveNecessity.secondCp,
+        reason: moveNecessity.reason,
+      }
+      : null,
     explanationType: onlyMove
-      ? "only_move"
+      ? moveNecessity.type
       : played.move.uci === best.move.uci
         ? "best_move"
         : equivalent
@@ -1243,13 +2195,35 @@ export function buildPositionEvidence(input = {}) {
   const suppliedAfterPositionMatches = suppliedAfter
     ? positionKey(suppliedAfter.fen()) === positionKey(after.fen)
     : null;
+  const dangerBefore = dangerFeature(
+    normalizedBeforeFen,
+    move.color,
+    "position.danger.before",
+    { hypothetical: true },
+  );
+  const dangerAfter = dangerFeature(
+    after.fen,
+    move.color,
+    "position.danger.after",
+  );
+  const dangers = compareDangers(dangerBefore, dangerAfter);
   const moveComparison = buildMoveComparison(
     {
       ...input,
       fenBefore: normalizedBeforeFen,
+      dangers,
     },
     verifiedLines,
     move,
+  );
+  const coachAnalysis = buildCoachAnalysis(
+    {
+      ...input,
+      fenBefore: normalizedBeforeFen,
+    },
+    moveComparison,
+    dangers,
+    before,
   );
 
   const evidence = [
@@ -1283,6 +2257,27 @@ export function buildPositionEvidence(input = {}) {
       source: "chess.js",
       fact: line,
     })),
+    {
+      id: dangerBefore.evidenceId,
+      kind: EVIDENCE_KINDS.danger,
+      phase: "before",
+      source: "legal_move_generation_and_board_geometry",
+      fact: dangerBefore,
+    },
+    {
+      id: dangerAfter.evidenceId,
+      kind: EVIDENCE_KINDS.danger,
+      phase: "after",
+      source: "legal_move_generation_and_board_geometry",
+      fact: dangerAfter,
+    },
+    {
+      id: "position.danger.comparison",
+      kind: EVIDENCE_KINDS.danger,
+      phase: "comparison",
+      source: "derived_from_danger_snapshots",
+      fact: dangers,
+    },
     ...(moveComparison
       ? [{
         id: "engine.move_comparison",
@@ -1296,7 +2291,37 @@ export function buildPositionEvidence(input = {}) {
         phase: "comparison",
         source: "derived_from_verified_engine_lines",
         fact: moveComparison.differences,
-      }]
+      }, {
+        id: "engine.move_comparison.played",
+        kind: EVIDENCE_KINDS.moveComparison,
+        phase: "comparison",
+        source: "derived_from_verified_engine_lines",
+        fact: moveComparison.played,
+      }, {
+        id: "engine.move_comparison.best",
+        kind: EVIDENCE_KINDS.moveComparison,
+        phase: "comparison",
+        source: "derived_from_verified_engine_lines",
+        fact: moveComparison.best,
+      }, {
+        id: "engine.move_comparison.alternative",
+        kind: EVIDENCE_KINDS.moveComparison,
+        phase: "comparison",
+        source: "derived_from_verified_engine_lines",
+        fact: moveComparison.alternative,
+      }, {
+        id: "engine.move_comparison.necessity",
+        kind: EVIDENCE_KINDS.moveComparison,
+        phase: "comparison",
+        source: "derived_from_comparable_engine_evaluations",
+        fact: moveComparison.moveNecessity,
+      }, ...moveComparison.differences.map((difference) => ({
+        id: difference.evidenceId,
+        kind: EVIDENCE_KINDS.moveComparison,
+        phase: "comparison",
+        source: "derived_from_equal_horizon_line_comparison",
+        fact: difference,
+      }))]
       : []),
   ];
 
@@ -1335,6 +2360,12 @@ export function buildPositionEvidence(input = {}) {
       }
       : null,
     moveComparison,
+    dangers: {
+      before: dangerBefore,
+      after: dangerAfter,
+      ...dangers,
+    },
+    coachAnalysis,
     evidence,
   };
 }

@@ -44,6 +44,17 @@ export default function HomePage() {
                 <small>Stellungen, Varianten und Partiefeedback</small>
               </span>
             </button>
+            <button
+              id="coach-analysis-mode-button"
+              className="mode-navigation-button"
+              type="button"
+            >
+              <span aria-hidden="true">♞</span>
+              <span>
+                <strong>Coach-Analyse</strong>
+                <small>Pläne, Schlüsselmomente und Lernaufgaben</small>
+              </span>
+            </button>
           </nav>
           <section id="app" className="board-stage" aria-label="Schachanalyse">
             <div id="board-container" className="board-wrapper">

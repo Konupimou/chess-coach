@@ -80,7 +80,7 @@ test("der Browser übernimmt keine alten Coach-Texte und cached nur geprüfte Se
   assert.ok(loadStart >= 0 && loadEnd > loadStart);
   assert.ok(saveEnd > saveStart);
   assert.ok(requestStart >= 0 && requestEnd > requestStart);
-  assert.match(appSource, /chess-coach\.move-explanations\.v4/);
+  assert.match(appSource, /chess-coach\.move-explanations\.v5/);
   assert.match(loadSource, /moveExplanationCache\.clear\(\)/);
   assert.match(loadSource, /removeItem/);
   assert.doesNotMatch(loadSource, /getItem/);
@@ -112,23 +112,43 @@ test("Live-Coach bewertet rechts oben, erlaubt Nachfragen und hält automatische
   assert.doesNotMatch(appSource, /accuracyFeedbackRowEl\?\.appendChild\(this\.playFeedbackEl\)/);
 });
 
-test("Analyseperspektive trennt eigene Zugoptionen von der Bewertung des letzten eigenen Zuges", () => {
+test("Coach-Elo ist in Spiel- und Analysemodus wählbar und bleibt vom Gegner getrennt", () => {
+  assert.match(appSource, /COACH_RATING_OPTIONS/);
+  assert.match(appSource, /id: "play-coach-rating"/);
+  assert.match(appSource, /id: "setup-coach-rating"/);
+  assert.match(appSource, /id: "analysis-coach-rating"/);
+  assert.match(appSource, /coachPreferences: \{ rating \}/);
+  assert.match(appSource, /manualPreference: \{ rating: this\.getCoachRating\(\) \}/);
+  assert.match(styleSource, /\.coach-rating-control select/);
+});
+
+test("800-Elo-Livefeedback verrät bei groben Fehlern nicht sofort die Lösung", () => {
+  assert.match(appSource, /const foundationsBlunder = this\.getCoachRating\(\) === 800/);
+  assert.match(appSource, /Verrate \$\{reportMove\.bestSan\} in dieser ersten Antwort noch nicht/);
+  assert.match(appSource, /Matt, ein gegnerischer Schlagzug oder eine ungedeckte Figur/);
+  assert.match(appSource, /latestAutomaticReply/);
+});
+
+test("Ein sichtbarer Coach-Schalter trennt Zugoptionen vom Rückblick unabhängig von der Farbe", () => {
   assert.match(appSource, /setAnalysisPerspective/);
-  assert.match(appSource, /this\.game\.turn\(\) === this\.getAnalysisPerspective\(\)/);
+  assert.match(appSource, /data-analysis-coach-mode="continue">Weiterspielen/);
+  assert.match(appSource, /data-analysis-coach-mode="review">Zug verstehen/);
+  assert.match(appSource, /setAnalysisCoachMode/);
+  assert.match(appSource, /this\.getAnalysisCoachMode\(\) === "review"/);
   assert.match(appSource, /this\.buildPositionCoachEngineContext\(\)/);
-  assert.match(appSource, /this\.buildMoveCoachEngineContext\(this\.getLastPerspectiveMoveReview\(\)\)/);
+  assert.match(appSource, /this\.buildMoveCoachEngineContext\(this\.getLatestVerifiedMoveReview\(\)\)/);
   assert.doesNotMatch(appSource, /Das sind deine \$\{optionCount\} besten Möglichkeiten/);
   assert.match(appSource, /engineContext: this\.buildAnalysisCoachEngineContext\(\)/);
-  assert.match(appSource, /renderLastPerspectiveMoveAssessment/);
-  assert.match(appSource, /this\.game\.turn\(\) !== this\.getAnalysisPerspective\(\)/);
-  assert.match(appSource, /Rückblick auf deinen letzten Zug/);
+  assert.match(appSource, /renderLatestMoveAssessment/);
+  assert.match(appSource, /Rückblick auf den letzten Zug/);
   assert.match(appSource, /describeMoveAssessment/);
   assert.match(appSource, /perspective-alternative-button/);
+  assert.match(appSource, /Genauso gut geht/);
   assert.match(
     appSource,
     /playReviewedAlternative\(review\)[\s\S]*parentNode\.fen !== verified\.fenBefore[\s\S]*this\.applyMove\(/,
   );
-  const assessmentStart = appSource.indexOf("  renderLastPerspectiveMoveAssessment(");
+  const assessmentStart = appSource.indexOf("  renderLatestMoveAssessment(");
   const assessmentEnd = appSource.indexOf("  getAnalysisPerspective()", assessmentStart);
   const assessmentSource = appSource.slice(assessmentStart, assessmentEnd);
   assert.ok(
@@ -142,7 +162,7 @@ test("Analysechat enthält nur ausdrücklich gestartete Nutzer-Coach-Dialoge", (
   const sendEnd = appSource.indexOf("  setChatBusy(", sendStart);
   const sendSource = appSource.slice(sendStart, sendEnd);
   assert.match(sendSource, /appendChatMessage\('user', text\)/);
-  assert.match(sendSource, /appendChatMessage\('assistant', reply\.trim\(\)\)/);
+  assert.match(sendSource, /appendChatMessage\('assistant', reply\.trim\(\),\s*\{/);
   assert.match(appSource, /scheduleSuggestionCoachReasons/);
   assert.doesNotMatch(appSource, /scheduleAnalysisMoveCoachFeedback/);
   assert.doesNotMatch(appSource, /updateAnalysisCoachFocus/);
@@ -173,6 +193,7 @@ test("Vollanalyse sammelt zwei Kandidaten und lädt KI-Texte erst beim Öffnen e
   const attachSource = appSource.slice(attachStart, attachEnd);
 
   assert.match(reviewSource, /multiPV:\s*2/);
+  assert.match(reviewSource, /playerColor: reviewPlayerColor/);
   assert.match(appSource, /analysisEntryFromMultiPv/);
   assert.match(attachSource, /buildLocalMoveExplanationBundle/);
   assert.doesNotMatch(attachSource, /requestGroundedMoveExplanation/);
@@ -180,15 +201,18 @@ test("Vollanalyse sammelt zwei Kandidaten und lädt KI-Texte erst beim Öffnen e
   assert.match(appSource, /requestReviewJourneyCoach/);
 });
 
-test("Zugerklärungen lassen sich dauerhaft zwischen lokaler und KI-Fassung umschalten", () => {
+test("KI-Zugerklärungen sind dauerhaft aktiv und besitzen nur einen lokalen Ausfall-Fallback", () => {
   const requestStart = appSource.indexOf("  async requestGroundedMoveExplanation({");
   const requestEnd = appSource.indexOf("  createChatPanel(", requestStart);
   const requestSource = appSource.slice(requestStart, requestEnd);
 
-  assert.match(appSource, /chess-coach\.ai-move-explanations\.enabled/);
-  assert.match(appSource, /\["Nur lokal", false\]/);
-  assert.match(appSource, /\["Mit KI", true\]/);
-  assert.match(appSource, /aria-label", "Art der Zugerklärung"/);
+  assert.match(appSource, /this\.aiMoveExplanationsEnabled = true/);
+  assert.doesNotMatch(appSource, /chess-coach\.ai-move-explanations\.enabled/);
+  assert.doesNotMatch(appSource, /Nur lokal/);
+  assert.match(appSource, /aria-label", "KI-Erklärungen sind aktiv"/);
+  assert.match(appSource, /textContent = "KI aktiv"/);
+  assert.match(appSource, /computer-ai-status is-active/);
+  assert.match(styleSource, /\.computer-ai-status\s*\{/);
   assert.match(appSource, /coachLocalExplanation/);
   assert.match(
     requestSource,
@@ -198,7 +222,49 @@ test("Zugerklärungen lassen sich dauerhaft zwischen lokaler und KI-Fassung umsc
     appSource,
     /if \(!this\.aiMoveExplanationsEnabled\) return;[\s\S]*requestGroundedMoveExplanation/,
   );
-  assert.match(styleSource, /\.review-explanation-mode-button\[aria-pressed="true"\]/);
+});
+
+test("freie Coach-Antworten zeigen KI und PGN-Wissen als Herkunft an", () => {
+  assert.match(appSource, /"KI · PGN-Wissen"/);
+  assert.match(appSource, /"Lokale Antwort"/);
+  assert.match(styleSource, /\.coach-message-source/);
+});
+
+test("der Coach zeigt die Datengrundlage jeder Antwort sichtbar an", () => {
+  assert.match(appSource, /Verwendete Daten/);
+  assert.match(appSource, /renderCoachDataSources/);
+  assert.match(appSource, /dataSources: data\?\.dataSources \|\| null/);
+  assert.match(appSource, /Gleiche Eröffnung und Bauernstruktur|PGN-Sammlung/);
+  assert.match(styleSource, /\.coach-data-sources\s*\{/);
+  assert.match(appSource, /this\.coachDataSourcesEl\.hidden = false/);
+  assert.match(appSource, /currentRecommendationDataSources/);
+  assert.match(appSource, /Datengrundlage: \$\{sources\.contextLabel\}/);
+  assert.doesNotMatch(appSource, /nach der nächsten Antwort/);
+});
+
+test("bekannte Eröffnungen zeigen Datenbankoptionen ohne besten Engine-Zug", () => {
+  assert.match(appSource, /openingContinuationsForPath/);
+  assert.match(appSource, /Mehrere gute Eröffnungswege/);
+  assert.match(appSource, /Hier gibt es nicht den einen besten Zug/);
+  assert.match(appSource, /ohne Engine-Rangliste/);
+  assert.match(styleSource, /\.suggestion-line\.is-opening-option/);
+});
+
+test("der letzte Zug zeigt bei Fehlern zuerst die konkrete taktische Begründung", () => {
+  assert.match(appSource, /const directErrorClaim = isError/);
+  assert.match(appSource, /directErrorClaim\?\.text \|\|/);
+  assert.doesNotMatch(appSource, /Das Problem dabei: Der Zug lässt die dringendere Aufgabe/);
+});
+
+test("KI-Zugerklärungen sind auf zwei Anfragen begrenzt und bei Kontextwechseln abbrechbar", () => {
+  assert.match(appSource, /this\.moveExplanationConcurrency = 2/);
+  assert.match(appSource, /acquireMoveExplanationSlot/);
+  assert.match(appSource, /releaseMoveExplanationSlot/);
+  assert.match(
+    appSource,
+    /this\.moveExplanationControllers\.forEach\(\(controller\) => controller\.abort\(\)\)/,
+  );
+  assert.match(appSource, /this\.moveExplanationControllers\.clear\(\)/);
 });
 
 test("Computererklärung zeigt semantisch Urteil, Idee und Alternative ungefiltert", () => {

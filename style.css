@@ -154,9 +154,9 @@ summary:focus-visible,
 
 .mode-navigation {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  width: min(720px, 100%);
+  width: min(980px, 100%);
   margin: 0 auto;
   padding: 7px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1288,6 +1288,7 @@ summary:focus-visible,
 }
 
 .analysis-column.is-review-journey .suggestions-card,
+.analysis-column.is-review-journey .coach-analysis-card,
 .analysis-column.is-review-journey .chat-wrapper {
   display: none;
 }
@@ -1364,6 +1365,95 @@ summary:focus-visible,
 
 .review-journey-controls > button {
   flex: 1;
+}
+
+.coach-analysis-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  border-color: rgba(240, 184, 95, 0.32);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(240, 184, 95, 0.12), transparent 42%),
+    var(--surface);
+}
+
+.coach-analysis-card[hidden] {
+  display: none;
+}
+
+.coach-analysis-heading h2,
+.coach-analysis-heading p {
+  margin-top: 0;
+}
+
+.coach-analysis-heading h2 {
+  margin-bottom: 7px;
+}
+
+.coach-analysis-heading > p:last-child {
+  margin-bottom: 0;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.coach-analysis-phases {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coach-analysis-phase {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.coach-analysis-phase strong,
+.coach-analysis-phase span {
+  display: block;
+}
+
+.coach-analysis-phase strong {
+  color: #f8d59d;
+  font-size: 0.88rem;
+}
+
+.coach-analysis-phase span {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.42;
+}
+
+.coach-analysis-principles {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.coach-analysis-status {
+  padding: 13px 15px;
+  border: 1px solid rgba(90, 162, 255, 0.2);
+  border-radius: 13px;
+  background: rgba(67, 119, 210, 0.09);
+  color: #dce9ff;
+  line-height: 1.45;
+}
+
+.coach-analysis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.coach-analysis-actions > button {
+  flex: 1 1 190px;
 }
 
 .review-journey-cta {
@@ -1558,6 +1648,180 @@ summary:focus-visible,
   flex-direction: column;
 }
 
+.coach-rating-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.coach-rating-control select {
+  min-width: 116px;
+  padding: 7px 30px 7px 10px;
+  border: 1px solid rgba(240, 184, 106, 0.3);
+  border-radius: 9px;
+  background: #111a2b;
+  color: #ffe0b3;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.coach-rating-control.is-compact {
+  margin-bottom: 8px;
+}
+
+.coach-data-sources {
+  flex: 0 0 auto;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(125, 181, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(90, 162, 255, 0.055);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+}
+
+.computer-ai-status.is-opening-book {
+  border-color: rgba(240, 184, 106, 0.38);
+  background: rgba(240, 184, 106, 0.12);
+  color: #ffd59a;
+}
+
+.opening-options-intro {
+  margin-bottom: 8px;
+  padding: 9px 11px;
+  border: 1px solid rgba(240, 184, 106, 0.28);
+  border-radius: 10px;
+  background: rgba(240, 184, 106, 0.08);
+}
+
+.opening-options-intro strong {
+  color: #ffd59a;
+}
+
+.opening-options-intro p,
+.opening-option-names {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.suggestion-line.is-opening-option {
+  border-left-color: rgba(240, 184, 106, 0.72);
+}
+
+.suggestion-line.is-opening-option .suggestion-line-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #ffd59a;
+  font-size: 0.7rem;
+}
+
+.coach-data-sources summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.coach-data-sources summary::-webkit-details-marker {
+  display: none;
+}
+
+.coach-data-sources summary strong {
+  color: #cfe3ff;
+  font-size: 0.7rem;
+}
+
+.coach-data-sources summary > span {
+  color: #8ff1c5;
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.coach-data-sources > p {
+  margin: 6px 0 7px;
+}
+
+.coach-data-sources ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coach-data-sources li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.coach-data-sources li.is-unused {
+  opacity: 0.58;
+}
+
+.coach-data-source-marker {
+  flex: 0 0 auto;
+  color: #8ff1c5;
+  font-weight: 900;
+}
+
+.coach-data-sources li.is-unused .coach-data-source-marker {
+  color: var(--text-secondary);
+}
+
+.coach-data-sources li div {
+  display: grid;
+  min-width: 0;
+}
+
+.coach-data-sources li strong {
+  color: var(--text-primary);
+  font-size: 0.64rem;
+}
+
+.coach-data-sources li span:last-child {
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+@media (max-width: 620px) {
+  .coach-data-sources ul {
+    grid-template-columns: 1fr;
+  }
+}
+
+.live-coach-heading .coach-rating-control {
+  margin: 0 0 0 auto;
+}
+
+.live-coach-heading .coach-rating-control > span {
+  display: none;
+}
+
+.live-coach-heading .coach-rating-control select {
+  min-width: 96px;
+  padding-block: 5px;
+}
+
+.play-coach-level-group > p {
+  margin: -3px 0 10px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
 .coach-avatar {
   display: grid;
   width: 40px;
@@ -1602,6 +1866,22 @@ summary:focus-visible,
   border-radius: 12px;
   white-space: pre-wrap;
   line-height: 1.5;
+}
+
+.coach-message-source {
+  display: block;
+  width: fit-content;
+  margin-bottom: 5px;
+  color: #9fc9ff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.coach-message-source.is-local {
+  color: var(--text-secondary);
 }
 
 .coach-message.is-assistant {
@@ -1732,9 +2012,73 @@ summary:focus-visible,
   margin: 0;
 }
 
-.suggestions-heading span {
+.suggestions-heading-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  min-width: 0;
+}
+
+.suggestions-heading-hint {
   color: var(--text-secondary);
   font-size: 0.66rem;
+}
+
+.computer-ai-status {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid rgba(83, 224, 161, 0.42);
+  border-radius: 999px;
+  background: rgba(83, 224, 161, 0.12);
+  color: #8ff1c5;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.computer-ai-status.is-offline {
+  border-color: rgba(255, 127, 110, 0.42);
+  background: rgba(255, 127, 110, 0.1);
+  color: #ffb0a5;
+}
+
+.analysis-coach-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  width: min(100%, 360px);
+  margin-top: 8px;
+  padding: 3px;
+  border: 1px solid rgba(147, 165, 200, 0.22);
+  border-radius: 10px;
+  background: rgba(8, 15, 29, 0.48);
+}
+
+.suggestions-card .analysis-coach-mode button {
+  min-height: 32px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.suggestions-card .analysis-coach-mode button:hover,
+.suggestions-card .analysis-coach-mode button:focus-visible {
+  background: rgba(90, 162, 255, 0.1);
+  color: #d9e9ff;
+  transform: none;
+}
+
+.suggestions-card .analysis-coach-mode button.is-active {
+  background: rgba(90, 162, 255, 0.2);
+  color: #f4f8ff;
+  box-shadow: inset 0 0 0 1px rgba(112, 169, 255, 0.36);
 }
 
 .suggestions-card .lines {
@@ -2230,6 +2574,32 @@ button.computer-explanation-toggle:focus-visible,
 .perspective-move-assessment-header span {
   color: var(--text-secondary) !important;
   font-size: 0.68rem;
+}
+
+.perspective-move-assessment-header .perspective-coach-source {
+  margin-left: auto;
+  padding: 2px 6px;
+  border: 1px solid rgba(147, 165, 200, 0.28);
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.perspective-move-assessment-header .perspective-coach-source.is-ai {
+  border-color: rgba(83, 224, 161, 0.38);
+  background: rgba(83, 224, 161, 0.12);
+  color: #8ff1c5 !important;
+}
+
+.perspective-move-assessment-header .perspective-coach-source.is-loading {
+  border-color: rgba(112, 169, 255, 0.35);
+  color: #9dc4ff !important;
+}
+
+.perspective-move-assessment-header .perspective-coach-source.is-local {
+  border-color: rgba(255, 200, 87, 0.35);
+  color: #ffd37a !important;
 }
 
 .perspective-move-assessment-header strong {
@@ -2859,6 +3229,48 @@ button.perspective-alternative-button,
     rgba(240, 184, 106, 0.045);
 }
 
+.coach-phase-review {
+  margin: 18px 0;
+}
+
+.coach-phase-review-heading h3 {
+  margin: 2px 0 12px;
+}
+
+.coach-phase-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.coach-phase-review-card {
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.coach-phase-review-card > strong,
+.coach-phase-review-card > span {
+  display: block;
+}
+
+.coach-phase-review-card > strong {
+  color: #f8d59d;
+}
+
+.coach-phase-review-card > span {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 0.68rem;
+}
+
+.coach-phase-review-card p {
+  margin: 10px 0 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
 .learning-summary-heading h3 {
   margin: 2px 0 12px;
   color: #f7f1e9;
@@ -3042,27 +3454,14 @@ button.perspective-alternative-button,
 
 .review-explanation-mode {
   display: inline-flex;
-  padding: 3px;
-  border: 1px solid rgba(125, 181, 255, 0.25);
-  border-radius: 10px;
-  background: rgba(8, 16, 30, 0.58);
-}
-
-.review-explanation-mode-button {
   padding: 6px 10px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--text-secondary);
+  border: 1px solid rgba(125, 181, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(83, 153, 255, 0.22);
+  color: var(--text-primary);
   font: inherit;
   font-size: 0.7rem;
   font-weight: 750;
-  cursor: pointer;
-}
-
-.review-explanation-mode-button[aria-pressed="true"] {
-  background: rgba(83, 153, 255, 0.22);
-  color: var(--text-primary);
   box-shadow: inset 0 0 0 1px rgba(125, 181, 255, 0.28);
 }
 
@@ -3958,6 +4357,11 @@ button.perspective-alternative-button,
 
   .analysis-column {
     display: flex;
+  }
+
+  .coach-analysis-phases,
+  .coach-phase-review-grid {
+    grid-template-columns: 1fr;
   }
 
   .play-mode-card {

@@ -5,6 +5,7 @@ node_modules/
 .wrangler/
 out/
 coverage/
+.cache/
 
 # Local environment
 .env
@@ -21,3 +22,8 @@ public/libs/stockfish/
 # Local deployment artifacts
 *.tgz
 *.tar.gz
+
+# Reproducible local PGN training and Stockfish batch artifacts
+database/
+data/pgn/coach-pgn-training.json
+data/pgn/coach-pgn-verification.jsonl

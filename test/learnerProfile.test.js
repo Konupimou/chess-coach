@@ -2,9 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   buildLearnerProfile,
+  COACH_RATING_OPTIONS,
+  DEFAULT_COACH_RATING,
   DEFAULT_LEARNER_RATING,
   explanationLimitsForLevel,
   learnerProfileForCoach,
+  normalizeCoachRating,
   ratingToLearnerLevel,
 } from "../learnerProfile.js";
 
@@ -170,6 +173,34 @@ test("Erklärungslimits wachsen kontrolliert mit der Spielstärke", () => {
   assert.equal(expert.terminology.defineUncommonTerms, false);
 });
 
+test("die vier Coach-Elo-Stufen erzeugen unterscheidbare Antwortprofile", () => {
+  assert.deepEqual(COACH_RATING_OPTIONS, [800, 1000, 1400, 1800]);
+  assert.equal(normalizeCoachRating("1400"), 1400);
+  assert.equal(normalizeCoachRating(1200), DEFAULT_COACH_RATING);
+
+  const profiles = COACH_RATING_OPTIONS.map((rating) => (
+    learnerProfileForCoach({ rating })
+  ));
+  assert.deepEqual(
+    profiles.map((profile) => profile.responseStyle.id),
+    ["foundations", "building", "club", "advanced"],
+  );
+  assert.deepEqual(
+    profiles.map((profile) => profile.explanationLimits.variations.maximumPliesPerLine),
+    [3, 4, 6, 8],
+  );
+  assert.match(profiles[0].responseStyle.language, /Schachbegriff/);
+  assert.match(profiles[0].responseStyle.goal, /Grobe Fehler/);
+  assert.deepEqual(profiles[0].responseStyle.thinkingChecklist.slice(0, 2), [
+    "Bin ich im Schach?",
+    "Was droht mein Gegner?",
+  ]);
+  assert.equal(profiles[0].responseStyle.answerRules.mainIdeas, 1);
+  assert.equal(profiles[0].explanationLimits.short.minimumSentences, 3);
+  assert.equal(profiles[0].explanationLimits.deep.maximumSections, 3);
+  assert.match(profiles[3].responseStyle.language, /Schachterminologie/);
+});
+
 test("Coach-Kontext ist minimal und kann keine Accountdaten weiterreichen", () => {
   const context = learnerProfileForCoach({
     accountState: {
@@ -185,6 +216,7 @@ test("Coach-Kontext ist minimal und kann keine Accountdaten weiterreichen", () =
     "rating",
     "level",
     "explanationLimits",
+    "responseStyle",
   ]);
   assert.equal(context.rating, 1725);
   assert.equal(context.level, "intermediate");

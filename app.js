@@ -16,6 +16,7 @@ import {
   analysisEntryFromInfo,
   analysisEntryFromMultiPv,
   buildFallbackFeedback,
+  buildCoachPhaseSummary,
   buildLearningSummary,
   buildPvFrames,
   calculateMoveAccuracy,
@@ -60,6 +61,7 @@ import {
 } from "./gameMetadata.js";
 import {
   loadOpeningBook,
+  openingContinuationsForPath,
   openingCoachContext,
 } from "./openingRecognition.js";
 import {
@@ -83,7 +85,10 @@ import {
 import { buildPositionEvidence } from "./positionEvidence.js";
 import {
   buildLearnerProfile,
+  COACH_RATING_OPTIONS,
+  DEFAULT_COACH_RATING,
   learnerProfileForCoach,
+  normalizeCoachRating,
 } from "./learnerProfile.js";
 import {
   buildLocalMoveExplanation,
@@ -254,6 +259,7 @@ export class ChessApp {
     this.chatStatusEl = null;
     this.chatBusy = false;
     this.coachConfigured = null;
+    this.coachRatingInputs = [];
     this.lastEvalPawns = null;
     this.chatRequestController = null;
     this.playCoachController = null;
@@ -261,6 +267,7 @@ export class ChessApp {
     this.suggestionCoachTimer = null;
     this.suggestionCoachKey = "";
     this.suggestionCoachReasons = new Map();
+    this.suggestionCoachSource = "local";
     this.expandedSuggestionRanks = new Set();
     this.expandedOpeningAnnouncements = new Set();
     this.suggestionCoachExplanation = null;
@@ -270,9 +277,13 @@ export class ChessApp {
     this.computerExplanationExpanded = false;
     this.suggestionExplanationExpanded = false;
     this.moveExplanationControllers = new Map();
+    this.moveExplanationActiveRequests = 0;
+    this.moveExplanationRequestQueue = [];
+    this.moveExplanationConcurrency = 2;
     this.moveExplanationCache = new Map();
-    this.moveExplanationStorageKey = "chess-coach.move-explanations.v4";
-    this.aiMoveExplanationsStorageKey = "chess-coach.ai-move-explanations.enabled";
+    this.moveExplanationStorageKey = "chess-coach.move-explanations.v5";
+    // Der Coach nutzt die Online-Vertiefung immer. Lokale Erklärungen bleiben
+    // ausschließlich als sofortige Vorschau und als Ausfallsicherung erhalten.
     this.aiMoveExplanationsEnabled = true;
     this.coachGameGeneration = 1;
     this.previewState = null;
@@ -318,6 +329,7 @@ export class ChessApp {
     this.gameSaveDraft = createGameSaveDraft();
     this.gameSaveDraftDirty = false;
     this.analysisPerspective = "w";
+    this.analysisCoachMode = "continue";
     this.openingBook = null;
     this.openingRecognition = null;
     this.openingLifecycle = null;
@@ -331,13 +343,6 @@ export class ChessApp {
       this.browserStorage = window.localStorage;
     } catch {
       this.browserStorage = null;
-    }
-    try {
-      this.aiMoveExplanationsEnabled = this.browserStorage?.getItem(
-        this.aiMoveExplanationsStorageKey,
-      ) !== "false";
-    } catch {
-      this.aiMoveExplanationsEnabled = true;
     }
     this.loadMoveExplanationCache();
     this.accountState = loadAccountState(
@@ -414,6 +419,7 @@ export class ChessApp {
     this.boardSurface = boardSurface;
     this.playModeButton = document.getElementById("play-mode-button");
     this.analysisModeButton = document.getElementById("analysis-mode-button");
+    this.coachAnalysisModeButton = document.getElementById("coach-analysis-mode-button");
     this.moveListSection = document.querySelector(".move-list-section");
     this.moveListEyebrow = document.getElementById("move-list-eyebrow");
     this.moveListTitle = document.getElementById("move-list-title");
@@ -536,7 +542,7 @@ export class ChessApp {
       this.stopAllBoardPreviews();
       const orientation = this.board.flip();
       this.moveArrows?.setOrientation(orientation);
-      if (this.appMode === "analysis") {
+      if (this.appMode !== "play") {
         this.setAnalysisPerspective(orientation === "black" ? "b" : "w", {
           updateBoard: false,
         });
@@ -597,6 +603,7 @@ export class ChessApp {
 
     this.createPlayPanel(engineAvailable);
     this.createReviewJourneyPanel();
+    this.createCoachAnalysisPanel();
 
     this.suggestionsEl = document.createElement('div');
     this.suggestionsEl.id = 'engine-suggestions';
@@ -604,10 +611,27 @@ export class ChessApp {
     this.suggestionsEl.innerHTML = [
       '<div class="suggestions-heading">',
       '<p class="eyebrow">Schachcomputer</p>',
-      '<span>Berühren oder fokussieren: am Brett ansehen</span>',
+      '<div class="suggestions-heading-status">',
+      '<span class="suggestions-heading-hint">Berühren oder fokussieren: am Brett ansehen</span>',
+      '<span class="computer-ai-status is-active" role="status" aria-label="KI-Erklärungen sind aktiv">KI aktiv</span>',
+      '</div>',
+      '</div>',
+      '<div class="analysis-coach-mode" role="group" aria-label="Ansicht des Schachcoachs">',
+      '<button type="button" data-analysis-coach-mode="continue">Weiterspielen</button>',
+      '<button type="button" data-analysis-coach-mode="review">Zug verstehen</button>',
       '</div>',
       '<div class="lines muted">Warten auf Analyse…</div>',
     ].join('');
+    this.computerAiStatusEl = this.suggestionsEl.querySelector(".computer-ai-status");
+    this.analysisCoachModeButtons = Array.from(
+      this.suggestionsEl.querySelectorAll("[data-analysis-coach-mode]"),
+    );
+    this.analysisCoachModeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        this.setAnalysisCoachMode(button.dataset.analysisCoachMode);
+      });
+    });
+    this.syncAnalysisCoachModeControl();
     this.analysisPerspectiveButtons = {};
     analysisColumn.appendChild(this.suggestionsEl);
 
@@ -782,8 +806,10 @@ export class ChessApp {
     this.createAccountPanel();
     this._onPlayModeClick = () => this.setAppMode("play");
     this._onAnalysisModeClick = () => this.setAppMode("analysis");
+    this._onCoachAnalysisModeClick = () => this.setAppMode("coach");
     this.playModeButton?.addEventListener("click", this._onPlayModeClick);
     this.analysisModeButton?.addEventListener("click", this._onAnalysisModeClick);
+    this.coachAnalysisModeButton?.addEventListener("click", this._onCoachAnalysisModeClick);
     this.detachKeys = attachKeyboard({
       onLeft: () => this.reviewJourney
         ? this.navigateReviewJourney(-1)
@@ -974,7 +1000,11 @@ export class ChessApp {
     const liveSwitchText = document.createElement("span");
     liveSwitchText.textContent = "Feedback";
     liveSwitch.append(this.playLiveFeedbackInput, liveSwitchText);
-    liveHeading.append(liveTitle, liveSwitch);
+    liveHeading.append(
+      liveTitle,
+      this.createCoachRatingControl({ id: "play-coach-rating", compact: true }),
+      liveSwitch,
+    );
     liveCoach.appendChild(liveHeading);
 
     this.playFeedbackEl = document.createElement("div");
@@ -1110,6 +1140,109 @@ export class ChessApp {
     this.analysisColumn.prepend(panel);
   }
 
+  createCoachAnalysisPanel() {
+    const panel = document.createElement("section");
+    panel.className = "card coach-analysis-card";
+    panel.hidden = true;
+    panel.setAttribute("aria-labelledby", "coach-analysis-title");
+    this.coachAnalysisPanel = panel;
+
+    const heading = document.createElement("div");
+    heading.className = "coach-analysis-heading";
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "eyebrow";
+    eyebrow.textContent = "Coach-Analyse";
+    const title = document.createElement("h2");
+    title.id = "coach-analysis-title";
+    title.textContent = "Verstehe deine Partie – nicht nur die Bewertung";
+    const description = document.createElement("p");
+    description.textContent = "Der Coach verbindet Stockfish, Eröffnungswissen und passende Stellungsmuster zu einer geführten Nachbesprechung.";
+    heading.append(eyebrow, title, description);
+    panel.appendChild(heading);
+
+    const phases = document.createElement("div");
+    phases.className = "coach-analysis-phases";
+    [
+      ["Eröffnung", "Ideen, typische Pläne und den Punkt erklären, an dem die bekannte Theorie endet."],
+      ["Mittelspiel", "Strategische Motive, sinnvolle Kandidatenzüge und ihre Entscheidungslogik zeigen."],
+      ["Schlüsselmomente", "Die wichtigsten Entscheidungen am Brett ansehen: Was war gut, was war dringend?"],
+      ["Endspiel", "Relevante Theorie, Gewinnpläne und konkrete Verteidigungsressourcen herausarbeiten."],
+    ].forEach(([phaseTitle, detail]) => {
+      const item = document.createElement("article");
+      item.className = "coach-analysis-phase";
+      const strong = document.createElement("strong");
+      strong.textContent = phaseTitle;
+      const span = document.createElement("span");
+      span.textContent = detail;
+      item.append(strong, span);
+      phases.appendChild(item);
+    });
+    panel.appendChild(phases);
+
+    const principles = document.createElement("ul");
+    principles.className = "coach-analysis-principles";
+    [
+      "Nicht nur: Was war der beste Zug? Sondern: Warum war die Idee wichtig?",
+      "Woran kannst du dasselbe Muster in einer späteren Partie wiedererkennen?",
+      "Was hast du bereits gut gemacht und solltest du beibehalten?",
+      "Am Ende erhältst du ein bis drei konkrete Lernpunkte und passende Aufgaben.",
+    ].forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      principles.appendChild(item);
+    });
+    panel.appendChild(principles);
+
+    this.coachAnalysisStatusEl = document.createElement("div");
+    this.coachAnalysisStatusEl.className = "coach-analysis-status";
+    this.coachAnalysisStatusEl.setAttribute("role", "status");
+    this.coachAnalysisStatusEl.setAttribute("aria-live", "polite");
+    panel.appendChild(this.coachAnalysisStatusEl);
+
+    const actions = document.createElement("div");
+    actions.className = "coach-analysis-actions";
+    this.coachAnalysisStartButton = document.createElement("button");
+    this.coachAnalysisStartButton.type = "button";
+    this.coachAnalysisStartButton.className = "primary-action-button";
+    this.coachAnalysisStartButton.textContent = "Coach-Analyse starten";
+    this.coachAnalysisStartButton.addEventListener("click", () => this.startFullGameReview());
+    this.coachAnalysisResultButton = document.createElement("button");
+    this.coachAnalysisResultButton.type = "button";
+    this.coachAnalysisResultButton.className = "secondary-button";
+    this.coachAnalysisResultButton.textContent = "Letzte Coach-Analyse öffnen";
+    this.coachAnalysisResultButton.addEventListener("click", () => {
+      const report = this.gameReviewReport || this.savedGameReview;
+      if (!report) return;
+      this.renderFeedbackReport(report, report.feedback);
+      if (!this.feedbackDialog.open) this.feedbackDialog.showModal();
+    });
+    actions.append(this.coachAnalysisStartButton, this.coachAnalysisResultButton);
+    panel.appendChild(actions);
+    this.analysisColumn.appendChild(panel);
+    this.renderCoachAnalysisPanel();
+  }
+
+  renderCoachAnalysisPanel() {
+    if (!this.coachAnalysisPanel) return;
+    const moveCount = Math.max(0, this.getCurrentPath().length - 1);
+    const report = this.gameReviewReport || this.savedGameReview;
+    if (this.reviewRunning) {
+      this.coachAnalysisStatusEl.textContent = "Die Partie wird gerade Stellung für Stellung geprüft …";
+    } else if (report?.final) {
+      const moments = report.criticalMoments?.length || 0;
+      this.coachAnalysisStatusEl.textContent = `Coach-Analyse bereit: ${report.analyzedMoves || 0} Züge geprüft und ${moments} Schlüsselmoment${moments === 1 ? "" : "e"} ausgewählt.`;
+    } else if (moveCount > 0) {
+      this.coachAnalysisStatusEl.textContent = `${moveCount} Halbzüge sind bereit. Starte die Coach-Analyse, wenn die Partie vollständig ist.`;
+    } else {
+      this.coachAnalysisStatusEl.textContent = "Spiele, importiere oder öffne zuerst eine Partie. Danach kann der Coach sie vollständig nachbesprechen.";
+    }
+    this.coachAnalysisStartButton.disabled = moveCount < 1 || this.reviewRunning;
+    this.coachAnalysisStartButton.textContent = report?.final
+      ? "Coach-Analyse aktualisieren"
+      : "Coach-Analyse starten";
+    this.coachAnalysisResultButton.hidden = !report?.final;
+  }
+
   createPlaySetupDialog(engineAvailable) {
     const dialog = document.createElement("dialog");
     dialog.id = "play-setup-dialog";
@@ -1200,6 +1333,19 @@ export class ChessApp {
     });
     levelGroup.appendChild(levelGrid);
     form.appendChild(levelGroup);
+
+    const coachLevelGroup = document.createElement("fieldset");
+    coachLevelGroup.className = "play-option-group play-coach-level-group";
+    const coachLevelLegend = document.createElement("legend");
+    coachLevelLegend.textContent = "Wie soll der Coach erklären?";
+    const coachLevelHint = document.createElement("p");
+    coachLevelHint.textContent = "Passt Sprache, Fachbegriffe und Variantentiefe an – nicht die Stärke des Gegners.";
+    coachLevelGroup.append(
+      coachLevelLegend,
+      coachLevelHint,
+      this.createCoachRatingControl({ id: "setup-coach-rating" }),
+    );
+    form.appendChild(coachLevelGroup);
 
     const feedbackOption = document.createElement("label");
     feedbackOption.className = "play-feedback-option";
@@ -1409,7 +1555,7 @@ export class ChessApp {
       if (session.coachBusy && !session.coachAutomaticBusy) {
         const thinking = document.createElement("div");
         thinking.className = "play-coach-message is-assistant is-thinking";
-        thinking.textContent = "Der Coach formuliert eine einfache Antwort …";
+        thinking.textContent = "Der Coach formuliert eine passende Antwort …";
         this.playCoachConversationEl.appendChild(thinking);
       }
       this.playCoachConversationEl.hidden = (
@@ -1436,7 +1582,7 @@ export class ChessApp {
   }
 
   setAppMode(mode, { force = false, silent = false } = {}) {
-    const nextMode = mode === "analysis" ? "analysis" : "play";
+    const nextMode = ["analysis", "coach"].includes(mode) ? mode : "play";
     if (nextMode === this.appMode) {
       this.updateModeUi();
       return true;
@@ -1446,7 +1592,7 @@ export class ChessApp {
       return false;
     }
     if (
-      nextMode === "analysis"
+      nextMode !== "play"
       && this.playSession.active
       && this.playSession.phase !== "game-over"
       && !force
@@ -1459,9 +1605,10 @@ export class ChessApp {
 
     this.stopAllBoardPreviews();
     this.engine?.cancelSearch?.();
-    if (nextMode === "analysis") {
+    if (nextMode !== "play") {
       this.cancelPlaySession();
-      this.appMode = "analysis";
+      if (nextMode !== "coach") this.stopReviewJourney({ silent: true });
+      this.appMode = nextMode;
       this.engine?.setMultiPV?.(this.suggestionCount === 0 ? 1 : this.suggestionCount);
       this.setAnalysisPerspective(
         this.gameSaveDraft?.playerColor || this.analysisPerspective,
@@ -1476,13 +1623,19 @@ export class ChessApp {
     this.updateModeUi();
     if (nextMode === "analysis") this.evaluateCurrentPosition();
     if (!silent) {
-      this.showToast(nextMode === "analysis" ? "Analysebereich geöffnet." : "Spielbereich geöffnet.");
+      this.showToast(({
+        play: "Spielbereich geöffnet.",
+        analysis: "Analysebereich geöffnet.",
+        coach: "Coach-Analyse geöffnet.",
+      })[nextMode]);
     }
     return true;
   }
 
   updateModeUi() {
     const isPlay = this.appMode === "play";
+    const isAnalysis = this.appMode === "analysis";
+    const isCoachAnalysis = this.appMode === "coach";
     const setModeButton = (button, active) => {
       if (!button) return;
       button.classList.toggle("is-active", active);
@@ -1490,31 +1643,42 @@ export class ChessApp {
       else button.removeAttribute("aria-current");
     };
     setModeButton(this.playModeButton, isPlay);
-    setModeButton(this.analysisModeButton, !isPlay);
+    setModeButton(this.analysisModeButton, isAnalysis);
+    setModeButton(this.coachAnalysisModeButton, isCoachAnalysis);
     this.boardContainer?.classList.toggle("is-play-mode", isPlay);
+    this.boardContainer?.classList.toggle("is-coach-analysis-mode", isCoachAnalysis);
     if (this.boardStage) {
       this.boardStage.setAttribute(
         "aria-label",
-        isPlay ? "Partie gegen die Engine" : "Schachanalyse",
+        isPlay ? "Partie gegen die Engine" : isCoachAnalysis ? "Geführte Coach-Analyse" : "Schachanalyse",
       );
     }
     if (this.playPanel) this.playPanel.hidden = !isPlay;
-    if (this.suggestionsEl) this.suggestionsEl.hidden = isPlay;
-    if (this.chatWrapper) this.chatWrapper.hidden = isPlay;
-    if (this.evalBar?.container) this.evalBar.container.hidden = isPlay;
-    if (this.engineSettingsButton) this.engineSettingsButton.hidden = isPlay;
+    if (this.suggestionsEl) this.suggestionsEl.hidden = !isAnalysis;
+    if (this.chatWrapper) this.chatWrapper.hidden = !isAnalysis;
+    if (this.coachAnalysisPanel) this.coachAnalysisPanel.hidden = !isCoachAnalysis;
+    if (this.evalBar?.container) this.evalBar.container.hidden = !isAnalysis;
+    if (this.engineSettingsButton) this.engineSettingsButton.hidden = !isAnalysis;
 
     if (this.exportButton) this.exportButton.hidden = isPlay;
     if (this.saveGameButton) this.saveGameButton.hidden = isPlay;
     this.saveStatusEl?.setAttribute("aria-live", isPlay ? "off" : "polite");
     if (this.resetButton) {
-      this.resetButton.textContent = isPlay ? "Neue Trainingspartie" : "Neue Analyse";
+      this.resetButton.textContent = isPlay
+        ? "Neue Trainingspartie"
+        : isCoachAnalysis
+          ? "Neue Coach-Analyse"
+          : "Neue Analyse";
     }
     if (this.moveListEyebrow) {
-      this.moveListEyebrow.textContent = isPlay ? "Partieverlauf" : "Variantenbaum";
+      this.moveListEyebrow.textContent = isPlay
+        ? "Partieverlauf"
+        : isCoachAnalysis
+          ? "Coach-Analyse"
+          : "Variantenbaum";
     }
     if (this.moveListTitle) {
-      this.moveListTitle.textContent = isPlay ? "Gespielte Züge" : "Zugliste";
+      this.moveListTitle.textContent = isPlay ? "Gespielte Züge" : isCoachAnalysis ? "Partieverlauf" : "Zugliste";
     }
     if (this.keyboardHint) this.keyboardHint.hidden = isPlay;
     this.moveListSection?.classList.toggle("is-play-mode", isPlay);
@@ -1522,6 +1686,7 @@ export class ChessApp {
     if (isPlay) this.moveArrows?.clear();
     else this.renderMoveArrows();
     this.renderPlayPanel();
+    this.renderCoachAnalysisPanel();
     this.updateFeedbackAvailability();
     this.updateSaveGameButton();
     this.scheduleBoardResize();
@@ -1913,6 +2078,7 @@ export class ChessApp {
     this.updateGameStatus();
     this.refreshLiveAccuracy();
     this.renderPlayPanel();
+    this.renderCoachAnalysisPanel();
     this.evaluateCurrentPosition();
     this.refreshOpeningRecognition();
     return move;
@@ -2365,21 +2531,33 @@ export class ChessApp {
   async requestAutomaticPlayCoachFeedback(feedback, reportMove) {
     if (!feedback || !this.playSession.liveFeedback || this.coachConfigured === false) return;
     const alternative = reportMove?.bestSan && reportMove.bestSan !== reportMove.san;
+    const foundationsBlunder = this.getCoachRating() === 800
+      && ["mistake", "blunder"].includes(reportMove?.quality);
+    const foundations = this.getCoachRating() === 800;
     const opening = alternative
-      ? [
-        `Erkläre zuerst locker und konkret, warum ${reportMove.san} hier zu kurz greift.`,
-        `Nenne erst danach ${reportMove.bestSan} als bessere Möglichkeit und sage kurz, was der Zug besser löst.`,
-      ].join(" ")
+      ? foundationsBlunder
+        ? [
+          `Erkläre nur die wichtigste konkrete Gefahr nach ${reportMove.san}.`,
+          `Verrate ${reportMove.bestSan} in dieser ersten Antwort noch nicht.`,
+          "Beende die Antwort mit einer einfachen Frage zur wichtigsten Gefahr: Matt, ein gegnerischer Schlagzug oder eine ungedeckte Figur.",
+        ].join(" ")
+        : [
+          `Erkläre zuerst locker und konkret, warum ${reportMove.san} hier zu kurz greift.`,
+          `Nenne erst danach ${reportMove.bestSan} als bessere Möglichkeit und sage kurz, was der Zug besser löst.`,
+        ].join(" ")
       : feedback.quality === "best" || feedback.quality === "excellent"
-        ? "Beginne locker, zum Beispiel mit „Sauber, das passt hier gut, weil …“."
+        ? foundations
+          ? "Sage nur knapp, was der Zug konkret leistet. Verwende keine Lob-Floskel."
+          : "Beginne locker, zum Beispiel mit „Sauber, das passt hier gut, weil …“."
         : "Beginne locker, zum Beispiel mit „Das passt, weil …“.";
     this.playSession.coachQueue.push({
       message: [
-        `Bewerte ${feedback.title} für einen Schachanfänger in höchstens zwei kurzen Sätzen.`,
+        `Bewerte ${feedback.title} passend zum eingestellten Coach-Niveau in höchstens zwei Sätzen.`,
         opening,
         "Schreib so, wie ein entspannter Coach direkt neben dem Brett sprechen würde: per du, kurz und ohne steife Lehrbuchsprache.",
         "Erkläre nur, was sich sicher aus den gelieferten Analysedaten ablesen lässt.",
-        "Verwende einfache Wörter und keine Begriffe wie Engine, Stockfish, PV, Centipawn, Initiative oder Kandidatenzug.",
+        "Halte dich bei Wortwahl, Fachbegriffen und Erklärungstiefe strikt an das gelieferte learner_profile.",
+        "Verwende keine Begriffe wie Engine, Stockfish, PV, Centipawn, Initiative oder Kandidatenzug.",
         "Nenne keine Zugfolge und keinen Zug für die jetzt entstandene Stellung.",
       ].filter(Boolean).join(" "),
       ply: feedback.ply,
@@ -2419,6 +2597,14 @@ export class ChessApp {
       && conversation.at(-1)?.content === message
     ) {
       conversation.pop();
+    }
+    const latestAutomaticReply = session.feedbackHistory[0]?.coachText;
+    if (
+      !automatic
+      && latestAutomaticReply
+      && !conversation.some((entry) => entry.content === latestAutomaticReply)
+    ) {
+      conversation.push({ role: "assistant", content: latestAutomaticReply });
     }
     try {
       const response = await fetch("/api/chat", {
@@ -2806,13 +2992,13 @@ export class ChessApp {
     };
     const semanticClaims = semantic
       ? [
-        ["verdict", "assessment"],
         ["moveIdea", "move_effect"],
+        ["verdict", "assessment"],
+        ["opponentReply", "variation"],
+        ["concreteConsequence", "variation"],
         ["alternative", "alternative"],
         ...(expanded
           ? [
-            ["opponentReply", "variation"],
-            ["concreteConsequence", "variation"],
             ["comparison", "position_change"],
             ["takeaway", "principle"],
           ]
@@ -3081,26 +3267,118 @@ export class ChessApp {
     return milestone;
   }
 
+  renderOpeningSuggestions(body, continuations) {
+    body.style.color = "#fff";
+    body.replaceChildren();
+    const intro = document.createElement("section");
+    intro.className = "opening-options-intro";
+    const title = document.createElement("strong");
+    title.textContent = continuations.length > 1
+      ? "Mehrere gute Eröffnungswege"
+      : "Fortsetzung aus dem Eröffnungsbuch";
+    const copy = document.createElement("p");
+    copy.textContent = continuations.length > 1
+      ? "Diese Züge stehen in der Eröffnungsdatenbank. Hier gibt es nicht den einen besten Zug."
+      : "Dieser Zug steht in der Eröffnungsdatenbank. Das ist eine Theorie-Option, keine Bestzug-Aussage.";
+    intro.append(title, copy);
+    body.appendChild(intro);
+
+    continuations.forEach((continuation) => {
+      const data = {
+        fen: this.analysisFen || this.game.fen(),
+        searchId: this.suggestionState?.searchId || null,
+        multipv: 1,
+        pv: [continuation.uci],
+      };
+      const plan = buildCoachVisualPlan({
+        fen: data.fen,
+        pv: data.pv,
+        rank: 1,
+      });
+      if (!plan) return;
+      const row = document.createElement("div");
+      row.className = "suggestion-line is-opening-option";
+      row.tabIndex = 0;
+      const header = document.createElement("div");
+      header.className = "suggestion-line-header";
+      const label = document.createElement("span");
+      label.textContent = "Eröffnungsoption";
+      const source = document.createElement("span");
+      source.textContent = "Lokale Datenbank";
+      header.append(label, source);
+      const move = document.createElement("div");
+      move.className = "moves";
+      move.textContent = continuation.san;
+      row.append(header, move);
+      if (continuation.openings.length > 0) {
+        const names = document.createElement("p");
+        names.className = "opening-option-names";
+        names.textContent = `Zum Beispiel: ${continuation.openings.join(" · ")}`;
+        row.appendChild(names);
+      }
+      row.setAttribute(
+        "aria-label",
+        `Eröffnungsoption ${continuation.san} aus der lokalen Eröffnungsdatenbank`,
+      );
+      row.title = `${continuation.san} als Eröffnungsoption am Brett ansehen`;
+      this.bindCoachPlanPreview(row, () => this.startSuggestionPreview(data, row, plan), {
+        onActivate: () => this.playSuggestionMove(data, plan),
+      });
+      body.appendChild(row);
+    });
+  }
+
   renderSuggestions() {
     if (!this.suggestionsEl) return;
     if (this.previewState || this.moveListPreviewState) {
       this.suggestionsDirtyDuringPreview = true;
       return;
     }
-    this.renderMoveArrows();
     const body = this.suggestionsEl.querySelector('.lines');
     if (!body) return;
-    const ownTurn = this.game.turn() === this.getAnalysisPerspective();
-    const hint = this.suggestionsEl.querySelector(".suggestions-heading span");
+    const reviewMode = this.getAnalysisCoachMode() === "review";
+    const openingContinuations = !reviewMode && this.suggestionCount > 0
+      ? openingContinuationsForPath(this.getCurrentPath(), this.openingBook, { limit: 5 })
+      : [];
+    this.renderCoachDataSources(this.currentRecommendationDataSources({
+      openingContinuations,
+    }));
+    if (openingContinuations.length > 0) this.moveArrows?.clear();
+    else this.renderMoveArrows();
+    const sourceTitle = this.suggestionsEl.querySelector(".suggestions-heading .eyebrow");
+    if (sourceTitle) {
+      sourceTitle.textContent = openingContinuations.length > 0
+        ? "Eröffnungsdatenbank"
+        : "Schachcomputer";
+    }
+    if (this.computerAiStatusEl) {
+      this.computerAiStatusEl.classList.toggle("is-opening-book", openingContinuations.length > 0);
+      this.computerAiStatusEl.classList.toggle(
+        "is-active",
+        openingContinuations.length > 0 || this.coachConfigured !== false,
+      );
+      this.computerAiStatusEl.classList.toggle(
+        "is-offline",
+        openingContinuations.length === 0 && this.coachConfigured === false,
+      );
+      this.computerAiStatusEl.textContent = openingContinuations.length > 0
+        ? "Lokales Eröffnungsbuch"
+        : this.coachConfigured === false
+          ? "KI nicht verbunden"
+          : "KI aktiv";
+    }
+    const hint = this.suggestionsEl.querySelector(".suggestions-heading-hint");
     if (hint) {
-      hint.textContent = ownTurn
+      hint.textContent = openingContinuations.length > 0
+        ? "Mehrere spielbare Fortsetzungen – ohne Engine-Rangliste"
+        : !reviewMode
         ? "Berühren oder fokussieren: am Brett ansehen"
-        : "Rückblick auf deinen letzten Zug";
+        : "Rückblick auf den letzten Zug";
     }
 
     const terminal = this.suggestionState?.terminal
       || terminalPositionState(this.analysisFen || this.game.fen());
-    if (terminal.status !== "ongoing" && terminal.status !== "invalid") {
+    if (!reviewMode && terminal.status !== "ongoing" && terminal.status !== "invalid") {
       body.style.color = '#fff';
       body.replaceChildren();
       const plan = buildTerminalVisualPlan(terminal.fen || this.analysisFen || this.game.fen());
@@ -3118,7 +3396,7 @@ export class ChessApp {
       return;
     }
 
-    if (!ownTurn) {
+    if (reviewMode) {
       const path = this.getCurrentPath();
       const latest = this.latestComputerExplanation;
       const currentMove = path.at(-1)?.move;
@@ -3138,9 +3416,10 @@ export class ChessApp {
       )
         ? latest.explanation
         : null;
-      this.renderLastPerspectiveMoveAssessment(body, {
+      this.renderLatestMoveAssessment(body, {
         explanation: currentExplanation,
         positionEvidence: latest?.positionEvidence,
+        source: latest?.source || "unavailable",
       });
       const milestone = this.renderOpeningMilestone();
       if (milestone) body.prepend(milestone);
@@ -3153,6 +3432,11 @@ export class ChessApp {
       const milestone = this.renderOpeningMilestone();
       if (milestone) body.appendChild(milestone);
       body.appendChild(document.createTextNode('Vorschläge deaktiviert.'));
+      return;
+    }
+
+    if (openingContinuations.length > 0) {
+      this.renderOpeningSuggestions(body, openingContinuations);
       return;
     }
 
@@ -3286,20 +3570,20 @@ export class ChessApp {
     this.scheduleSuggestionCoachReasons(lines);
   }
 
-  renderLastPerspectiveMoveAssessment(
+  renderLatestMoveAssessment(
     body,
-    { explanation = null, positionEvidence = null } = {},
+    { explanation = null, positionEvidence = null, source = "unavailable" } = {},
   ) {
-    const move = this.getLastPerspectiveMoveReview();
+    const move = this.getLatestVerifiedMoveReview();
     body.innerHTML = "";
     if (!move) {
       body.style.color = "#93a5c8";
-      body.textContent = "Dein letzter Zug wird gerade bewertet …";
+      body.textContent = "Der letzte Zug wird gerade bewertet …";
       return;
     }
     const assessment = describeMoveAssessment(move);
     if (!assessment) {
-      body.textContent = "Für deinen letzten Zug liegt noch keine sichere Bewertung vor.";
+      body.textContent = "Für den letzten Zug liegt noch keine sichere Bewertung vor.";
       return;
     }
 
@@ -3319,9 +3603,16 @@ export class ChessApp {
       verified?.playedUci
       && verified.playedUci === verified.bestUci,
     );
-    const equivalent = !exactBest
-      && Number.isFinite(verified?.lossCp)
-      && verified.lossCp <= 15;
+    const evidenceAlternative = positionEvidence?.moveComparison?.alternative;
+    const evidenceSaysEquivalent = (
+      evidenceAlternative?.relation === "equivalent"
+      && evidenceAlternative?.move?.uci === verified?.bestUci
+      && positionEvidence?.playedMove?.uci === verified?.playedUci
+    );
+    const equivalent = !exactBest && (
+      (Number.isFinite(verified?.lossCp) && verified.lossCp <= 20)
+      || evidenceSaysEquivalent
+    );
     const isError = ["inaccuracy", "mistake", "blunder"]
       .includes(verified?.quality);
     body.style.color = "#fff";
@@ -3331,31 +3622,58 @@ export class ChessApp {
     const header = document.createElement("div");
     header.className = "perspective-move-assessment-header";
     const moveLabel = document.createElement("span");
-    moveLabel.textContent = `Dein Zug · ${move.san || "unbekannt"}`;
+    moveLabel.textContent = `Letzter Zug · ${move.san || "unbekannt"}`;
     const quality = document.createElement("strong");
     quality.textContent = `${presentation.symbol} ${presentation.label}`;
-    header.append(moveLabel, quality);
+    const sourceBadge = document.createElement("span");
+    const aiSource = ["ai", "cache", "client-cache"].includes(source);
+    sourceBadge.className = `perspective-coach-source is-${aiSource ? "ai" : source}`;
+    sourceBadge.textContent = aiSource
+      ? "KI-Antwort"
+      : source === "loading"
+        ? "KI lädt …"
+        : "Lokaler Ersatz";
+    header.append(moveLabel, sourceBadge, quality);
 
     const reason = document.createElement("p");
     const explanationMatchesPlayedMove = (
       explanation?.subjectUci === verified?.playedUci
     );
-    const concreteClaim = compactMoveExplanationClaims(
+    const concreteClaims = compactMoveExplanationClaims(
       explanationMatchesPlayedMove ? explanation : null,
-      { maximum: 4 },
-    )
-      .find((claim) => (
+      { maximum: 7 },
+    );
+    const concreteClaim = concreteClaims.find((claim) => (
         ["position_change", "move_effect"].includes(claim?.claimKind)
         && !/sichere(?:n|r)? Bezugspunkt|vergleiche die Stellung|genauer Wert zeigt/i
           .test(claim?.text || "")
       ));
-    const playedEffect = concreteClaim?.text || "";
+    const directErrorClaim = isError
+      ? concreteClaims.find((claim) => (
+        ["verdict", "opponentReply", "concreteConsequence", "comparison"]
+          .includes(claim?.semanticField)
+        && !/konkreter Grund ist .* noch nicht zuverlässig erklärbar/i
+          .test(claim?.text || "")
+      ))
+      : null;
+    const simpleDevelopmentPieces = {
+      n: "den Springer",
+      b: "den Läufer",
+      r: "den Turm",
+      q: "die Dame",
+    };
+    const foundationsDevelopment = (
+      !isError
+      && this.getCoachRating() === 800
+      && plan?.ideaKind === "development"
+    )
+      ? `Damit entwickelst du ${simpleDevelopmentPieces[plan.piece] || "die Figur"}!`
+      : "";
+    const playedEffect = foundationsDevelopment || concreteClaim?.text || "";
     const concreteReason = isError
-      ? [
+      ? directErrorClaim?.text || [
         playedEffect,
-        playedEffect
-          ? "Das Problem dabei: Der Zug lässt die dringendere Aufgabe der Stellung liegen."
-          : `${verified.san} greift hier einfach zu kurz und lässt die dringendere Aufgabe liegen.`,
+        `${verified.san} lässt eine stärkere gegnerische Antwort zu.`,
         assessment.reason,
       ].filter(Boolean).join(" ")
       : (
@@ -3363,10 +3681,8 @@ export class ChessApp {
         || plan?.explanation
         || assessment.reason
       );
-    const confirmation = exactBest
-      ? "Sauber – genau das war hier gefragt."
-      : equivalent
-        ? "Passt – der Zug ist praktisch genauso stark wie die erste Wahl."
+    const confirmation = equivalent
+        ? "Der Zug ist praktisch genauso stark."
         : "";
     reason.textContent = [concreteReason, confirmation]
       .filter(Boolean)
@@ -3377,9 +3693,11 @@ export class ChessApp {
       const alternative = document.createElement("div");
       alternative.className = "perspective-move-alternative";
       const alternativeLabel = document.createElement("span");
-      alternativeLabel.textContent = isError
-        ? "Besser geht’s mit"
-        : "Noch genauer ist";
+      alternativeLabel.textContent = equivalent
+        ? "Genauso gut geht"
+        : isError
+          ? "Besser geht’s mit"
+          : "Etwas genauer ist";
       const alternativeButton = document.createElement("button");
       alternativeButton.type = "button";
       alternativeButton.className =
@@ -3444,6 +3762,28 @@ export class ChessApp {
     return this.analysisPerspective === "b" ? "b" : "w";
   }
 
+  getAnalysisCoachMode() {
+    return this.analysisCoachMode === "review" ? "review" : "continue";
+  }
+
+  syncAnalysisCoachModeControl() {
+    const mode = this.getAnalysisCoachMode();
+    (this.analysisCoachModeButtons || []).forEach((button) => {
+      const active = button.dataset.analysisCoachMode === mode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+
+  setAnalysisCoachMode(mode) {
+    const next = mode === "review" ? "review" : "continue";
+    if (next === this.getAnalysisCoachMode()) return;
+    this.analysisCoachMode = next;
+    this.syncAnalysisCoachModeControl();
+    this.stopAllBoardPreviews?.({ deferRender: true });
+    this.renderSuggestions();
+  }
+
   setAnalysisPerspective(
     color,
     { updateBoard = true, syncDraft = true, markDirty = true } = {},
@@ -3503,24 +3843,6 @@ export class ChessApp {
     return null;
   }
 
-  getLastPerspectiveMoveReview() {
-    const perspective = this.getAnalysisPerspective();
-    if (this.game.turn() === perspective) return null;
-    const path = this.getCurrentPath();
-    const ply = path.length - 1;
-    if (ply < 1 || path[ply]?.move?.color !== perspective) return null;
-    const reports = [
-      this.liveAccuracyReport,
-      this.gameReviewReport,
-      this.savedGameReview,
-    ];
-    for (const report of reports) {
-      const verified = this.verifiedReviewAtPath(report, path, ply);
-      if (verified?.color === perspective) return verified;
-    }
-    return null;
-  }
-
   getLatestVerifiedMoveReview() {
     const path = this.getCurrentPath();
     const ply = path.length - 1;
@@ -3546,6 +3868,7 @@ export class ChessApp {
     }
     this.suggestionCoachKey = "";
     this.suggestionCoachReasons = new Map();
+    this.suggestionCoachSource = "local";
     this.suggestionCoachExplanation = null;
     this.suggestionCoachPositionEvidence = null;
     this.suggestionCoachBusy = false;
@@ -3570,12 +3893,14 @@ export class ChessApp {
     this.computerExplanationExpanded = false;
     if (clearMessages) {
       this.chatMessages = [];
+      this.renderCoachDataSources();
       this.renderChat();
     }
   }
 
   refreshCoachContextAfterProfileChange() {
     if (this.destroyed) return;
+    this.syncCoachRatingControls();
     this.resetSuggestionCoachState({ abortChat: true });
     if (this.appMode !== "analysis") return;
     const lines = this.suggestionState?.lines
@@ -3628,7 +3953,7 @@ export class ChessApp {
         ? bundle.explanation
         : bundle.localExplanation,
       positionEvidence: bundle.positionEvidence,
-      source: this.moveExplanationCache.has(bundle.key) ? "client-cache" : "local",
+      source: this.moveExplanationCache.has(bundle.key) ? "client-cache" : "loading",
       gameGeneration: this.coachGameGeneration,
     };
     this.computerExplanationExpanded = false;
@@ -3675,9 +4000,9 @@ export class ChessApp {
   }
 
   buildAnalysisCoachEngineContext() {
-    return this.game.turn() === this.getAnalysisPerspective()
-      ? this.buildPositionCoachEngineContext()
-      : this.buildMoveCoachEngineContext(this.getLastPerspectiveMoveReview());
+    return this.getAnalysisCoachMode() === "review"
+      ? this.buildMoveCoachEngineContext(this.getLatestVerifiedMoveReview())
+      : this.buildPositionCoachEngineContext();
   }
 
   scheduleSuggestionCoachReasons(lines) {
@@ -3694,9 +4019,9 @@ export class ChessApp {
       fen: this.suggestionState?.fen || "",
       searchId: this.suggestionState?.searchId || "",
       learner: {
-        version: learner?.version || 0,
         level: learner?.level || "",
-        estimatedRating: learner?.estimatedRating || null,
+        rating: learner?.rating || null,
+        responseStyle: learner?.responseStyle?.id || "",
       },
       opening: {
         current: opening?.displayName || "",
@@ -3714,6 +4039,7 @@ export class ChessApp {
     this.suggestionCoachController?.abort();
     this.suggestionCoachKey = key;
     this.suggestionCoachReasons = new Map();
+    this.suggestionCoachSource = "local";
     this.suggestionCoachExplanation = null;
     this.suggestionCoachPositionEvidence = null;
     this.suggestionExplanationExpanded = false;
@@ -3732,6 +4058,7 @@ export class ChessApp {
     this.suggestionCoachController = controller;
     this.suggestionCoachKey = key;
     this.suggestionCoachReasons = new Map();
+    this.suggestionCoachSource = "local";
     this.suggestionCoachExplanation = null;
     this.suggestionCoachPositionEvidence = null;
     this.suggestionExplanationExpanded = false;
@@ -3787,6 +4114,9 @@ export class ChessApp {
         && requestSearchId === this.suggestionState?.searchId
       ) {
         this.suggestionCoachExplanation = result.explanation;
+        this.suggestionCoachSource = ["ai", "cache"].includes(result.source)
+          ? "ai"
+          : "local";
         fallbackReasons.set(1, shortReason(result.explanation));
         this.suggestionCoachReasons = fallbackReasons;
       }
@@ -3818,7 +4148,7 @@ export class ChessApp {
       this.appMode === "play"
       ||
       this.suggestionCount === 0
-      || this.game.turn() !== this.getAnalysisPerspective()
+      || this.getAnalysisCoachMode() === "review"
       || !this.suggestionState
       || this.suggestionState.lines.size === 0
     ) {
@@ -4441,6 +4771,7 @@ export class ChessApp {
     this.engine?.cancelSearch?.();
     this.reviewCancelled = false;
     this.reviewRunning = true;
+    this.renderCoachAnalysisPanel();
     this.markGameDirty();
     if (this.modePrimaryAction) this.modePrimaryAction.disabled = true;
     this.feedbackCancelButton.textContent = 'Abbrechen';
@@ -4493,7 +4824,14 @@ export class ChessApp {
         this.renderReviewProgress(index + 1, path.length, depth);
       }
 
-      report = summarizeGameReview(path, evaluations, { depth, final: true });
+      const reviewPlayerColor = ["w", "b"].includes(this.gameSaveDraft?.playerColor)
+        ? this.gameSaveDraft.playerColor
+        : this.analysisPerspective;
+      report = summarizeGameReview(path, evaluations, {
+        depth,
+        final: true,
+        playerColor: reviewPlayerColor,
+      });
       this.attachLocalMoveExplanations(report, path);
       report.result = this.getGameResult();
       report.feedback = buildFallbackFeedback(report);
@@ -4521,7 +4859,8 @@ export class ChessApp {
       this.reviewRunning = false;
       this.feedbackCancelButton.textContent = 'Schließen';
       this.updateFeedbackAvailability();
-      if (!this.destroyed) this.evaluateCurrentPosition();
+      this.renderCoachAnalysisPanel();
+      if (!this.destroyed && this.appMode === "analysis") this.evaluateCurrentPosition();
     }
 
     if (!report || this.reviewCancelled) return null;
@@ -4580,7 +4919,7 @@ export class ChessApp {
       this.reviewCoachController = new AbortController();
     }
     const payload = {
-      message: 'Formuliere fünf kurze Abschnitte: Spielverlauf, durch Stockfish belegte Hauptmotive, besonders starke Entscheidungen, wichtigste Verbesserung und konkreter Trainingsfokus. Beziehe jede konkrete Zug- oder Motivaussage ausschließlich auf die gelieferten Stockfish-PVs. Wenn die Daten kein gemeinsames Motiv belegen, sage das offen.',
+      message: 'Erstelle eine freundliche Coach-Analyse statt einer reinen Engine-Zusammenfassung. Gliedere knapp nach Eröffnung, Mittelspiel, Schlüsselmomenten und – falls vorhanden – Endspiel. Erkläre typische Pläne, Kandidatenzüge und Entscheidungslogik. Sage bei jeder Hauptidee: Warum ist sie wichtig und woran erkennt man das Muster wieder? Hebe ausdrücklich gute Entscheidungen hervor. Beende mit ein bis drei konkreten Lernpunkten und passenden Trainingsaufgaben. Beziehe jede konkrete Zug-, Varianten- oder Motivaussage ausschließlich auf die gelieferten Stockfish-PVs beziehungsweise das gelieferte Eröffnungswissen. Wenn eine Phase oder ein gemeinsames Motiv nicht belegt ist, sage das offen.',
       engineContext: this.buildGameReviewCoachEngineContext(report),
       openingContext: this.buildOpeningCoachContext(path),
       learnerProfile: this.getCoachLearnerProfile(),
@@ -4640,6 +4979,39 @@ export class ChessApp {
     leadCopy.appendChild(coverage);
     lead.appendChild(leadCopy);
     this.feedbackBodyEl.appendChild(lead);
+
+    const phaseSummary = buildCoachPhaseSummary(report);
+    if (phaseSummary.length > 0) {
+      const phaseSection = document.createElement("section");
+      phaseSection.className = "coach-phase-review";
+      const phaseHeading = document.createElement("div");
+      phaseHeading.className = "coach-phase-review-heading";
+      const phaseEyebrow = document.createElement("p");
+      phaseEyebrow.className = "eyebrow";
+      phaseEyebrow.textContent = "Coach-Blick";
+      const phaseTitle = document.createElement("h3");
+      phaseTitle.textContent = "Deine Partie nach Phasen";
+      phaseHeading.append(phaseEyebrow, phaseTitle);
+      phaseSection.appendChild(phaseHeading);
+      const phaseGrid = document.createElement("div");
+      phaseGrid.className = "coach-phase-review-grid";
+      phaseSummary.forEach((phase) => {
+        const card = document.createElement("article");
+        card.className = `coach-phase-review-card is-${phase.id}`;
+        const title = document.createElement("strong");
+        title.textContent = phase.title;
+        const counts = document.createElement("span");
+        counts.textContent = `${phase.analyzedMoves} eigene Züge · ${phase.strongMoves} stabil · ${phase.criticalMoves} kritisch`;
+        const positive = document.createElement("p");
+        positive.textContent = phase.positive;
+        const focus = document.createElement("p");
+        focus.textContent = phase.focus;
+        card.append(title, counts, positive, focus);
+        phaseGrid.appendChild(card);
+      });
+      phaseSection.appendChild(phaseGrid);
+      this.feedbackBodyEl.appendChild(phaseSection);
+    }
 
     if (report.criticalMoments?.length > 0) {
       const journeyCta = document.createElement("div");
@@ -4804,48 +5176,15 @@ export class ChessApp {
       movesHeader.className = "review-moves-header";
       const movesHeading = document.createElement("h3");
       movesHeading.textContent = "Zug für Zug";
-      const explanationMode = document.createElement("div");
-      explanationMode.className = "review-explanation-mode";
-      explanationMode.setAttribute("role", "group");
-      explanationMode.setAttribute("aria-label", "Art der Zugerklärung");
-      [
-        ["Nur lokal", false],
-        ["Mit KI", true],
-      ].forEach(([label, enabled]) => {
-        const modeButton = document.createElement("button");
-        modeButton.type = "button";
-        modeButton.textContent = label;
-        modeButton.className = "review-explanation-mode-button";
-        modeButton.setAttribute(
-          "aria-pressed",
-          String(this.aiMoveExplanationsEnabled === enabled),
-        );
-        modeButton.addEventListener("click", () => {
-          if (this.aiMoveExplanationsEnabled === enabled) return;
-          this.aiMoveExplanationsEnabled = enabled;
-          try {
-            this.browserStorage?.setItem(
-              this.aiMoveExplanationsStorageKey,
-              String(enabled),
-            );
-          } catch {
-            // Die Auswahl gilt dann nur für die laufende Sitzung.
-          }
-          if (!enabled) {
-            this.moveExplanationControllers.forEach((controller) => controller.abort());
-            this.moveExplanationControllers.clear();
-          }
-          this.renderFeedbackReport(report, feedback);
-        });
-        explanationMode.appendChild(modeButton);
-      });
+      const explanationMode = document.createElement("span");
+      explanationMode.className = "review-explanation-mode is-always-on";
+      explanationMode.setAttribute("aria-label", "KI-Erklärungen sind aktiv");
+      explanationMode.textContent = "KI aktiv";
       movesHeader.append(movesHeading, explanationMode);
       this.feedbackBodyEl.appendChild(movesHeader);
       const modeHint = document.createElement("p");
       modeHint.className = "review-explanation-mode-hint";
-      modeHint.textContent = this.aiMoveExplanationsEnabled
-        ? "Die ausführliche KI-Fassung wird erst geladen, wenn du einen Zug öffnest."
-        : "Alle Zugerklärungen bleiben lokal – es wird keine KI-Fassung angefragt.";
+      modeHint.textContent = "Die ausführliche KI-Fassung wird geladen, wenn du einen Zug öffnest.";
       this.feedbackBodyEl.appendChild(modeHint);
       const moveExplanations = document.createElement("div");
       moveExplanations.className = "review-move-explanations";
@@ -4875,8 +5214,10 @@ export class ChessApp {
           : move.coachLocalExplanation || move.coachExplanation;
         const groundedSummary = displayedExplanation?.schemaVersion === 3
           ? [
-            displayedExplanation.verdict?.text,
             displayedExplanation.moveIdea?.text,
+            displayedExplanation.verdict?.text,
+            displayedExplanation.opponentReply?.text,
+            displayedExplanation.concreteConsequence?.text,
             displayedExplanation.alternative?.text,
           ].filter(Boolean).join(" ")
           : displayedExplanation?.summary
@@ -4920,6 +5261,10 @@ export class ChessApp {
           const openingContext = this.buildOpeningCoachContext(
             currentReportPath.slice(0, Math.min(currentReportPath.length, move.ply + 1)),
           );
+          const requestKey = move.coachExplanationKey || `review:${move.ply}:${move.playedUci}`;
+          if (this.moveExplanationControllers.has(requestKey)) return;
+          const controller = new AbortController();
+          this.moveExplanationControllers.set(requestKey, controller);
           try {
             const result = await this.requestGroundedMoveExplanation({
               engineContext,
@@ -4929,6 +5274,7 @@ export class ChessApp {
                 .map((node) => node.move?.san)
                 .filter(Boolean),
               clientKey: move.coachExplanationKey || "",
+              signal: controller.signal,
             });
             if (
               !result?.explanation
@@ -4943,6 +5289,10 @@ export class ChessApp {
             );
           } catch {
             // Die sofort sichtbare lokale Vergleichserklärung bleibt erhalten.
+          } finally {
+            if (this.moveExplanationControllers.get(requestKey) === controller) {
+              this.moveExplanationControllers.delete(requestKey);
+            }
           }
         });
         moveExplanations.appendChild(item);
@@ -6339,10 +6689,8 @@ export class ChessApp {
     );
     appendMetric(
       'Coach-Niveau',
-      learnerProfile.levelLabel,
-      learnerProfile.usedDefault
-        ? 'Startwert 1200, bis Partieratings vorliegen'
-        : `automatisch aus ${learnerProfile.evidence.count} Rating-Hinweisen · ca. ${learnerProfile.rating}`,
+      `${learnerProfile.rating} Elo`,
+      'manuell gewählt · steuert Sprache und Erklärungstiefe',
     );
     this.accountBodyEl.appendChild(overview);
 
@@ -7125,6 +7473,7 @@ export class ChessApp {
       if (this.destroyed) return;
       this.refreshOpeningRecognition();
       this.refreshCoachContextAfterProfileChange();
+      if (this.appMode === "analysis") this.renderSuggestions();
     } catch (error) {
       if (this.destroyed) return;
       this.openingBookError = error?.message || "Lokale Eröffnungsdaten nicht verfügbar.";
@@ -7218,6 +7567,11 @@ export class ChessApp {
     );
     return {
       ...current,
+      continuations: openingContinuationsForPath(
+        selectedPath,
+        this.openingBook,
+        { limit: 5 },
+      ),
       announcement: openingAnnouncementContext(lifecycle?.currentEvent),
     };
   }
@@ -7227,11 +7581,77 @@ export class ChessApp {
       accountState: this.accountState,
       lichessAccount: this.lichessConnection?.user,
       lichessGames: this.lichessFetchedGames,
+      manualPreference: { rating: this.getCoachRating() },
     });
   }
 
   getCoachLearnerProfile() {
     return learnerProfileForCoach(this.getLearnerProfile());
+  }
+
+  getCoachRating() {
+    return normalizeCoachRating(
+      this.accountState?.profile?.coachPreferences?.rating,
+      DEFAULT_COACH_RATING,
+    );
+  }
+
+  createCoachRatingControl({ id, compact = false } = {}) {
+    const control = document.createElement("label");
+    control.className = `coach-rating-control${compact ? " is-compact" : ""}`;
+    const text = document.createElement("span");
+    text.textContent = "Coach-Niveau";
+    const select = document.createElement("select");
+    if (id) select.id = id;
+    select.setAttribute("aria-label", "Spielstärke für die Coach-Erklärungen");
+    COACH_RATING_OPTIONS.forEach((rating) => {
+      const option = document.createElement("option");
+      option.value = String(rating);
+      option.textContent = `${rating} Elo`;
+      select.appendChild(option);
+    });
+    select.value = String(this.getCoachRating());
+    select.addEventListener("change", () => this.setCoachRating(select.value));
+    this.coachRatingInputs.push(select);
+    control.append(text, select);
+    return control;
+  }
+
+  syncCoachRatingControls() {
+    const rating = String(this.getCoachRating());
+    this.coachRatingInputs = (this.coachRatingInputs || [])
+      .filter((input) => input?.isConnected);
+    this.coachRatingInputs.forEach((input) => {
+      input.value = rating;
+    });
+  }
+
+  setCoachRating(value) {
+    const rating = normalizeCoachRating(value, this.getCoachRating());
+    if (rating === this.getCoachRating()) {
+      this.syncCoachRatingControls();
+      return;
+    }
+    this.accountState = {
+      ...this.accountState,
+      profile: {
+        ...this.accountState.profile,
+        coachPreferences: { rating },
+      },
+    };
+    saveAccountState(this.browserStorage, this.accountStorageKey, this.accountState);
+    this.syncCoachRatingControls();
+    this.chatRequestController?.abort();
+    this.chatRequestController = null;
+    this.setChatBusy(false);
+    this.playCoachController?.abort();
+    this.playCoachController = null;
+    this.playSession.coachBusy = false;
+    this.playSession.coachAutomaticBusy = false;
+    this.refreshCoachContextAfterProfileChange();
+    this.renderPlayPanel();
+    if (this.accountDialog?.open) this.renderAccountDialog();
+    this.showToast(`Der Coach erklärt jetzt auf etwa ${rating} Elo.`);
   }
 
   loadMoveExplanationCache() {
@@ -7292,6 +7712,8 @@ export class ChessApp {
         }
         : null,
       lossCp: engineContext.moveReview?.lossCp,
+      quality: engineContext.moveReview?.quality,
+      engineDepth: engineContext.depth,
       onlyMove: engineContext.moveReview?.onlyMove === true,
       onlyMoveEvidence: engineContext.moveReview?.onlyMoveEvidence || null,
       pvLimit: 20,
@@ -7328,6 +7750,55 @@ export class ChessApp {
     };
   }
 
+  acquireMoveExplanationSlot(signal = null) {
+    const abortedError = () => {
+      const error = new Error("Zugerklärung abgebrochen.");
+      error.name = "AbortError";
+      return error;
+    };
+    if (signal?.aborted) return Promise.reject(abortedError());
+    if (this.moveExplanationActiveRequests < this.moveExplanationConcurrency) {
+      this.moveExplanationActiveRequests += 1;
+      return Promise.resolve();
+    }
+    return new Promise((resolve, reject) => {
+      const queued = {
+        signal,
+        resolve: () => {
+          signal?.removeEventListener?.("abort", queued.abort);
+          this.moveExplanationActiveRequests += 1;
+          resolve();
+        },
+        reject,
+        abort: () => {
+          const index = this.moveExplanationRequestQueue.indexOf(queued);
+          if (index >= 0) this.moveExplanationRequestQueue.splice(index, 1);
+          reject(abortedError());
+        },
+      };
+      signal?.addEventListener?.("abort", queued.abort, { once: true });
+      this.moveExplanationRequestQueue.push(queued);
+    });
+  }
+
+  releaseMoveExplanationSlot() {
+    this.moveExplanationActiveRequests = Math.max(
+      0,
+      this.moveExplanationActiveRequests - 1,
+    );
+    while (this.moveExplanationRequestQueue.length > 0) {
+      const next = this.moveExplanationRequestQueue.shift();
+      if (next.signal?.aborted) {
+        next.reject(Object.assign(new Error("Zugerklärung abgebrochen."), {
+          name: "AbortError",
+        }));
+        continue;
+      }
+      next.resolve();
+      break;
+    }
+  }
+
   async requestGroundedMoveExplanation({
     engineContext,
     openingContext = null,
@@ -7352,21 +7823,28 @@ export class ChessApp {
         clientKey: key,
       };
     }
-    const response = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        task: "move_explanation",
-        message: `Erkläre den legal geprüften Zug ${bundle.explanation.subjectSan} Zug für Zug.`,
-        engineContext,
-        openingContext: bundle.openingContext,
-        learnerProfile: bundle.learnerProfile,
-        history: Array.isArray(history) ? history : this.game.history(),
-        conversation: [],
-      }),
-      signal,
-    });
-    const payload = await response.json().catch(() => ({}));
+    await this.acquireMoveExplanationSlot(signal);
+    let response;
+    let payload;
+    try {
+      response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          task: "move_explanation",
+          message: `Erkläre den legal geprüften Zug ${bundle.explanation.subjectSan} Zug für Zug.`,
+          engineContext,
+          openingContext: bundle.openingContext,
+          learnerProfile: bundle.learnerProfile,
+          history: Array.isArray(history) ? history : this.game.history(),
+          conversation: [],
+        }),
+        signal,
+      });
+      payload = await response.json().catch(() => ({}));
+    } finally {
+      this.releaseMoveExplanationSlot();
+    }
     if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
     if (!payload?.explanation) return null;
     if (payload.source === "ai" || payload.source === "cache") {
@@ -7376,6 +7854,213 @@ export class ChessApp {
       ...payload,
       clientKey: key,
     };
+  }
+
+  currentRecommendationDataSources({ openingContinuations = null } = {}) {
+    const path = this.getCurrentPath?.() || [];
+    const reviewMode = this.getAnalysisCoachMode?.() === "review";
+    const options = Array.isArray(openingContinuations)
+      ? openingContinuations
+      : reviewMode
+        ? []
+        : openingContinuationsForPath(path, this.openingBook, { limit: 5 });
+    const openingContext = this.buildOpeningCoachContext?.(path) || {};
+    const engineLines = !reviewMode && this.suggestionState?.lines
+      ? Array.from(this.suggestionState.lines.values())
+      : [];
+    const latestReview = reviewMode ? this.getLatestVerifiedMoveReview?.() : null;
+    const engineUsed = options.length === 0 && (
+      engineLines.length > 0
+      || Boolean(latestReview)
+    );
+    const depth = engineLines.reduce(
+      (maximum, line) => Math.max(maximum, Number.parseInt(line?.depth, 10) || 0),
+      Number.parseInt(latestReview?.engineDepth, 10) || 0,
+    );
+    const latestExplanationSource = reviewMode
+      ? this.latestComputerExplanation?.source
+      : this.suggestionCoachSource;
+    const aiUsed = options.length === 0 && ["ai", "cache", "client-cache"].includes(
+      latestExplanationSource,
+    );
+    const principlesUsed = options.length === 0 && Boolean(
+      reviewMode
+        ? this.latestComputerExplanation?.explanation
+        : this.suggestionCoachExplanation,
+    );
+    const openingName = openingContext.displayName
+      || openingContext.sourceName
+      || openingContext.announcement?.displayName
+      || "";
+
+    return {
+      contextLabel: options.length > 0
+        ? "Aktuelle Eröffnungsoptionen"
+        : reviewMode
+          ? "Bewertung des letzten Zuges"
+          : "Aktuelle Empfehlung",
+      stockfish: {
+        used: engineUsed,
+        loading: options.length === 0 && !reviewMode && !engineUsed,
+        depth,
+        lines: engineLines.length || (latestReview ? 1 : 0),
+      },
+      board: {
+        used: Boolean(this.game?.fen?.()),
+      },
+      opening: {
+        used: options.length > 0,
+        loading: !this.openingBook && options.length === 0,
+        name: openingName,
+        options: options.length,
+      },
+      pgn: {
+        used: false,
+        count: 0,
+        exact: 0,
+        similar: 0,
+      },
+      principles: {
+        used: principlesUsed,
+        count: principlesUsed ? 1 : 0,
+      },
+      coach: {
+        rating: this.getCoachRating(),
+      },
+      ai: {
+        used: aiUsed,
+        loading: options.length === 0 && this.suggestionCoachBusy === true,
+      },
+    };
+  }
+
+  renderCoachDataSources(dataSources = null) {
+    if (!this.coachDataSourcesListEl || !this.coachDataSourcesCountEl) return;
+    const sources = dataSources && typeof dataSources === "object"
+      ? dataSources
+      : this.currentRecommendationDataSources();
+    if (this.coachDataSourcesEl) this.coachDataSourcesEl.hidden = false;
+    if (this.coachDataSourcesHintEl) {
+      this.coachDataSourcesHintEl.textContent = sources.contextLabel
+        ? `Datengrundlage: ${sources.contextLabel}.`
+        : "Diese Daten wurden der KI für die letzte Coach-Antwort mitgegeben.";
+    }
+    const pgn = sources.pgn || {};
+    const categoryLabels = {
+      opening: "Eröffnung",
+      middlegame: "Mittelspiel",
+      endgame: "Endspiel",
+      other: "Sonstiges",
+    };
+    const categoryText = (categories) => Object.entries(categories || {})
+      .filter(([, count]) => Number(count) > 0)
+      .map(([category, count]) => (
+        `${categoryLabels[category] || category}: ${Number(count).toLocaleString("de-DE")}`
+      ))
+      .join(" · ");
+    const sourceRows = [
+      {
+        label: "Stockfish",
+        used: sources.stockfish?.used === true,
+        detail: sources.stockfish?.used
+          ? [
+            sources.stockfish.depth ? `Tiefe ${sources.stockfish.depth}` : "berechnete Stellung",
+            sources.stockfish.lines ? `${sources.stockfish.lines} Variante${sources.stockfish.lines === 1 ? "" : "n"}` : "",
+          ].filter(Boolean).join(" · ")
+          : sources.stockfish?.loading
+            ? "Berechnung wird gerade geladen"
+            : "Für diese Empfehlung nicht genutzt",
+      },
+      {
+        label: "Aktuelles Brett",
+        used: sources.board?.used === true,
+        detail: sources.board?.used
+          ? "Figuren, Felder, Schachs und Schlagzüge"
+          : "Keine Brettfakten genutzt",
+      },
+      {
+        label: "Eröffnungsdatenbank",
+        used: sources.opening?.used === true,
+        detail: sources.opening?.used
+          ? [
+            sources.opening.name || "Lokales Eröffnungsbuch",
+            sources.opening.options
+              ? `${sources.opening.options} spielbare Datenbankzüge`
+              : "",
+          ].filter(Boolean).join(" · ")
+          : sources.opening?.loading
+            ? "Eröffnungsbuch wird gerade geladen"
+            : "Für diese Empfehlung nicht genutzt",
+      },
+      {
+        label: "PGN-Sammlung",
+        used: pgn.used === true,
+        detail: pgn.used
+          ? [
+            pgn.exact ? `${pgn.exact} exakt` : "",
+            pgn.similar ? `${pgn.similar} ähnlich` : "",
+            categoryText(pgn.categories),
+            Array.isArray(pgn.labels) ? pgn.labels.join(" · ") : "",
+            pgn.indexedPositions
+              ? [
+                `Sammlung: ${Number(pgn.indexedPositions).toLocaleString("de-DE")} Stellungen`,
+                pgn.indexedComments
+                  ? `${Number(pgn.indexedComments).toLocaleString("de-DE")} Kommentare`
+                  : "",
+                pgn.indexedSources
+                  ? `${Number(pgn.indexedSources).toLocaleString("de-DE")} importierte Dateien`
+                  : "",
+              ].filter(Boolean).join(", ")
+              : "",
+            categoryText(pgn.indexedCategories),
+          ].filter(Boolean).join(" · ")
+          : pgn.indexedPositions
+            ? `Kein Treffer in ${Number(pgn.indexedPositions).toLocaleString("de-DE")} Stellungen`
+            : "Kein passender PGN-Hinweis genutzt",
+      },
+      {
+        label: "Schachwissen",
+        used: sources.principles?.used === true,
+        detail: sources.principles?.used
+          ? `${sources.principles.count || 1} passende Regel${sources.principles.count === 1 ? "" : "n"}`
+          : "Keine zusätzliche Regel genutzt",
+      },
+      {
+        label: "Coach-Niveau",
+        used: Number.isInteger(sources.coach?.rating),
+        detail: Number.isInteger(sources.coach?.rating)
+          ? `${sources.coach.rating} Elo`
+          : `${this.getCoachRating?.() || 800} Elo`,
+      },
+      {
+        label: "KI",
+        used: sources.ai?.used === true,
+        detail: sources.ai?.used
+          ? "Formuliert die Antwort aus den geprüften Daten"
+          : sources.ai?.loading
+            ? "Erklärung wird gerade formuliert"
+            : "Für diese Empfehlung nicht genutzt",
+      },
+    ];
+    this.coachDataSourcesListEl.replaceChildren();
+    sourceRows.forEach((source) => {
+      const item = document.createElement("li");
+      item.className = source.used ? "is-used" : "is-unused";
+      const marker = document.createElement("span");
+      marker.className = "coach-data-source-marker";
+      marker.textContent = source.used ? "✓" : "–";
+      marker.setAttribute("aria-hidden", "true");
+      const text = document.createElement("div");
+      const label = document.createElement("strong");
+      label.textContent = source.label;
+      const detail = document.createElement("span");
+      detail.textContent = source.detail;
+      text.append(label, detail);
+      item.append(marker, text);
+      this.coachDataSourcesListEl.appendChild(item);
+    });
+    const usedCount = sourceRows.filter((source) => source.used).length;
+    this.coachDataSourcesCountEl.textContent = `${usedCount} aktiv`;
   }
 
   createChatPanel(container) {
@@ -7408,6 +8093,27 @@ export class ChessApp {
     const content = document.createElement("div");
     content.className = "coach-chat-content";
     panel.appendChild(content);
+
+    content.appendChild(this.createCoachRatingControl({
+      id: "analysis-coach-rating",
+      compact: true,
+    }));
+
+    const dataSources = document.createElement("details");
+    dataSources.className = "coach-data-sources";
+    dataSources.open = true;
+    this.coachDataSourcesEl = dataSources;
+    const dataSourcesSummary = document.createElement("summary");
+    const dataSourcesTitle = document.createElement("strong");
+    dataSourcesTitle.textContent = "Verwendete Daten";
+    this.coachDataSourcesCountEl = document.createElement("span");
+    dataSourcesSummary.append(dataSourcesTitle, this.coachDataSourcesCountEl);
+    const dataSourcesHint = document.createElement("p");
+    this.coachDataSourcesHintEl = dataSourcesHint;
+    this.coachDataSourcesListEl = document.createElement("ul");
+    dataSources.append(dataSourcesSummary, dataSourcesHint, this.coachDataSourcesListEl);
+    content.appendChild(dataSources);
+    this.renderCoachDataSources();
 
     this.chatBodyEl = document.createElement('div');
     this.chatBodyEl.className = 'chat-body';
@@ -7494,6 +8200,12 @@ export class ChessApp {
         this.chatMessages.length - MAX_CHAT_MESSAGES,
       );
     }
+    if (role === "assistant" && metadata.dataSources) {
+      this.renderCoachDataSources({
+        ...metadata.dataSources,
+        contextLabel: "Letzte Coach-Antwort",
+      });
+    }
     this.renderChat({ forceBottom: true });
   }
 
@@ -7509,6 +8221,8 @@ export class ChessApp {
     this.chatMessages.forEach((msg) => {
       const bubble = document.createElement('div');
       bubble.className = `coach-message is-${msg.role}`;
+      const messageContent = document.createElement("div");
+      messageContent.className = "coach-message-content";
       const visibleContent = msg.explanation
         ? moveExplanationToMarkdown(msg.explanation, { deep: msg.expanded === true })
         : msg.content;
@@ -7534,13 +8248,22 @@ export class ChessApp {
           });
         }
         this.renderInteractiveExplanationText(
-          bubble,
+          messageContent,
           { text: visibleContent, moveRefs },
           msg.positionEvidence,
         );
       } else {
-        renderChatMarkup(bubble, visibleContent);
+        renderChatMarkup(messageContent, visibleContent);
       }
+      if (msg.role === "assistant" && ["ai", "local"].includes(msg.source)) {
+        const sourceBadge = document.createElement("span");
+        sourceBadge.className = `coach-message-source is-${msg.source}`;
+        sourceBadge.textContent = msg.source === "ai"
+          ? (msg.pgnKnowledge > 0 ? "KI · PGN-Wissen" : "KI")
+          : "Lokale Antwort";
+        bubble.appendChild(sourceBadge);
+      }
+      bubble.appendChild(messageContent);
       if (msg.explanation?.deepDive?.length > 0) {
         const toggle = document.createElement("button");
         toggle.type = "button";
@@ -7601,7 +8324,7 @@ export class ChessApp {
       const reply = terminal.status === "checkmate"
         ? `${terminal.reason} Der König steht im Schach, und kein legaler Zug kann ihn retten: kein Fluchtfeld, kein legaler Schlag gegen den Angreifer und kein Blockieren der Angriffslinie ist möglich.`
         : terminal.reason;
-      this.appendChatMessage('assistant', reply);
+      this.appendChatMessage('assistant', reply, { source: "local" });
       this.setChatBusy(false);
       return;
     }
@@ -7632,7 +8355,11 @@ export class ChessApp {
       const data = await res.json();
       const reply = data?.reply || data?.choices?.[0]?.message?.content || 'Keine Antwort erhalten.';
       if (!requestStillCurrent()) return;
-      this.appendChatMessage('assistant', reply.trim());
+      this.appendChatMessage('assistant', reply.trim(), {
+        source: data?.source === "local" ? "local" : "ai",
+        pgnKnowledge: Number.isInteger(data?.pgnKnowledge) ? data.pgnKnowledge : 0,
+        dataSources: data?.dataSources || null,
+      });
       const assistantMessage = this.chatMessages.at(-1);
       if (assistantMessage && chatBundle?.positionEvidence) {
         assistantMessage.positionEvidence = chatBundle.positionEvidence;
@@ -7661,7 +8388,7 @@ export class ChessApp {
       button.disabled = Boolean(state);
     });
     if (this.chatStatusEl) {
-      this.chatStatusEl.textContent = state ? 'Der Coach formuliert eine einfache Antwort …' : '';
+      this.chatStatusEl.textContent = state ? 'Der Coach formuliert eine passende Antwort …' : '';
     }
   }
 
@@ -8010,7 +8737,7 @@ export class ChessApp {
     this.stopMoveListPreview();
     this.listView.render(this.moveTree, this.currentNode, {
       annotations: this.buildMoveAnnotations(),
-      showExplanations: this.appMode === "analysis",
+      showExplanations: this.appMode !== "play",
     });
   }
 
@@ -8147,6 +8874,19 @@ export class ChessApp {
       if (!response.ok) return;
       const status = await response.json();
       this.coachConfigured = Boolean(status.coachConfigured);
+      if (this.computerAiStatusEl) {
+        this.computerAiStatusEl.classList.toggle("is-active", this.coachConfigured);
+        this.computerAiStatusEl.classList.toggle("is-offline", !this.coachConfigured);
+        this.computerAiStatusEl.textContent = this.coachConfigured
+          ? "KI aktiv"
+          : "KI nicht verbunden";
+        this.computerAiStatusEl.setAttribute(
+          "aria-label",
+          this.coachConfigured
+            ? "KI-Erklärungen sind aktiv"
+            : "KI-Erklärungen sind nicht verbunden",
+        );
+      }
       if (!status.coachConfigured && this.chatStatusEl) {
         this.chatStatusEl.textContent = "Für den Coach fehlt noch OPENAI_API_KEY.";
       }
@@ -8231,6 +8971,9 @@ export class ChessApp {
     }
     if (this._onAnalysisModeClick) {
       this.analysisModeButton?.removeEventListener("click", this._onAnalysisModeClick);
+    }
+    if (this._onCoachAnalysisModeClick) {
+      this.coachAnalysisModeButton?.removeEventListener("click", this._onCoachAnalysisModeClick);
     }
     this.engineSettingsDialog?.remove();
     this.feedbackDialog?.remove();

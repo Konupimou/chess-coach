@@ -47,8 +47,8 @@ test("Spielmodus verbirgt Vorschläge und Pfeile und sperrt falsche Figuren", ()
   assert.match(dragSource, /this\.playSession\.phase !== "player-turn"/);
   assert.match(dragSource, /boardPiece\.color !== this\.playSession\.playerColor/);
   assert.match(arrowsSource, /this\.appMode === "play"/);
-  assert.match(appSource, /this\.suggestionsEl\.hidden = isPlay/);
-  assert.match(appSource, /this\.evalBar\.container\.hidden = isPlay/);
+  assert.match(appSource, /this\.suggestionsEl\.hidden = !isAnalysis/);
+  assert.match(appSource, /this\.evalBar\.container\.hidden = !isAnalysis/);
 });
 
 test("Enginepartien befüllen nur den Entwurf und gespeicherte Partien öffnen in Analyse", () => {
@@ -90,7 +90,7 @@ test("Analyse übergibt farbige Kurzerklärungen an die Zugliste", () => {
   const renderSource = methodSource("buildMoveAnnotations", "renderMoveList");
   assert.match(renderSource, /explainMoveQuality/);
   assert.match(renderSource, /MOVE_QUALITY/);
-  assert.match(appSource, /showExplanations: this\.appMode === "analysis"/);
+  assert.match(appSource, /showExplanations: this\.appMode !== "play"/);
   assert.match(appSource, /Zug für Zug/);
 });
 
@@ -188,7 +188,7 @@ test("positive Spielzüge animieren die gesetzte Figur", () => {
 });
 
 test("Zugreviews müssen zum exakten Variantenpfad statt nur zur Halbzugzahl passen", () => {
-  const source = methodSource("verifiedReviewAtPath", "getLastPerspectiveMoveReview");
+  const source = methodSource("verifiedReviewAtPath", "getLatestVerifiedMoveReview");
   assert.match(source, /verified\.playedUci !== expectedUci/);
   assert.match(source, /verified\.fenBefore !== parent\.fen/);
   assert.match(source, /resultingFrame\.fen !== node\.fen/);

@@ -264,7 +264,7 @@ test("Materialverlust innerhalb der geprüften Linie wird vergleichbar", () => {
       {
         rank: 1,
         evaluation: { unit: "cp", value: 0, perspective: "white" },
-        pvUci: ["d2e3"],
+        pvUci: ["d2e3", "g8f7"],
       },
       {
         rank: 2,
@@ -279,6 +279,8 @@ test("Materialverlust innerhalb der geprüften Linie wird vergleichbar", () => {
     lossCp: 900,
   });
 
+  assert.equal(evidence.moveComparison.comparisonHorizon, 2);
+  assert.equal(evidence.moveComparison.materialComparison.equalLength, true);
   assert.equal(evidence.moveComparison.played.materialBalanceDelta, -9);
   assert.ok(
     evidence.moveComparison.differences.some(
@@ -333,22 +335,24 @@ test("onlyMove und Bewertungsperspektive werden aus belegten Kandidaten abgeleit
     candidateLines: [
       {
         rank: 1,
-        evaluation: { unit: "cp", value: 100, perspective: "white" },
+        evaluation: { unit: "cp", value: 0, perspective: "white" },
         pvUci: ["e2e4", "e7e5"],
       },
       {
         rank: 2,
-        evaluation: { unit: "cp", value: -100, perspective: "white" },
+        evaluation: { unit: "cp", value: -200, perspective: "white" },
         pvUci: ["d2d4", "d7d5"],
       },
     ],
-    onlyMove: true,
-    onlyMoveEvidence: { type: "candidate_gap", gapCp: 200 },
   });
   assert.equal(onlyMove.moveComparison.onlyMove, true);
   assert.deepEqual(onlyMove.moveComparison.onlyMoveEvidence, {
-    type: "candidate_gap",
+    type: "only_move_to_avoid_loss",
+    legalMoveCount: null,
     gapCp: 200,
+    bestCp: 0,
+    secondCp: -200,
+    reason: "rank_two_crosses_losing_result_band",
   });
 
   const game = new Chess();

@@ -135,6 +135,23 @@ test("Schema 2 liest alte Schema-1-Partien, ohne sie automatisch umzuschreiben",
   assert.equal(storage.getItem(currentKey), null);
 });
 
+test("das gewählte Coach-Niveau wird sicher im Profil gespeichert", () => {
+  const storage = memoryStorage();
+  const key = storageKeyForIdentity(null);
+  const state = createAccountState({
+    name: "Paul",
+    coachPreferences: { rating: 1400 },
+  });
+  assert.equal(saveAccountState(storage, key, state), true);
+  assert.deepEqual(
+    loadAccountState(storage, key).profile.coachPreferences,
+    { rating: 1400 },
+  );
+
+  const invalid = createAccountState({ coachPreferences: { rating: 1200 } });
+  assert.equal("coachPreferences" in invalid.profile, false);
+});
+
 test("gespeicherte Reviews teilen keine veränderliche Referenz mit dem Live-Bericht", () => {
   const report = { final: true, feedback: "Vor dem Coach" };
   const state = upsertSavedGame(createAccountState(), {
