@@ -50,6 +50,16 @@ test("Schachcomputer steht in der Analyse vor dem Coach", () => {
   assert.match(appSource, /Technische Auswertung anzeigen/);
 });
 
+test("Eröffnungsbuch hält die Engine ruhig und Engine-Updates werden gedrosselt", () => {
+  assert.match(appSource, /hasOpeningDatabaseRecommendation/);
+  assert.match(appSource, /this\.engine\?\.cancelSearch\?\.\(\)/);
+  assert.match(appSource, /this\.evalBar\?\.setOpeningBook\?\.\(\)/);
+  assert.match(appSource, /verifiedSuggestionInfo\(info, 10\)/);
+  assert.match(appSource, /scheduleSuggestionRender\(delay = 90\)/);
+  assert.match(evalBarSource, /setOpeningBook\(\)/);
+  assert.match(styleSource, /#analysis-panel\.is-opening-book/);
+});
+
 test("Eröffnungserkennung bleibt lokal, wird aber nicht als eigene Karte angezeigt", () => {
   assert.match(appSource, /loadOpeningBook/);
   assert.match(appSource, /buildOpeningCoachContext/);

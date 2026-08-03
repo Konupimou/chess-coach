@@ -386,6 +386,15 @@ summary:focus-visible,
   opacity: 0.72;
 }
 
+#analysis-panel.is-opening-book #eval-marker {
+  background: var(--learning);
+}
+
+#analysis-panel.is-opening-book #eval-label {
+  color: #e6c18c;
+  font-weight: 750;
+}
+
 #analysis-panel .eval-title {
   overflow: hidden;
   color: var(--text-secondary);

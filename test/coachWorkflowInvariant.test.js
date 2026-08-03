@@ -26,7 +26,7 @@ test("Vorschläge erhalten Coach-Gründe und eine grafische Vorschau", () => {
   );
   assert.match(appSource, /onToggleExpanded/);
   assert.match(appSource, /expandedSuggestionRanks/);
-  assert.match(appSource, /verifiedSuggestionInfo\(info, 20\)/);
+  assert.match(appSource, /verifiedSuggestionInfo\(info, 10\)/);
   assert.match(appSource, /verifiedInfo\.pvComplete/);
   assert.match(appSource, /!this\.suggestionState\.lines\.has\(1\)/);
   assert.match(styleSource, /\.suggestion-line\.is-primary \.suggestion-coach-popover\s*\{[\s\S]*?display:\s*grid/);

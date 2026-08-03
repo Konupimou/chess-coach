@@ -31,7 +31,8 @@ export class EvalBar {
     this.container = document.createElement('div');
     this.container.id = 'analysis-panel';
     this.container.setAttribute("role", "meter");
-    this.container.setAttribute("aria-label", "Stockfish-Bewertung aus Sicht von Weiß");
+    this.defaultAriaLabel = "Stockfish-Bewertung aus Sicht von Weiß";
+    this.container.setAttribute("aria-label", this.defaultAriaLabel);
     this.container.setAttribute("aria-valuemin", "-8");
     this.container.setAttribute("aria-valuemax", "8");
     this.container.style.width = `${Math.max(28, width)}px`;
@@ -110,20 +111,41 @@ export class EvalBar {
     // Update visuals
     this.overlay.style.height = `${whitePct}%`;
     this.marker.style.top = `${100 - whitePct}%`;
+    this.marker.style.background = "#2a6";
 
     // Label text: show +/- with two decimals
     this.label.textContent = (evalScore >= 0 ? '+' : '') + evalScore.toFixed(2);
     this.container.setAttribute("aria-valuenow", String(clamped));
     this.container.setAttribute("aria-valuetext", `${this.label.textContent} Bauern für Weiß`);
+    this.container.setAttribute("aria-label", this.defaultAriaLabel);
     this.container.classList.remove("is-pending");
+    this.container.classList.remove("is-opening-book");
   }
 
   setPending() {
     if (!this.container) return;
     this.container.classList.add("is-pending");
+    this.container.classList.remove("is-opening-book");
     this.label.textContent = "…";
+    this.container.setAttribute("aria-label", this.defaultAriaLabel);
     this.container.removeAttribute("aria-valuenow");
     this.container.setAttribute("aria-valuetext", "Analyse läuft");
+  }
+
+  setOpeningBook() {
+    if (!this.container || !this.overlay || !this.marker || !this.label) return;
+    this.overlay.style.height = "50%";
+    this.marker.style.top = "50%";
+    this.marker.style.background = "#e6b96f";
+    this.label.textContent = "Buch";
+    this.container.classList.remove("is-pending");
+    this.container.classList.add("is-opening-book");
+    this.container.setAttribute("aria-label", "Eröffnungsdatenbank aktiv");
+    this.container.removeAttribute("aria-valuenow");
+    this.container.setAttribute(
+      "aria-valuetext",
+      "Keine Enginebewertung: Die Eröffnungsdatenbank ist aktiv",
+    );
   }
 
   resizeToBoard() {

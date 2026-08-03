@@ -258,6 +258,7 @@ export class ChessApp {
     this.analysisFen = this.game.fen();
     this.suggestionState = null;
     this.suggestionsEl = null;
+    this.suggestionRenderTimer = null;
     this._onEngineHashChanged = null;
     this._onEngineThreadsChanged = null;
     this.chatMessages = [];
@@ -2258,11 +2259,24 @@ export class ChessApp {
     return null;
   }
 
+  hasOpeningDatabaseRecommendation(path = this.getCurrentPath()) {
+    if (!this.openingBook || this.appMode !== "analysis") return false;
+    if (this.getAnalysisCoachMode() === "review") {
+      return Boolean(openingReviewForPath(path, this.openingBook, { limit: 3 }));
+    }
+    if (this.suggestionCount < 1) return false;
+    return openingContinuationsForPath(path, this.openingBook, { limit: 1 }).length > 0;
+  }
+
   evaluateCurrentPosition() {
     if (this.previewState || this.moveListPreviewState) {
       this.stopAllBoardPreviews();
     }
     this.resetSuggestionCoachState({ abortChat: true });
+    if (this.suggestionRenderTimer) {
+      window.clearTimeout(this.suggestionRenderTimer);
+      this.suggestionRenderTimer = null;
+    }
     const fen = this.game.fen();
     const searchPlan = this.getCurrentSearchPlan();
     const targetDepth = searchPlan?.depth || this.engine?.depth || 15;
@@ -2281,6 +2295,11 @@ export class ChessApp {
     this.expandedSuggestionRanks.clear();
     this.moveArrows?.clear();
     this.renderSuggestions();
+    if (this.hasOpeningDatabaseRecommendation()) {
+      this.engine?.cancelSearch?.();
+      this.evalBar?.setOpeningBook?.();
+      return;
+    }
     const terminal = this.suggestionState.terminal;
     if (terminal.status !== "ongoing" && terminal.status !== "invalid") {
       this.lastEvalPawns = Number.isFinite(terminal.whiteCp)
@@ -2354,7 +2373,7 @@ export class ChessApp {
     if (!this.suggestionState || info.fen !== this.suggestionState.fen) return;
     if (!this.suggestionState.searchId || info.searchId !== this.suggestionState.searchId) return;
     if (this.suggestionState.terminal?.status !== "ongoing") return;
-    const verifiedInfo = verifiedSuggestionInfo(info, 20);
+    const verifiedInfo = verifiedSuggestionInfo(info, 10);
     if (!verifiedInfo) return;
     const index = info.multipv || 1;
     const previous = this.suggestionState.lines.get(index);
@@ -2394,9 +2413,22 @@ export class ChessApp {
       if (this.previewState) {
         this.suggestionsDirtyDuringPreview = true;
       } else {
-        this.renderSuggestions();
+        this.scheduleSuggestionRender();
       }
     }
+  }
+
+  scheduleSuggestionRender(delay = 90) {
+    if (this.suggestionRenderTimer || this.destroyed) return;
+    this.suggestionRenderTimer = window.setTimeout(() => {
+      this.suggestionRenderTimer = null;
+      if (this.destroyed) return;
+      if (this.previewState || this.moveListPreviewState) {
+        this.suggestionsDirtyDuringPreview = true;
+        return;
+      }
+      this.renderSuggestions();
+    }, Math.max(0, delay));
   }
 
   handleEngineBestMove(result) {
@@ -7599,8 +7631,8 @@ export class ChessApp {
       this.openingBook = await loadOpeningBook();
       if (this.destroyed) return;
       this.refreshOpeningRecognition();
-      this.refreshCoachContextAfterProfileChange();
-      if (this.appMode === "analysis") this.renderSuggestions();
+      if (this.appMode === "analysis") this.evaluateCurrentPosition();
+      else this.refreshCoachContextAfterProfileChange();
     } catch (error) {
       if (this.destroyed) return;
       this.openingBookError = error?.message || "Lokale Eröffnungsdaten nicht verfügbar.";
@@ -9082,6 +9114,7 @@ export class ChessApp {
     this.playCoachController?.abort();
     this.suggestionCoachController?.abort();
     if (this.suggestionCoachTimer) window.clearTimeout(this.suggestionCoachTimer);
+    if (this.suggestionRenderTimer) window.clearTimeout(this.suggestionRenderTimer);
     this.moveExplanationControllers.forEach((controller) => controller.abort());
     this.moveExplanationControllers.clear();
     this.coachGameGeneration += 1;
