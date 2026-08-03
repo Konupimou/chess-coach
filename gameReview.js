@@ -5,13 +5,81 @@ import { PRACTICALLY_EQUIVALENT_LOSS_CP } from "./coachThresholds.js";
 export const MATE_CENTIPAWNS = 10_000;
 
 export const MOVE_QUALITY = Object.freeze({
-  best: { label: "Bester Zug", shortLabel: "Best", tone: "best" },
-  excellent: { label: "Sehr gut", shortLabel: "Sehr gut", tone: "excellent" },
-  good: { label: "Gut", shortLabel: "Gut", tone: "good" },
-  inaccuracy: { label: "Ungenauigkeit", shortLabel: "Ungenau", tone: "inaccuracy" },
-  mistake: { label: "Klarer Fehler", shortLabel: "Fehler", tone: "mistake" },
-  blunder: { label: "Patzer", shortLabel: "Patzer", tone: "blunder" },
+  brilliant: { label: "Brillant", shortLabel: "Brillant", symbol: "!!", tone: "brilliant" },
+  great: { label: "Großartig", shortLabel: "Großartig", symbol: "!", tone: "great" },
+  book: { label: "Buchzug", shortLabel: "Buch", symbol: "📖", tone: "book" },
+  best: { label: "Bester Zug", shortLabel: "Best", symbol: "★", tone: "best" },
+  excellent: { label: "Sehr gut", shortLabel: "Sehr gut", symbol: "👍", tone: "excellent" },
+  good: { label: "Gut", shortLabel: "Gut", symbol: "✓", tone: "good" },
+  inaccuracy: { label: "Ungenauigkeit", shortLabel: "Ungenau", symbol: "?!", tone: "inaccuracy" },
+  mistake: { label: "Fehler", shortLabel: "Fehler", symbol: "?", tone: "mistake" },
+  miss: { label: "Verpasste Chance", shortLabel: "Verpasst", symbol: "✕", tone: "miss" },
+  blunder: { label: "Grober Fehler", shortLabel: "Grober Fehler", symbol: "??", tone: "blunder" },
 });
+
+// Alle fachlichen Schwellen stehen an einer Stelle. Das System ist bewusst
+// nachvollziehbar und ahmt keine proprietäre Klassifizierung exakt nach.
+export const MOVE_CLASSIFICATION_CONFIG = Object.freeze({
+  excellentMaxLoss: 2,
+  goodMaxLoss: 5,
+  inaccuracyMaxLoss: 10,
+  mistakeMaxLoss: 20,
+  brilliantMaxLoss: 1,
+  brilliantMinimumSacrifice: 1.5,
+  greatMaxLoss: 1.5,
+  greatSecondBestGap: 8,
+  missWinningChance: 80,
+  missMinimumLoss: 10,
+  tacticalMissMinimumChance: 65,
+  tacticalMissSecondBestGap: 15,
+  tacticalMissMinimumLoss: 5,
+});
+
+export const POSITIVE_MOVE_QUALITIES = Object.freeze([
+  "brilliant", "great", "book", "best", "excellent", "good",
+]);
+export const CRITICAL_MOVE_QUALITIES = Object.freeze([
+  "inaccuracy", "mistake", "miss", "blunder",
+]);
+
+/**
+ * @typedef {"brilliant"|"great"|"book"|"best"|"excellent"|"good"|"inaccuracy"|"mistake"|"miss"|"blunder"} MoveClassification
+ *
+ * MoveReview enthält zusätzlich ältere Aliasfelder (`playedUci`, `bestUci`,
+ * `quality`, `winPercentLoss`), damit gespeicherte Analysen und der Coach
+ * abwärtskompatibel bleiben. `evaluationBeforeCp` und `evaluationAfterCp`
+ * sind immer aus Sicht des Spielers; Matt bleibt ausschließlich in
+ * `mateBefore` und `mateAfter`.
+ *
+ * @typedef {Object} MoveReview
+ * @property {number} ply
+ * @property {number} moveNumber
+ * @property {"w"|"b"} color
+ * @property {string} san
+ * @property {string} uci
+ * @property {string} fenBefore
+ * @property {string} fenAfter
+ * @property {number|null} evaluationBeforeCp
+ * @property {number|null} evaluationAfterCp
+ * @property {number|null} mateBefore
+ * @property {number|null} mateAfter
+ * @property {string|null} bestMoveUci
+ * @property {string|null} bestMoveSan
+ * @property {string[]} principalVariation
+ * @property {number} winChanceBefore
+ * @property {number} winChanceAfter
+ * @property {number} winChanceLoss
+ * @property {MoveClassification} classification
+ * @property {string} symbol
+ * @property {number} accuracy
+ *
+ * @typedef {Object} GameReview
+ * @property {number|null} whiteAccuracy
+ * @property {number|null} blackAccuracy
+ * @property {Record<MoveClassification, number>} whiteCounts
+ * @property {Record<MoveClassification, number>} blackCounts
+ * @property {MoveReview[]} moves
+ */
 
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 
@@ -362,10 +430,29 @@ export function formatPvWithMoveNumbers(fen, pv, limit = 20) {
   return tokens.join(" ");
 }
 
-export function winPercentFromCp(cp) {
+export function winChance(cp) {
   if (!Number.isFinite(cp)) return null;
   const bounded = clamp(cp, -MATE_CENTIPAWNS, MATE_CENTIPAWNS);
-  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * bounded)) - 1);
+  return 100 / (1 + Math.exp(-0.00368208 * bounded));
+}
+
+export const winPercentFromCp = winChance;
+
+export function moveAccuracy(winChanceLoss) {
+  if (!Number.isFinite(winChanceLoss)) return null;
+  const boundedLoss = Math.max(0, winChanceLoss);
+  if (boundedLoss === 0) return 100;
+  const value = 103.1668 * Math.exp(-0.04354 * boundedLoss) - 3.1669;
+  return clamp(value, 0, 100);
+}
+
+export function classifyWinChanceLoss(loss) {
+  if (!Number.isFinite(loss) || loss < 0) return "good";
+  if (loss <= MOVE_CLASSIFICATION_CONFIG.excellentMaxLoss) return "excellent";
+  if (loss <= MOVE_CLASSIFICATION_CONFIG.goodMaxLoss) return "good";
+  if (loss <= MOVE_CLASSIFICATION_CONFIG.inaccuracyMaxLoss) return "inaccuracy";
+  if (loss <= MOVE_CLASSIFICATION_CONFIG.mistakeMaxLoss) return "mistake";
+  return "blunder";
 }
 
 export function classifyCentipawnLoss(lossCp) {
@@ -380,17 +467,19 @@ export function classifyCentipawnLoss(lossCp) {
 
 function reviewQualityForDisplay(move) {
   const supplied = Object.hasOwn(MOVE_QUALITY, move?.quality) ? move.quality : "good";
-  if (!Number.isFinite(move?.lossCp)) {
-    return ["mistake", "blunder"].includes(supplied) ? "inaccuracy" : supplied;
+  const isStructuredClassification = move?.classification === supplied
+    && Number.isFinite(move?.winChanceLoss);
+  if (!isStructuredClassification && Number.isFinite(move?.lossCp)) {
+    const measured = classifyCentipawnLoss(move.lossCp);
+    if (measured !== "best") return measured;
   }
-  const measured = classifyCentipawnLoss(move.lossCp);
   if (
-    measured === "best"
+    supplied === "best"
     && move?.playedUci
     && move?.bestUci
     && move.playedUci !== move.bestUci
   ) return "excellent";
-  return measured;
+  return supplied;
 }
 
 export function classifyAccuracy(accuracy) {
@@ -409,23 +498,16 @@ export function calculateMoveAccuracy(beforeWhiteCp, afterWhiteCp, color) {
   const beforeMoverCp = clamp(beforeWhiteCp * sign, -MATE_CENTIPAWNS, MATE_CENTIPAWNS);
   const afterMoverCp = clamp(afterWhiteCp * sign, -MATE_CENTIPAWNS, MATE_CENTIPAWNS);
   const lossCp = Math.max(0, beforeMoverCp - afterMoverCp);
-  const beforeWin = winPercentFromCp(beforeMoverCp);
-  const afterWin = winPercentFromCp(afterMoverCp);
+  const beforeWin = winChance(beforeMoverCp);
+  const afterWin = winChance(afterMoverCp);
   const winPercentLoss = Math.max(0, beforeWin - afterWin);
-  const accuracy = winPercentLoss === 0
-    ? 100
-    : clamp(
-      103.1668100711649 * Math.exp(-0.04354415386753951 * winPercentLoss)
-        - 3.166924740191411,
-      0,
-      100,
-    );
+  const accuracy = moveAccuracy(winPercentLoss);
 
   return {
     accuracy,
     lossCp,
     winPercentLoss,
-    quality: classifyAccuracy(accuracy),
+    quality: classifyWinChanceLoss(winPercentLoss),
   };
 }
 
@@ -448,6 +530,9 @@ export function explainMoveQuality(move, options = {}) {
   );
   const consequence = immediateReplyConsequence(verified || move);
 
+  if (quality === "brilliant") return "Starker Fund: Du gibst bewusst Material und bekommst dafür genug Spiel.";
+  if (quality === "great") return "Das ist eine besonders starke Idee. Andere Züge waren deutlich schwächer.";
+  if (quality === "book") return "Der Zug steht im Eröffnungsbuch und ist hier eine gute Wahl.";
   if (practicallyEqual) {
     return `${bestSan} geht genauso gut.`;
   }
@@ -521,6 +606,11 @@ export function explainMoveQuality(move, options = {}) {
     const verdict = consequence || "Das ist ein klarer Fehler und deine Stellung wird deutlich schlechter.";
     return bestSan ? `${verdict} Besser war ${bestSan}.` : verdict;
   }
+  if (quality === "miss") {
+    return bestSan
+      ? `Hier verpasst du eine große Chance. Stark war ${bestSan}.`
+      : "Hier verpasst du eine große Chance.";
+  }
   if (quality === "blunder") {
     const verdict = consequence || "Das ist ein grober Fehler und deine Stellung wird viel schlechter.";
     return bestSan ? `${verdict} Besser war ${bestSan}.` : verdict;
@@ -547,6 +637,18 @@ export function describeMoveAssessment(move, options = {}) {
   );
   const consequence = immediateReplyConsequence(verified);
   const descriptions = {
+    brilliant: {
+      lead: "Brillant gefunden.",
+      reason: "Du gibst bewusst Material und bekommst dafür genug Spiel.",
+    },
+    great: {
+      lead: "Großartig gespielt.",
+      reason: "Diese Idee war deutlich stärker als die anderen Möglichkeiten.",
+    },
+    book: {
+      lead: "Das ist ein Buchzug.",
+      reason: "Der Zug ist aus dieser Eröffnungsstellung bekannt.",
+    },
     best: {
       lead: "Das war der beste Zug.",
       reason: rating === 800
@@ -590,6 +692,10 @@ export function describeMoveAssessment(move, options = {}) {
     mistake: {
       lead: "Das ist ein klarer Fehler.",
       reason: consequence || "Deine Stellung wird dadurch deutlich schlechter.",
+    },
+    miss: {
+      lead: "Du verpasst eine große Chance.",
+      reason: "Hier gab es eine deutlich stärkere Möglichkeit.",
     },
     blunder: {
       lead: "Das ist ein grober Fehler.",
@@ -745,6 +851,176 @@ function normalizedCandidateLines(entry, fen, color) {
   }).sort((left, right) => left.rank - right.rank);
 }
 
+const MATERIAL_VALUES = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
+
+function materialBalance(game, color) {
+  if (!game || !["w", "b"].includes(color)) return null;
+  let balance = 0;
+  game.board().flat().forEach((piece) => {
+    if (!piece) return;
+    const value = MATERIAL_VALUES[piece.type] || 0;
+    balance += piece.color === color ? value : -value;
+  });
+  return balance;
+}
+
+/**
+ * Vorsichtige Opfer-Heuristik: In einer legalen, von Stockfish gelieferten
+ * Variante muss der Spieler vorübergehend mindestens den konfigurierten
+ * Materialwert investieren. Ein normaler gleichwertiger Tausch zählt nicht.
+ */
+export function detectMaterialSacrifice({
+  fenBefore,
+  playedUci,
+  principalVariation = [],
+  color,
+  minimumInvestment = MOVE_CLASSIFICATION_CONFIG.brilliantMinimumSacrifice,
+} = {}) {
+  if (
+    typeof fenBefore !== "string"
+    || typeof playedUci !== "string"
+    || !["w", "b"].includes(color)
+    || !Array.isArray(principalVariation)
+    || principalVariation[0] !== playedUci
+  ) return false;
+
+  const game = new Chess();
+  try {
+    game.load(fenBefore);
+  } catch {
+    return false;
+  }
+  const beforeBalance = materialBalance(game, color);
+  let lowestBalance = beforeBalance;
+  let firstMove = null;
+  for (const uci of principalVariation.slice(0, 6)) {
+    let move;
+    try {
+      move = game.move({
+        from: uci.slice(0, 2),
+        to: uci.slice(2, 4),
+        promotion: uci.slice(4, 5) || undefined,
+      });
+    } catch {
+      return false;
+    }
+    if (!move) return false;
+    firstMove ||= move;
+    lowestBalance = Math.min(lowestBalance, materialBalance(game, color));
+  }
+  if (!firstMove) return false;
+  const movedValue = MATERIAL_VALUES[firstMove.piece] || 0;
+  const capturedValue = MATERIAL_VALUES[firstMove.captured] || 0;
+  const ordinaryTrade = Boolean(firstMove.captured && capturedValue >= movedValue - 0.5);
+  return !ordinaryTrade && beforeBalance - lowestBalance >= minimumInvestment;
+}
+
+function playerEvaluation(entry, color) {
+  const evaluation = evaluationForPlayer(
+    entry?.evaluation,
+    Number.isFinite(entry?.whiteCp) ? entry.whiteCp : scoreToWhiteCp(entry),
+    color,
+  );
+  if (evaluation?.unit === "mate") {
+    const mate = evaluation.value === 0
+      ? null
+      : Math.round(evaluation.value);
+    return {
+      centipawns: null,
+      mate,
+      winChance: mate === null ? null : mate > 0 ? 100 : 0,
+      detail: evaluation,
+    };
+  }
+  const centipawns = evaluation?.unit === "cp" && Number.isFinite(evaluation.value)
+    ? Math.round(evaluation.value)
+    : null;
+  return {
+    centipawns,
+    mate: null,
+    winChance: winChance(centipawns),
+    detail: evaluation,
+  };
+}
+
+function winChanceForCandidate(line) {
+  const evaluation = line?.evaluation;
+  if (evaluation?.unit === "mate" && Number.isFinite(evaluation.value)) {
+    return evaluation.value > 0 ? 100 : evaluation.value < 0 ? 0 : null;
+  }
+  return evaluation?.unit === "cp" && Number.isFinite(evaluation.value)
+    ? winChance(evaluation.value)
+    : null;
+}
+
+export function classifyMoveReview({
+  playedUci = "",
+  bestMoveUci = "",
+  winChanceBefore = null,
+  winChanceAfter = null,
+  mateBefore = null,
+  mateAfter = null,
+  secondBestWinChance = null,
+  isBookMove = false,
+  isOnlyMove = false,
+  isSacrifice = false,
+} = {}) {
+  const loss = Number.isFinite(winChanceBefore) && Number.isFinite(winChanceAfter)
+    ? Math.max(0, winChanceBefore - winChanceAfter)
+    : 0;
+  const isBestMove = Boolean(playedUci && bestMoveUci && playedUci === bestMoveUci);
+  const nearBest = isBestMove || loss <= MOVE_CLASSIFICATION_CONFIG.greatMaxLoss;
+  const secondBestGap = Number.isFinite(winChanceBefore) && Number.isFinite(secondBestWinChance)
+    ? Math.max(0, winChanceBefore - secondBestWinChance)
+    : 0;
+  const missedMate = Number.isFinite(mateBefore) && mateBefore > 0
+    && !(Number.isFinite(mateAfter) && mateAfter > 0);
+  const allowedMate = Number.isFinite(mateAfter) && mateAfter < 0
+    && !(Number.isFinite(mateBefore) && mateBefore < 0);
+  const winningChanceMissed = Number.isFinite(winChanceBefore)
+    && winChanceBefore >= MOVE_CLASSIFICATION_CONFIG.missWinningChance
+    && loss >= MOVE_CLASSIFICATION_CONFIG.missMinimumLoss;
+  const tacticalChanceMissed = Number.isFinite(winChanceBefore)
+    && winChanceBefore >= MOVE_CLASSIFICATION_CONFIG.tacticalMissMinimumChance
+    && secondBestGap >= MOVE_CLASSIFICATION_CONFIG.tacticalMissSecondBestGap
+    && loss >= MOVE_CLASSIFICATION_CONFIG.tacticalMissMinimumLoss;
+
+  let classification;
+  if (isBookMove) classification = "book";
+  else if (
+    nearBest
+    && loss <= MOVE_CLASSIFICATION_CONFIG.brilliantMaxLoss
+    && isSacrifice
+    && Number.isFinite(winChanceAfter)
+    && winChanceAfter >= 50
+    && !isOnlyMove
+  ) classification = "brilliant";
+  else if (
+    nearBest
+    && loss <= MOVE_CLASSIFICATION_CONFIG.greatMaxLoss
+    && secondBestGap >= MOVE_CLASSIFICATION_CONFIG.greatSecondBestGap
+    && !isOnlyMove
+  ) classification = "great";
+  else if (isBestMove) classification = "best";
+  else if (allowedMate) classification = "blunder";
+  else if (missedMate || winningChanceMissed || tacticalChanceMissed) classification = "miss";
+  else classification = classifyWinChanceLoss(loss);
+
+  return {
+    classification,
+    symbol: MOVE_QUALITY[classification].symbol,
+    winChanceLoss: loss,
+    flags: {
+      isBookMove: Boolean(isBookMove),
+      isBestMove,
+      isOnlyMove: Boolean(isOnlyMove),
+      isSacrifice: Boolean(isSacrifice),
+      missedMate,
+      allowedMate,
+    },
+  };
+}
+
 export function uciToSan(fen, uci) {
   if (typeof fen !== "string" || typeof uci !== "string") return "";
   const game = new Chess();
@@ -778,7 +1054,7 @@ export function selectCriticalMoments(moves, { playerColor = null, limit = 3 } =
   return (Array.isArray(moves) ? moves : [])
     .filter((move) => (
       move
-      && ["inaccuracy", "mistake", "blunder"].includes(move.quality)
+      && CRITICAL_MOVE_QUALITIES.includes(move.quality)
       && Number.isFinite(move.winPercentLoss)
       && (!perspective || move.color === perspective)
     ))
@@ -799,6 +1075,7 @@ export function summarizeGameReview(
     playerColor = null,
     coachRating = null,
     learnerProfile = null,
+    bookMovePlies = null,
   } = {},
 ) {
   const nodes = Array.isArray(path) ? path : [];
@@ -815,6 +1092,9 @@ export function summarizeGameReview(
     const color = node?.move?.color;
     const metrics = calculateMoveAccuracy(beforeCp, afterCp, color);
     if (!metrics) continue;
+    const beforePlayer = playerEvaluation(before, color);
+    const afterPlayer = playerEvaluation(after, color);
+    if (!Number.isFinite(beforePlayer.winChance) || !Number.isFinite(afterPlayer.winChance)) continue;
     const fenBefore = nodes[index - 1]?.fen || "";
     const candidateLines = normalizedCandidateLines(before, fenBefore, color);
     const bestCandidate = candidateLines.find((line) => line.rank === 1)
@@ -858,6 +1138,33 @@ export function summarizeGameReview(
       secondEvaluation: secondCandidate?.evaluation,
       legalMoveCount: onlyLegalMove ? 1 : before?.legalMoveCount,
     });
+    const playedContinuationUci = playedContinuationFrames.map((frame) => frame.uci);
+    const isBookMove = bookMovePlies instanceof Set
+      ? bookMovePlies.has(index)
+      : typeof bookMovePlies === "function"
+        ? Boolean(bookMovePlies(index, nodes.slice(0, index + 1)))
+        : false;
+    const isSacrifice = detectMaterialSacrifice({
+      fenBefore,
+      playedUci,
+      principalVariation: playedContinuationUci,
+      color,
+    });
+    const classificationResult = classifyMoveReview({
+      playedUci,
+      bestMoveUci: bestUci,
+      winChanceBefore: beforePlayer.winChance,
+      winChanceAfter: afterPlayer.winChance,
+      mateBefore: beforePlayer.mate,
+      mateAfter: afterPlayer.mate,
+      secondBestWinChance: winChanceForCandidate(secondCandidate),
+      isBookMove,
+      isOnlyMove: moveNecessity.onlyMove,
+      isSacrifice,
+    });
+    // Ein nachgewiesener Buchzug wird nicht gegen eine einzelne Engine-Hauptvariante
+    // bestraft: In der Eröffnung können mehrere Züge gleichermaßen richtig sein.
+    const accuracy = isBookMove ? 100 : moveAccuracy(classificationResult.winChanceLoss);
 
     const reportMove = {
       ply: index,
@@ -865,26 +1172,27 @@ export function summarizeGameReview(
       color,
       san: node?.move?.san || "?",
       playedUci,
+      uci: playedUci,
       fenBefore,
       fenAfter: node?.fen || "",
       beforeCp,
       afterCp,
-      evaluationBefore: before?.evaluation || {
-        unit: "cp",
-        value: Math.round(beforeCp),
-        perspective: "white",
-      },
-      evaluationAfter: after?.evaluation || {
-        unit: "cp",
-        value: Math.round(afterCp),
-        perspective: "white",
-      },
+      evaluationBefore: beforePlayer.detail,
+      evaluationAfter: afterPlayer.detail,
+      evaluationBeforeCp: beforePlayer.centipawns,
+      evaluationAfterCp: afterPlayer.centipawns,
+      mateBefore: beforePlayer.mate,
+      mateAfter: afterPlayer.mate,
       evaluationDeltaCp: Math.round(afterCp - beforeCp),
       bestUci,
+      bestMoveUci: bestUci || null,
       bestSan: bestFrames[0]?.san || "",
+      bestMoveSan: bestFrames[0]?.san || null,
       bestPvUci: bestFrames.map((frame) => frame.uci),
       bestPvSan: bestFrames.map((frame) => frame.san),
-      playedContinuationUci: playedContinuationFrames.map((frame) => frame.uci),
+      principalVariation: bestFrames.map((frame) => frame.uci),
+      principalVariationSan: bestFrames.map((frame) => frame.san),
+      playedContinuationUci,
       playedContinuationSan: playedContinuationFrames.map((frame) => frame.san),
       candidateLines,
       playedLine,
@@ -900,12 +1208,16 @@ export function summarizeGameReview(
       moveNecessity,
       engineDepth: Number.isFinite(before?.depth) ? before.depth : null,
       coachRating: reviewCoachRating,
-      accuracy: rounded(metrics.accuracy),
+      winChanceBefore: rounded(beforePlayer.winChance, 2),
+      winChanceAfter: rounded(afterPlayer.winChance, 2),
+      winChanceLoss: rounded(classificationResult.winChanceLoss, 2),
+      accuracy: rounded(accuracy),
       lossCp: Math.round(metrics.lossCp),
-      winPercentLoss: rounded(metrics.winPercentLoss, 2),
-      quality: metrics.quality === "best" && playedUci !== bestUci
-        ? "excellent"
-        : metrics.quality,
+      winPercentLoss: rounded(classificationResult.winChanceLoss, 2),
+      classification: classificationResult.classification,
+      symbol: classificationResult.symbol,
+      flags: classificationResult.flags,
+      quality: classificationResult.classification,
     };
     reportMove.quality = reviewQualityForDisplay(reportMove);
     reportMove.explanation = explainMoveQuality(reportMove, { rating: reviewCoachRating });
@@ -915,6 +1227,10 @@ export function summarizeGameReview(
   const forColor = (color) => moves.filter((move) => move.color === color);
   const whiteMoves = forColor("w");
   const blackMoves = forColor("b");
+  const countsFor = (selectedMoves) => Object.keys(MOVE_QUALITY).reduce((result, key) => {
+    result[key] = selectedMoves.filter((move) => move.quality === key).length;
+    return result;
+  }, {});
   const counts = Object.keys(MOVE_QUALITY).reduce((result, key) => {
     result[key] = moves.filter((move) => move.quality === key).length;
     return result;
@@ -923,7 +1239,7 @@ export function summarizeGameReview(
   const lossValues = moves.map((move) => move.lossCp);
 
   return {
-    version: 2,
+    version: 3,
     generatedAt: new Date().toISOString(),
     final: Boolean(final),
     depth: Number.isFinite(depth) ? depth : null,
@@ -937,6 +1253,8 @@ export function summarizeGameReview(
     whiteAverageCentipawnLoss: rounded(mean(whiteMoves.map((move) => move.lossCp))),
     blackAverageCentipawnLoss: rounded(mean(blackMoves.map((move) => move.lossCp))),
     counts,
+    whiteCounts: countsFor(whiteMoves),
+    blackCounts: countsFor(blackMoves),
     moves,
     coachRating: reviewCoachRating,
     playerColor: playerColor === "w" || playerColor === "b" ? playerColor : null,
@@ -1006,7 +1324,7 @@ export function reviewPhaseForMove(move) {
 export function openingMoveReviewPresentation(move, { inOpeningBook = false } = {}) {
   if (reviewPhaseForMove(move) !== "opening") return null;
   const quality = reviewQualityForDisplay(move);
-  if (["mistake", "blunder"].includes(quality)) return null;
+  if (CRITICAL_MOVE_QUALITIES.includes(quality)) return null;
   return {
     label: inOpeningBook ? "Spielbare Eröffnungswahl" : "Eröffnungszug",
     reason: inOpeningBook
@@ -1029,8 +1347,8 @@ export function buildCoachPhaseSummary(report) {
   return ["opening", "middlegame", "endgame"].flatMap((phase) => {
     const phaseMoves = moves.filter((move) => reviewPhaseForMove(move) === phase);
     if (phaseMoves.length === 0) return [];
-    const strong = phaseMoves.filter((move) => ["best", "excellent", "good"].includes(move.quality));
-    const critical = phaseMoves.filter((move) => ["inaccuracy", "mistake", "blunder"].includes(move.quality));
+    const strong = phaseMoves.filter((move) => POSITIVE_MOVE_QUALITIES.includes(move.quality));
+    const critical = phaseMoves.filter((move) => CRITICAL_MOVE_QUALITIES.includes(move.quality));
     const bestExample = strong[0];
     const focus = [...critical].sort((left, right) => (
       (right.winPercentLoss || 0) - (left.winPercentLoss || 0)
@@ -1102,9 +1420,9 @@ export function buildLearningSummary(report, options = {}) {
   const biggest = [...moves]
     .filter((move) => Number.isFinite(move.winPercentLoss))
     .sort((left, right) => right.winPercentLoss - left.winPercentLoss)[0];
-  const serious = moves.filter((move) => move.quality === "mistake" || move.quality === "blunder");
+  const serious = moves.filter((move) => ["mistake", "miss", "blunder"].includes(move.quality));
   const inaccuracies = moves.filter((move) => move.quality === "inaccuracy");
-  const strong = moves.filter((move) => move.quality === "best" || move.quality === "excellent");
+  const strong = moves.filter((move) => POSITIVE_MOVE_QUALITIES.includes(move.quality));
   const focusedMoment = (Array.isArray(report?.criticalMoments)
     ? report.criticalMoments.find((move) => !perspective || move?.color === perspective)
     : null) || biggest || moves[0];
@@ -1152,7 +1470,7 @@ export function buildLearningSummary(report, options = {}) {
     ? `${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}: ${explainMoveQuality(biggest, { rating })}`
     : "Kein einzelner Zug hebt sich sicher als größter Fehler ab.";
   const biggestNeedsReview = Boolean(
-    biggest && ["inaccuracy", "mistake", "blunder"].includes(biggest.quality),
+    biggest && CRITICAL_MOVE_QUALITIES.includes(biggest.quality),
   );
 
   return {
@@ -1199,7 +1517,7 @@ export function buildFallbackFeedback(report, options = {}) {
     ? `Deine Zuggenauigkeit lag bei ${perspectiveAccuracy.toFixed(1)} %.`
     : "Deine Zuggenauigkeit ist noch offen.";
   const serious = perspectiveMoves
-    .filter((move) => move.quality === "mistake" || move.quality === "blunder")
+    .filter((move) => ["mistake", "miss", "blunder"].includes(move.quality))
     .length;
   const seriousLabel = serious === 1 ? "einen großen Fehler" : `${serious} große Fehler`;
   const moveCountLabel = perspectiveMoves.length === 1 ? "einem Zug" : `${perspectiveMoves.length} Zügen`;
@@ -1207,7 +1525,7 @@ export function buildFallbackFeedback(report, options = {}) {
   const biggest = criticalMoments
     .find((move) => move && typeof move === "object" && (!perspective || move.color === perspective));
   const strongest = [...perspectiveMoves]
-    .filter((move) => ["best", "excellent", "good"].includes(move.quality))
+    .filter((move) => POSITIVE_MOVE_QUALITIES.includes(move.quality))
     .sort((left, right) => (right.accuracy || 0) - (left.accuracy || 0))[0];
   const strength = strongest
     ? `**${strongest.moveNumber}${strongest.color === "b" ? "…" : "."} ${strongest.san}** war ein guter Zug.`

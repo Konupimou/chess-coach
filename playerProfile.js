@@ -1,9 +1,13 @@
 const QUALITY_KEYS = Object.freeze([
+  "brilliant",
+  "great",
+  "book",
   "best",
   "excellent",
   "good",
   "inaccuracy",
   "mistake",
+  "miss",
   "blunder",
 ]);
 

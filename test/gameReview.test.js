@@ -10,6 +10,9 @@ import {
   buildLearningSummary,
   buildPvFrames,
   calculateMoveAccuracy,
+  classifyMoveReview,
+  classifyWinChanceLoss,
+  detectMaterialSacrifice,
   describeMoveAssessment,
   explainMoveQuality,
   formatPvWithMoveNumbers,
@@ -18,12 +21,14 @@ import {
   legalUciMove,
   pathToNode,
   openingMoveReviewPresentation,
+  moveAccuracy,
   reviewDepthForPlies,
   reviewPhaseForMove,
   scoreToWhiteCp,
   summarizeGameReview,
   terminalWhiteCp,
   terminalPositionState,
+  winChance,
   verifiedMoveReview,
   verifiedSuggestionInfo,
 } from "../gameReview.js";
@@ -246,7 +251,7 @@ test("Partiebericht speichert Kandidaten und eine eigene Fortsetzung des gespiel
     { depth: 18, final: true, learnerProfile: { rating: 1000 } },
   );
 
-  assert.equal(report.version, 2);
+  assert.equal(report.version, 3);
   assert.equal(report.coachRating, 1000);
   assert.equal(report.moves[0].coachRating, 1000);
   assert.equal(report.moves[0].candidateLines.length, 2);
@@ -314,6 +319,70 @@ test("Genauigkeit ist für spiegelbildliche Fehler von Weiß und Schwarz symmetr
   assert.notEqual(alreadyLost.quality, "blunder");
 });
 
+test("Gewinnwahrscheinlichkeit und Genauigkeit folgen den festgelegten Formeln", () => {
+  assert.equal(winChance(0), 50);
+  assert.ok(Math.abs(winChance(100) - 59.101) < 0.01);
+  assert.equal(moveAccuracy(0), 100);
+  assert.ok(Math.abs(moveAccuracy(10) - 63.61) < 0.1);
+  assert.equal(moveAccuracy(10_000), 0);
+});
+
+test("alle Verlustschwellen werden einschließlich ihrer Grenze klassifiziert", () => {
+  assert.equal(classifyWinChanceLoss(2), "excellent");
+  assert.equal(classifyWinChanceLoss(2.01), "good");
+  assert.equal(classifyWinChanceLoss(5), "good");
+  assert.equal(classifyWinChanceLoss(5.01), "inaccuracy");
+  assert.equal(classifyWinChanceLoss(10), "inaccuracy");
+  assert.equal(classifyWinChanceLoss(10.01), "mistake");
+  assert.equal(classifyWinChanceLoss(20), "mistake");
+  assert.equal(classifyWinChanceLoss(20.01), "blunder");
+});
+
+test("Spezialkategorien beachten Priorität, Matt und den einzigen legalen Zug", () => {
+  const base = {
+    playedUci: "e2e4",
+    bestMoveUci: "e2e4",
+    winChanceBefore: 70,
+    winChanceAfter: 70,
+    secondBestWinChance: 50,
+  };
+  assert.equal(classifyMoveReview(base).classification, "great");
+  assert.equal(classifyMoveReview({ ...base, isOnlyMove: true }).classification, "best");
+  assert.equal(classifyMoveReview({ ...base, isBookMove: true }).classification, "book");
+  assert.equal(classifyMoveReview({ ...base, isSacrifice: true }).classification, "brilliant");
+  assert.equal(classifyMoveReview({
+    playedUci: "a2a3",
+    bestMoveUci: "e2e4",
+    winChanceBefore: 100,
+    winChanceAfter: 72,
+    mateBefore: 3,
+  }).classification, "miss");
+  const allowedMate = classifyMoveReview({
+    playedUci: "a2a3",
+    bestMoveUci: "e2e4",
+    winChanceBefore: 45,
+    winChanceAfter: 0,
+    mateAfter: -2,
+  });
+  assert.equal(allowedMate.classification, "blunder");
+  assert.equal(allowedMate.flags.allowedMate, true);
+});
+
+test("Materialopfer-Heuristik verlangt eine legale bestätigte Investition", () => {
+  assert.equal(detectMaterialSacrifice({
+    fenBefore: "r3k3/p7/8/8/8/8/8/R3K3 w - - 0 1",
+    playedUci: "a1a7",
+    principalVariation: ["a1a7", "a8a7"],
+    color: "w",
+  }), true);
+  assert.equal(detectMaterialSacrifice({
+    fenBefore: "4k3/r7/8/8/8/8/8/R3K3 w - - 0 1",
+    playedUci: "a1a7",
+    principalVariation: ["a1a7"],
+    color: "w",
+  }), false);
+});
+
 test("Partiebericht aggregiert Farben, Verluste und kritische Momente", () => {
   const game = new Chess();
   const root = new MoveTreeNode({ fen: game.fen() });
@@ -336,6 +405,33 @@ test("Partiebericht aggregiert Farben, Verluste und kritische Momente", () => {
   assert.equal(report.criticalMoments.length, 2);
   assert.equal(report.moves[0].bestSan, "d4");
   assert.equal(report.moves[0].explanation, "Du gibst etwas von deiner Stellung ab. Besser war d4.");
+});
+
+test("Partiebericht liefert das vollständige strukturierte Modell und getrennte Farbzähler", () => {
+  const game = new Chess();
+  const root = new MoveTreeNode({ fen: game.fen() });
+  const e4 = addMoveToTree(root, game.move("e4"), game.fen());
+  const e5 = addMoveToTree(e4, game.move("e5"), game.fen());
+  const report = summarizeGameReview(
+    [root, e4, e5],
+    [
+      { whiteCp: 20, evaluation: { unit: "cp", value: 20 }, pv: ["e2e4", "e7e5"] },
+      { whiteCp: 20, evaluation: { unit: "cp", value: 20 }, pv: ["e7e5"] },
+      { whiteCp: 20, evaluation: { unit: "cp", value: 20 }, pv: ["g1f3"] },
+    ],
+    { depth: 16, bookMovePlies: new Set([1]) },
+  );
+  const first = report.moves[0];
+  assert.equal(first.classification, "book");
+  assert.equal(first.symbol, "📖");
+  assert.equal(first.uci, "e2e4");
+  assert.equal(first.bestMoveUci, "e2e4");
+  assert.deepEqual(first.principalVariation, ["e2e4", "e7e5"]);
+  assert.equal(first.flags.isBookMove, true);
+  assert.equal(first.accuracy, 100);
+  assert.equal(report.whiteCounts.book, 1);
+  assert.equal(report.blackCounts.best, 1);
+  assert.equal(Object.keys(report.whiteCounts).length, 10);
 });
 
 test("fokussierter Partiebericht zeigt höchstens die drei entscheidendsten eigenen Momente", () => {
@@ -394,6 +490,7 @@ test("nach nur einem weißen Zug bleibt die Genauigkeit für Schwarz offen", () 
 
 test("Matt, Score-Normalisierung und adaptive Tiefe sind begrenzt", () => {
   assert.equal(scoreToWhiteCp({ unit: "mate", value: -2 }), -10_000);
+  assert.equal(scoreToWhiteCp({ unit: "cp", value: 10_000 }), 10_000);
   assert.equal(scoreToWhiteCp({ pawns: 0.42 }), 42);
   assert.equal(terminalWhiteCp("7k/6Q1/6K1/8/8/8/8/8 b - - 0 1"), 10_000);
   assert.equal(reviewDepthForPlies(20, 18), 14);

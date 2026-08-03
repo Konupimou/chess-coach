@@ -1436,6 +1436,9 @@ body > .piece-417db {
   font-weight: 800;
 }
 
+.review-journey-move.quality-brilliant,
+.review-journey-move.quality-great,
+.review-journey-move.quality-book,
 .review-journey-move.quality-best,
 .review-journey-move.quality-excellent {
   background: rgba(83, 224, 161, 0.15);
@@ -1448,6 +1451,7 @@ body > .piece-417db {
 }
 
 .review-journey-move.quality-mistake,
+.review-journey-move.quality-miss,
 .review-journey-move.quality-blunder {
   background: rgba(255, 109, 124, 0.16);
   color: #ffbdc4;
@@ -2892,6 +2896,17 @@ button.perspective-alternative-button,
   color: #c9ffe7;
 }
 
+#move-list .move-quality-brilliant {
+  background: rgba(81, 214, 219, 0.28);
+  color: #c8ffff;
+}
+
+#move-list .move-quality-great,
+#move-list .move-quality-book {
+  background: rgba(97, 190, 157, 0.22);
+  color: #d2ffeb;
+}
+
 #move-list .move-quality-excellent {
   background: rgba(83, 224, 161, 0.19);
   color: #b8f5d8;
@@ -2910,6 +2925,11 @@ button.perspective-alternative-button,
 #move-list .move-quality-mistake {
   background: rgba(255, 143, 82, 0.22);
   color: #ffd0ad;
+}
+
+#move-list .move-quality-miss {
+  background: rgba(238, 112, 171, 0.22);
+  color: #ffd0e7;
 }
 
 #move-list .move-quality-blunder {
@@ -3507,7 +3527,7 @@ button.perspective-alternative-button,
 
 .quality-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
   gap: 7px;
 }
 
@@ -3530,6 +3550,12 @@ button.perspective-alternative-button,
   font-size: 0.65rem;
 }
 
+.quality-brilliant {
+  box-shadow: inset 0 2px 0 #51d6db;
+}
+
+.quality-great,
+.quality-book,
 .quality-best {
   box-shadow: inset 0 2px 0 #53e0a1;
 }
@@ -3548,6 +3574,10 @@ button.perspective-alternative-button,
 
 .quality-mistake {
   box-shadow: inset 0 2px 0 #ff9b66;
+}
+
+.quality-miss {
+  box-shadow: inset 0 2px 0 #ee70ab;
 }
 
 .quality-blunder {
@@ -3611,6 +3641,9 @@ button.perspective-alternative-button,
   filter: brightness(1.14);
 }
 
+.review-move-explanation.quality-brilliant,
+.review-move-explanation.quality-great,
+.review-move-explanation.quality-book,
 .review-move-explanation.quality-best,
 .review-move-explanation.quality-excellent {
   background: rgba(83, 224, 161, 0.09);
@@ -3622,6 +3655,10 @@ button.perspective-alternative-button,
 
 .review-move-explanation.quality-mistake {
   background: rgba(255, 143, 82, 0.09);
+}
+
+.review-move-explanation.quality-miss {
+  background: rgba(238, 112, 171, 0.09);
 }
 
 .review-move-explanation.quality-blunder {
@@ -5150,6 +5187,132 @@ button.perspective-alternative-button,
   overflow: auto;
 }
 
+.analysis-only-page .game-review-sidebar {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 9px;
+  padding: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.analysis-only-page .game-review-sidebar [hidden] {
+  display: none !important;
+}
+
+.analysis-only-page .game-review-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.analysis-only-page .game-review-actions button {
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid rgba(111, 177, 255, 0.28);
+  border-radius: 8px;
+  background: #1c4f85;
+  color: #f4f8ff;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.analysis-only-page .game-review-actions button:last-child {
+  background: transparent;
+}
+
+.analysis-only-page .game-review-actions button:disabled {
+  cursor: default;
+  opacity: 0.48;
+}
+
+.analysis-only-page .game-review-sidebar-progress {
+  display: grid;
+  gap: 4px;
+  color: #9eacc1;
+  font-size: 0.69rem;
+}
+
+.analysis-only-page .game-review-sidebar-progress progress {
+  width: 100%;
+  height: 5px;
+}
+
+.analysis-only-page .game-review-sidebar-summary {
+  display: grid;
+  gap: 7px;
+}
+
+.analysis-only-page .game-review-accuracy {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.analysis-only-page .game-review-accuracy > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.analysis-only-page .game-review-accuracy small {
+  color: #9eacc1;
+  font-size: 0.66rem;
+}
+
+.analysis-only-page .game-review-accuracy strong {
+  font-size: 0.78rem;
+}
+
+.analysis-only-page .game-review-category-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.analysis-only-page .game-review-category-strip span,
+.analysis-only-page .game-review-move-top > span {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  font-size: 0.67rem;
+  font-weight: 700;
+}
+
+.analysis-only-page .game-review-move-detail {
+  display: grid;
+  gap: 5px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.analysis-only-page .game-review-move-detail p {
+  margin: 0;
+  color: #b7c4d6;
+  font-size: 0.7rem;
+  line-height: 1.38;
+}
+
+.analysis-only-page .game-review-move-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.76rem;
+}
+
+.analysis-only-page .game-review-pv {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .analysis-only-page .section-heading {
   align-items: center;
   margin-bottom: 8px;
@@ -5175,6 +5338,13 @@ button.perspective-alternative-button,
 
 .analysis-only-page #move-list .move-num {
   width: 30px;
+}
+
+.analysis-only-page #move-list .move-quality-symbol {
+  float: right;
+  margin-left: 3px;
+  font-size: 0.66rem;
+  font-weight: 800;
 }
 
 @media (min-width: 1101px) {

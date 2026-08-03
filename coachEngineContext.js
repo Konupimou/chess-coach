@@ -119,6 +119,12 @@ function normalizeMoveReview(value, fen) {
   if (bestMove && pv.uci.length > 0 && bestMove.uci !== pv.uci[0]) return null;
   const classification = text(value.classification, 32);
   const qualityAliases = new Map([
+    ["brilliant", "brilliant"],
+    ["brillant", "brilliant"],
+    ["great", "great"],
+    ["großartig", "great"],
+    ["book", "book"],
+    ["buchzug", "book"],
     ["best", "best"],
     ["bester zug", "best"],
     ["excellent", "excellent"],
@@ -129,6 +135,8 @@ function normalizeMoveReview(value, fen) {
     ["ungenauigkeit", "inaccuracy"],
     ["mistake", "mistake"],
     ["fehler", "mistake"],
+    ["miss", "miss"],
+    ["verpasste chance", "miss"],
     ["blunder", "blunder"],
     ["patzer", "blunder"],
   ]);

@@ -194,7 +194,7 @@ test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett"
   assert.match(appSource, /analysis-danger-square/);
 });
 
-test("Vollanalyse sammelt zwei Kandidaten und lädt KI-Texte erst beim Öffnen eines Zuges", () => {
+test("Vollanalyse sammelt drei Kandidaten und lädt KI-Texte erst beim Öffnen eines Zuges", () => {
   const reviewStart = appSource.indexOf("  async startFullGameReview(");
   const reviewEnd = appSource.indexOf("  attachLocalMoveExplanations(", reviewStart);
   const reviewSource = appSource.slice(reviewStart, reviewEnd);
@@ -202,7 +202,9 @@ test("Vollanalyse sammelt zwei Kandidaten und lädt KI-Texte erst beim Öffnen e
   const attachEnd = appSource.indexOf("  async requestCoachGameFeedback(", attachStart);
   const attachSource = appSource.slice(attachStart, attachEnd);
 
-  assert.match(reviewSource, /multiPV:\s*2/);
+  assert.match(reviewSource, /multiPV:\s*3/);
+  assert.match(reviewSource, /reviewAnalysisCache/);
+  assert.match(reviewSource, /bookMovePlies/);
   assert.match(reviewSource, /playerColor: reviewPlayerColor/);
   assert.match(appSource, /analysisEntryFromMultiPv/);
   assert.match(attachSource, /buildLocalMoveExplanationBundle/);

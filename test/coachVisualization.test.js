@@ -346,7 +346,7 @@ test("Zugbewertungen unterscheiden Gleichwertigkeit und Fehlerzeichen", () => {
   );
   assert.deepEqual(
     moveQualityPresentation({ quality: "mistake", lossCp: 180 }),
-    { symbol: "?", label: "Klarer Fehler", tone: "mistake" },
+    { symbol: "?", label: "Fehler", tone: "mistake" },
   );
   assert.equal(
     moveQualityPresentation({ quality: "blunder", lossCp: 320 }).symbol,

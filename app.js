@@ -342,6 +342,8 @@ export class ChessApp {
     this.reviewEngine = null;
     this.reviewPendingSearch = null;
     this.reviewCancelled = false;
+    this.reviewAnalysisCache = new Map();
+    this.automaticReviewTimer = null;
     this.batchReviewRunning = false;
     this.batchReviewCancelled = false;
     this.batchReviewProgress = null;
@@ -457,6 +459,19 @@ export class ChessApp {
     this.moveListEyebrow = document.getElementById("move-list-eyebrow");
     this.moveListTitle = document.getElementById("move-list-title");
     this.keyboardHint = document.getElementById("keyboard-hint");
+    this.gameReviewSidebar = document.getElementById("game-review-sidebar");
+    this.gameReviewStartButton = document.getElementById("game-review-start");
+    this.gameReviewOpenButton = document.getElementById("game-review-open");
+    this.gameReviewProgressEl = document.getElementById("game-review-progress");
+    this.gameReviewSummaryEl = document.getElementById("game-review-summary");
+    this.gameReviewMoveDetailEl = document.getElementById("game-review-move-detail");
+    this.gameReviewStartButton?.addEventListener("click", () => this.startFullGameReview());
+    this.gameReviewOpenButton?.addEventListener("click", () => {
+      const report = this.gameReviewReport || this.savedGameReview;
+      if (!report) return;
+      this.renderFeedbackReport(report, report.feedback);
+      if (!this.feedbackDialog?.open) this.feedbackDialog?.showModal();
+    });
 
     const engineAvailable = this.analysisAssistantsEnabled && this.ensureEngine();
 
@@ -2865,7 +2880,7 @@ export class ChessApp {
   celebratePlayedPiece(square, quality) {
     if (
       !/^[a-h][1-8]$/.test(square || "")
-      || !["best", "excellent", "good"].includes(quality)
+      || !["brilliant", "great", "book", "best", "excellent", "good"].includes(quality)
       || !this.boardEl
     ) return;
     const squareEl = this.boardEl.querySelector(`.square-${square}`);
@@ -2883,7 +2898,7 @@ export class ChessApp {
       );
     });
 
-    const brilliant = quality === "best" || quality === "excellent";
+    const brilliant = ["brilliant", "great", "best", "excellent"].includes(quality);
     squareEl.classList.remove("move-success-square", "is-brilliant");
     pieceEl.classList.remove("piece-success-pop", "is-brilliant");
     void pieceEl.offsetWidth;
@@ -3872,7 +3887,7 @@ export class ChessApp {
         && verified.lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP)
       || evidenceSaysEquivalent
     );
-    const isError = ["inaccuracy", "mistake", "blunder"]
+    const isError = ["inaccuracy", "mistake", "miss", "blunder"]
       .includes(verified?.quality);
     body.style.color = "#fff";
     const row = document.createElement("div");
@@ -4901,7 +4916,117 @@ export class ChessApp {
     document.body.appendChild(dialog);
   }
 
+  formatReviewEvaluation(evaluation) {
+    if (evaluation?.unit === "mate" && Number.isFinite(evaluation.value)) {
+      if (evaluation.value > 0) return `Matt in ${Math.abs(evaluation.value)}`;
+      if (evaluation.value < 0) return `Matt gegen dich in ${Math.abs(evaluation.value)}`;
+    }
+    if (evaluation?.unit === "cp" && Number.isFinite(evaluation.value)) {
+      const pawns = evaluation.value / 100;
+      return `${pawns >= 0 ? "+" : ""}${pawns.toFixed(2).replace(".", ",")}`;
+    }
+    return "—";
+  }
+
+  renderGameReviewSidebar({ current = null, total = null, label = "" } = {}) {
+    if (!this.gameReviewSidebar) return;
+    const path = this.getCurrentPath();
+    const moveCount = Math.max(0, path.length - 1);
+    const report = this.gameReviewReport || this.savedGameReview;
+    if (this.gameReviewStartButton) {
+      this.gameReviewStartButton.disabled = moveCount < 1 || this.reviewRunning;
+      this.gameReviewStartButton.textContent = this.reviewRunning
+        ? "Analyse läuft …"
+        : report?.final ? "Neu analysieren" : "Partie analysieren";
+    }
+    if (this.gameReviewOpenButton) this.gameReviewOpenButton.hidden = !report?.final;
+
+    if (this.gameReviewProgressEl) {
+      const running = this.reviewRunning && Number.isFinite(current) && Number.isFinite(total);
+      this.gameReviewProgressEl.hidden = !running;
+      if (running) {
+        const progress = this.gameReviewProgressEl.querySelector("progress");
+        const status = this.gameReviewProgressEl.querySelector("span");
+        progress.max = Math.max(1, total);
+        progress.value = Math.max(0, current);
+        status.textContent = label || `${Math.min(current, total)} von ${total} Stellungen`;
+      }
+    }
+
+    if (!this.gameReviewSummaryEl || !this.gameReviewMoveDetailEl) return;
+    this.gameReviewSummaryEl.hidden = !report?.final;
+    this.gameReviewMoveDetailEl.hidden = !report?.final;
+    if (!report?.final) {
+      this.gameReviewSummaryEl.replaceChildren();
+      this.gameReviewMoveDetailEl.replaceChildren();
+      return;
+    }
+
+    this.gameReviewSummaryEl.replaceChildren();
+    const accuracy = document.createElement("div");
+    accuracy.className = "game-review-accuracy";
+    [["Weiß", report.whiteAccuracy], ["Schwarz", report.blackAccuracy]].forEach(([name, value]) => {
+      const item = document.createElement("span");
+      const title = document.createElement("small");
+      title.textContent = name;
+      const score = document.createElement("strong");
+      score.textContent = Number.isFinite(value) ? `${Math.round(value)} %` : "—";
+      item.append(title, score);
+      accuracy.appendChild(item);
+    });
+    const categories = document.createElement("div");
+    categories.className = "game-review-category-strip";
+    Object.entries(MOVE_QUALITY).forEach(([key, definition]) => {
+      const count = report.counts?.[key] || 0;
+      if (count < 1) return;
+      const item = document.createElement("span");
+      item.className = `quality-${definition.tone}`;
+      item.title = definition.label;
+      item.textContent = `${definition.symbol} ${count}`;
+      categories.appendChild(item);
+    });
+    this.gameReviewSummaryEl.append(accuracy, categories);
+
+    this.gameReviewMoveDetailEl.replaceChildren();
+    const ply = path.length - 1;
+    const move = this.verifiedReviewAtPath(report, path, ply);
+    if (!move) {
+      const hint = document.createElement("p");
+      hint.textContent = "Klicke einen Zug an, um seine Bewertung zu sehen.";
+      this.gameReviewMoveDetailEl.appendChild(hint);
+      return;
+    }
+    const definition = MOVE_QUALITY[move.quality] || MOVE_QUALITY.good;
+    const top = document.createElement("div");
+    top.className = "game-review-move-top";
+    const moveName = document.createElement("strong");
+    moveName.textContent = `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
+    const badge = document.createElement("span");
+    badge.className = `quality-${definition.tone}`;
+    badge.textContent = `${definition.symbol} ${definition.label}`;
+    top.append(moveName, badge);
+    const evaluation = document.createElement("p");
+    evaluation.textContent = `${this.formatReviewEvaluation(move.evaluationBefore)} → ${this.formatReviewEvaluation(move.evaluationAfter)}`;
+    const detail = document.createElement("p");
+    detail.textContent = explainMoveQuality(move, { rating: this.getCoachRating() });
+    this.gameReviewMoveDetailEl.append(top, evaluation, detail);
+    if (move.quality !== "book" && move.bestSan) {
+      const best = document.createElement("p");
+      const labelEl = document.createElement("strong");
+      labelEl.textContent = "Stärkster Zug: ";
+      best.append(labelEl, document.createTextNode(move.bestSan));
+      this.gameReviewMoveDetailEl.appendChild(best);
+    }
+    if (move.quality !== "book" && move.bestPvSan?.length > 0) {
+      const pv = document.createElement("p");
+      pv.className = "game-review-pv";
+      pv.textContent = move.bestPvSan.slice(0, 6).join(" ");
+      this.gameReviewMoveDetailEl.appendChild(pv);
+    }
+  }
+
   renderReviewProgress(current, total, depth, label = 'Stockfish prüft jede Stellung …') {
+    this.renderGameReviewSidebar({ current, total, label });
     if (!this.feedbackBodyEl) return;
     this.feedbackBodyEl.replaceChildren();
     const intro = document.createElement('p');
@@ -4960,7 +5085,7 @@ export class ChessApp {
       } catch {
         legalMoveCount = 2;
       }
-      const requiredLines = Math.max(1, Math.min(2, legalMoveCount));
+      const requiredLines = Math.max(1, Math.min(3, legalMoveCount));
       const searchId = this.reviewEngine.evaluate(fen, depth);
       if (!searchId) {
         reject(new Error('Stockfish konnte die Stellung nicht starten.'));
@@ -5003,6 +5128,7 @@ export class ChessApp {
     this.reviewEngine = null;
     this.reviewCoachController?.abort();
     this.reviewCoachController = null;
+    this.renderGameReviewSidebar();
   }
 
   async startFullGameReview({ batchLabel = "" } = {}) {
@@ -5035,7 +5161,7 @@ export class ChessApp {
 
     const depth = reviewDepthForPlies(path.length - 1, this.engine?.depth || 15);
     const evaluations = [];
-    const cache = new Map();
+    const cache = this.reviewAnalysisCache;
     let report = null;
     this.renderReviewProgress(
       0,
@@ -5049,7 +5175,7 @@ export class ChessApp {
         depth,
         threads: 1,
         hashMB: 32,
-        multiPV: 2,
+        multiPV: 3,
         onInfo: (info) => this.handleReviewEngineInfo(info),
         onError: (error) => {
           this.reviewPendingSearch?.reject(error);
@@ -5063,15 +5189,31 @@ export class ChessApp {
           throw error;
         }
         const node = path[index];
-        const terminal = terminalWhiteCp(node.fen);
+        const terminalState = terminalPositionState(node.fen);
+        const terminal = terminalState.whiteCp;
+        const cacheKey = `${node.fen}|depth:${depth}|multipv:3`;
         let entry;
         if (Number.isFinite(terminal)) {
-          entry = { whiteCp: terminal, depth, pv: [], complete: true };
-        } else if (cache.has(node.fen)) {
-          entry = cache.get(node.fen);
+          entry = {
+            whiteCp: terminal,
+            evaluation: terminalState.status === "checkmate"
+              ? {
+                unit: "mate",
+                value: terminal > 0 ? 1 : -1,
+                perspective: "white",
+              }
+              : { unit: "cp", value: terminal, perspective: "white" },
+            depth,
+            pv: [],
+            complete: true,
+            legalMoveCount: 0,
+          };
+        } else if (cache.has(cacheKey)) {
+          entry = cache.get(cacheKey);
         } else {
           entry = await this.analyzeReviewFen(node.fen, depth);
-          cache.set(node.fen, entry);
+          cache.set(cacheKey, entry);
+          if (cache.size > 1_000) cache.delete(cache.keys().next().value);
         }
         evaluations.push(entry);
         if (!node.analysis?.depth || !entry.depth || entry.depth >= node.analysis.depth) {
@@ -5083,11 +5225,21 @@ export class ChessApp {
       const reviewPlayerColor = ["w", "b"].includes(this.gameSaveDraft?.playerColor)
         ? this.gameSaveDraft.playerColor
         : this.analysisPerspective;
+      const bookMovePlies = new Set();
+      if (this.openingBook) {
+        for (let ply = 1; ply < path.length; ply += 1) {
+          const bookReview = openingReviewForPath(path.slice(0, ply + 1), this.openingBook, {
+            limit: 0,
+          });
+          if (Number.isFinite(bookReview?.played?.variationCount)) bookMovePlies.add(ply);
+        }
+      }
       report = summarizeGameReview(path, evaluations, {
         depth,
         final: true,
         playerColor: reviewPlayerColor,
         learnerProfile: this.getCoachLearnerProfile(),
+        bookMovePlies,
       });
       this.attachLocalMoveExplanations(report, path);
       report.result = this.getGameResult();
@@ -5119,6 +5271,7 @@ export class ChessApp {
       this.feedbackCancelButton.textContent = 'Schließen';
       this.updateFeedbackAvailability();
       this.renderCoachAnalysisPanel();
+      this.renderGameReviewSidebar();
       if (!this.destroyed && this.appMode === "analysis") this.evaluateCurrentPosition();
     }
 
@@ -5687,10 +5840,10 @@ export class ChessApp {
     this.reviewJourneyTitleEl.textContent =
       `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
     this.reviewJourneyMoveEl.className = `review-journey-move quality-${quality.tone}`;
-    this.reviewJourneyMoveEl.textContent = move.quality === "best" || move.quality === "excellent"
+    this.reviewJourneyMoveEl.textContent = ["brilliant", "great", "book", "best", "excellent"].includes(move.quality)
       ? `${quality.label} · Die Stellung bleibt unter Kontrolle`
       : `${quality.label} · Hier verändert sich die Partie deutlich`;
-    const coachIntro = move.quality === "best" || move.quality === "excellent"
+    const coachIntro = ["brilliant", "great", "book", "best", "excellent"].includes(move.quality)
       ? "Das war stark, weil"
       : move.quality === "good"
         ? "Das war solide, weil"
@@ -8998,17 +9151,40 @@ export class ChessApp {
     const annotations = new Map();
     const path = this.getCurrentPath();
     const report = this.gameReviewReport || this.liveAccuracyReport || this.savedGameReview;
+    const nodeForReviewedMove = (move) => {
+      const direct = path[move?.ply];
+      const expectedUci = move?.playedUci || move?.uci || "";
+      const matches = (node) => Boolean(
+        node?.move
+        && node.fen === move?.fenAfter
+        && node.parent?.fen === move?.fenBefore
+        && `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}` === expectedUci
+      );
+      if (matches(direct)) return direct;
+      const stack = [this.moveTree];
+      const seen = new Set();
+      while (stack.length > 0) {
+        const node = stack.pop();
+        if (!node || seen.has(node)) continue;
+        seen.add(node);
+        if (matches(node)) return node;
+        if (node.mainline) stack.push(node.mainline);
+        if (Array.isArray(node.variations)) stack.push(...node.variations);
+      }
+      return null;
+    };
 
     if (Array.isArray(report?.moves)) {
       report.moves.forEach((storedMove) => {
         const move = verifiedMoveReview(storedMove);
         if (!move) return;
-        const node = path[move?.ply];
+        const node = nodeForReviewedMove(move);
         if (!node?.move) return;
         const quality = MOVE_QUALITY[move.quality];
         annotations.set(node, {
           ...move,
           label: quality?.label || "",
+          symbol: move.symbol || quality?.symbol || "",
           explanation: explainMoveQuality(move, { rating: this.getCoachRating() }),
         });
       });
@@ -9042,6 +9218,7 @@ export class ChessApp {
           annotations.set(node, {
             ...move,
             label: MOVE_QUALITY[metrics.quality]?.label || "",
+            symbol: MOVE_QUALITY[metrics.quality]?.symbol || "",
             explanation: explainMoveQuality(move, { rating: this.getCoachRating() }),
           });
         }
@@ -9068,10 +9245,15 @@ export class ChessApp {
   renderMoveList() {
     this.stopMoveListPreview();
     const showExplanations = this.appMode !== "play" && this.analysisAssistantsEnabled;
+    // Die Baumprüfung ist nur nach einer fertigen Partieanalyse nötig. So bleibt
+    // das Ablegen einer Figur frei von zusätzlicher synchroner Analysearbeit.
+    const showAnnotations = this.appMode !== "play"
+      && Boolean(this.gameReviewReport?.moves?.length || this.savedGameReview?.moves?.length);
     this.listView.render(this.moveTree, this.currentNode, {
-      annotations: showExplanations ? this.buildMoveAnnotations() : new Map(),
+      annotations: showAnnotations ? this.buildMoveAnnotations() : new Map(),
       showExplanations,
     });
+    this.renderGameReviewSidebar();
   }
 
   scheduleBoardResize() {
@@ -9113,10 +9295,36 @@ export class ChessApp {
       : terminal.result;
   }
 
+  scheduleAutomaticGameReview() {
+    if (
+      this.appMode !== "analysis"
+      || this.reviewRunning
+      || this.gameReviewReport?.final
+      || this.savedGameReview?.final
+      || this.getCurrentPath().length < 2
+      || this.getGameResult() === "*"
+    ) return;
+    if (this.automaticReviewTimer) window.clearTimeout(this.automaticReviewTimer);
+    const expectedNode = this.currentNode;
+    this.automaticReviewTimer = window.setTimeout(() => {
+      this.automaticReviewTimer = null;
+      if (
+        this.destroyed
+        || this.currentNode !== expectedNode
+        || this.reviewRunning
+        || this.gameReviewReport?.final
+        || this.savedGameReview?.final
+        || this.getGameResult() === "*"
+      ) return;
+      this.startFullGameReview();
+    }, 350);
+  }
+
   updateGameStatus() {
     this.updateBoardContext();
     this.updateFeedbackAvailability();
     this.renderPlayPanel();
+    this.scheduleAutomaticGameReview();
   }
 
   resetGame({ skipDiscardPrompt = false } = {}) {
@@ -9126,6 +9334,8 @@ export class ChessApp {
     this.stopReviewJourney({ silent: true });
     this.cancelPlaySession();
     this.cancelFullGameReview();
+    if (this.automaticReviewTimer) window.clearTimeout(this.automaticReviewTimer);
+    this.automaticReviewTimer = null;
     this.reviewCoachController?.abort();
     this.reviewJourneyCoachController?.abort();
     this.stopAllBoardPreviews();
@@ -9238,6 +9448,7 @@ export class ChessApp {
     if (this.boardKeyboardFrame) cancelAnimationFrame(this.boardKeyboardFrame);
     if (this.toastTimer) window.clearTimeout(this.toastTimer);
     if (this.successAnimationTimer) window.clearTimeout(this.successAnimationTimer);
+    if (this.automaticReviewTimer) window.clearTimeout(this.automaticReviewTimer);
     this.chatRequestController?.abort();
     this.playCoachController?.abort();
     this.suggestionCoachController?.abort();

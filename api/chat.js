@@ -1544,7 +1544,7 @@ export function coachLearningOutput(explanation, context = {}) {
     /strategy|position|pawn|development|activity|king/i.test(claim?.id || "")
   ));
   const type = tactical && strategic ? "mixed" : tactical ? "tactical" : "strategic";
-  const positive = ["best", "excellent", "good"].includes(quality);
+  const positive = ["brilliant", "great", "book", "best", "excellent", "good"].includes(quality);
   const bestMove = context?.engineContext?.moveReview?.bestMove?.san || "";
   const comparisonLine = context?.engineContext?.moveReview?.pv?.san
     ?.slice(0, 6).join(" ") || "";

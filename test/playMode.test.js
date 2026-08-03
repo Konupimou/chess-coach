@@ -89,7 +89,7 @@ test("Live-Feedback nennt die Qualität knapp und verrät keinen nächsten Zug",
     accuracy: 52.4,
     bestSan: "Nf6",
   });
-  assert.equal(mistake.badge, "Klarer Fehler");
+  assert.equal(mistake.badge, "Fehler");
   assert.equal(mistake.title, "8… Qh4");
   assert.doesNotMatch(mistake.detail, /Nf6|besser war/i);
   assert.equal(

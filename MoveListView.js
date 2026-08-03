@@ -167,7 +167,10 @@ export class MoveListView {
 
   qualityClass(node) {
     const quality = this.annotationFor(node)?.quality;
-    return ["best", "excellent", "good", "inaccuracy", "mistake", "blunder"].includes(quality)
+    return [
+      "brilliant", "great", "book", "best", "excellent",
+      "good", "inaccuracy", "mistake", "miss", "blunder",
+    ].includes(quality)
       ? `move-quality-${quality}`
       : "";
   }
@@ -199,6 +202,7 @@ export class MoveListView {
       ? annotation.explanation
       : "";
     const quality = typeof annotation?.label === "string" ? annotation.label : "";
+    const symbol = typeof annotation?.symbol === "string" ? annotation.symbol : "";
     const title = [quality, explanation].filter(Boolean).join(" · ");
     const detail = this._showExplanations
       ? `<small class="move-explanation${annotation?.quality ? "" : " is-pending"}">${escapeHtml(explanation || "Bewertung wird berechnet …")}</small>`
@@ -211,6 +215,7 @@ export class MoveListView {
       title ? ` title="${escapeHtml(title)}"` : "",
       ">",
       `<span class="move-san">${escapeHtml(node.move.san)}</span>`,
+      symbol ? `<span class="move-quality-symbol" aria-label="${escapeHtml(quality)}">${escapeHtml(symbol)}</span>` : "",
       detail,
       "</td>",
     ].join("");

@@ -44,7 +44,7 @@ export function engineOpponentLabel(level) {
 
 export function nextStrongMoveStreak(current, quality) {
   const streak = Number.isInteger(current) && current > 0 ? current : 0;
-  return quality === "best" || quality === "excellent"
+  return ["brilliant", "great", "book", "best", "excellent"].includes(quality)
     ? Math.min(99, streak + 1)
     : 0;
 }
@@ -58,7 +58,13 @@ export function describeLiveMove(move) {
     ? `${moveNumber}${move.color === "b" ? "…" : "."} ${move.san || "dein Zug"}`
     : move.san || "Dein Zug";
   let message;
-  if (quality === "best") {
+  if (quality === "brilliant") {
+    message = "Das war eine brillante Idee.";
+  } else if (quality === "great") {
+    message = "Das war ein besonders starker Zug.";
+  } else if (quality === "book") {
+    message = "Das ist ein bekannter Eröffnungszug.";
+  } else if (quality === "best") {
     message = "Das war der beste Zug.";
   } else if (quality === "excellent") {
     message = "Das war ein starker Zug.";
@@ -68,6 +74,8 @@ export function describeLiveMove(move) {
     message = "Etwas ungenau. Da war ein besserer Zug.";
   } else if (quality === "mistake") {
     message = "Das ist ein klarer Fehler. Deine Stellung wird deutlich schlechter.";
+  } else if (quality === "miss") {
+    message = "Hier verpasst du eine große Chance.";
   } else {
     message = "Das ist ein grober Fehler. Deine Stellung wird viel schlechter.";
   }

@@ -33,6 +33,18 @@ export default function HomePage() {
                   <h2 id="move-list-title">Züge</h2>
                   <p id="keyboard-hint" className="keyboard-hint">← → navigieren · ↑ ↓ Variante wechseln</p>
                 </div>
+                <section id="game-review-sidebar" className="game-review-sidebar" aria-label="Partieanalyse">
+                  <div className="game-review-actions">
+                    <button id="game-review-start" type="button">Partie analysieren</button>
+                    <button id="game-review-open" type="button" hidden>Auswertung</button>
+                  </div>
+                  <div id="game-review-progress" className="game-review-sidebar-progress" hidden>
+                    <progress aria-label="Fortschritt der Partieanalyse" />
+                    <span />
+                  </div>
+                  <div id="game-review-summary" className="game-review-sidebar-summary" hidden />
+                  <div id="game-review-move-detail" className="game-review-move-detail" hidden />
+                </section>
                 <div id="move-list" />
               </section>
             </div>
