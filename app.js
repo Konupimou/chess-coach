@@ -478,6 +478,78 @@ export class ChessApp {
     this.evalBar = new EvalBar({ parentEl: boardRow, width: 32, height: null });
     this.evalBar.container.hidden = !this.analysisAssistantsEnabled;
     analysisColumn.hidden = !this.analysisAssistantsEnabled;
+
+    const boardDock = document.createElement("nav");
+    boardDock.className = "board-dock";
+    boardDock.setAttribute("aria-label", "Brettsteuerung");
+    const boardDockNavigation = document.createElement("div");
+    boardDockNavigation.className = "board-dock-group board-dock-navigation";
+    const boardDockTools = document.createElement("div");
+    boardDockTools.className = "board-dock-group board-dock-tools";
+    const makeBoardDockButton = ({ label, symbol, shortLabel = "", onClick }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "board-dock-button";
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      const icon = document.createElement("span");
+      icon.className = "board-dock-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = symbol;
+      button.appendChild(icon);
+      if (shortLabel) {
+        const copy = document.createElement("span");
+        copy.className = "board-dock-label";
+        copy.textContent = shortLabel;
+        button.appendChild(copy);
+      }
+      button.addEventListener("click", onClick);
+      return button;
+    };
+    this.boardStartButton = makeBoardDockButton({
+      label: "Zur Anfangsstellung",
+      symbol: "↤",
+      onClick: () => this.jumpToBoardBoundary("start"),
+    });
+    this.boardBackButton = makeBoardDockButton({
+      label: "Einen Zug zurück",
+      symbol: "←",
+      onClick: () => this.goBackOnePly(),
+    });
+    this.boardForwardButton = makeBoardDockButton({
+      label: "Einen Zug vor",
+      symbol: "→",
+      onClick: () => this.goForwardOnePly(),
+    });
+    this.boardEndButton = makeBoardDockButton({
+      label: "Zur letzten Stellung",
+      symbol: "↦",
+      onClick: () => this.jumpToBoardBoundary("end"),
+    });
+    this.boardDockFlipButton = makeBoardDockButton({
+      label: "Brett drehen",
+      symbol: "⇅",
+      shortLabel: "Drehen",
+      onClick: () => this.flipButton?.click(),
+    });
+    this.boardFocusButton = makeBoardDockButton({
+      label: "Fokusmodus öffnen",
+      symbol: "⛶",
+      shortLabel: "Fokus",
+      onClick: () => this.setBoardFocusMode(!this.boardFocusEnabled),
+    });
+    this.boardFocusButton.setAttribute("aria-pressed", "false");
+    boardDockNavigation.append(
+      this.boardStartButton,
+      this.boardBackButton,
+      this.boardForwardButton,
+      this.boardEndButton,
+    );
+    boardDockTools.append(this.boardDockFlipButton, this.boardFocusButton);
+    boardDock.append(boardDockNavigation, boardDockTools);
+    boardStack.appendChild(boardDock);
+    this.boardDock = boardDock;
+    this.boardFocusEnabled = false;
     this.scheduleBoardResize();
 
     const boardToolbar = document.createElement("div");
@@ -876,6 +948,12 @@ export class ChessApp {
       this.boardStackResizeObserver.observe(this.boardStack);
     }
     this._onKeyDown = (event) => {
+      if (event.key === "Escape" && this.boardFocusEnabled) {
+        event.preventDefault();
+        this.stopAllBoardPreviews();
+        this.setBoardFocusMode(false);
+        return;
+      }
       if (
         event.key === "Escape"
         && (this.previewState || this.moveListPreviewState)
@@ -2314,6 +2392,55 @@ export class ChessApp {
     this.refreshLiveAccuracy();
     this.refreshOpeningRecognition();
     this.evaluateCurrentPosition();
+  }
+
+  jumpToBoardBoundary(boundary) {
+    if (this.reviewRunning || this.appMode === "play") return;
+    let target = this.currentNode;
+    if (boundary === "start") {
+      target = this.moveTree;
+    } else if (boundary === "end") {
+      const visited = new Set();
+      while (target?.mainline && !visited.has(target)) {
+        visited.add(target);
+        target = target.mainline;
+      }
+    }
+    if (!target || target === this.currentNode) return;
+    this.jumpToFen(target.fen, target);
+  }
+
+  setBoardFocusMode(enabled) {
+    const next = Boolean(enabled);
+    this.boardFocusEnabled = next;
+    document.body.classList.toggle("board-focus-mode", next);
+    if (this.boardFocusButton) {
+      this.boardFocusButton.classList.toggle("is-active", next);
+      this.boardFocusButton.setAttribute("aria-pressed", String(next));
+      const label = next ? "Fokusmodus schließen" : "Fokusmodus öffnen";
+      this.boardFocusButton.setAttribute("aria-label", label);
+      this.boardFocusButton.title = label;
+    }
+    requestAnimationFrame(() => {
+      this.scheduleBoardResize();
+      if (next) this.boardEl?.focus?.({ preventScroll: true });
+    });
+  }
+
+  updateBoardDock() {
+    const navigationLocked = this.reviewRunning || this.appMode === "play";
+    if (this.boardStartButton) {
+      this.boardStartButton.disabled = navigationLocked || !this.currentNode?.parent;
+    }
+    if (this.boardBackButton) {
+      this.boardBackButton.disabled = navigationLocked || !this.currentNode?.parent;
+    }
+    if (this.boardForwardButton) {
+      this.boardForwardButton.disabled = navigationLocked || !this.currentNode?.mainline;
+    }
+    if (this.boardEndButton) {
+      this.boardEndButton.disabled = navigationLocked || !this.currentNode?.mainline;
+    }
   }
 
   goForwardOnePly() {
@@ -9253,6 +9380,7 @@ export class ChessApp {
       annotations: showAnnotations ? this.buildMoveAnnotations() : new Map(),
       showExplanations,
     });
+    this.updateBoardDock();
     this.renderGameReviewSidebar();
   }
 
@@ -9512,6 +9640,7 @@ export class ChessApp {
     if (this._onStorage) {
       window.removeEventListener("storage", this._onStorage);
     }
+    document.body.classList.remove("board-focus-mode");
     if (this._onPlayModeClick) {
       this.playModeButton?.removeEventListener("click", this._onPlayModeClick);
     }
