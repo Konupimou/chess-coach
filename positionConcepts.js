@@ -4,7 +4,7 @@ export const CONCEPT_FINGERPRINT_VERSION = 1;
 
 export const TRANSFER_CONCEPT_CATALOGUE = Object.freeze([
   "isolated_pawn", "hanging_pawns", "backward_pawn", "minority_attack",
-  "flank_pawn_majority", "outpost", "good_bishop", "bad_bishop", "rook_on_open_file",
+  "queenside_pawn_majority", "kingside_pawn_majority", "outpost", "good_bishop", "bad_bishop", "rook_on_open_file",
   "development_advantage", "opposite_side_castling_attack", "open_center_against_uncastled_king",
   "space_advantage", "favorable_exchange", "prophylaxis", "exchange_sacrifice",
   "pin", "fork", "deflection", "overloaded_defender", "remove_defender",

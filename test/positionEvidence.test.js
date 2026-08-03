@@ -187,6 +187,46 @@ test("Vergleichsevidenz trennt besten, gleichwertigen und gespielten Zug", () =>
   assert.equal(evidence.moveComparison.lossCp, 6);
 });
 
+test("ein gefesselter Springer erzeugt keine falsche Gabel-Evidenz", () => {
+  const evidence = buildPositionEvidence({
+    fenBefore: "k3r3/8/8/8/3q1r2/8/8/2N1K3 w - - 0 1",
+    playedUci: "c1e2",
+    candidateLines: [{
+      rank: 1,
+      evaluation: { unit: "cp", value: 0, perspective: "player" },
+      pvUci: ["c1e2"],
+    }],
+  });
+
+  assert.equal(evidence.valid, true);
+  assert.equal(
+    evidence.moveComparison.played.tacticalMotifs.some(
+      (entry) => ["fork", "double_attack"].includes(entry.motif?.type),
+    ),
+    false,
+  );
+});
+
+test("ein Springer mit zwei legalen Schlagzielen bleibt als Gabel belegt", () => {
+  const evidence = buildPositionEvidence({
+    fenBefore: "k7/8/3q1r2/8/8/2N5/8/7K w - - 0 1",
+    playedUci: "c3e4",
+    candidateLines: [{
+      rank: 1,
+      evaluation: { unit: "cp", value: 0, perspective: "player" },
+      pvUci: ["c3e4"],
+    }],
+  });
+
+  const fork = evidence.moveComparison.played.tacticalMotifs.find(
+    (entry) => entry.motif?.type === "fork",
+  );
+  assert.deepEqual(
+    fork?.motif?.targets.map((target) => target.square).sort(),
+    ["d6", "f6"],
+  );
+});
+
 test("die bessere Linie belegt eine konkrete Figurenentwicklung", () => {
   const evidence = buildPositionEvidence({
     fenBefore: START_FEN,

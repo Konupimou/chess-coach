@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import { PRACTICALLY_EQUIVALENT_LOSS_CP } from "./coachThresholds.js";
 
 const FILES = "abcdefgh";
 const PIECE_VALUES = Object.freeze({
@@ -17,6 +18,22 @@ const PIECE_NAMES = Object.freeze({
   q: "Dame",
   k: "König",
 });
+const PIECE_SUBJECTS = Object.freeze({
+  p: "Der Bauer",
+  n: "Der Springer",
+  b: "Der Läufer",
+  r: "Der Turm",
+  q: "Die Dame",
+  k: "Der König",
+});
+const PIECE_OBJECTS = Object.freeze({
+  p: "den Bauern",
+  n: "den Springer",
+  b: "den Läufer",
+  r: "den Turm",
+  q: "die Dame",
+  k: "den König",
+});
 const HOME_MINOR_SQUARES = new Set(["b1", "c1", "f1", "g1", "b8", "c8", "f8", "g8"]);
 const CENTER = new Set(["d4", "e4", "d5", "e5"]);
 const ALL_SQUARES = [...FILES].flatMap((file) => (
@@ -33,7 +50,7 @@ const MOTIF_PHRASES = Object.freeze({
   Fesselung: "eine Fesselung",
   Spieß: "einen Spieß",
   "Schlag mit Schach": "einen Schlag mit Schach",
-  "Schach mit Tempo": "ein Schach mit Tempo",
+  Schach: "ein Schach",
 });
 const CONCRETE_FOLLOW_UP_MOTIFS = new Set([
   "Matt",
@@ -67,8 +84,8 @@ const squaresAround = (square) => {
   )).filter(Boolean);
 };
 
-function passedPawnPath(game, square, color) {
-  if (!game || !square) return [];
+function passedPawnData(game, square, color) {
+  if (!game || !square) return { passed: false, path: [] };
   const file = squareFile(square);
   const rank = squareRank(square);
   const direction = color === "w" ? 1 : -1;
@@ -81,16 +98,18 @@ function passedPawnPath(game, square, color) {
       && (squareRank(candidate) - rank) * direction > 0
     );
   });
-  if (enemyPawnAhead) return [];
+  if (enemyPawnAhead) return { passed: false, path: [] };
   const path = [];
   for (
     let nextRank = rank + direction;
     nextRank >= 0 && nextRank < 8;
     nextRank += direction
   ) {
-    path.push(squareAt(file, nextRank));
+    const nextSquare = squareAt(file, nextRank);
+    if (game.get(nextSquare)) break;
+    path.push(nextSquare);
   }
-  return path;
+  return { passed: true, path };
 }
 
 function loadGame(fen) {
@@ -114,6 +133,26 @@ function playUci(game, rawUci) {
     return move ? { move, uci } : null;
   } catch {
     return null;
+  }
+}
+
+function legalCaptureSquaresForMover(game, event) {
+  if (!game || !event?.to || !event?.color) return new Set();
+  try {
+    const parts = game.fen().split(" ");
+    // Nach einem Zug ist der Gegner am Zug. Für diese Prüfung wird nur die
+    // Zugfarbe zurückgesetzt. So zählt zum Beispiel ein festgebundener
+    // Springer nicht als Angreifer einer angeblichen Gabel.
+    parts[1] = event.color;
+    parts[3] = "-";
+    const moverGame = new Chess(parts.join(" "));
+    return new Set(
+      moverGame.moves({ square: event.to, verbose: true })
+        .filter((move) => Boolean(move.captured))
+        .map((move) => move.to),
+    );
+  } catch {
+    return new Set();
   }
 }
 
@@ -145,6 +184,10 @@ function legalLineEvents(fen, pv, maximum = 16) {
         }];
       })
       .sort((left, right) => right.value - left.value);
+    const legalCaptureSquares = legalCaptureSquaresForMover(game, move);
+    const legallyAttackedTargets = attackedTargets.filter((target) => (
+      target.piece !== "k" && legalCaptureSquares.has(target.square)
+    ));
     const defendedTargets = ALL_SQUARES
       .flatMap((square) => {
         const piece = game.get(square);
@@ -190,9 +233,9 @@ function legalLineEvents(fen, pv, maximum = 16) {
       : filePawns.every((piece) => piece.color !== move.color)
         ? "semi-open"
         : "closed";
-    const passedPath = move.piece === "p"
-      ? passedPawnPath(game, move.to, move.color)
-      : [];
+    const passedPawn = move.piece === "p"
+      ? passedPawnData(game, move.to, move.color)
+      : { passed: false, path: [] };
     events.push({
       index: events.length,
       uci,
@@ -210,6 +253,7 @@ function legalLineEvents(fen, pv, maximum = 16) {
       checkedKing,
       checkAttackers,
       attackedTargets,
+      legallyAttackedTargets,
       defendedTargets,
       controlledSquares,
       controlledCenter,
@@ -218,7 +262,8 @@ function legalLineEvents(fen, pv, maximum = 16) {
       controlledKingZone,
       fileState,
       fileSquares,
-      passedPath,
+      isPassedPawn: passedPawn.passed,
+      passedPath: passedPawn.path,
     });
   }
   return events;
@@ -258,7 +303,7 @@ function rayMotif(game, event) {
     ) {
       return {
         name: "Fesselung",
-        detail: `${PIECE_NAMES[first.type]} auf ${first.square} steht vor dem eigenen König und kann sich kaum lösen.`,
+        detail: `${PIECE_SUBJECTS[first.type]} auf ${first.square} darf die Linie zum eigenen König nicht freigeben.`,
         targets: [first.square, second.square],
         visualArrows: [
           { from: event.to, to: first.square, role: "threat" },
@@ -274,7 +319,7 @@ function rayMotif(game, event) {
     ) {
       return {
         name: "Spieß",
-        detail: `Der König muss reagieren; dahinter steht ${PIECE_NAMES[second.type]} auf ${second.square}.`,
+        detail: `Der König muss reagieren. Dahinter steht ${second.type === "q" ? "die" : "der"} ${PIECE_NAMES[second.type]} auf ${second.square}.`,
         targets: [first.square, second.square],
         visualArrows: [
           { from: event.to, to: first.square, role: "danger" },
@@ -341,19 +386,39 @@ function firstMoveMotif(fen, events) {
   }
 
   // Zwei geometrisch angegriffene Bauern sind noch kein lehrreicher
-  // Doppelangriff. Das Motiv wird nur gezeigt, wenn tatsächlich mindestens
-  // zwei Figuren von Springerwert oder höher gleichzeitig angegriffen werden.
-  const valuableTargets = event.attackedTargets.filter((target) => target.value >= 3);
-  if (valuableTargets.length >= 2) {
+  // Doppelangriff. Es zählen nur legale Angriffe auf Figuren von
+  // Springerwert oder höher. Bei einem Schach darf der König das zweite Ziel
+  // sein, sofern der gezogene Stein selbst das Schach gibt.
+  const valuableTargets = event.legallyAttackedTargets.filter(
+    (target) => target.value >= 3,
+  );
+  const checkedKingTarget = event.givesCheck
+    && event.checkedKing
+    && event.checkAttackers.includes(event.to)
+    ? [{ square: event.checkedKing, piece: "k", value: 0 }]
+    : [];
+  const attackerValue = PIECE_VALUES[event.piece] || 0;
+  const hasClearTwoPieceFork = (
+    valuableTargets.length >= 2
+    && (
+      ["n", "p"].includes(event.piece)
+      || valuableTargets.slice(0, 2).every((target) => target.value > attackerValue)
+    )
+  );
+  const forkTargets = checkedKingTarget.length > 0 && valuableTargets.length > 0
+    ? [checkedKingTarget[0], valuableTargets[0]]
+    : hasClearTwoPieceFork
+      ? valuableTargets.slice(0, 2)
+      : [];
+  if (forkTargets.length >= 2) {
     const name = ["n", "p"].includes(event.piece) ? "Gabel" : "Doppelangriff";
     return {
       name,
-      detail: `${PIECE_NAMES[event.piece]} greift gleichzeitig ${valuableTargets
-        .slice(0, 2)
-        .map((target) => `${PIECE_NAMES[target.piece]} auf ${target.square}`)
+      detail: `${PIECE_SUBJECTS[event.piece]} auf ${event.to} greift gleichzeitig ${forkTargets
+        .map((target) => `${PIECE_OBJECTS[target.piece]} auf ${target.square}`)
         .join(" und ")} an.`,
-      targets: valuableTargets.slice(0, 2).map((target) => target.square),
-      visualArrows: valuableTargets.slice(0, 2).map((target) => ({
+      targets: forkTargets.map((target) => target.square),
+      visualArrows: forkTargets.map((target) => ({
         from: event.to,
         to: target.square,
         role: "threat",
@@ -367,7 +432,7 @@ function firstMoveMotif(fen, events) {
   if (event.givesCheck && event.captured) {
     return {
       name: "Schlag mit Schach",
-      detail: "Der Zug gewinnt ein Tempo, weil nach dem Schlag zuerst das Schach beantwortet werden muss.",
+      detail: "Der Zug schlägt einen Stein und gibt zugleich Schach. Der Gegner muss zuerst seinen König schützen.",
       targets: [event.checkedKing].filter(Boolean),
       visualArrows: event.checkAttackers.map((from) => ({
         from,
@@ -378,8 +443,8 @@ function firstMoveMotif(fen, events) {
   }
   if (event.givesCheck) {
     return {
-      name: "Schach mit Tempo",
-      detail: "Der König muss reagieren, bevor der Gegner seinen eigenen Plan fortsetzen kann.",
+      name: "Schach",
+      detail: "Der Zug gibt Schach. Der Gegner muss jetzt seinen König schützen.",
       targets: [event.checkedKing].filter(Boolean),
       visualArrows: event.checkAttackers.map((from) => ({
         from,
@@ -434,41 +499,41 @@ function strategicIdea(event) {
   if (!event) return {
     kind: "activity",
     headline: "Den Zug am Brett verstehen",
-    explanation: "Der vorgeschlagene Zug zeigt, welche Aufgabe in dieser Stellung besonders wichtig ist.",
+    explanation: "Der Zug konnte am Brett nicht genauer erklärt werden.",
   };
   if (/^O-O(?:-O)?/.test(event.san)) {
     return {
       kind: "castle",
-      headline: "Den König sichern",
-      explanation: "Die Rochade bringt den König aus dem Zentrum und verbindet gleichzeitig die Türme.",
+      headline: "Rochieren",
+      explanation: `${event.san} zieht den König und den Turm in einem Zug.`,
     };
   }
   if (event.captured) {
     return {
       kind: "capture",
-      headline: "Die Spannung konkret auflösen",
-      explanation: `${event.san} verändert Material und Bauern- oder Figurenstruktur sofort.`,
+      headline: "Einen Stein schlagen",
+      explanation: `${event.san} schlägt ${PIECE_OBJECTS[event.captured]} auf ${event.to}.`,
     };
   }
-  if (event.piece === "p" && event.passedPath.length > 0) {
+  if (event.piece === "p" && event.isPassedPawn) {
     return {
       kind: "passed-pawn",
-      headline: "Den Freibauern voranbringen",
-      explanation: `${event.san} schiebt einen Bauern vor, dem auf seiner und den benachbarten Linien kein gegnerischer Bauer mehr entgegensteht.`,
+      headline: "Den freien Bauern vorziehen",
+      explanation: `${event.san} zieht einen freien Bauern vor. Vor ihm steht auf seiner oder einer benachbarten Linie kein gegnerischer Bauer.`,
     };
   }
   if (CENTER.has(event.to) && event.piece === "p") {
     return {
       kind: "center",
-      headline: "Im Zentrum Raum gewinnen",
-      explanation: `${event.san} besetzt ein wichtiges Zentrumsfeld und öffnet Wege für die eigenen Figuren.`,
+      headline: "Einen Bauern ins Zentrum stellen",
+      explanation: `${event.san} stellt den Bauern auf das Zentrumsfeld ${event.to}.`,
     };
   }
   if (HOME_MINOR_SQUARES.has(event.from) && ["n", "b"].includes(event.piece)) {
     return {
       kind: "development",
-      headline: "Eine Figur sinnvoll entwickeln",
-      explanation: `${event.san} bringt den ${PIECE_NAMES[event.piece]} ins Spiel und verbessert seine Wirkung auf die Stellung.`,
+      headline: "Eine Figur entwickeln",
+      explanation: `${event.san} entwickelt den ${PIECE_NAMES[event.piece]} vom Startfeld ${event.from}.`,
     };
   }
   if (
@@ -477,25 +542,23 @@ function strategicIdea(event) {
   ) {
     return {
       kind: "open-file",
-      headline: event.fileState === "open"
-        ? "Eine offene Linie besetzen"
-        : "Eine halboffene Linie nutzen",
-      explanation: `${event.san} stellt die Figur auf eine Linie, auf der kein eigener Bauer den Weg versperrt.`,
+      headline: "Eine Linie ohne eigenen Bauern nutzen",
+      explanation: `${event.san} stellt die Figur auf die ${event.to[0]}-Linie. Auf dieser Linie steht kein eigener Bauer.`,
     };
   }
   if (event.controlledKingZone.length >= 2) {
     return {
       kind: "king-pressure",
-      headline: "Den gegnerischen König einengen",
-      explanation: `${event.san} richtet die Figur auf mehrere Felder in der Nähe des gegnerischen Königs. Die Markierungen zeigen den tatsächlich kontrollierten Bereich.`,
+      headline: "Felder am gegnerischen König kontrollieren",
+      explanation: `${event.san} kontrolliert mehrere Felder neben dem gegnerischen König.`,
     };
   }
-  if (event.attackedTargets.length > 0) {
-    const target = event.attackedTargets[0];
+  if (event.legallyAttackedTargets.length > 0) {
+    const target = event.legallyAttackedTargets[0];
     return {
       kind: "pressure",
-      headline: "Druck auf eine Figur erzeugen",
-      explanation: `${event.san} greift ${PIECE_NAMES[target.piece]} auf ${target.square} direkt an und erzeugt konkreten Druck.`,
+      headline: "Einen gegnerischen Stein angreifen",
+      explanation: `${event.san} greift ${PIECE_OBJECTS[target.piece]} auf ${target.square} direkt an.`,
     };
   }
   if (event.defendedTargets.some((target) => target.value >= 3)) {
@@ -503,7 +566,7 @@ function strategicIdea(event) {
     return {
       kind: "defense",
       headline: "Eine eigene Figur absichern",
-      explanation: `${event.san} unterstützt ${PIECE_NAMES[target.piece]} auf ${target.square} direkt und verbessert damit den Zusammenhalt der Stellung.`,
+      explanation: `${event.san} deckt ${PIECE_OBJECTS[target.piece]} auf ${target.square}.`,
     };
   }
   if (event.piece === "p") {
@@ -514,22 +577,22 @@ function strategicIdea(event) {
     return {
       kind: gainsSpace ? "space" : "pawn",
       headline: gainsSpace
-        ? "Mehr Raum beanspruchen"
-        : "Die Bauernstruktur verändern",
-      explanation: `${event.san} verändert dauerhaft die Bauernstruktur und kontrolliert neue Felder. Diese Felder sind am Brett markiert.`,
+        ? "Den Bauern weit vorschieben"
+        : "Einen Bauern ziehen",
+      explanation: `${event.san} stellt den Bauern auf ${event.to}. Die markierten Felder greift er jetzt an.`,
     };
   }
   if (event.piece === "k") {
     return {
       kind: "king",
       headline: "Den König neu positionieren",
-      explanation: `${event.san} verändert die Königssicherheit und die Felder, die der König selbst kontrolliert.`,
+      explanation: `${event.san} stellt den König von ${event.from} nach ${event.to}.`,
     };
   }
   return {
     kind: "activity",
-    headline: "Die Figur aktiver stellen",
-    explanation: `${event.san} verbessert die Aufgabe des ${PIECE_NAMES[event.piece] || "Steins"} und bereitet den weiteren Plan vor.`,
+    headline: "Die Figur neu aufstellen",
+    explanation: `${event.san} stellt den ${PIECE_NAMES[event.piece] || "Stein"} von ${event.from} nach ${event.to}.`,
   };
 }
 
@@ -540,7 +603,9 @@ function strategicAnnotations(event, strategic) {
   // Bei einer normalen Entwicklung ist nur der tatsächlich gespielte Zug
   // gemeint. Kontrollierte Felder wie d4 oder e5 sehen sonst wie weitere
   // Zugempfehlungen aus.
-  if (kind === "development") return base;
+  if (kind === "development" || kind === "activity" || kind === "king") {
+    return base;
+  }
   const annotations = {
     arrows: [...base.arrows],
     highlights: [...base.highlights],
@@ -561,19 +626,7 @@ function strategicAnnotations(event, strategic) {
   };
 
   if (kind === "center") {
-    addHighlights([...CENTER], "concept");
-  }
-
-  if (kind === "development" || kind === "activity") {
-    const relevant = event.controlledCenter.length > 0
-      ? event.controlledCenter
-      : event.controlledSquares.filter((square) => !event.defendedTargets.some(
-        (target) => target.square === square,
-      )).slice(0, 3);
-    relevant.slice(0, 3).forEach((square) => {
-      addArrow(event.to, square, "concept");
-    });
-    addHighlights(relevant, "concept", 3);
+    addHighlights([event.to, ...event.controlledCenter], "concept", 3);
   }
 
   if (kind === "pawn" || kind === "space") {
@@ -584,16 +637,10 @@ function strategicAnnotations(event, strategic) {
 
   if (kind === "passed-pawn") {
     addHighlights(event.passedPath, "concept", 7);
-    addArrow(
-      event.to,
-      event.passedPath.at(-1),
-      "concept",
-      0.86,
-    );
   }
 
   if (kind === "pressure") {
-    event.attackedTargets.slice(0, 2).forEach((target) => {
+    event.legallyAttackedTargets.slice(0, 2).forEach((target) => {
       addArrow(event.to, target.square, "threat", 0.84);
       addHighlights([target.square], "target");
     });
@@ -619,8 +666,6 @@ function strategicAnnotations(event, strategic) {
 
   if (kind === "open-file") {
     addHighlights(event.fileSquares, "concept", 8);
-    const targetRank = event.color === "w" ? "8" : "1";
-    addArrow(event.to, `${event.to[0]}${targetRank}`, "concept", 0.8);
   }
 
   if (kind === "castle") {
@@ -630,47 +675,11 @@ function strategicAnnotations(event, strategic) {
       ? `h${homeRank}f${homeRank}`
       : `a${homeRank}d${homeRank}`;
     addArrow(rookMove.slice(0, 2), rookMove.slice(2, 4), "defense", 0.78);
-    addHighlights([
-      rookMove.slice(2, 4),
-      event.ownKing,
-      ...squaresAround(event.ownKing),
-    ], "concept", 6);
-  }
-
-  if (kind === "king") {
-    addHighlights([event.ownKing, ...squaresAround(event.ownKing)], "concept", 6);
+    addHighlights([rookMove.slice(2, 4)], "concept", 1);
   }
 
   if (kind === "capture") {
     addHighlights([event.to], "target", 1);
-  }
-
-  if (kind !== "center" && event.controlledCenter.length > 0) {
-    event.controlledCenter.slice(0, 2).forEach((square) => {
-      addArrow(event.to, square, "concept", 0.68);
-    });
-    addHighlights(event.controlledCenter, "concept", 4);
-  }
-
-  if (kind !== "pressure" && event.attackedTargets.length > 0) {
-    event.attackedTargets.slice(0, 2).forEach((target) => {
-      addArrow(event.to, target.square, "threat", 0.8);
-      addHighlights([target.square], "target");
-    });
-  }
-
-  if (kind !== "defense") {
-    event.defendedTargets
-      .filter((target) => target.value >= 3)
-      .slice(0, 2)
-      .forEach((target) => {
-        addArrow(event.to, target.square, "defense", 0.72);
-        addHighlights([target.square], "concept");
-      });
-  }
-
-  if (kind !== "king-pressure" && event.controlledKingZone.length >= 2) {
-    addHighlights(event.controlledKingZone, "danger", 4);
   }
 
   return {
@@ -742,14 +751,14 @@ export function buildCoachVisualPlan({
     && events[motif.eventIndex]?.color === events[0]?.color,
   );
   const headline = motif
-    ? `${motifForMover ? "Taktische Idee" : "Taktische Gefahr"}: ${motif.name}`
+    ? `${motifForMover ? "Motiv im Zug" : "Gefahr"}: ${motif.name}`
     : strategic.headline;
   const explanation = motif
     ? !motifForMover
-      ? `Die gezeigte Folge macht ${motifPhrase} für den Gegner sichtbar. ${motif.detail}`
+      ? `In dieser Folge spielt der Gegner ${events[motif.eventIndex].san}. ${motif.detail}`
       : motif.eventIndex === 0
-      ? `${events[0].san} setzt ${motifPhrase} in Gang. ${motif.detail}`
-      : `Die gezeigte Folge mündet in ${motifPhrase}. ${motif.detail}`
+      ? `${events[0].san} zeigt ${motifPhrase}. ${motif.detail}`
+      : `In der gezeigten Folge entsteht ${motifPhrase}. ${motif.detail}`
     : strategic.explanation;
   const frameAnnotations = selected.map((event, index) => (
     !motif && index === 0
@@ -854,12 +863,12 @@ export function moveQualityPresentation({
   const exactBest = Boolean(playedUci && bestUci && playedUci === bestUci);
   const equivalent = !exactBest
     && Number.isFinite(lossCp)
-    && lossCp <= 15;
+    && lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP;
   if (exactBest) return { symbol: "★", label: "Bester Zug", tone: "best" };
   if (equivalent) {
     return {
       symbol: "!",
-      label: "Ebenfalls bester Zug",
+      label: "Genauso gut",
       tone: "excellent",
     };
   }

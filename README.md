@@ -149,7 +149,7 @@ npm run site:build    # OpenNext-Artefakt für Sites erzeugen
 npm run site:package  # deploybares Sites-Archiv erzeugen
 npm run openings:check   # eingecheckten lokalen ECO-Index prüfen
 npm run openings:import  # Index bewusst aus den gepinnten TSV-Dateien neu erzeugen
-npm run pgn:index        # kommentierte PGNs anonymisiert und nach Phase indexieren
+npm run pgn:index        # PGN-Eingang indexieren und erfolgreiche Quellen nach database/used archivieren
 npm run pgn:check        # Laufzeitindex und Such-Buckets prüfen
 npm run pgn:evaluate     # Konzepttransfer und Suchlatenz messen
 ```
@@ -204,7 +204,7 @@ Neuladen erhalten.
 - `scripts/import-lichess-openings.mjs`: reproduzierbarer TSV-Import
 - `scripts/build-coach-pgn-index.mjs`: lokaler, deduplizierter Wissensindex aus kommentierten PGNs
 - `data/openings/source/`: gepinnte Originaldaten und CC0-Lizenz
-- `data/pgn/coach-pgn-index.json`: kompakter Laufzeitindex für exakte und konzeptuell ähnliche PGN-Stellungen
+- `data/pgn/coach-pgn-index.json`: kompakter Laufzeitindex für deterministische Fakten aus exakten PGN-Stellungen sowie getrennte Positionsprofile für die kuratierte Konzeptsuche
 - `public/data/openings/`: verzögert geladener kompakter Laufzeitindex
 - `gameStorage.js`: zyklusfreie Spielstände und browserlokale Account-Persistenz
 - `playerProfile.js`: aggregierte Spielerstatistiken und Bestpartien-Ranking
@@ -262,38 +262,56 @@ dieser einzelne erkannte Kontext übergeben, niemals die gesamte Datenbank.
 
 ## Lokales PGN-Erklärwissen
 
-Kommentierte PGN-Dateien im Ordner `database/` können mit
-`npm run pgn:index` in einen kompakten Laufzeitindex umgewandelt werden. Der
-Importer liest nur Kommentare, überspringt bytegleiche Quelldateien und
-begrenzt die Einträge pro Datei und Stellung. Unkommentierte Partien landen
-nicht im Index. `npm run pgn:check` prüft anschließend Format, FENs,
-Phasenkategorien, Themen und Größenlimits des erzeugten Index.
+Kommentierte PGN-Dateien kommen zunächst in den Eingangsordner `database/`.
+`npm run pgn:index` baut den kompakten Laufzeitindex aus diesem Eingang und dem
+Archiv `database/used/`. Erst nachdem alle angeforderten Ergebnisdateien
+erfolgreich geschrieben wurden, verschiebt der Importer die in diesem Lauf
+verarbeiteten Eingangsquellen nach `database/used/`. Bei einem fatalen Lese-
+oder Schreibfehler bleiben sie im Eingang. Bytegleiche Quellen werden sicher
+dedupliziert; unterschiedliche Dateien mit demselben Namen erhalten im Archiv
+einen Hash-Suffix und werden niemals überschrieben. Für eine ausdrücklich
+nicht verschiebende Diagnose gibt es `--keep-sources`.
 
-Der Coach sucht zunächst die exakte Stellung. Fehlt sie, vergleicht er über
+Der Importer liest kommentierte Partien, überspringt bytegleiche Quelldateien
+und ordnet verwertbare Stellen nach Partiephase ein. Unkommentierte Partien
+landen nicht im Index. Der produktive Index übernimmt keine freie PGN-Prosa,
+sondern nur kurze Fakten, die aus FEN und legalem Zug deterministisch neu
+berechnet werden. `npm run pgn:check` rekonstruiert diese Fakten und prüft
+Format, FENs, Phasenkategorien, Themen und Größenlimits.
+
+PGN-Fakten gelten nur in der exakten Stellung. Für kuratiertes Konzeptwissen
+nutzt der Coach
 vorberechnete Such-Buckets farbnormalisierte Bauernstrukturen, Material,
 Königssicherheit und erkannte Stellungskonzepte. Bei ähnlichen Stellungen darf
 er nur einen ausdrücklich ausgewiesenen Plan übertragen und muss Unterschiede
 und Abbruchbedingungen beachten. Bei abweichender taktischer Realität wird der
 Transfer gesperrt. Die konkrete Frage priorisiert passende Themen wie Taktik,
 Entwicklung, Bauernstruktur oder Endspiel. Der Coach formuliert die Hinweise
-eigenständig und passt ihre Sprache an die eingestellte Elo-Stufe an. Die PGNs ersetzen keine Analyse:
-konkrete Zugempfehlungen, Varianten, Bewertungen und taktische Behauptungen
-stammen weiterhin ausschließlich aus den geprüften Stockfish-Daten.
+eigenständig und passt ihre Sprache an die eingestellte Elo-Stufe an. Die PGNs
+ersetzen keine Analyse:
+Konkrete Zugempfehlungen, Varianten, Bewertungen und taktische Behauptungen
+stammen weiterhin ausschließlich aus den geprüften Stockfish-Daten. Historische
+PGN-Züge, Felder und Bewertungen werden nie auf eine nur ähnliche Stellung
+übertragen.
 
-Die Originaldateien in `database/` werden nicht verändert. Die daraus
-erzeugten Laufzeit- und Trainingsartefakte enthalten dagegen keine Datei- oder
-Werktitel, Autoren-, Spieler- oder Annotatornamen. Kommentare werden knapp
-zusammengefasst und in Eröffnung, Mittelspiel, Endspiel oder Sonstiges
-einsortiert. Technische Hash-IDs sichern weiterhin Deduplizierung und
-Reproduzierbarkeit, werden dem Coach aber nicht als inhaltliche Quelle gezeigt.
+Der Inhalt der Originaldateien wird nicht verändert; erfolgreich verarbeitete
+Dateien wechseln lediglich aus `database/` nach `database/used/`. Der daraus
+erzeugte Laufzeitindex enthält weder Rohkommentare noch Datei- oder Werktitel,
+Autoren-, Spieler- oder Annotatornamen. Deterministische Fakten werden in
+Eröffnung, Mittelspiel, Endspiel oder Sonstiges einsortiert. Technische Hash-IDs
+sichern weiterhin Deduplizierung und Reproduzierbarkeit, werden dem Coach aber
+nicht als inhaltliche Quelle gezeigt.
 
 Der Parser liest Kommentare, NAGs und verschachtelte Varianten.
 `npm run pgn:training-export` erzeugt getrennte, anonymisierte und noch
 ungeprüfte Trainingskandidaten; `npm run pgn:analyze` prüft priorisierte Kandidaten
 fortsetzbar mit Stockfish. Automatisch erzeugt, automatisch verifiziert und
 menschlich freigegeben bleiben getrennte Lebenszyklen. Details, aktuelle
-Importzahlen und Grenzen stehen in [docs/coach-knowledge-pipeline.md](docs/coach-knowledge-pipeline.md),
-die Messwerte in [reports/concept-transfer-evaluation.md](reports/concept-transfer-evaluation.md).
+Importzahlen und Grenzen stehen in [docs/coach-knowledge-pipeline.md](docs/coach-knowledge-pipeline.md).
+Die aktuelle Prüfung der v6-Laufzeitfakten steht in
+[reports/coach-corpus-evaluation.md](reports/coach-corpus-evaluation.md); die
+getrennte Konzeptsuche dokumentiert
+[reports/concept-transfer-evaluation.md](reports/concept-transfer-evaluation.md).
 
 Der Lichess-Zugriff verwendet einen sicheren HTTP-only-Cookie, fordert keine
 Spiel- oder Schreibrechte an und importiert ausschließlich abgeschlossene

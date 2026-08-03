@@ -16,11 +16,15 @@
     "site:preview": "npm run site:build && opennextjs-cloudflare preview",
     "openings:import": "node scripts/import-lichess-openings.mjs",
     "openings:check": "node scripts/check-opening-data.mjs",
+    "puzzles:import:800": "node scripts/import-lichess-puzzles.mjs https://database.lichess.org/lichess_db_puzzle.csv.zst --output data/knowledge/lichess-puzzles-800.json --min-rating 600 --max-rating 1100 --max-rating-deviation 100 --min-popularity 60 --themes pawnEndgame,rookEndgame,bishopEndgame,knightEndgame,deflection,capturingDefender,backRankMate,defensiveMove,equality,sacrifice --theme-quota pawnEndgame=1000 --theme-quota rookEndgame=1000 --theme-quota bishopEndgame=600 --theme-quota knightEndgame=600 --theme-quota deflection=750 --theme-quota capturingDefender=750 --theme-quota backRankMate=750 --theme-quota defensiveMove=1000 --theme-quota equality=500 --theme-quota sacrifice=500",
     "pgn:index": "node scripts/build-coach-pgn-index.mjs",
     "pgn:check": "node scripts/check-coach-pgn-index.mjs",
     "pgn:training-export": "node scripts/build-coach-pgn-index.mjs --training-output=data/pgn/coach-pgn-training.json",
     "pgn:analyze": "node scripts/analyze-coach-annotations.mjs",
     "pgn:evaluate": "node scripts/evaluate-concept-transfer.mjs",
+    "coach:evaluate": "node scripts/evaluate-coach-corpus.mjs --samples-per-cell=200 --strict",
+    "coach:stress": "node scripts/stress-test-coach-games.mjs --games=300 --positions-per-phase=75 --depth=5 --strict",
+    "coach:review-stress": "COACH_GAME_REVIEW_STRESS_GAMES=60 COACH_GAME_REVIEW_STRESS_PLIES=36 node --test test/gameReviewStress.test.js",
     "test": "node --test",
     "check": "npm run pgn:check && npm run test && npm run build"
   },
@@ -43,6 +47,7 @@
     "sharp": "^0.35.3"
   },
   "devDependencies": {
+    "fzstd": "^0.1.1",
     "wrangler": "^4.114.0"
   }
 }

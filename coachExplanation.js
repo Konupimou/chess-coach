@@ -3,7 +3,7 @@ const MOVE_TOKEN_PATTERN =
   /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|(?:O-O(?:-O)?|0-0(?:-0)?)[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
 
 export const MOVE_EXPLANATION_SCHEMA_VERSION = 3;
-export const MOVE_EXPLANATION_CACHE_VERSION = 6;
+export const MOVE_EXPLANATION_CACHE_VERSION = 7;
 
 const CLAIM_KINDS = Object.freeze([
   "assessment",
@@ -342,6 +342,7 @@ function evidenceSupportsClaimKind(record, claimKind) {
   if (claimKind === "variation") {
     return id.startsWith("engine.pv.")
       || id === "engine.played_line"
+      || id.startsWith("opening.continuation:")
       || id.startsWith("engine.move_comparison.difference.")
       || id.startsWith("position.danger.");
   }
@@ -618,6 +619,62 @@ function validateClaimContent(
   }
 }
 
+const MATERIAL_CLAIM_PIECES = Object.freeze({
+  bauer: "p",
+  bauern: "p",
+  springer: "n",
+  läufer: "b",
+  turm: "r",
+  türme: "r",
+  dame: "q",
+  figur: "figure",
+  figuren: "figure",
+  material: "material",
+});
+
+function explicitMaterialClaims(text) {
+  const piece = "(Bauer|Bauern|Springer|Läufer|Turm|Türme|Dame|Figur|Figuren|Material)";
+  const owner = "(?:(?:dein|sein|ihr|unser|euer)(?:e|en|er|em|es)?|ein(?:e|en|er|em|es)?|der|die|das|den|dem)";
+  const subject = "(?:du\\s+)?";
+  const square = "(?:\\s+auf\\s+([a-h][1-8]))?";
+  const patterns = [
+    { action: "set", pattern: new RegExp(`\\bstell(?:st|t|en)\\s+${subject}(?:${owner}\\s+)?${piece}${square}\\s+ein\\b`, "giu") },
+    { action: "lose", pattern: new RegExp(`\\bverlier(?:st|t|en)\\s+${subject}(?:${owner}\\s+)?${piece}${square}`, "giu") },
+    { action: "take", pattern: new RegExp(`\\bnimm(?:st|t|en)\\s+${subject}(?:${owner}\\s+)?${piece}${square}`, "giu") },
+    { action: "lose", pattern: new RegExp(`\\b${piece}${square}\\s+(?:geht|gehen|ging|gingen)\\s+verloren\\b`, "giu") },
+  ];
+  return patterns.flatMap(({ action, pattern }) => [...text.matchAll(pattern)].map((match) => ({
+    action,
+    sample: match[0],
+    piece: MATERIAL_CLAIM_PIECES[
+      String(match[1] || "").toLocaleLowerCase("de-DE")
+    ] || "",
+    square: String(match[2] || "").toLowerCase(),
+  })));
+}
+
+function referencedCaptures(moves) {
+  return moves.flatMap((move) => {
+    const capturedPiece = cleanText(
+      move?.capture?.capturedPiece || move?.captured,
+      1,
+    ).toLowerCase();
+    if (!capturedPiece) return [];
+    return [{
+      piece: capturedPiece,
+      square: cleanText(move?.capture?.square || move?.to, 2).toLowerCase(),
+    }];
+  });
+}
+
+function captureSupportsMaterialClaim(capture, claim) {
+  if (!capture || !claim?.piece) return false;
+  if (claim.square && capture.square !== claim.square) return false;
+  if (claim.piece === "material") return true;
+  if (claim.piece === "figure") return ["n", "b", "r", "q"].includes(capture.piece);
+  return capture.piece === claim.piece;
+}
+
 function validateStrongAssertions(
   text,
   claimKind,
@@ -629,10 +686,47 @@ function validateStrongAssertions(
 ) {
   const normalized = text.toLocaleLowerCase("de-DE");
   const referencedMoves = moveRefs.flatMap((reference) => reference.resolvedMoves);
+  const captures = referencedCaptures(referencedMoves);
+  const materialClaims = explicitMaterialClaims(text);
+  const supportedMaterialClaims = materialClaims.filter((claim) => (
+    captures.some((capture) => captureSupportsMaterialClaim(capture, claim))
+  ));
+  materialClaims.forEach((claim) => {
+    if (supportedMaterialClaims.includes(claim)) return;
+    errors.push(
+      `${label}: behauptete Figurenart oder behauptetes Schlagfeld in „${claim.sample}“ stimmt nicht mit dem referenzierten Schlagzug überein.`,
+    );
+  });
+  const materialPiece = "(?:dame|turm|türme|läufer|springer|bauer|bauern|material|figur|figuren)";
+  const broadlyWordedMaterialClaims = [
+    {
+      action: "set",
+      pattern: new RegExp(`\\bstell(?:st|t|en)\\b[^.!?]{0,60}\\b${materialPiece}\\b[^.!?]{0,24}\\bein\\b`, "iu"),
+    },
+    {
+      action: "lose",
+      pattern: new RegExp(`\\bverlier(?:st|t|en)\\b[^.!?]{0,60}\\b${materialPiece}\\b`, "iu"),
+    },
+    {
+      action: "take",
+      pattern: new RegExp(`\\bnimm(?:st|t|en)\\b[^.!?]{0,60}\\b${materialPiece}\\b`, "iu"),
+    },
+    {
+      action: "lose",
+      pattern: new RegExp(`\\b${materialPiece}\\b[^.!?]{0,40}\\b(?:geht|gehen|ging|gingen)\\b[^.!?]{0,16}\\bverloren\\b`, "iu"),
+    },
+  ];
+  broadlyWordedMaterialClaims.forEach(({ action, pattern }) => {
+    if (
+      !pattern.test(normalized)
+      || supportedMaterialClaims.some((claim) => claim.action === action)
+    ) return;
+    errors.push(`${label}: Materialbehauptung ist nicht eindeutig an den referenzierten Schlagzug gebunden.`);
+  });
   const bestMove = engineContext?.moveReview?.bestMove || engineContext?.bestMove;
   const bestUci = cleanUci(bestMove?.uci);
   const outcomeClaim =
-    /\b(?:gewinnt|verliert|erobert|verschenkt|opfert|entscheidet|erzwingt)\b.{0,50}\b(?:dame|turm|läufer|springer|bauer|bauern|material|figur|figuren)\b/i
+    /\b(?:gewinnt|erobert|verschenkt|opfert|entscheidet|erzwingt)\b.{0,50}\b(?:dame|turm|läufer|springer|bauer|bauern|material|figur|figuren)\b/i
     .test(text)
     || /\b(?:auf gewinn|gewonnene stellung|verlorene stellung)\b/i.test(text);
   if (outcomeClaim) {
@@ -658,7 +752,9 @@ function validateStrongAssertions(
   }
   if (claimKind === "alternative") {
     const firstReferenced = cleanUci(referencedMoves[0]?.uci);
-    const playedUci = cleanUci(engineContext?.moveReview?.playedMove?.uci);
+    const playedUci = cleanUci(
+      engineContext?.moveReview?.playedMove?.uci || expected?.uci,
+    );
     const rankTwoUci = cleanUci(
       engineContext?.lines?.find((line) => Number.parseInt(line?.rank, 10) === 2)
         ?.bestMove?.uci,
@@ -754,6 +850,30 @@ export function resolveExplanationSubject(positionEvidence, engineContext = null
   return { uci: "", san: "" };
 }
 
+function trustedOpeningContinuation(openingContext, uci) {
+  const move = cleanUci(uci);
+  if (
+    !move
+    || openingContext?.matched !== true
+    || openingContext?.source !== "lichess-chess-openings"
+  ) return null;
+  return (Array.isArray(openingContext.continuations)
+    ? openingContext.continuations
+    : [])
+    .find((continuation) => (
+      cleanUci(continuation?.uci) === move
+      && (
+        !continuation?.source
+        || continuation.source === "lichess-chess-openings"
+      )
+    )) || null;
+}
+
+function openingContinuationEvidenceId(uci) {
+  const move = cleanUci(uci);
+  return move ? `opening.continuation:${move}` : "";
+}
+
 export function buildTrustedExplanationEvidence({
   positionEvidence = null,
   engineContext = null,
@@ -809,6 +929,40 @@ export function buildTrustedExplanationEvidence({
       },
     });
   }
+  if (
+    openingContext?.matched === true
+    && openingContext?.source === "lichess-chess-openings"
+  ) {
+    (Array.isArray(openingContext.continuations)
+      ? openingContext.continuations
+      : [])
+      .slice(0, 5)
+      .forEach((continuation) => {
+        const uci = cleanUci(continuation?.uci);
+        const san = cleanText(continuation?.san, 24);
+        if (
+          !uci
+          || !san
+          || (
+            continuation?.source
+            && continuation.source !== "lichess-chess-openings"
+          )
+        ) return;
+        supplementalEvidence.push({
+          id: openingContinuationEvidenceId(uci),
+          kind: "opening.continuation",
+          source: "lichess-chess-openings",
+          fact: {
+            uci,
+            san,
+            variationCount: Math.max(
+              1,
+              Number.parseInt(continuation?.variationCount, 10) || 1,
+            ),
+          },
+        });
+      });
+  }
   return {
     positionEvidence,
     supplementalEvidence,
@@ -826,6 +980,154 @@ export function phaseFromPositionEvidence(positionEvidence) {
   return fullmove <= 12 ? "opening" : "middlegame";
 }
 
+function branchMotifs(branch) {
+  return (branch?.tacticalMotifs || [])
+    .map((entry) => entry?.motif || entry)
+    .filter((motif) => motif && typeof motif === "object");
+}
+
+function branchFirstMove(branch) {
+  return branch?.lineEvents?.[0] || null;
+}
+
+function branchHasEffect(branch, type, predicate = () => true) {
+  return (branch?.immediateEffects || [])
+    .some((effect) => effect?.type === type && predicate(effect));
+}
+
+const FEATURE_PIECE_VALUES = Object.freeze({ p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 });
+
+function isSevereDanger(danger) {
+  if (!danger || typeof danger !== "object") return false;
+  if (["mate", "back_rank_mate"].includes(danger.type)) return true;
+  if (danger.type === "loose_piece") {
+    return (FEATURE_PIECE_VALUES[danger.piece] || 0) >= 3;
+  }
+  if (danger.type !== "material_capture") return false;
+  const captured = FEATURE_PIECE_VALUES[
+    danger.capture?.capturedPiece || danger.move?.capture?.capturedPiece
+  ] || 0;
+  const attacker = FEATURE_PIECE_VALUES[danger.move?.piece] || 0;
+  return captured > 0 && (attacker === 0 ? captured >= 3 : captured >= attacker);
+}
+
+function isBehindPawn(rookSquare, pawnSquare, pawnColor) {
+  if (!rookSquare || !pawnSquare || rookSquare[0] !== pawnSquare[0]) return false;
+  const rookRank = Number.parseInt(rookSquare[1], 10);
+  const pawnRank = Number.parseInt(pawnSquare[1], 10);
+  if (!Number.isInteger(rookRank) || !Number.isInteger(pawnRank)) return false;
+  return pawnColor === "w" ? rookRank < pawnRank : rookRank > pawnRank;
+}
+
+function snapshotOccupiedSquares(snapshot) {
+  return new Set([
+    ...["w", "b"].flatMap((color) => (
+      snapshot?.pieceSafety?.byColor?.[color]?.pieces || []
+    ).map((piece) => piece.square)),
+    snapshot?.kingSafety?.byColor?.w?.kingSquare,
+    snapshot?.kingSafety?.byColor?.b?.kingSquare,
+  ].filter(Boolean));
+}
+
+function branchMovesRookBehindPassedPawn(branch, snapshot) {
+  const move = branchFirstMove(branch)
+    || (branch?.immediateEffects || []).find((effect) => effect?.type === "moves_piece");
+  if (move?.piece !== "r" || !move.to) return false;
+  const occupied = snapshotOccupiedSquares(snapshot);
+  occupied.delete(move.from);
+  occupied.delete(move.to);
+  return ["w", "b"].some((pawnColor) => (
+    (snapshot?.pawnStructure?.byColor?.[pawnColor]?.passedPawns || [])
+      .some((square) => {
+        if (!isBehindPawn(move.to, square, pawnColor)) return false;
+        const fromRank = Number.parseInt(move.to[1], 10);
+        const toRank = Number.parseInt(square[1], 10);
+        const step = Math.sign(toRank - fromRank);
+        for (let rank = fromRank + step; rank !== toRank; rank += step) {
+          if (occupied.has(`${square[0]}${rank}`)) return false;
+        }
+        return true;
+      })
+  ));
+}
+
+function materialHasOnly(material, allowedTypes) {
+  const allowed = new Set(allowedTypes);
+  return ["w", "b"].every((color) => (
+    ["n", "b", "r", "q"].every((type) => (
+      allowed.has(type) || (material?.byColor?.[color]?.counts?.[type] || 0) === 0
+    ))
+  ));
+}
+
+function flankPawnCount(pawnStructure, color, files) {
+  return files.reduce(
+    (sum, file) => sum + (pawnStructure?.byColor?.[color]?.fileCounts?.[file] || 0),
+    0,
+  );
+}
+
+function advancedPassedPawnCanMove(snapshot) {
+  const occupied = snapshotOccupiedSquares(snapshot);
+  return ["w", "b"].some((color) => (
+    (snapshot?.pawnStructure?.byColor?.[color]?.passedPawns || []).some((square) => {
+      const rank = Number.parseInt(square[1], 10);
+      const advanced = color === "w" ? rank >= 5 : rank <= 4;
+      const nextRank = rank + (color === "w" ? 1 : -1);
+      return advanced && nextRank >= 1 && nextRank <= 8
+        && !occupied.has(`${square[0]}${nextRank}`);
+    })
+  ));
+}
+
+function branchProvesPieceTrade(branch) {
+  const [first, reply] = branch?.lineEvents || [];
+  return Boolean(
+    first
+    && reply
+    && first.piece !== "p"
+    && first.capture?.capturedPiece
+    && first.capture.capturedPiece !== "p"
+    && reply.capture?.capturedPiece === first.piece
+    && reply.capture?.square === first.to,
+  );
+}
+
+function branchProvesOverload(branch, beforeSnapshot, attackingColor) {
+  const [first, reply, payoff] = branch?.lineEvents || [];
+  if (!first?.capture || !reply?.capture || !payoff?.capture) return false;
+  const defendingColor = attackingColor === "w" ? "b" : "w";
+  const targets = (beforeSnapshot?.pieceSafety?.byColor?.[defendingColor]?.pieces || [])
+    .filter((piece) => (
+      (FEATURE_PIECE_VALUES[piece.type] || 0) >= 3
+      && piece.attackers?.length > 0
+      && piece.defenders?.length === 1
+    ));
+  const groups = new Map();
+  targets.forEach((target) => {
+    const defenderSquare = target.defenders[0];
+    const duties = groups.get(defenderSquare) || [];
+    duties.push(target);
+    groups.set(defenderSquare, duties);
+  });
+  return [...groups.entries()]
+    .filter(([, duties]) => duties.length >= 2)
+    .some(([defenderSquare, duties]) => {
+      const firstDuty = duties.find((duty) => duty.square === first.capture.square);
+      const payoffDuty = duties.find((duty) => duty.square === payoff.capture.square);
+      const gained = (FEATURE_PIECE_VALUES[firstDuty?.type] || 0)
+        + (FEATURE_PIECE_VALUES[payoffDuty?.type] || 0);
+      return Boolean(
+        firstDuty
+        && payoffDuty
+        && firstDuty.square !== payoffDuty.square
+        && reply.from === defenderSquare
+        && reply.capture.square === first.to
+        && gained >= (FEATURE_PIECE_VALUES[first.piece] || 0),
+      );
+    });
+}
+
 export function knowledgeFeatureIdsFromPositionEvidence(positionEvidence) {
   if (!positionEvidence?.valid) return [];
   const ids = new Set(["decision.candidate_selected"]);
@@ -834,6 +1136,10 @@ export function knowledgeFeatureIdsFromPositionEvidence(positionEvidence) {
   const after = positionEvidence.after;
   const changes = positionEvidence.changes;
   if (!color || !after || !changes) return [...ids];
+  const phase = phaseFromPositionEvidence(positionEvidence);
+  const comparison = positionEvidence.moveComparison;
+  const branches = [comparison?.played, comparison?.best].filter(Boolean);
+  const allMotifs = branches.flatMap(branchMotifs);
 
   const center = after.center?.byColor;
   const ownCenter = new Set(center?.[color]?.influencedSquares || []);
@@ -930,10 +1236,24 @@ export function knowledgeFeatureIdsFromPositionEvidence(positionEvidence) {
   if (pawnStructure?.passedPawns?.length > 0) ids.add("pawn.passed");
   if (positionEvidence.playedMove.piece === "p") ids.add("pawn.advance_considered");
   if (
-    positionEvidence.playedMove.piece === "p"
-    && positionEvidence.playedMove.capture
+    positionEvidence.playedMove.capture?.capturedPiece === "p"
   ) {
     ids.add("material.pawn_capture_available");
+  }
+
+  if (phase !== "opening") {
+    const flankFiles = {
+      queenside: ["a", "b", "c"],
+      kingside: ["f", "g", "h"],
+    };
+    Object.entries(flankFiles).forEach(([flank, files]) => {
+      const ownCount = flankPawnCount(after.pawnStructure, color, files);
+      const opposingCount = flankPawnCount(after.pawnStructure, opponent, files);
+      if (ownCount >= 2 && ownCount > opposingCount) {
+        ids.add("pawn.majority");
+        ids.add(`pawn.${flank}_majority`);
+      }
+    });
   }
 
   const looseTargets = after.pieceSafety?.byColor?.[opponent]?.attackedAndUndefended || [];
@@ -963,6 +1283,130 @@ export function knowledgeFeatureIdsFromPositionEvidence(positionEvidence) {
     && positionEvidence.playedMove.givesCheck
   ) {
     ids.add("tactic.pawn_move_is_forcing");
+  }
+
+  const existingDangers = (positionEvidence.dangers?.dangerAlreadyExisted || [])
+    .filter(isSevereDanger);
+  if (existingDangers.length > 0) ids.add("opponent.threat");
+  if ((positionEvidence.dangers?.dangerPreventedByMove || []).some(isSevereDanger)) {
+    ids.add("prophylaxis.prevented_concrete_threat");
+  }
+
+  if (branches.some((branch) => branchProvesOverload(
+    branch,
+    positionEvidence.before,
+    color,
+  ))) {
+    ids.add("tactic.overloaded_defender");
+  }
+  if (allMotifs.some((motif) => motif.type === "deflection")) {
+    ids.add("tactic.deflection");
+    ids.add("tactic.removing_defender");
+    ids.add("exchange.key_defender_available");
+    ids.add("attack.target_after_exchange");
+  }
+  const exchangeMotifs = allMotifs.filter((motif) => (
+    ["equal_exchange", "favorable_exchange", "unfavorable_exchange"].includes(motif.type)
+  ));
+  if (branches.some(branchProvesPieceTrade)) ids.add("exchange.piece_trade_available");
+  if (exchangeMotifs.some((motif) => motif.type === "favorable_exchange")) {
+    ids.add("exchange.favorable");
+  }
+  if (exchangeMotifs.some((motif) => motif.type === "unfavorable_exchange")) {
+    ids.add("exchange.unfavorable");
+  }
+
+  const bestEvents = comparison?.best?.lineEvents || [];
+  if (
+    bestEvents[0]?.piece === "r"
+    && ["b", "n"].includes(bestEvents[0]?.capture?.capturedPiece)
+    && bestEvents[1]?.capture?.capturedPiece === "r"
+    && bestEvents[1]?.capture?.square === bestEvents[0]?.to
+  ) {
+    ids.add("exchange.quality_sacrifice_in_best_line");
+  }
+
+  const beforeBackRankMate = positionEvidence.dangers?.before?.tacticalMotifs
+    ?.some((entry) => entry?.motif?.type === "back_rank_mate");
+  if (beforeBackRankMate) {
+    ids.add("king.back_rank_weakness");
+    ids.add("tactic.back_rank_mate");
+  }
+
+  const bestIsActiveDefence = existingDangers.length > 0 && (
+    branchHasEffect(comparison?.best, "gives_check")
+    || branchHasEffect(comparison?.best, "capture")
+    || branchMotifs(comparison?.best).some((motif) => motif.type === "counterattack")
+  );
+  if (bestIsActiveDefence) ids.add("defence.active_resource");
+  if (branchMotifs(comparison?.best).some((motif) => motif.type === "stalemate_resource")) {
+    ids.add("defence.stalemate_resource");
+  }
+
+  if (phase === "endgame") {
+    const material = after.material;
+    const counts = material?.byColor;
+    const passedPawns = ["w", "b"].flatMap(
+      (side) => after.pawnStructure?.byColor?.[side]?.passedPawns || [],
+    );
+    const totalRooks = (counts?.w?.counts?.r || 0) + (counts?.b?.counts?.r || 0);
+    const totalMinors = ["w", "b"].reduce((sum, side) => (
+      sum + (counts?.[side]?.counts?.b || 0) + (counts?.[side]?.counts?.n || 0)
+    ), 0);
+
+    if (materialHasOnly(material, [])) ids.add("endgame.pawn_endgame");
+    if (materialHasOnly(material, ["b", "n"]) && totalMinors > 0) {
+      ids.add("endgame.minor_piece_endgame");
+    }
+    if (
+      totalRooks === 2
+      && (counts?.w?.counts?.r || 0) === 1
+      && (counts?.b?.counts?.r || 0) === 1
+      && materialHasOnly(material, ["r"])
+    ) {
+      ids.add("endgame.rook_endgame");
+    }
+    if (
+      materialHasOnly(material, [])
+      && advancedPassedPawnCanMove(after)
+    ) {
+      ids.add("endgame.pawn_race");
+    }
+    if (
+      !positionEvidence.before?.kingSafety?.byColor?.[color]?.inCheck
+      && branchHasEffect(comparison?.best, "king_centralization")
+    ) {
+      ids.add("endgame.king_can_activate");
+    }
+    if (
+      totalRooks === 2
+      && (counts?.w?.counts?.r || 0) === 1
+      && (counts?.b?.counts?.r || 0) === 1
+      && passedPawns.length > 0
+      && materialHasOnly(material, ["r"])
+    ) {
+      ids.add("endgame.rook_and_passed_pawn");
+      const playedBehind = branchMovesRookBehindPassedPawn(
+        comparison?.played,
+        after,
+      );
+      const bestBehind = branchMovesRookBehindPassedPawn(
+        comparison?.best,
+        positionEvidence.before,
+      );
+      if (playedBehind || bestBehind) ids.add("endgame.rook_can_reach_behind");
+    }
+    const playedCapturesPawn = comparison?.played?.lineEvents?.[0]
+      ?.capture?.capturedPiece === "p";
+    const bestImprovesRook = branchHasEffect(
+      comparison?.best,
+      "improves_piece_activity",
+      (effect) => effect.piece === "r",
+    );
+    if (playedCapturesPawn && bestImprovesRook) {
+      ids.add("endgame.rook_activity_choice");
+      ids.add("material.pawn_capture_available");
+    }
   }
   return [...ids].sort();
 }
@@ -994,62 +1438,6 @@ function ownedNominativePiece(piece) {
 
 function piecePronoun(piece) {
   return piece === "q" || !PIECE_NAMES[piece] ? "sie" : "ihn";
-}
-
-const QUALITY_COPY = Object.freeze({
-  best: {
-    headline: "Sauber gespielt",
-    sentence: "Der Zug packt genau das an, was die Stellung gerade braucht.",
-  },
-  excellent: {
-    headline: "Stark gespielt",
-    sentence: "Der Zug hält deine Stellung praktisch genauso stark wie die erste Wahl.",
-  },
-  good: {
-    headline: "Das passt",
-    sentence: "Der Zug ist gut spielbar und gibt kaum etwas her.",
-  },
-  inaccuracy: {
-    headline: "Fast, aber da war mehr drin",
-    sentence: "Der Zug lässt eine bessere Chance liegen.",
-  },
-  mistake: {
-    headline: "Klarer Fehler",
-    sentence: "Der Zug macht deine Stellung deutlich schlechter.",
-  },
-  blunder: {
-    headline: "Uff, das tut weh",
-    sentence: "Der Zug macht deine Stellung viel schlechter.",
-  },
-});
-
-function assessmentCopy(engineContext, subject) {
-  const review = engineContext?.moveReview;
-  const playedUci = cleanUci(review?.playedMove?.uci);
-  const bestUci = cleanUci(review?.bestMove?.uci);
-  const safeQuality = (
-    review?.quality === "best"
-    && playedUci
-    && bestUci
-    && playedUci !== bestUci
-  )
-    ? "excellent"
-    : review?.quality;
-  const quality = QUALITY_COPY[safeQuality];
-  if (quality) {
-    return {
-      headline: `${subject.san}: ${quality.headline}`,
-      sentence: quality.sentence,
-      evidenceIds: ["engine.move_assessment"],
-      claimKind: "assessment",
-    };
-  }
-  return {
-    headline: `${subject.san}: der Plan dahinter`,
-    sentence: "Diese Wahl setzt die wichtigste konkrete Idee der Stellung sofort um.",
-    evidenceIds: ["engine.best_move", "engine.pv.1"],
-    claimKind: "assessment",
-  };
 }
 
 function singleMoveReference(positionEvidence, uci, { preferPlayed = false } = {}) {
@@ -1132,7 +1520,7 @@ function moveDescription(evidence) {
   if (move.givesCheck) {
     return {
       ...base,
-      text: `${move.san} bringt den ${piece} mit Tempo ins Spiel, weil der König sofort reagieren muss.`,
+      text: `${move.san} bringt den ${piece} nach ${move.to} und gibt Schach.`,
       evidenceIds: [move.evidenceId, "move.played.properties"],
     };
   }
@@ -1415,11 +1803,11 @@ function effectText(facts, san) {
   }
   const pawnBreak = first("pawn_break");
   if (pawnBreak) {
-    return `${subject} setzt einen Bauernhebel gegen ${pawnBreak.targets.join(" und ")} an.`;
+    return `${subject} greift die Bauern auf ${pawnBreak.targets.join(" und ")} an.`;
   }
   const outpost = first("creates_outpost");
   if (outpost) {
-    return `${subject} setzt die Figur auf den gestützten Außenposten ${outpost.square}.`;
+    return `${subject} stellt die Figur geschützt nach ${outpost.square}.`;
   }
   const rookFile = first("rook_on_open_file") || first("rook_on_semi_open_file");
   if (rookFile) {
@@ -1442,18 +1830,20 @@ function effectText(facts, san) {
   if (occupied) return `${subject} besetzt das Zentrumsfeld ${occupied.square}.`;
   if (controlled) return `${subject} übernimmt neu die Kontrolle über ${controlled.square}.`;
   const opened = first("opens_file") || first("creates_semi_open_file");
-  if (opened) return `${subject} öffnet die ${opened.file}-Linie für die Schwerfiguren.`;
+  if (opened) return `${subject} öffnet die ${opened.file}-Linie.`;
   const loose = first("piece_attacked_and_undefended");
   if (loose) {
     return `${subject} lässt ${accusativePiece(loose.piece)} auf ${loose.square} angegriffen und ungedeckt stehen.`;
   }
   const activity = first("improves_piece_activity");
   if (activity) {
-    return `${subject} gibt ${accusativePiece(activity.piece)} auf ${activity.square} mehr Bewegungsfreiheit.`;
+    return `${subject} gibt ${accusativePiece(activity.piece)} auf ${activity.square} mehr Felder.`;
   }
   const moved = first("moves_piece");
   if (!moved) return "";
-  return `${subject}: Über das Zielfeld ${moved.to} hinaus ist bei der aktuellen Analysetiefe noch kein konkret erklärbarer Zweck zuverlässig belegt.`;
+  return moved.piece === "p"
+    ? `${subject} zieht den Bauern nach ${moved.to}.`
+    : `${subject} stellt ${accusativePiece(moved.piece)} nach ${moved.to}.`;
 }
 
 function lineMoveReference(positionEvidence, line, startPly, length = 1) {
@@ -1473,10 +1863,10 @@ function comparisonDifferenceText(comparison) {
       return "Es gibt in dieser Stellung genau einen legalen Zug.";
     }
     if (comparison.moveNecessity?.type === "only_move_to_avoid_loss") {
-      return "Nur die erste Wahl verhindert hier einen klaren Nachteil.";
+      return "Nur dieser Zug verhindert hier einen klaren Nachteil.";
     }
     if (comparison.moveNecessity?.type === "only_move_to_keep_advantage") {
-      return "Nur die erste Wahl hält den klaren Vorteil; die nächste Möglichkeit gibt einen großen Teil davon ab.";
+      return "Nur dieser Zug behält den klaren Vorteil. Der andere gibt viel davon ab.";
     }
   }
   const differences = Array.isArray(comparison?.differences) ? comparison.differences : [];
@@ -1550,25 +1940,54 @@ export function buildLocalMoveExplanation({
   const review = engineContext?.moveReview;
   const analysis = positionEvidence.coachAnalysis;
   const assessmentEvidenceId = review ? "engine.move_assessment" : "engine.best_move";
-  const quality = review?.quality || "good";
-  const foundations = learnerProfile?.responseStyle?.id === "foundations";
-  const significantDrop = Number.isFinite(comparison.lossCp)
-    && comparison.lossCp >= 140;
-  const severeDrop = Number.isFinite(comparison.lossCp)
-    && comparison.lossCp >= 300;
+  const reportedQuality = review?.quality || "good";
+  const hasMeasuredLoss = Number.isFinite(comparison.lossCp);
+  const significantDrop = hasMeasuredLoss && comparison.lossCp >= 140;
+  const severeDrop = hasMeasuredLoss && comparison.lossCp >= 300;
+  const quality = severeDrop
+    ? "blunder"
+    : significantDrop
+      ? "mistake"
+      : hasMeasuredLoss && comparison.lossCp > 70
+        ? "inaccuracy"
+      : hasMeasuredLoss && comparison.lossCp > 30
+          ? "good"
+          : hasMeasuredLoss && comparison.lossCp > 10
+            ? "excellent"
+            : hasMeasuredLoss
+              ? reportedQuality === "best"
+                ? "best"
+                : "excellent"
+              : ["best", "excellent", "good", "inaccuracy"].includes(reportedQuality)
+                ? reportedQuality
+                : "good";
+  const simpleLearner = ["foundations", "building"]
+    .includes(learnerProfile?.responseStyle?.id);
+  const openingPhase = phaseFromPositionEvidence(positionEvidence) === "opening";
+  const recognizedOpening = Boolean(
+    openingPhase
+    && openingContext?.matched === true
+    && openingContext?.source === "lichess-chess-openings",
+  );
+  const hasEquivalentAlternative = (
+    comparison.explanationType === "equivalent"
+    || comparison.alternative?.relation === "equivalent"
+  );
   let verdictText = comparison.moveNecessity?.type === "only_legal_move"
     ? "Der Zug ist erzwungen: Es gibt keinen anderen legalen Zug."
-    : comparison.explanationType === "best_move"
+    : openingPhase && !["mistake", "blunder"].includes(quality)
+      ? "Der Zug ist in dieser Eröffnung gut spielbar."
+    : comparison.explanationType === "best_move" && !hasEquivalentAlternative
     ? "Das ist hier die genaueste Wahl."
-    : comparison.explanationType === "equivalent"
-      ? "Das ist praktisch genauso gut wie die erste Wahl."
+    : hasEquivalentAlternative
+      ? "Der Zug hält deine Stellung."
       : quality === "blunder"
         ? "Das ist ein grober Fehler. Deine Stellung wird dadurch viel schlechter."
         : quality === "mistake"
           ? "Das ist ein klarer Fehler. Deine Stellung wird dadurch deutlich schlechter."
-          : quality === "inaccuracy"
-            ? "Das ist etwas ungenau, weil du eine präzisere Möglichkeit auslässt."
-            : "Der Zug ist spielbar, löst die wichtigste Aufgabe aber nicht so genau wie die Alternative.";
+      : quality === "inaccuracy"
+            ? "Das ist etwas ungenau. Du lässt eine bessere Möglichkeit aus."
+            : "Der Zug ist spielbar. Die Alternative löst die wichtigste Aufgabe besser.";
   const playedLine = positionEvidence.verifiedLines?.find(
     (line) => line.moves?.[0]?.uci === subject.uci,
   );
@@ -1578,10 +1997,13 @@ export function buildLocalMoveExplanation({
       verdictText = `Das Problem: Der Zug erlaubt sofort ${playedLine?.moves?.[1]?.san || "ein Schach"}.`;
     } else if (primaryDifference?.type === "allows_checkmate") {
       verdictText = `Das Problem: Der Zug lässt ${playedLine?.moves?.[1]?.san || "eine direkte Mattfolge"} zu.`;
-    } else if (primaryDifference?.type === "material_outcome") {
-      verdictText = `${quality === "blunder" ? "Das ist ein grober Fehler" : "Das ist ein klarer Fehler"}. In der kurzen Zugfolge verlierst du Material.`;
+    } else if (
+      primaryDifference?.type === "material_outcome"
+      && comparison.played.materialBalanceDelta < 0
+    ) {
+      verdictText = `${severeDrop ? "Das ist ein grober Fehler" : significantDrop ? "Das ist ein klarer Fehler" : "Der Zug ist ungenau"}. In der kurzen Zugfolge verlierst du Material.`;
     } else if (primaryDifference?.type === "avoids_loose_piece") {
-      verdictText = `${quality === "blunder" ? "Das ist ein grober Fehler" : "Das ist ein klarer Fehler"}. ${ownedAccusativePiece(primaryDifference.piece)} auf ${primaryDifference.square} bleibt angegriffen und ungedeckt.`;
+      verdictText = `${severeDrop ? "Das ist ein grober Fehler" : significantDrop ? "Das ist ein klarer Fehler" : "Der Zug ist ungenau"}. Mit ${subject.san} bleibt ${ownedNominativePiece(primaryDifference.piece)} auf ${primaryDifference.square} angegriffen und ungedeckt.`;
     }
   }
   const opponent = comparison.played.opponentBestReply;
@@ -1597,25 +2019,29 @@ export function buildLocalMoveExplanation({
         : "",
   ].filter(Boolean);
   const opponentActionText = opponentActions.join(" und ");
-  const errorGrade = quality === "blunder"
+  const typicalOpeningReply = recognizedOpening
+    ? trustedOpeningContinuation(openingContext, opponent?.uci)
+    : null;
+  const errorGrade = severeDrop
     ? "ein grober Fehler"
-    : quality === "mistake"
+    : significantDrop
       ? "ein klarer Fehler"
       : "ungenau";
-  const clearlyBad = ["mistake", "blunder"].includes(quality);
+  const clearlyBad = significantDrop;
   const immediateRecapture = Boolean(
     playedLine?.moves?.[2]?.capture
     && playedLine.moves[2].to === opponentMove?.to,
   );
+  const recaptureMove = immediateRecapture ? playedLine.moves[2] : null;
   const clearDirectLoss = Boolean(
     clearlyBad
     && opponent?.capture
     && comparison.played.materialBalanceDelta < 0
     && !immediateRecapture,
   );
-  const impactText = severeDrop || quality === "blunder"
+  const impactText = severeDrop
     ? "Deine Stellung wird dadurch viel schlechter."
-    : significantDrop || quality === "mistake"
+    : significantDrop
       ? "Deine Stellung wird dadurch deutlich schlechter."
       : "";
   if (clearDirectLoss && opponent?.san) {
@@ -1643,12 +2069,16 @@ export function buildLocalMoveExplanation({
       impactText,
     ].filter(Boolean).join(" ");
   } else if (clearlyBad && impactText) {
-    verdictText = `${quality === "blunder" ? "Das ist ein grober Fehler" : "Das ist ein klarer Fehler"}. ${impactText}`;
+    verdictText = `${severeDrop ? "Das ist ein grober Fehler" : "Das ist ein klarer Fehler"}. ${impactText}`;
   }
-  const opponentText = opponent
+  const opponentText = opponent && (!recognizedOpening || typicalOpeningReply)
     ? opponentActionText
-      ? `${opponent.san} ${opponentActionText}.`
-      : `Am stärksten ist ${opponent.san}.`
+      ? recaptureMove?.san && recaptureMove.capture
+        ? `${opponent.san} ${opponentActionText}. Danach nimmst du mit ${recaptureMove.san} ${accusativePiece(recaptureMove.capture.capturedPiece)} zurück.`
+        : `${opponent.san} ${opponentActionText}.`
+      : recognizedOpening
+        ? `Danach folgt oft ${opponent.san}.`
+        : `Danach folgt ${opponent.san}.`
     : "";
   let consequence = null;
   if (opponent?.givesCheckmate) {
@@ -1674,32 +2104,40 @@ export function buildLocalMoveExplanation({
             ? comparison.best.immediateEffects
             : []),
       },
-      "",
+      alternative.move?.san,
     )
     : "";
   let alternativeText = "";
-  if (alternative) {
-    if (foundations && alternative.relation === "better") {
+  if (alternative && (!openingPhase || ["mistake", "blunder"].includes(quality))) {
+    if (simpleLearner && alternative.relation === "better") {
       const developed = alternative.immediateEffects?.find(
         (effect) => effect.type === "develops_piece",
       );
       alternativeText = developed
         ? `Besser war ${alternative.move.san}. Damit entwickelst du ${accusativePiece(developed.piece)}.`
         : alternativeIdea
-          ? `Besser war ${alternative.move.san}. ${alternativeIdea}`
+          ? `Besser: ${alternativeIdea}`
           : `${alternative.move.san} war besser.`;
     } else if (comparison.onlyMove && subject.uci === comparison.best.move?.uci) {
-      alternativeText = `${alternative.move.san} ist die nächste geprüfte Möglichkeit, fällt aber klar ab. ${alternativeIdea}`;
+      alternativeText = `${alternative.move.san} ist möglich, aber deutlich schwächer. ${alternativeIdea}`;
     } else if (alternative.relation === "equivalent") {
-      alternativeText = `${alternative.move.san} war praktisch gleichwertig. ${alternativeIdea}`;
+      alternativeText = alternativeIdea
+        ? `Genauso gut: ${alternativeIdea}`
+        : `Genauso gut geht ${alternative.move.san}.`;
     } else if (alternative.relation === "inferior") {
-      alternativeText = `${alternative.move.san} war ebenfalls möglich, aber etwas weniger genau. ${alternativeIdea}`;
+      alternativeText = alternativeIdea
+        ? `Weitere Möglichkeit: ${alternativeIdea}`
+        : `${alternative.move.san} ist ebenfalls möglich.`;
     } else if (alternative.relation === "only_move") {
-      alternativeText = `${alternative.move.san} war hier der einzige Zug, der die Stellung hält. ${alternativeIdea}`;
+      alternativeText = alternativeIdea
+        ? `Einziger haltender Zug: ${alternativeIdea}`
+        : `${alternative.move.san} war hier der einzige Zug, der die Stellung hält.`;
     } else {
       alternativeText = alternativeIdea
-        ? `Genauer war ${alternative.move.san}: ${alternativeIdea}`
-        : `${alternative.move.san} war die genauere Alternative. Der konkrete Unterschied zeigt sich in der geprüften Antwortfolge.`;
+        ? `${simpleLearner ? "Besser" : "Genauer"}: ${alternativeIdea}`
+        : simpleLearner
+          ? `${alternative.move.san} ist besser.`
+          : `${alternative.move.san} war die genauere Alternative. Den Unterschied zeigt die kurze Variante.`;
     }
   }
   const differenceText = comparisonDifferenceText(comparison);
@@ -1728,17 +2166,17 @@ export function buildLocalMoveExplanation({
     return false;
   });
   const playedEffects = comparison.played.immediateEffects || [];
-  const foundationsDevelopment = foundations
+  const foundationsDevelopment = simpleLearner
     ? playedEffects.find((effect) => effect.type === "develops_piece")
     : null;
-  const foundationsCenterPawn = foundations
+  const foundationsCenterPawn = simpleLearner
     && positionEvidence.playedMove.piece === "p"
     && playedEffects.some((effect) => effect.type === "occupies_center");
   const foundationsMoveIdea = foundationsDevelopment
     ? `Damit entwickelst du ${accusativePiece(foundationsDevelopment.piece)}!`
     : foundationsCenterPawn
       ? "Damit stellst du einen Bauern ins Zentrum!"
-      : foundations
+      : simpleLearner
         ? `Damit ziehst du ${ownedAccusativePiece(positionEvidence.playedMove.piece)} nach ${positionEvidence.playedMove.to}.`
         : "";
   const moveIdeaText = foundationsMoveIdea
@@ -1768,8 +2206,15 @@ export function buildLocalMoveExplanation({
     opponentReply: opponentText
       ? semanticClaim(
         opponentText,
-        [playedLine?.evidenceId].filter(Boolean),
-        opponentMove ? lineMoveReference(positionEvidence, playedLine, 1) : [],
+        [
+          playedLine?.evidenceId,
+          typicalOpeningReply
+            ? openingContinuationEvidenceId(typicalOpeningReply.uci)
+            : null,
+        ].filter(Boolean),
+        opponentMove
+          ? lineMoveReference(positionEvidence, playedLine, 1, recaptureMove ? 2 : 1)
+          : [],
       )
       : null,
     concreteConsequence: consequence
@@ -1820,6 +2265,27 @@ export function buildLocalMoveExplanation({
         ? "medium"
         : "limited",
   };
+  if (candidate.opponentReply && candidate.concreteConsequence) {
+    candidate.concreteConsequence = null;
+  }
+  if (simpleLearner) {
+    // Für 800/1000 Elo reicht eine klare Wirkung, die wichtigste Antwort und
+    // höchstens eine Alternative. Die ausführlichen Felder wiederholen sonst
+    // denselben taktischen Punkt in fünf verschiedenen Abschnitten.
+    candidate.comparison = null;
+    if (clearlyBad && (
+      clearDirectLoss
+      || ["allows_check", "allows_checkmate"].includes(primaryDifference?.type)
+    )) {
+      candidate.opponentReply = null;
+      candidate.concreteConsequence = null;
+    }
+    candidate.takeaway = candidate.alternative ? null : candidate.takeaway;
+  } else if (Number(learnerProfile?.rating) <= 1400) {
+    if (candidate.alternative && candidate.comparison) {
+      candidate.comparison = null;
+    }
+  }
   const checked = verifyMoveExplanation(candidate, {
     positionEvidence: trusted,
     engineContext,
@@ -1831,19 +2297,21 @@ export function buildLocalMoveExplanation({
 
   const fallbackAlternativeText = alternative
     ? alternative.relation === "equivalent"
-      ? `${alternative.move.san} ist als praktisch gleichwertige Alternative belegt.`
-      : `${alternative.move.san} ist die genauere Alternative. Der konkrete Unterschied ist mit den aktuell gelieferten Fakten noch nicht zuverlässig erklärbar.`
+      ? `Genauso gut geht ${alternative.move.san}.`
+      : `${alternative.move.san} ist besser.`
     : "";
   const fallback = {
     schemaVersion: MOVE_EXPLANATION_SCHEMA_VERSION,
     subjectUci: subject.uci,
     subjectSan: subject.san,
     verdict: semanticClaim(
-      ["mistake", "blunder"].includes(quality)
-        ? "Die Bewertung zeigt hier einen deutlichen Nachteil; ein konkreter Grund ist mit den aktuell belegten Fakten noch nicht zuverlässig erklärbar."
+      severeDrop
+        ? "Der Zug macht deine Stellung viel schlechter."
+        : significantDrop
+          ? "Der Zug macht deine Stellung deutlich schlechter."
         : quality === "inaccuracy"
-          ? "Die Bewertung zeigt eine kleine Ungenauigkeit; ein konkreter Grund ist mit den aktuell belegten Fakten noch nicht zuverlässig erklärbar."
-          : "Die Bewertung bestätigt den Zug; ein weitergehender konkreter Grund ist mit den aktuell belegten Fakten noch nicht zuverlässig erklärbar.",
+          ? "Der Zug gibt einen kleinen Teil deiner Stellung ab."
+          : "Der Zug hält deine Stellung gut.",
       [assessmentEvidenceId],
     ),
     moveIdea: semanticClaim(
@@ -2175,11 +2643,15 @@ export function moveExplanationCacheKey({
 export function moveExplanationToMarkdown(explanation, { deep = false } = {}) {
   if (!explanation || typeof explanation !== "object") return "";
   if (explanation.schemaVersion === MOVE_EXPLANATION_SCHEMA_VERSION) {
+    const typicalOpeningReply = explanation.opponentReply?.evidenceIds
+      ?.some((id) => cleanText(id, 120).startsWith("opening.continuation:"));
     const labels = {
       verdict: "",
       moveIdea: "",
       alternative: "Alternative",
-      opponentReply: "Stärkste Antwort",
+      opponentReply: typicalOpeningReply
+        ? "Typische Antwort"
+        : "Stärkste Antwort",
       concreteConsequence: "Konkrete Folge",
       comparison: "Der Unterschied",
       takeaway: "Merksatz",

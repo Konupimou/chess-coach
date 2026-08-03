@@ -3,6 +3,7 @@ import {
   classifyMoveNecessity,
   evaluationToPlayerCp,
 } from "./moveNecessity.js";
+import { PRACTICALLY_EQUIVALENT_LOSS_CP } from "./coachThresholds.js";
 
 export const POSITION_EVIDENCE_VERSION = 3;
 
@@ -691,6 +692,21 @@ function gameWithTurn(fen, color) {
   return loadGame(parts.join(" "));
 }
 
+function legalCaptureSquaresForMover(game, move) {
+  if (!game || !move?.to || !COLORS.includes(move.color)) return new Set();
+  const moverGame = gameWithTurn(game.fen(), move.color);
+  if (!moverGame) return new Set();
+  try {
+    return new Set(
+      moverGame.moves({ square: move.to, verbose: true })
+        .filter((candidate) => Boolean(candidate.captured))
+        .map((candidate) => candidate.to),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
 function rayTacticalMotifs(game, move) {
   if (!game || !move || !["b", "r", "q"].includes(move.piece)) return [];
   const diagonal = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -743,10 +759,15 @@ function rayTacticalMotifs(game, move) {
 function tacticalMotifsAfterMove(game, move) {
   if (!game || !move) return [];
   const enemy = opposite(move.color);
+  const legalCaptureSquares = legalCaptureSquaresForMover(game, move);
   const attackedTargets = pieceInventory(game)
     .filter((piece) => (
       piece.color === enemy
       && game.attackers(piece.square, move.color).includes(move.to)
+      && (
+        (piece.type === "k" && move.givesCheck)
+        || (piece.type !== "k" && legalCaptureSquares.has(piece.square))
+      )
     ))
     .map((piece) => ({
       piece: piece.type,
@@ -806,7 +827,9 @@ function tacticalMotifsAfterMove(game, move) {
   if (
     move.givesCheckmate
     && enemyKing
+    && ["r", "q"].includes(move.piece)
     && squareRank(enemyKing) === (enemy === "w" ? 1 : 8)
+    && squareRank(move.to) === squareRank(enemyKing)
   ) {
     motifs.push({
       type: "back_rank_mate",
@@ -1997,7 +2020,7 @@ function buildMoveComparison(input, verifiedLines, playedMove) {
   const alternativeCp = evaluationToPlayerCp(alternativeFacts?.evaluation);
   const equivalent = Number.isFinite(playedCp)
     && Number.isFinite(alternativeCp)
-    && Math.abs(playedCp - alternativeCp) <= 20;
+    && Math.abs(playedCp - alternativeCp) <= PRACTICALLY_EQUIVALENT_LOSS_CP;
   const secondEvaluation = candidates.find((line) => line.rank === 2)?.evaluation
     ? evaluationForPlayer(
       candidates.find((line) => line.rank === 2).evaluation,

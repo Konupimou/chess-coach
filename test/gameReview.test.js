@@ -17,6 +17,7 @@ import {
   legalPv,
   legalUciMove,
   pathToNode,
+  openingMoveReviewPresentation,
   reviewDepthForPlies,
   reviewPhaseForMove,
   scoreToWhiteCp,
@@ -56,6 +57,82 @@ test("Coach-Analyse trennt Eröffnung, Mittelspiel und Endspiel anhand der Stell
   assert.deepEqual(phases.map((phase) => phase.id), ["opening", "middlegame", "endgame"]);
   assert.match(phases[0].positive, /Nf3/);
   assert.match(phases[1].focus, /Re1/);
+});
+
+test("Brettmaterial hat bei der Phasenerkennung Vorrang vor der Zugnummer", () => {
+  assert.equal(
+    reviewPhaseForMove({
+      moveNumber: 3,
+      fenBefore: "8/8/8/4k3/8/4K3/4P3/8 w - - 0 3",
+    }),
+    "endgame",
+  );
+  assert.equal(
+    reviewPhaseForMove({ moveNumber: 45, fenBefore: START_FEN }),
+    "middlegame",
+  );
+});
+
+test("Eröffnungszüge erhalten bei kleinen Unterschieden keine Engine-Rangliste", () => {
+  const base = {
+    moveNumber: 3,
+    fenBefore: START_FEN,
+    quality: "best",
+    lossCp: 0,
+  };
+  assert.deepEqual(
+    openingMoveReviewPresentation(base, { inOpeningBook: true }),
+    {
+      label: "Spielbare Eröffnungswahl",
+      reason: "Dieser Zug steht im lokalen Eröffnungsbuch. In der Eröffnung gibt es oft mehrere gute Wege.",
+      hideEngineRanking: true,
+    },
+  );
+  assert.equal(
+    openingMoveReviewPresentation({ ...base, quality: "mistake", lossCp: 180 }),
+    null,
+  );
+  assert.equal(
+    openingMoveReviewPresentation({ ...base, moveNumber: 18 }),
+    null,
+  );
+});
+
+test("stärkste Phase wird aus den Brettstellungen statt aus drei gleich großen Blöcken bestimmt", () => {
+  const summary = buildLearningSummary({
+    moves: [
+      {
+        moveNumber: 40,
+        color: "w",
+        san: "Kf4",
+        fenBefore: "8/8/8/4k3/8/4K3/4P3/8 w - - 0 40",
+        accuracy: 99,
+        quality: "best",
+        winPercentLoss: 0,
+      },
+      {
+        moveNumber: 3,
+        color: "w",
+        san: "Nf3",
+        fenBefore: START_FEN,
+        accuracy: 55,
+        quality: "inaccuracy",
+        winPercentLoss: 5,
+      },
+      {
+        moveNumber: 22,
+        color: "w",
+        san: "Re1",
+        fenBefore: "r1bq1rk1/ppp2ppp/2n2n2/3pp3/3P4/2P1PN2/PP1NBPPP/R2Q1RK1 w - - 0 22",
+        accuracy: 70,
+        quality: "good",
+        winPercentLoss: 2,
+      },
+    ],
+  });
+
+  assert.equal(summary.strongestPhase, "Endspiel");
+  assert.match(summary.strongestPhaseDetail, /99 %/);
 });
 
 test("Engine-Eintrag bewahrt Mattwert, Tiefe und vollständige Hauptvariante", () => {
@@ -166,10 +243,12 @@ test("Partiebericht speichert Kandidaten und eine eigene Fortsetzung des gespiel
         }],
       },
     ],
-    { depth: 18, final: true },
+    { depth: 18, final: true, learnerProfile: { rating: 1000 } },
   );
 
   assert.equal(report.version, 2);
+  assert.equal(report.coachRating, 1000);
+  assert.equal(report.moves[0].coachRating, 1000);
   assert.equal(report.moves[0].candidateLines.length, 2);
   assert.deepEqual(report.moves[0].playedLine.pvUci, ["d2d4", "d7d5"]);
   assert.equal(report.moves[0].playedLine.evaluation.perspective, "player");
@@ -256,7 +335,7 @@ test("Partiebericht aggregiert Farben, Verluste und kritische Momente", () => {
   assert.ok(report.blackAccuracy < 100);
   assert.equal(report.criticalMoments.length, 2);
   assert.equal(report.moves[0].bestSan, "d4");
-  assert.match(report.moves[0].explanation, /genauer war d4|Verschlechtert|Gibt etwas Vorteil ab/);
+  assert.equal(report.moves[0].explanation, "Du gibst etwas von deiner Stellung ab. Besser war d4.");
 });
 
 test("fokussierter Partiebericht zeigt höchstens die drei entscheidendsten eigenen Momente", () => {
@@ -350,7 +429,7 @@ test("mehrzügige Varianten erhalten korrekte Zugnummern für Weiß und Schwarz"
 });
 
 test("jede Zugqualität erhält eine kurze Begründung", () => {
-  assert.match(
+  assert.equal(
     explainMoveQuality({
       fenBefore: START_FEN,
       san: "e4",
@@ -359,9 +438,9 @@ test("jede Zugqualität erhält eine kurze Begründung", () => {
       bestPvUci: ["e2e4"],
       quality: "best",
     }),
-    /Stockfish-Wahl/,
+    "Das ist ein starker Zug. Du machst deine Stellung nicht schlechter.",
   );
-  assert.match(
+  assert.equal(
     explainMoveQuality({
       fenBefore: AFTER_E4_E5_FEN,
       san: "Qh5",
@@ -369,13 +448,147 @@ test("jede Zugqualität erhält eine kurze Begründung", () => {
       bestUci: "g1f3",
       bestPvUci: ["g1f3"],
       quality: "mistake",
+      lossCp: 200,
     }),
-    /Nf3/,
+    "Das ist ein klarer Fehler und deine Stellung wird deutlich schlechter. Besser war Nf3.",
   );
-  assert.match(
+  assert.equal(
     explainMoveQuality({ san: "Qh7+", quality: "excellent" }),
-    /Stockfish-Bewertung/,
+    "Dein Zug ist gut. Du gibst fast nichts ab.",
   );
+});
+
+test("800- und 1000-Elo-Texte vermeiden Engine-Jargon, höhere Stufen erhalten etwas mehr Detail", () => {
+  const move = {
+    fenBefore: START_FEN,
+    san: "e4",
+    playedUci: "e2e4",
+    bestUci: "e2e4",
+    bestPvUci: ["e2e4"],
+    quality: "best",
+  };
+  const foundations = explainMoveQuality(move, { rating: 800 });
+  const building = explainMoveQuality(move, { rating: 1000 });
+  const club = explainMoveQuality(move, { rating: 1400 });
+  const advanced = explainMoveQuality(move, { rating: 1800 });
+
+  assert.doesNotMatch(foundations, /Stockfish|Engine|Bewertung|Gegenspiel|Hauptvariante/i);
+  assert.doesNotMatch(building, /Stockfish|Engine|Bewertung|Gegenspiel|Hauptvariante/i);
+  assert.match(advanced, /Bewertung/);
+  assert.equal(new Set([foundations, building, club, advanced]).size, 4);
+});
+
+test("Zugbewertungen behaupten in ausgeglichenen oder schlechteren Stellungen keinen Vorteil", () => {
+  const bestMove = {
+    fenBefore: START_FEN,
+    san: "e4",
+    playedUci: "e2e4",
+    bestUci: "e2e4",
+    bestPvUci: ["e2e4"],
+    quality: "best",
+    beforeCp: -450,
+    afterCp: -450,
+    lossCp: 0,
+  };
+  const inaccurateMove = {
+    ...bestMove,
+    san: "a3",
+    playedUci: "a2a3",
+    bestUci: "e2e4",
+    bestPvUci: ["e2e4"],
+    quality: "inaccuracy",
+    lossCp: 100,
+  };
+
+  [800, 1000, 1400, 1800].forEach((rating) => {
+    const texts = [
+      explainMoveQuality(bestMove, { rating }),
+      explainMoveQuality(inaccurateMove, { rating }),
+      describeMoveAssessment(bestMove, { rating }).reason,
+      describeMoveAssessment(inaccurateMove, { rating }).reason,
+    ];
+    texts.forEach((text) => assert.doesNotMatch(text, /dein(?:em|en)? Vorteil|Vorteil ab/iu));
+  });
+});
+
+test("sichtbare Schweregrade folgen dem Verlust und nicht einem widersprüchlichen Qualitätslabel", () => {
+  const moveAt = (lossCp, quality) => ({
+    fenBefore: START_FEN,
+    san: "a3",
+    playedUci: "a2a3",
+    bestUci: "e2e4",
+    bestPvUci: ["e2e4"],
+    lossCp,
+    quality,
+  });
+
+  const small = moveAt(90, "blunder");
+  assert.doesNotMatch(explainMoveQuality(small), /grober Fehler|klarer Fehler/);
+  assert.equal(describeMoveAssessment(small).lead, "Der Zug ist spielbar.");
+
+  const clear = moveAt(140, "good");
+  assert.match(explainMoveQuality(clear), /klarer Fehler/);
+  assert.equal(describeMoveAssessment(clear).lead, "Das ist ein klarer Fehler.");
+
+  const severe = moveAt(300, "good");
+  assert.match(explainMoveQuality(severe), /grober Fehler/);
+  assert.equal(describeMoveAssessment(severe).lead, "Das ist ein grober Fehler.");
+});
+
+test("ein belegter sofortiger Bauernverlust wird klar benannt", () => {
+  const move = {
+    fenBefore: "4k3/8/8/2b5/6n1/8/1N2PP2/4K3 w - - 0 1",
+    san: "Na4",
+    playedUci: "b2a4",
+    bestUci: "e2e3",
+    bestPvUci: ["e2e3"],
+    playedContinuationUci: ["b2a4", "c5f2"],
+    lossCp: 310,
+    quality: "blunder",
+  };
+
+  assert.equal(
+    explainMoveQuality(move, { rating: 800 }),
+    "Nach Bxf2+ geht dein Bauer auf f2 verloren. Besser war e3.",
+  );
+  assert.equal(
+    describeMoveAssessment(move, { rating: 800 }).reason,
+    "Nach Bxf2+ geht dein Bauer auf f2 verloren.",
+  );
+});
+
+test("beim En-passant-Schlag nennt der Rückblick das Feld des geschlagenen Bauern", () => {
+  const move = {
+    fenBefore: "4k3/8/8/8/4p3/8/3P4/4K3 w - - 0 1",
+    san: "d4",
+    playedUci: "d2d4",
+    bestUci: "e1f1",
+    bestPvUci: ["e1f1"],
+    playedContinuationUci: ["d2d4", "e4d3"],
+    lossCp: 310,
+    quality: "blunder",
+  };
+
+  const explanation = explainMoveQuality(move, { rating: 800 });
+  assert.match(explanation, /Bauer auf d4 verloren/);
+  assert.doesNotMatch(explanation, /Bauer auf d3 verloren/);
+});
+
+test("ein normaler Abtausch wird nicht fälschlich als eingestellte Figur bezeichnet", () => {
+  const move = {
+    fenBefore: "4k3/8/8/8/6b1/5N2/6PP/4K3 w - - 0 1",
+    san: "h3",
+    playedUci: "h2h3",
+    bestUci: "e1d2",
+    bestPvUci: ["e1d2"],
+    playedContinuationUci: ["h2h3", "g4f3"],
+    lossCp: 300,
+    quality: "blunder",
+  };
+
+  const explanation = explainMoveQuality(move, { rating: 800 });
+  assert.match(explanation, /grober Fehler/);
+  assert.doesNotMatch(explanation, /Figur ein|Springer.*verloren/);
 });
 
 test("nur der tatsächlich erste Engine-Zug darf als bester Zug bezeichnet werden", () => {
@@ -394,9 +607,9 @@ test("nur der tatsächlich erste Engine-Zug darf als bester Zug bezeichnet werde
   assert.equal(verified.quality, "excellent");
   assert.equal(assessment.label, "Sehr gut");
   assert.equal(assessment.lead, "Stark gespielt.");
-  assert.equal(assessment.alternative, "Genauso gut geht in der Stellung davor d4.");
+  assert.equal(assessment.alternative, "Genauso gut geht d4.");
   assert.doesNotMatch(assessment.lead, /beste[rn]? Zug/i);
-  assert.equal(explanation, "d4 ist eine genauso gute Möglichkeit.");
+  assert.equal(explanation, "d4 geht genauso gut.");
   assert.doesNotMatch(explanation, /Entspricht der ersten Stockfish-Wahl/);
 });
 
@@ -417,7 +630,7 @@ test("gleiche Bewertung bei einem anderen Zug wird im Partiebericht höchstens s
   assert.equal(report.moves[0].bestUci, "d2d4");
   assert.equal(report.moves[0].accuracy, 100);
   assert.equal(report.moves[0].quality, "excellent");
-  assert.match(report.moves[0].explanation, /genauso gute Möglichkeit/);
+  assert.equal(report.moves[0].explanation, "d4 geht genauso gut.");
   assert.doesNotMatch(
     report.moves[0].explanation,
     /Entspricht der ersten Stockfish-Wahl/,
@@ -438,7 +651,7 @@ test("Perspektivbewertung spricht gute und schlechte eigene Züge direkt an", ()
       tone: "best",
       label: "Bester Zug",
       lead: "Das war der beste Zug.",
-      reason: "Der Zug passt hier richtig gut und gibt nichts her.",
+      reason: "Du machst deine Stellung damit nicht schlechter.",
       alternative: "",
     },
   );
@@ -448,13 +661,14 @@ test("Perspektivbewertung spricht gute und schlechte eigene Züge direkt an", ()
     playedUci: "d1h5",
     bestUci: "g1f3",
     quality: "mistake",
+    lossCp: 200,
     bestPvUci: ["g1f3", "b8c6"],
   });
   assert.equal(mistake.lead, "Das ist ein klarer Fehler.");
   assert.match(mistake.reason, /deutlich schlechter/);
   assert.equal(
     mistake.alternative,
-    "Besser geht’s in der Stellung davor mit Nf3.",
+    "Besser war Nf3.",
   );
 });
 
@@ -481,7 +695,7 @@ test("Zugrückblicke verwerfen illegale Spielerzüge, Alternativen und PV-Reste"
 test("nicht belegte Coach-Erklärungen erhalten einen sicheren lokalen Ersatz", () => {
   assert.equal(
     groundedSuggestionReason({ rank: 1, san: "e4", uci: "e2e4" }),
-    "Der Zug erhöht den Einfluss im Zentrum. Der Zug packt die wichtigste Aufgabe der Stellung direkt an.",
+    "Der Zug erhöht den Einfluss im Zentrum.",
   );
   assert.match(
     groundedSuggestionReason({ rank: 1, san: "Qh7+", uci: "d3h7" }),
@@ -489,11 +703,11 @@ test("nicht belegte Coach-Erklärungen erhalten einen sicheren lokalen Ersatz", 
   );
   assert.match(
     groundedSuggestionReason({ rank: 2, san: "Nf3", uci: "g1f3" }),
-    /erste Wahl trifft den Kern/,
+    /erste Vorschlag wurde besser bewertet/,
   );
 });
 
-test("Fallback-Coach fasst Verlauf, Motive, Stärke, Verbesserung und Training zusammen", () => {
+test("Fallback-Coach fasst Verlauf, Stärke, wichtigsten Moment und Training einfach zusammen", () => {
   const feedback = buildFallbackFeedback({
     overallAccuracy: 88,
     analyzedMoves: 2,
@@ -508,11 +722,10 @@ test("Fallback-Coach fasst Verlauf, Motive, Stärke, Verbesserung und Training z
       explanation: "Besetzt das Zentrum.",
     }],
   });
-  assert.match(feedback, /\*\*Spielverlauf:\*\*/);
-  assert.match(feedback, /\*\*Engine-Muster:\*\*/);
-  assert.match(feedback, /\*\*Das war stark:\*\*/);
-  assert.match(feedback, /\*\*Das kannst du verbessern:\*\*/);
-  assert.match(feedback, /\*\*Trainingsfokus:\*\*/);
+  assert.match(feedback, /\*\*Kurz gesagt:\*\*/);
+  assert.match(feedback, /\*\*Das war gut:\*\*/);
+  assert.match(feedback, /\*\*Nächster Schritt:\*\*/);
+  assert.doesNotMatch(feedback, /Stockfish|Engine|Hauptvariante|Bewertungseinbruch/i);
 });
 
 test("Fallback-Coach behandelt nicht-arrayförmige Züge und kritische Momente als leer", () => {
@@ -525,8 +738,7 @@ test("Fallback-Coach behandelt nicht-arrayförmige Züge und kritische Momente a
 
   assert.doesNotThrow(() => buildFallbackFeedback(malformedCollections));
   const feedback = buildFallbackFeedback(malformedCollections);
-  assert.match(feedback, /0 Fehler oder Patzer bei 0 eigenen analysierten Zügen/);
-  assert.match(feedback, /keinen klaren kritischen Einbruch/);
+  assert.match(feedback, /0 große Fehler in 0 Zügen/);
 });
 
 test("Lernzusammenfassung leitet vorsichtige, konkrete Trainingsschritte aus vorhandenen Zügen ab", () => {
@@ -541,25 +753,26 @@ test("Lernzusammenfassung leitet vorsichtige, konkrete Trainingsschritte aus vor
         fenBefore: "example-fen",
         accuracy: 35,
         quality: "blunder",
+        lossCp: 300,
         winPercentLoss: 25,
         explanation: "Die Dame gerät in Gefahr.",
       },
     ],
     moves: [
       { moveNumber: 1, color: "w", san: "e4", accuracy: 96, quality: "excellent", winPercentLoss: 1, explanation: "Besetzt das Zentrum." },
-      { moveNumber: 2, color: "w", san: "Qh5", accuracy: 41, quality: "mistake", winPercentLoss: 18, explanation: "Übersieht eine direkte Antwort." },
-      { moveNumber: 3, color: "w", san: "Qxf7+", accuracy: 35, quality: "blunder", winPercentLoss: 25, explanation: "Die Dame gerät in Gefahr." },
+      { moveNumber: 2, color: "w", san: "Qh5", accuracy: 41, quality: "mistake", lossCp: 180, winPercentLoss: 18, explanation: "Übersieht eine direkte Antwort." },
+      { moveNumber: 3, color: "w", san: "Qxf7+", accuracy: 35, quality: "blunder", lossCp: 300, winPercentLoss: 25, explanation: "Die Dame gerät in Gefahr." },
       { moveNumber: 4, color: "w", san: "Nf3", accuracy: 91, quality: "excellent", winPercentLoss: 2, explanation: "Entwickelt eine Figur." },
     ],
   });
 
-  assert.ok(["Eröffnung", "Mittelspiel", "Endphase"].includes(summary.strongestPhase));
+  assert.ok(["Eröffnung", "Mittelspiel", "Endspiel"].includes(summary.strongestPhase));
   assert.match(summary.biggestLesson, /Qxf7\+/);
-  assert.match(summary.recurringPattern, /2 deutliche Stockfish-Bewertungseinbrüche/);
-  assert.match(summary.learningGoal, /Stockfishs erster Wahl/);
+  assert.match(summary.recurringPattern, /Bei 2 Zügen wurde deine Stellung deutlich schlechter/);
+  assert.match(summary.learningGoal, /Antwort des Gegners/);
   assert.match(summary.exercise, /3\. Qxf7\+/);
-  assert.match(summary.exercise, /Nf3/);
-  assert.doesNotMatch(summary.exercise, /zwei|drei/i);
+  assert.doesNotMatch(summary.exercise, /Nf3/);
+  assert.match(summary.exercise, /zwei mögliche Züge/);
 });
 
 test("Lernzusammenfassung und Fallback beziehen sich nur auf die Züge des Spielers", () => {
@@ -571,13 +784,13 @@ test("Lernzusammenfassung und Fallback beziehen sich nur auf die Züge des Spiel
     blackAccuracy: 19,
     criticalMoments: [
       { moveNumber: 1, color: "b", san: "e5", bestSan: "c5", quality: "blunder", winPercentLoss: 35, explanation: "Großer Einbruch." },
-      { moveNumber: 2, color: "w", san: "Nf3", bestSan: "Bc4", quality: "mistake", winPercentLoss: 12, explanation: "Verliert etwas Initiative." },
+      { moveNumber: 2, color: "w", san: "Nf3", bestSan: "Bc4", quality: "mistake", lossCp: 180, winPercentLoss: 12, explanation: "Verliert etwas Initiative." },
     ],
     moves: [
       { moveNumber: 1, color: "w", san: "e4", accuracy: 98, quality: "excellent", winPercentLoss: 1, explanation: "Stabil." },
-      { moveNumber: 1, color: "b", san: "e5", accuracy: 10, quality: "blunder", winPercentLoss: 35, explanation: "Großer Einbruch." },
-      { moveNumber: 2, color: "w", san: "Nf3", accuracy: 65, quality: "mistake", winPercentLoss: 12, explanation: "Verliert etwas Initiative." },
-      { moveNumber: 2, color: "b", san: "Nc6", accuracy: 20, quality: "blunder", winPercentLoss: 30, explanation: "Noch ein Einbruch." },
+      { moveNumber: 1, color: "b", san: "e5", accuracy: 10, quality: "blunder", lossCp: 300, winPercentLoss: 35, explanation: "Großer Einbruch." },
+      { moveNumber: 2, color: "w", san: "Nf3", accuracy: 65, quality: "mistake", lossCp: 180, winPercentLoss: 12, explanation: "Verliert etwas Initiative." },
+      { moveNumber: 2, color: "b", san: "Nc6", accuracy: 20, quality: "blunder", lossCp: 300, winPercentLoss: 30, explanation: "Noch ein Einbruch." },
     ],
   };
 
@@ -588,7 +801,7 @@ test("Lernzusammenfassung und Fallback beziehen sich nur auf die Züge des Spiel
   assert.doesNotMatch(summary.biggestLesson, /e5|Nc6/);
   assert.doesNotMatch(summary.recurringPattern, /2 deutliche/);
   assert.match(feedback, /81\.0 %/);
-  assert.match(feedback, /1 Fehler oder Patzer bei 2 eigenen/);
+  assert.match(feedback, /einen großen Fehler in 2 Zügen/);
   assert.doesNotMatch(feedback, /Großer Einbruch|Noch ein Einbruch/);
 });
 
@@ -604,11 +817,32 @@ test("auch ohne Fehler bleibt die Übung an eine konkrete eigene Stellung gebund
 
   assert.match(summary.exercise, /1\. e4/);
   assert.doesNotMatch(summary.exercise, /den wichtigsten Schlüsselmoment/);
+  assert.equal(summary.biggestLessonTitle, "Das hat gut funktioniert");
+});
+
+test("Fallback erfindet ohne belegten guten Zug keine gute Entscheidung", () => {
+  const feedback = buildFallbackFeedback({
+    playerColor: "w",
+    whiteAccuracy: 35,
+    analyzedMoves: 1,
+    criticalMoments: [],
+    moves: [{
+      moveNumber: 1,
+      color: "w",
+      san: "a3",
+      quality: "mistake",
+      accuracy: 35,
+    }],
+  });
+
+  assert.doesNotMatch(feedback, /Wähle einen deiner guten Züge/);
+  assert.match(feedback, /1\. a3/);
+  assert.match(feedback, /Antwort des Gegners/);
 });
 
 test("Lernzusammenfassung behauptet bei fehlenden Daten kein präzises Muster", () => {
   const summary = buildLearningSummary({ moves: [] });
   assert.equal(summary.confidence, "low");
   assert.match(summary.strongestPhase, /nicht zuverlässig/);
-  assert.match(summary.recurringPattern, /weitere.*Züge/i);
+  assert.match(summary.recurringPattern, /mehr bewerteten Zügen/i);
 });

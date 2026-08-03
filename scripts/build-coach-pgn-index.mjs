@@ -4,6 +4,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createInterface } from "node:readline";
+import { archiveProcessedSources } from "../sourceArchive.js";
 import {
   annotationRecords,
   parseAnnotatedPgn,
@@ -13,9 +14,10 @@ import {
   positionSimilarityProfile,
 } from "../positionSimilarity.js";
 import { conceptSearchTokens } from "../positionConcepts.js";
+import { primaryDeterministicPgnMoveFact } from "../pgnVerifiedFacts.js";
 
-const INDEX_VERSION = 5;
-const SOURCE_CACHE_VERSION = 3;
+const INDEX_VERSION = 6;
+const SOURCE_CACHE_VERSION = 4;
 const DEFAULT_SOURCE_LIMIT = 500;
 const DEFAULT_POSITION_LIMIT = 3;
 const DEFAULT_TOTAL_LIMIT = 25_000;
@@ -27,6 +29,24 @@ export const PGN_KNOWLEDGE_CATEGORIES = Object.freeze([
   "other",
 ]);
 const CATEGORY_ORDER = new Map(PGN_KNOWLEDGE_CATEGORIES.map((category, index) => [category, index]));
+
+const PERSON_WORD_SOURCE = String.raw`(?:\p{Lu}[\p{L}'’-]{2,}|\p{Lu}\.)`;
+const PERSON_NAME_SOURCE = String.raw`${PERSON_WORD_SOURCE}(?:\s+${PERSON_WORD_SOURCE}){0,3}`;
+const PLAYER_TITLE_SOURCE = String.raw`(?:(?:former|reigning|current|legendary|great)\s+)?(?:world(?:\s+(?:blitz|rapid|classical))?\s+champion|grandmaster|GM|IM|FM|NM|WGM|WIM|WFM|Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.)`;
+const PLAYER_ACTION_SOURCE = String.raw`(?:chose|chooses|continue[ds]?|captured|captures|defended|defends|found|finds|forgot|gives|had|has|kept|makes|missed|played|plays|preferred|recommended|recaptured|sacrificed|said|selected|takes|took|used|uses|was|would|wrote)`;
+const SOURCE_REFERENCE_PATTERN = /\b(?:author|co-?author|book(?!\s+move\b)|chapter|course|lecture|magazine|notes?|publication|section|source|textbook|video(?:\s+series)?|volume)\b/iu;
+const CHESS_FACT_PATTERN = /(?:\b(?:attack|attacks|bishop|black|capture|castle|center|centre|check|development|diagonal|endgame|exchange|file|fork|king|knight|mate|move|pawn|piece|position|queen|rank|rook|square|threat|white|angriff|bauer|dame|entwicklung|feld|könig|läufer|matt|rochade|schach|springer|stellung|turm|zug)\w*\b|(?<![\p{L}\p{N}])[KQRBN]?[a-h][1-8](?![\p{L}\p{N}]))/iu;
+const NON_PERSON_NAMES = new Set([
+  "black", "chapter", "chess", "course", "engine", "here", "how", "later", "our",
+  "player", "section", "stockfish", "that", "the", "then", "this", "today", "what",
+  "white", "why",
+]);
+const CHESS_NAME_ENDINGS = new Set([
+  "angriff", "attack", "defence", "defense", "endgame", "eröffnung", "gambit",
+  "game", "gun", "indian", "mate", "method", "opening", "position", "random",
+  "rule", "setup", "structure", "system", "trap", "variante", "variation",
+  "verteidigung",
+]);
 
 const TOPIC_PATTERNS = Object.freeze({
   tactics: /\b(?:tactic|taktik|combination|kombination|fork|gabel|pin|fessel|skewer|spieß|zwischenzug|sacrifice|opfer|matt|checkmate|deflection|ablenkung|overload|überlast)\w*/iu,
@@ -75,34 +95,229 @@ function escapedRegExp(value) {
   return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizedPersonCandidate(value) {
+  let candidate = String(value || "")
+    .replace(/^[,;:\s]+|[,;:\s]+$/g, "")
+    .replace(new RegExp(`^(?:${PLAYER_TITLE_SOURCE})\\s+`, "iu"), "")
+    .trim();
+  const parts = candidate.split(/\s+/).filter(Boolean);
+  while (
+    parts.length > 1
+    && /^(?:and|but|here|later|meanwhile|now|then|today|while)$/iu.test(parts[0])
+  ) parts.shift();
+  candidate = parts.join(" ");
+  if (!candidate || parts.length > 4) return "";
+  const normalized = candidate.toLocaleLowerCase("en-US").replace(/[.'’]/g, "");
+  if (NON_PERSON_NAMES.has(normalized)) return "";
+  const last = parts.at(-1)?.toLocaleLowerCase("en-US").replace(/[.'’]/g, "") || "";
+  if (CHESS_NAME_ENDINGS.has(last)) return "";
+  if (!parts.every((part) => /^(?:\p{Lu}[\p{L}'’-]{2,}|\p{Lu}\.)$/u.test(part))) return "";
+  return candidate;
+}
+
+function inferredPersonAttributions(value) {
+  const text = String(value || "");
+  const found = new Set();
+  const add = (candidate) => {
+    const normalized = normalizedPersonCandidate(candidate);
+    if (normalized.length >= 3) found.add(normalized);
+  };
+  const collect = (pattern, captureIndexes = [1]) => {
+    for (const match of text.matchAll(pattern)) {
+      captureIndexes.forEach((index) => add(match[index]));
+    }
+  };
+
+  collect(new RegExp(`\\b(?:${PLAYER_TITLE_SOURCE})\\s+(${PERSON_NAME_SOURCE})`, "gu"));
+  collect(new RegExp(
+    `\\b(${PERSON_NAME_SOURCE})(?:\\s*\\([^)]{0,80}\\))?\\s+(?:now\\s+|once\\s+|also\\s+)?${PLAYER_ACTION_SOURCE}\\b`,
+    "gu",
+  ));
+  collect(new RegExp(
+    `\\b(${PERSON_NAME_SOURCE})(?:'s|’s)\\s+(?:analysis|book|career|course|game|idea|match|move|notes?|preparation|recommendation)\\b`,
+    "gu",
+  ));
+  collect(/\b(\p{Lu}[\p{L}-]{2,})(?:'s|’s)\s+(?:analysis|book|career|course|game|idea|match|move|notes?|preparation|recommendation)\b/gu);
+  collect(new RegExp(
+    `\\b(?:according\\s+to|analysis\\s+by|analy[sz]ed\\s+by|game\\s+by|prepared\\s+by|recommended\\s+by|technique\\s+by|written\\s+by)\\s+(?:${PLAYER_TITLE_SOURCE}\\s+)?(${PERSON_NAME_SOURCE})`,
+    "gu",
+  ));
+  collect(new RegExp(
+    `\\b(?:effort|games?|main\\s+weapons?|match|prep(?:aration)?|style|technique|work)\\s+(?:by|of|with)\\s+(?:Team\\s+)?(?:${PLAYER_TITLE_SOURCE}\\s+)?(${PERSON_NAME_SOURCE})`,
+    "gu",
+  ));
+  collect(new RegExp(
+    `\\b(?:beat|defeated|faced|lost\\s+to|resist(?:ed)?|versus|vs\\.?)\\s+(?:${PLAYER_TITLE_SOURCE}\\s+)?(${PERSON_NAME_SOURCE})`,
+    "gu",
+  ));
+  collect(new RegExp(
+    `\\b(${PERSON_NAME_SOURCE})\\s+(?:against|versus|vs\\.?)\\s+(?:${PLAYER_TITLE_SOURCE}\\s+)?(${PERSON_NAME_SOURCE})`,
+    "gu",
+  ), [1, 2]);
+  collect(new RegExp(
+    `\\b(?:game|match|battle|example)[^.!?]{0,32}\\bbetween\\s+(?:${PLAYER_TITLE_SOURCE}\\s+)?(${PERSON_NAME_SOURCE})(?:\\s*\\([^)]*\\))?\\s+(?:and|versus|vs\\.?)\\s+(?:${PLAYER_TITLE_SOURCE}\\s+)?(${PERSON_NAME_SOURCE})`,
+    "gu",
+  ), [1, 2]);
+  collect(new RegExp(
+    `\\b(${PERSON_NAME_SOURCE})\\s*[-–—]\\s*(${PERSON_NAME_SOURCE})(?=,\\s*[^.!?]{0,50}\\b(?:18|19|20)\\d{2}\\b)`,
+    "gu",
+  ), [1, 2]);
+  collect(new RegExp(`[-–—]\\s*(${PERSON_NAME_SOURCE})\\.?\\s*$`, "gu"));
+  return [...found];
+}
+
+function protectChessProperNames(value) {
+  const protectedValues = [];
+  const stash = (match) => {
+    const token = `\uE000${protectedValues.length}\uE001`;
+    protectedValues.push(match);
+    return token;
+  };
+  let text = String(value || "").replace(
+    /\b(?:\p{Lu}[\p{L}'’.-]*\s+){0,4}(?:Attack|Defence|Defense|Endgame|Gambit|Gun|Indian|Mate|Method|Opening|Position|Random|Rule|Setup|Structure|System|Trap|Variation|Angriff|Eröffnung|Variante|Verteidigung)\b/gu,
+    stash,
+  );
+  text = text.replace(
+    /\b\p{Lu}[\p{L}'’.]{2,}[-–—]\p{Lu}[\p{L}'’.]{2,}\b/gu,
+    (match, offset, source) => (
+      /^,\s*[^.!?]{0,50}\b(?:18|19|20)\d{2}\b/u.test(source.slice(offset + match.length))
+        ? match
+        : stash(match)
+    ),
+  );
+  return {
+    text,
+    restore: (result) => protectedValues.reduce(
+      (current, original, index) => current.replaceAll(`\uE000${index}\uE001`, original),
+      result,
+    ),
+  };
+}
+
+function stripSourceAndIdentitySentences(value) {
+  return String(value || "")
+    .split(/(?:(?<=[.!?…])|(?<=[.!?…]["'’”]))\s+(?=(?:["'“”([])?[\p{Lu}\d@])/u)
+    .map((sentence) => {
+      let result = sentence.trim();
+      if (!result) return "";
+      const withoutBookMove = result.replace(/\b(?:book move|opening book)\b/giu, "");
+      if (SOURCE_REFERENCE_PATTERN.test(withoutBookMove)) return "";
+      if (
+        /\b(?:favo(?:u)?rite\s+of|title\s+of\s+the\s+player|taken\s+from\s+(?:a|an|the)\s+(?:game|match)|game\s+between|match\s+between)\b/iu.test(result)
+        || /\b(?:games?|main\s+weapons?|prep(?:aration)?|style|technique|work)\s+(?:by|of|with)\s+the\s+player\b/iu.test(result)
+      ) return "";
+      if (
+        /\b(?:came|comes|taken)\s+from\s+(?:(?:a|an|the)\s+)*(?:example\s+)?(?:game|match)\b/iu.test(result)
+        || /\bwas\s+(?:prepared|recommended)\s+(?:by|together\s+with)\b/iu.test(result)
+      ) return "";
+      if (/\ban\s+example\s+game\b/iu.test(result) && /\b(?:18|19|20)\d{2}\b/u.test(result)) {
+        return "";
+      }
+      if (
+        /\b(?:according\s+to|is\s+attributed\s+to|quoted?|said|wrote)\b/iu.test(result)
+        && /["'‘’“”]/u.test(result)
+      ) return "";
+      if (
+        /\b(?:18|19|20)\d{2}\b/u.test(result)
+        && !CHESS_FACT_PATTERN.test(result)
+      ) return "";
+      result = result
+        .replace(/\b(?:by|from)\s+the\s+player\b/giu, " ")
+        .replace(/\bagainst\s+the\s+player\b/giu, "against the opponent")
+        .replace(/\bthe\s+player(?:\s*[-–—]\s*the\s+player)+\b/giu, "an example game")
+        .replace(/\b(?:game|match)\s+between\s+the\s+player\s+and\s+the\s+player\b/giu, "an example game")
+        .replace(/\bthe\s+player(?:'s|’s)\s+(?:game|match)\b/giu, "the example")
+        .replace(/\b(?:a|an)\s+an\s+example\s+game\b/giu, "an example game")
+        .replace(/\b(?:the\s+)?player(?:\s+player)+\b/giu, "the player")
+        .replace(/\b(?:the\s+player\s+){2,}/giu, "the player ")
+        .replace(/\s+/g, " ")
+        .replace(/\s+([,.;:!?])/g, "$1")
+        .trim();
+      if (/^(?:the\s+player|an\s+example\s+game)[,;:\s\d().-]*$/iu.test(result)) return "";
+      return result;
+    })
+    .filter(Boolean)
+    .join(" ");
+}
+
 export function neutralizePgnKnowledgeText(value, { attributions = [] } = {}) {
-  let text = sanitizePgnComment(value)
+  const sanitized = sanitizePgnComment(value);
+  const inferredAttributions = inferredPersonAttributions(sanitized);
+  const protectedNames = protectChessProperNames(sanitized);
+  let text = protectedNames.text
+    .replace(/@@StartBlockQuote@@[\s\S]*?(?:@@EndBlockQuote@@|$)/giu, " ")
+    .replace(/@@StartBracket@@[\s\S]*?@@EndBracket@@/giu, " ")
+    .replace(/\[\s*->[^\]]*\]|\[\/(?:course|variation)\/[^\]]*\]/giu, " ")
     .replace(/^\s*\[(?:#|[-+=!?]{1,3})\]\s*/u, "")
     .replace(/^\s*[^.!?]{2,80}\s[-–—]\s[^.!?]{2,80},\s*[^.!?]{0,50}\b\d{4}\s*(?:\(\d+\))?\s*/u, "")
     .replace(/^\s*[\p{Lu}][\p{L}.'’,-]+(?:\s+[\p{Lu}][\p{L}.'’,-]+){0,4}\s+[-–—]\s+[\p{Lu}][\p{L}.'’,-]+(?:\s+[\p{Lu}][\p{L}.'’,-]+){0,4}(?:,\s*[^.!?]{0,50})?(?:\s*\(\d+\))?\s*/u, "")
     .replace(/https?:\/\/\S+|\b\S+@\S+\.\S+\b/giu, " ")
     .replace(/\((?:see|vgl\.?|source|quelle|chapter|kapitel|page|seite|by)\b[^)]*\)/giu, " ")
     .replace(/^\s*(?:according to|laut|nach ansicht von)\b[^,:;.]{1,100}[,:]\s*/iu, "")
-    .replace(/^\s*(?:i think|i believe|in my opinion|meiner meinung nach)\b[:,]?\s*/iu, "");
-  for (const attribution of [...new Set(attributions.map((item) => String(item || "").trim()))]
+    .replace(/^\s*(?:i think|i believe|in my opinion|meiner meinung nach)\b[:,]?\s*/iu, "")
+    .replace(new RegExp(
+      `\\b(${PERSON_NAME_SOURCE})\\s*[-–—]\\s*(${PERSON_NAME_SOURCE})(?=,\\s*[^.!?]{0,50}\\b(?:18|19|20)\\d{2}\\b)`,
+      "gu",
+    ), (match, left, right) => (
+      normalizedPersonCandidate(left) && normalizedPersonCandidate(right)
+        ? "an example game"
+        : match
+    ))
+    .replace(new RegExp(
+      `\\b(?:(?:a|an|the)\\s+)?(?:${PLAYER_TITLE_SOURCE})(?:\\s+${PERSON_NAME_SOURCE})?(?=\\s|[,;:.!?)…]|$)`,
+      "giu",
+    ), "the player")
+    .replace(/\bworld-class\s+players?\b/giu, "strong players")
+    .replace(/\b(?:legendary|great|famous)\s+players?\b/giu, "players");
+  for (const attribution of [...new Set([
+    ...attributions,
+    ...inferredAttributions,
+  ].map((item) => String(item || "").trim()))]
     .sort((left, right) => right.length - left.length)) {
-    if (attribution.length < 4) continue;
-    text = text.replace(new RegExp(escapedRegExp(attribution), "giu"), " ");
+    if (attribution.length < 3) continue;
+    const exactAttribution = new RegExp(
+      `(?<![\\p{L}\\p{N}])${escapedRegExp(attribution)}(?![\\p{L}\\p{N}])`,
+      "giu",
+    );
+    text = text
+      .replace(new RegExp(
+        `(?<![\\p{L}\\p{N}])${escapedRegExp(attribution)}(?:'s|’s)(?![\\p{L}\\p{N}])`,
+        "giu",
+      ), "the player's")
+      .replace(exactAttribution, "the player");
   }
-  return text
+  text = text
     .replace(/,\s*[\p{L}.'’]{2,40}(?:\s+[\p{L}.'’]{2,40}){0,3}\s*[-–—]\s*[\p{L}.'’]{2,40}(?:\s+[\p{L}.'’]{2,40}){0,3}\s*,[^\n]{0,100}\b(?:18|19|20)\d{2}\.?\s*$/u, ".")
     .replace(/^\s*(?:just like|as in|similar to)\s+[^,;.!?]{1,100}[,;]\s*/iu, "")
     .replace(/,?\s*(?:just like|as in|similar to)\s+[^,;.!?]{1,100}(?=[,;.!?]|$)/giu, "")
     .replace(/\b(?:recalling\s+)?(?:the\s+)?(?:previous|earlier)\s+[\p{Lu}][\p{L}'’.-]+\s+game\b/giu, "the previous example")
     .replace(/\b(?:belongs|is attributed)\s+to\s+[\p{Lu}][\p{L}'’.-]+\b/giu, "is a useful principle")
     .replace(/\b(how|why)\s+did\s+[\p{Lu}][\p{L}'’.-]+\b/giu, "$1 did the player")
-    .replace(/\bhere\s+[\p{Lu}][\p{L}'’.-]+\b/giu, "Here the player")
-    .replace(/\b[\p{Lu}][\p{L}'’.-]{3,}(?:'s|’s)\b/gu, "the player's")
-    .replace(/\b[\p{Lu}][\p{L}'’.-]{3,}\s+(?=(?:would|wouldn't|could|couldn't|had|has|kept|played|took|takes|said|believed|reckoned)\b)/gu, "the player ")
+    .replace(/\bhere\s+([\p{Lu}][\p{L}'’.-]+)\b/gu, (match, candidate) => (
+      normalizedPersonCandidate(candidate) ? "Here the player" : match
+    ))
+    .replace(/\b([\p{Lu}][\p{L}'’.-]{3,})(?:'s|’s)\b/gu, (match, candidate) => (
+      normalizedPersonCandidate(candidate) ? "the player's" : match
+    ))
+    .replace(new RegExp(
+      `\\b(${PERSON_NAME_SOURCE})\\s+(?=${PLAYER_ACTION_SOURCE}\\b)`,
+      "gu",
+    ), (match, candidate) => (
+      normalizedPersonCandidate(candidate) ? "the player " : match
+    ))
     .replace(/^\s*(?:GM|IM|FM|WGM|WIM|WFM)\s+[\p{L}'’-]+(?:\s+[\p{L}'’-]+)?\s*:\s*/iu, "")
     .replace(/^\s*[\p{Lu}][\p{L}'’-]+(?:\s+[\p{Lu}][\p{L}'’-]+){0,2}\s*:\s*/u, "")
     .replace(/\s+(?:'s|’s)\b/giu, "")
     .replace(/^\s*(?:recalling|as in)\s+(?:the\s+)?(?:previous|earlier)\s+game,?\s*/iu, "")
+    .replace(/\bthe\s+player\s*[-–—]\s*the\s+player\b/giu, "an example game")
+    .replace(/\b(?:game|match)\s+between\s+the\s+player\s+(?:and|versus|vs\.?)\s+the\s+player\b/giu, "an example game")
+    .replace(/\b(?:according\s+to|as\s+(?:explained|noted|said|written)\s+by)\s+the\s+player\s*[,;:]?\s*/giu, "")
+    .replace(/\b(?:our|an?|the)\s+improvement\s+over\s+the\s+player(?:'s|’s)\s+(?:game|move)\b/giu, "This improvement")
+    .replace(/\s*[-–—]\s*the\s+player\.?\s*$/iu, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:!?])/g, "$1")
+    .trim();
+  return protectedNames.restore(stripSourceAndIdentitySentences(text))
     .replace(/\s+/g, " ")
     .replace(/\s+([,.;:!?])/g, "$1")
     .trim();
@@ -316,6 +531,7 @@ async function processSource({ filePath, sourceId, sourceName, sourceLimit, dige
 
 export async function buildCoachPgnIndex({
   inputDir,
+  additionalInputDirs = [],
   sourceLimit = DEFAULT_SOURCE_LIMIT,
   positionLimit = DEFAULT_POSITION_LIMIT,
   totalLimit = DEFAULT_TOTAL_LIMIT,
@@ -323,10 +539,30 @@ export async function buildCoachPgnIndex({
   onProgress = null,
 } = {}) {
   const directory = resolve(inputDir || "database");
-  const files = (await readdir(directory, { withFileTypes: true }))
-    .filter((entry) => entry.isFile() && /\.(?:pgn|txt)$/i.test(entry.name))
-    .map((entry) => join(directory, entry.name))
-    .sort((left, right) => left.localeCompare(right, "en"));
+  const sourceDirectories = [...new Set([
+    directory,
+    ...additionalInputDirs.map((value) => resolve(value)),
+  ])];
+  const prioritizedFiles = (await Promise.all(sourceDirectories.map(async (sourceDirectory, priority) => {
+    try {
+      return (await readdir(sourceDirectory, { withFileTypes: true }))
+        .filter((entry) => entry.isFile() && /\.(?:pgn|txt)$/i.test(entry.name))
+        .map((entry) => ({
+          filePath: join(sourceDirectory, entry.name),
+          priority,
+        }));
+    } catch (error) {
+      if (error?.code === "ENOENT" && sourceDirectory !== directory) return [];
+      throw error;
+    }
+  })))
+    .flat()
+    .sort((left, right) => (
+      left.priority - right.priority
+      || basename(left.filePath).localeCompare(basename(right.filePath), "en")
+      || left.filePath.localeCompare(right.filePath, "en")
+    ));
+  const files = prioritizedFiles.map((entry) => entry.filePath);
   const stats = {
     files: files.length,
     uniqueFiles: 0,
@@ -341,11 +577,14 @@ export async function buildCoachPgnIndex({
     variationRecords: 0,
     nags: 0,
     structuredClaims: 0,
+    verifiedFactEntries: 0,
+    quarantinedComments: 0,
     positions: 0,
     categoryCounts: Object.fromEntries(PGN_KNOWLEDGE_CATEGORIES.map((category) => [category, 0])),
     truncatedByTotalLimit: false,
   };
   const duplicateFiles = [];
+  const processedSourceFiles = [];
   const seenHashes = new Map();
   const seenRecords = new Set();
   const positions = new Map();
@@ -355,6 +594,7 @@ export async function buildCoachPgnIndex({
   const parseErrors = [];
 
   for (const [fileIndex, filePath] of files.entries()) {
+    processedSourceFiles.push(filePath);
     const fileName = basename(filePath);
     const digest = await sha256File(filePath);
     const sourceId = `source.${digest.slice(0, 12)}`;
@@ -386,20 +626,18 @@ export async function buildCoachPgnIndex({
     for (const record of safeRecords) {
       stats.commentsSeen += 1;
       if (stats.commentsIndexed >= totalLimit) break;
-      const summary = summarizePgnKnowledge(record, record.annotation.originalComment);
-      if (summary.length < 18 && record.annotation.nags.length === 0 && record.annotation.alternatives.length === 0) continue;
+      const verifiedFact = primaryDeterministicPgnMoveFact(record);
+      if (!verifiedFact) {
+        stats.quarantinedComments += 1;
+        continue;
+      }
       const positionKey = normalizedPositionKey(record.fenBefore);
       if (!positionKey) continue;
       const id = stableEntryId(record);
       if (seenRecords.has(id)) continue;
       const existing = positions.get(positionKey) || [];
       if (existing.length >= positionLimit) continue;
-      const fallbackComment = record.annotation.nags.length > 0
-        ? `Bewertung des Zugs ${record.san}: ${record.annotation.nags.map((nag) => `$${nag}`).join(" ")}.`
-        : record.annotation.alternatives[0]?.san
-          ? `Als Alternative zu ${record.san} wird ${record.annotation.alternatives[0].san} angegeben.`
-          : `Hinweis zum Zug ${record.san}.`;
-      const displayComment = summary.length >= 18 ? summary : fallbackComment;
+      const displayComment = verifiedFact.comment;
       const normalizedComment = displayComment.toLocaleLowerCase("de-DE");
       if (existing.some((entry) => entry.comment.toLocaleLowerCase("de-DE") === normalizedComment)) continue;
       const profile = profiles.get(positionKey) || positionSimilarityProfile(positionKey, {
@@ -407,11 +645,11 @@ export async function buildCoachPgnIndex({
       });
       if (profile) profiles.set(positionKey, profile);
       const topics = uniqueTopics([
+        ...verifiedFact.topics,
         ...commentTopics(displayComment),
-        ...(record.annotation.type === "tactical" ? ["tactics"] : []),
-        ...(record.annotation.type === "strategic" ? ["strategy"] : []),
       ]);
       const category = knowledgeCategoryForRecord(record, profile);
+      const storedAnnotation = verifiedFact.annotation;
       const entry = {
         id,
         gameId: record.gameId,
@@ -425,11 +663,7 @@ export async function buildCoachPgnIndex({
         topics,
         category,
         audienceRating,
-        annotation: {
-          type: record.annotation.type,
-          claims: record.annotation.claims.slice(0, 8),
-          alternatives: record.annotation.alternatives.slice(0, 2),
-        },
+        annotation: storedAnnotation,
       };
       existing.push(entry);
       positions.set(positionKey, existing);
@@ -438,7 +672,8 @@ export async function buildCoachPgnIndex({
       stats.commentsIndexed += 1;
       stats.variationRecords += record.variationDepth > 0 ? 1 : 0;
       stats.nags += record.annotation.nags.length;
-      stats.structuredClaims += record.annotation.claims.length;
+      stats.structuredClaims += storedAnnotation.claims.length;
+      stats.verifiedFactEntries += 1;
       stats.categoryCounts[category] += 1;
       trainingRecords.push({
         ...record,
@@ -477,6 +712,8 @@ export async function buildCoachPgnIndex({
       deterministic: true,
       anonymized: true,
       summarized: true,
+      runtimeFactsOnly: true,
+      rawCommentProseIncluded: false,
       categories: PGN_KNOWLEDGE_CATEGORIES,
       engineAnalysisIncluded: false,
       generatedAnswersIncluded: false,
@@ -491,6 +728,7 @@ export async function buildCoachPgnIndex({
     ))),
     profiles: Object.fromEntries([...profiles.entries()].sort(([a], [b]) => a.localeCompare(b, "en"))),
     trainingRecords,
+    processedSourceFiles,
   };
 }
 
@@ -590,6 +828,7 @@ export function compactCoachPgnIndex(index) {
           alternative.verificationStatus,
           Math.round(alternative.confidence * 100),
         ]),
+        entry.annotation?.scope || "",
       ],
     ]),
   ]));
@@ -631,11 +870,14 @@ export function trainingExport(index) {
 async function main() {
   const argv = process.argv.slice(2);
   const inputDir = resolve(stringOption(argv, "input", "database"));
+  const usedDir = join(inputDir, "used");
+  const keepSources = argv.includes("--keep-sources");
   const outputPath = resolve(stringOption(argv, "output", "data/pgn/coach-pgn-index.json"));
   const trainingOutput = stringOption(argv, "training-output", "");
   const cacheDir = resolve(stringOption(argv, "cache", ".cache/coach-pgn"));
   const index = await buildCoachPgnIndex({
     inputDir,
+    additionalInputDirs: [usedDir],
     cacheDir,
     sourceLimit: numberOption(argv, "source-limit", DEFAULT_SOURCE_LIMIT),
     positionLimit: numberOption(argv, "position-limit", DEFAULT_POSITION_LIMIT),
@@ -653,7 +895,18 @@ async function main() {
     await mkdir(dirname(trainingPath), { recursive: true });
     await writeFile(trainingPath, `${JSON.stringify(trainingExport(index), null, 2)}\n`, "utf8");
   }
-  console.log(JSON.stringify({ outputPath, trainingOutput: trainingOutput || null, ...index.stats, duplicates: index.duplicateFiles }, null, 2));
+  const intakeFiles = index.processedSourceFiles.filter((filePath) => dirname(filePath) === inputDir);
+  const archivedSources = keepSources
+    ? []
+    : await archiveProcessedSources(intakeFiles);
+  console.log(JSON.stringify({
+    outputPath,
+    trainingOutput: trainingOutput || null,
+    ...index.stats,
+    duplicates: index.duplicateFiles,
+    archivedSources: archivedSources.length,
+    keptSources: keepSources ? intakeFiles.length : 0,
+  }, null, 2));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  describeOpeningLiveMove,
   describeLiveMove,
   engineOpponentLabel,
   ENGINE_LEVELS,
@@ -8,6 +9,40 @@ import {
   normalizeEngineLevel,
   resolvePlayerColor,
 } from "../playMode.js";
+
+test("Buchfortsetzungen erhalten neutrales Live-Feedback ohne Engine-Bestzug", () => {
+  const feedback = describeOpeningLiveMove({
+    source: "lichess-chess-openings",
+    played: {
+      uci: "g1f3",
+      san: "Nf3",
+      source: "lichess-chess-openings",
+    },
+    alternatives: [{
+      uci: "f1c4",
+      san: "Bc4",
+      source: "lichess-chess-openings",
+    }],
+  }, {
+    tone: "best",
+    badge: "Bester Zug",
+    detail: "Das war der beste Zug.",
+    bestUci: "g1f3",
+    bestSan: "Nf3",
+  });
+
+  assert.equal(feedback.openingBook, true);
+  assert.equal(feedback.badge, "Eröffnungswahl");
+  assert.equal(feedback.bestUci, "");
+  assert.equal(feedback.bestSan, "");
+  assert.equal(feedback.bookAlternativeSan, "Bc4");
+  assert.equal(
+    feedback.detail,
+    "Der Zug ist eine spielbare Eröffnungswahl. Auch Bc4 steht im Eröffnungsbuch.",
+  );
+  assert.doesNotMatch(feedback.detail, /best(?:e[rsn]?)? Zug|genauso gut|Engine/iu);
+  assert.equal(describeOpeningLiveMove({ source: "unbekannt" }), null);
+});
 
 test("Spielstufen bleiben stabil und unbekannte Werte fallen auf Mittel zurück", () => {
   assert.equal(normalizeEngineLevel("hard"), "hard");

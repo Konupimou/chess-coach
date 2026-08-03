@@ -1,66 +1,68 @@
-# Evaluation des Konzepttransfers
+# Evaluation der Konzeptsuche und PGN-Sicherheitsgrenze
 
-Stand: 1. August 2026
+Stand: 3. August 2026
 
 ## Ergebnis
 
-Der frühere Index (Version 3) konnte exakte Stellungen sowie ähnliche Bauern-,
-Material- und Eröffnungsmuster finden, hatte aber keinen expliziten
-Konzepttransfer. Version 4 ergänzte Voraussetzungen, übertragbaren Plan,
-Gegenplan, Unterschiede und Abbruchbedingungen. Version 5 organisiert das
-abgeleitete Wissen zusätzlich anonymisiert und zusammengefasst nach Eröffnung,
-Mittelspiel, Endspiel und Sonstiges.
+Dieser Bericht beschreibt den produktiven Laufzeitindex in Version 6. Er trennt
+zwei Dinge, die frühere Berichte noch gemeinsam betrachtet haben:
 
-Der reproduzierbare reale Benchmark (`npm run pgn:evaluate`) verwendete 80
-deterministisch ausgewählte, legal um einen Zug veränderte Stellungen, die als
-exakte Position nicht im Index standen:
+- Die PGN-Schicht liefert ausschließlich deterministisch geprüfte Fakten für
+  exakt dieselbe Stellung und den ausdrücklich gelieferten legalen Zug.
+- Übertragbare strategische Pläne stammen aus dem getrennten kuratierten
+  Konzeptwissen. Die PGN-Kommentare selbst werden weder angezeigt noch auf
+  ähnliche Stellungen übertragen.
+
+Der reproduzierbare Benchmark `npm run pgn:evaluate` hat 80 deterministisch
+ausgewählte Stellungen jeweils um einen legalen Zug verändert. Keine dieser
+Teststellungen kam exakt im Index vor.
 
 | Metrik | Ergebnis |
 | --- | ---: |
+| Indexversion | 6 |
+| Indexierte Stellungen | 19.163 |
+| Konzeptgruppen im Katalog | 27 |
+| Davon in den Positionsprofilen erkannt | 21 |
 | Unbekannte Teststellungen | 80 |
-| Mindestens ein Suchergebnis | 71 |
-| Expliziter Konzepttransfer | 71 |
-| Transfer-Abdeckung | 88,75 % |
-| p50 | 19,58 ms |
-| p95 | 32,14 ms |
-| Maximum | 74,94 ms |
+| PGN-Laufzeittreffer in unbekannten Stellungen | 0 |
+| Übertragene PGN-Pläne | 0 |
+| p50 | 21,91 ms |
+| p95 | 37,80 ms |
+| Maximum | 99,40 ms |
 | p95-Ziel | < 300 ms |
 
-Der p95-Wert erfüllt das Latenzziel deutlich. Das Maximum bleibt sichtbar und
-wird nicht in den Durchschnitt hineinglättet. Laufzeitwerte hängen von Rechner,
-Cachezustand und Indexgröße ab; der Befehl misst sie deshalb reproduzierbar neu.
+Die Nulltreffer sind die beabsichtigte Sicherheitsgrenze: Der v6-Index enthält
+nur zuggebundene Fakten mit dem Geltungsbereich `exact_position_move`. Sobald
+die Stellung abweicht, darf daraus kein historischer Zug, kein Feld, keine
+Bewertung und kein strategischer Plan übernommen werden.
 
-## Positive und negative Tests
+## Kuratierte Konzeptsuche
 
-Die Testsuite enthält je einen positiven und negativen, unabhängig benannten
-Fall für 26 Konzeptgruppen: Bauernschwächen und -mehrheiten, Figurenqualität,
-offene Linien, Entwicklung, Königssicherheit, Raum, Abtausch und Prophylaxe,
-mehrere taktische Motive sowie zentrale Endspielkonzepte. Positive Fälle müssen
-das erwartete Konzept übertragen; negative Fälle dürfen keinen Transfer
-erzeugen. Ein zusätzlicher Fall hält die strategische Ähnlichkeit konstant,
-ändert aber die taktische Realität und muss alle Pläne blockieren.
+Die Positionsprofile enthalten Merkmale wie Bauernstruktur, Material,
+Königsstellung, offene Linien und erkannte Konzepte. Sie helfen dabei, auf dem
+aktuellen Brett passende Einträge im getrennten Konzeptkatalog zu finden. Der
+Katalog definiert Voraussetzungen, typische Pläne, Gegenpläne und
+Abbruchbedingungen. Er ist nicht aus frei formulierten PGN-Kommentaren
+übernommen.
 
-In diesem kontrollierten Regeltest wurden 26/26 positive Fälle erkannt und
-0/26 negative Fälle fälschlich übertragen. Das entspricht in diesem
-synthetischen Test Präzision 1,00 und Recall 1,00. Diese Werte dürfen nicht als
-Messung an menschlich gelabelten Meisterpartien verstanden werden.
+21 von 27 Kataloggruppen kommen in den Profilen des aktuellen PGN-Korpus vor.
+Eine erkannte Gruppe ist noch keine fertige Empfehlung: Die aktuelle Stellung
+muss die Bedingungen des kuratierten Eintrags erfüllen, und konkrete Züge oder
+Varianten benötigen weiterhin Stockfish- beziehungsweise Brettevidenz.
 
-## Korpusabdeckung und Fehleranalyse
+## Grenzen
 
-Der Katalog umfasst 26 Gruppen; 19 davon haben im aktuellen Index mindestens
-einen automatisch erkannten Treffer. Fehlende oder noch nicht belastbar direkt
-erkannte Gruppen werden nicht künstlich behauptet. Die wichtigsten
-Fehlerquellen sind:
+- Der Benchmark prüft die exakte PGN-Sicherheitsgrenze und die Suchlatenz. Er
+  bewertet nicht die Schachqualität eines kuratierten Plans.
+- Nicht jede Kataloggruppe besitzt im aktuellen Korpus schon ein erkanntes
+  Positionsprofil.
+- Laufzeitwerte hängen von Rechner und Cachezustand ab. Deshalb werden sie bei
+  jeder Freigabe neu gemessen.
+- Die älteren Werte zu übertragenen historischen Kommentaren gelten nicht mehr
+  für Version 6. Freie PGN-Prosa bleibt quarantänisiert.
 
-- automatische Detektoren können breite Kandidatenmengen erzeugen;
-- ein historischer Kommentar kann mehrere Ideen enthalten, von denen nur der
-  explizit ausgewiesene Plan übertragen werden darf;
-- taktische Motive sind stellungsspezifischer als strategische Strukturen;
-- kaputte oder nicht standardkonforme PGNs erzeugen Parserfehler und werden
-  nicht als verifiziertes Wissen behandelt;
-- 25.000 Kommentare sind indexiert, aber noch nicht vollständig durch
-  Stockfish und Menschen freigegeben.
+## Reproduktion
 
-Falschpositive Übertragung ist teurer als ein fehlender Treffer. Deshalb wird
-bei taktischem Mismatch blockiert, die Quelle und Stellungsperspektive werden
-mitgegeben, und ungeprüfte Kommentare bleiben als solche markiert.
+```bash
+npm run pgn:evaluate
+```

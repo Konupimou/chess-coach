@@ -27,3 +27,26 @@ Retriever erfindet oder erkennt sie nicht selbst. Beispiele:
 Konkrete Taktik und die Legalität von Zügen müssen weiterhin durch Brettlogik
 und Engine geprüft werden. Die Claims erklären belegte Merkmale; sie ersetzen
 keine Variantenberechnung.
+
+## Offene Puzzle-Daten für 800 Elo
+
+`lichess-puzzles-800.json` enthält einen am 1. August 2026 erzeugten,
+anonymisierten Ausschnitt der unter CC0 veröffentlichten Lichess Puzzle
+Database. Aus 6.057.356 gelesenen Zeilen wurden 7.394 Aufgaben mit Rating 600
+bis 1.100, niedriger Ratingabweichung und ausreichender Popularität ausgewählt.
+
+Abgedeckt sind Bauern-, Turm-, Läufer- und Springerendspiele sowie Ablenkung,
+das Beseitigen eines Verteidigers, Grundreihenmotive, Verteidigungszüge,
+Ausgleichsressourcen und Opfermotive. Der Datensatz enthält keine Quell-IDs,
+Partie-URLs, Eröffnungstags, Spieler- oder Autorennamen. Die komprimierte
+Rohdatenbank wurde beim Import nur gestreamt und nicht gespeichert.
+
+Filter, Themenquoten, der reproduzierbare Importbefehl und die Grenzen für
+Chess.com- und YouTube-Recherche stehen in
+[`docs/open-knowledge-research.md`](../../docs/open-knowledge-research.md).
+Lizenzhinweise stehen zusätzlich in
+[`THIRD_PARTY_NOTICES.md`](../../THIRD_PARTY_NOTICES.md).
+
+Puzzle-Themen dürfen nur für den jeweiligen importierten Datensatz als belegt
+gelten. Der Coach darf daraus nicht ohne separate Stellungsprüfung ableiten,
+dass dieselbe Taktik auf dem aktuellen Brett vorhanden ist.

@@ -70,6 +70,17 @@
       "rights": "copyrighted-reference-only",
       "usePolicy": "Allgemeine Endspielprinzipien eigenständig paraphrasieren; keine Analysen oder Buchpassagen übernehmen.",
       "reviewStatus": "reviewed"
+    },
+    {
+      "id": "lichess-open-puzzle-database-2026",
+      "title": "Lichess Open Puzzle Database",
+      "author": "Lichess",
+      "publicationYear": 2026,
+      "kind": "open-dataset",
+      "url": "https://database.lichess.org/#puzzles",
+      "rights": "CC0-1.0",
+      "usePolicy": "Nur anonymisierte FENs, legal geprüfte Lösungszüge, Ratings und Motive verwenden; Quellpartie, IDs, Namen, URLs und Eröffnungs-Tags beim Import entfernen.",
+      "reviewStatus": "reviewed"
     }
   ],
   "claims": [
@@ -651,6 +662,115 @@
       ],
       "reviewStatus": "reviewed",
       "confidence": 0.96
+    },
+    {
+      "id": "pawn-majority-create-passed-pawn",
+      "conceptIds": ["pawn_structures.pawn_majority", "pawn_play.mobilizing_a_pawn_majority"],
+      "paraphrase": "Du hast auf einem Flügel einen Bauern mehr. Halte die Bauern möglichst zusammen und bereite daraus einen Freibauern vor, statt sie einzeln vorzuschieben.",
+      "rationale": "Eine bewegliche Mehrheit kann durch einen passenden Tausch einen Bauern ohne gegnerischen Bauern vor sich erzeugen.",
+      "requiredFeatures": ["pawn.majority"],
+      "excludedFeatures": ["king.pawn_advance_opens_own_king", "tactic.forcing_emergency"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Pawn majorities and passed pawns", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "exchange-check-what-remains",
+      "conceptIds": ["exchanges.equal_exchange", "calculation.calculation_of_exchanges"],
+      "paraphrase": "Vor einem Abtausch reicht es nicht, nur die Figurenwerte zu zählen. Schau kurz, welche Figur danach aktiver ist und welche Bauern oder Felder schwach bleiben.",
+      "rationale": "Gleichwertiges Material kann nach dem Rückschlag sehr unterschiedlich stehen und neue Linien, Ziele oder Endspiele erzeugen.",
+      "requiredFeatures": ["exchange.piece_trade_available"],
+      "excludedFeatures": ["tactic.forcing_emergency"],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "Exchanges and resulting positions", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.96
+    },
+    {
+      "id": "exchange-quality-sacrifice-needs-payoff",
+      "conceptIds": ["tactics.exchange_sacrifice", "piece_evaluation.exchange_imbalance"],
+      "paraphrase": "Die geprüfte Hauptvariante gibt einen Turm für eine Leichtfigur. Spiele das nur, wenn die weitere Berechnung einen klaren Gegenwert zeigt; ohne diesen Gegenwert ist der Tausch schlecht.",
+      "rationale": "Ein Turm ist mehr wert als Läufer oder Springer. Prüfe deshalb in der konkreten Folge, ob du Material zurückgewinnst, einen Angriff bekommst oder eine verlorene Stellung rettest.",
+      "requiredFeatures": ["exchange.quality_sacrifice_in_best_line"],
+      "excludedFeatures": ["tactic.line_incomplete"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "nimzowitsch-my-system-1925", "locator": "Material and positional compensation", "usage": "paraphrased-strategic-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "lichess-open-puzzle-database-2026", "locator": "sacrifice theme; 600-1100 filter; legal solution verified locally", "usage": "paraphrased-pattern-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
+    },
+    {
+      "id": "defence-answer-threat-actively",
+      "conceptIds": ["defence.active_defence", "defence.counterattack"],
+      "paraphrase": "Du musst die Drohung nicht immer nur passiv decken. Ein Schach, ein Schlagzug oder ein Gegenangriff kann gleichzeitig verteidigen und den Gegner beschäftigen.",
+      "rationale": "Eine forcierte Gegenforderung nimmt dem Gegner Zeit, seinen Angriff ungestört zu verstärken, muss die ursprüngliche Drohung aber wirklich lösen.",
+      "requiredFeatures": ["opponent.threat", "defence.active_resource"],
+      "excludedFeatures": ["tactic.active_defence_fails"],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Opponent replies and forcing candidates", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "lichess-open-puzzle-database-2026", "locator": "defensiveMove and equality themes; legal solution verified locally", "usage": "paraphrased-pattern-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.95
+    },
+    {
+      "id": "tactics-deflect-or-remove-defender",
+      "conceptIds": ["tactics.deflection", "tactics.removing_the_defender"],
+      "paraphrase": "Ein Ziel fällt erst, nachdem sein wichtiger Verteidiger weggelockt oder geschlagen wurde. Prüfe immer, ob noch ein zweiter Verteidiger übrig bleibt.",
+      "rationale": "Das Motiv funktioniert nur, wenn die legal geprüfte Folge den Verteidiger wirklich von seiner Aufgabe trennt und das Ziel danach erreichbar ist.",
+      "requiredFeatures": ["tactic.deflection", "tactic.removing_defender"],
+      "excludedFeatures": ["tactic.removal_sequence_refuted"],
+      "phases": ["opening", "middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "kotov-think-like-grandmaster-1971", "locator": "Forcing candidates and tactical verification", "usage": "paraphrased-calculation-synthesis", "reviewStatus": "reviewed"},
+        {"sourceId": "lichess-open-puzzle-database-2026", "locator": "deflection and capturingDefender themes; legal solution verified locally", "usage": "paraphrased-pattern-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.97
+    },
+    {
+      "id": "king-back-rank-needs-an-answer",
+      "conceptIds": ["king_attack.weak_back_rank", "defence.creating_luft"],
+      "paraphrase": "Dein König hat auf der Grundreihe ein konkretes Problem. Schaffe ein sicheres Fluchtfeld oder halte genug Schutz bereit; ein Bauernzug ist dabei nicht automatisch die beste Lösung.",
+      "rationale": "Ohne Fluchtfeld kann ein Turm- oder Damenschach sofort mattsetzen oder einen Verteidiger an die Grundreihe binden.",
+      "requiredFeatures": ["king.back_rank_weakness"],
+      "excludedFeatures": ["king.escape_pawn_move_is_unsafe"],
+      "phases": ["middlegame", "endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "lichess-open-puzzle-database-2026", "locator": "backRankMate theme; legal mating move verified locally", "usage": "paraphrased-pattern-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.98
+    },
+    {
+      "id": "endgame-minor-piece-needs-king",
+      "conceptIds": ["minor_piece_endgames.minor_piece_activity", "minor_piece_endgames.king_support_for_a_minor_piece"],
+      "paraphrase": "Im Leichtfigurenendspiel sollen König und Figur zusammenarbeiten. Der König greift Bauern an oder stützt sie, während Läufer oder Springer wichtige Felder sichern.",
+      "rationale": "Eine einzelne Leichtfigur kann auf beiden Seiten nicht alles gleichzeitig halten; der aktive König übernimmt kurze Wege und Verteidigungsaufgaben.",
+      "requiredFeatures": ["endgame.minor_piece_endgame"],
+      "excludedFeatures": ["king.check_danger", "tactic.forcing_emergency"],
+      "phases": ["endgame"],
+      "learnerLevels": ["beginner", "intermediate", "advanced"],
+      "sources": [
+        {"sourceId": "capablanca-chess-fundamentals-1921", "locator": "King and minor-piece endings", "usage": "paraphrased-general-principle", "reviewStatus": "reviewed"},
+        {"sourceId": "lichess-open-puzzle-database-2026", "locator": "bishopEndgame and knightEndgame themes; legal solution verified locally", "usage": "paraphrased-pattern-synthesis", "reviewStatus": "reviewed"}
+      ],
+      "reviewStatus": "reviewed",
+      "confidence": 0.94
     }
   ]
 }

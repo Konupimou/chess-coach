@@ -6,6 +6,7 @@ import {
   pgnKnowledgeForPosition,
   pgnKnowledgeIndexStats,
   pgnQuestionTopics,
+  isCoachReadyPgnEntry,
 } from "../pgnKnowledge.js";
 import {
   compactPositionSimilarityProfile,
@@ -14,23 +15,31 @@ import {
 
 const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 const key = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -";
+const approved = (entry, status = "human_approved") => ({
+  ...entry,
+  annotation: {
+    type: "strategic",
+    claims: [{ field: "idea", verificationStatus: status }],
+    alternatives: [],
+  },
+});
 const index = {
   version: 1,
   stats: { positions: 1, commentsIndexed: 2, uniqueFiles: 2 },
   positions: {
     [key]: [
-      {
+      approved({
         id: "advanced",
-        comment: "A demanding strategic explanation for this exact position.",
+        comment: "Der Bauer nimmt Raum und hält ein Feld im Zentrum.",
         topics: ["strategy", "center"],
         audienceRating: 1800,
-      },
-      {
+      }),
+      approved({
         id: "basic",
-        comment: "The pawn takes space in the center.",
+        comment: "Der Bauer nimmt Raum im Zentrum.",
         topics: ["center"],
         audienceRating: 800,
-      },
+      }),
     ],
   },
 };
@@ -51,12 +60,12 @@ test("ähnliche ruhige Stellungen liefern vorsichtig markiertes Strukturwissen",
   const similarKey = "rnbqkbnr/pppppppp/8/8/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -";
   const structuralIndex = {
     positions: {
-      [similarKey]: [{
+      [similarKey]: [approved({
         id: "structure",
-        comment: "Develop the remaining pieces before starting an attack in the center.",
+        comment: "Bring erst deine übrigen Figuren ins Spiel. Greife danach im Zentrum an.",
         topics: ["development", "center"],
         audienceRating: 800,
-      }],
+      })],
     },
     profiles: {
       [similarKey]: compactPositionSimilarityProfile(
@@ -86,6 +95,114 @@ test("ähnliche ruhige Stellungen liefern vorsichtig markiertes Strukturwissen",
   assert.deepEqual(tactical, []);
 });
 
+test("zuggebundene PGN-Brettfakten gelten nur für die exakte FEN", () => {
+  const storedKey = "rnbqkbnr/pppppppp/8/8/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -";
+  const exactMoveFact = {
+    id: "exact-development",
+    comment: "Nf3 entwickelt den Springer.",
+    topics: ["development"],
+    audienceRating: 800,
+    category: "opening",
+    uci: "g1f3",
+    annotation: {
+      type: "deterministic_move_fact",
+      scope: "exact_position_move",
+      claims: [{
+        field: "boardFact.development",
+        confidence: 1,
+        verificationStatus: "automatically_verified",
+      }],
+      alternatives: [],
+    },
+  };
+  const factIndex = {
+    positions: { [storedKey]: [exactMoveFact] },
+    profiles: {
+      [storedKey]: compactPositionSimilarityProfile(
+        positionSimilarityProfile(storedKey, { openingFamily: "King's Pawn Game" }),
+      ),
+    },
+  };
+
+  const exact = pgnKnowledgeForPosition({
+    fen: `${storedKey} 0 2`,
+    rating: 800,
+    allowedExactMoveUcis: ["g1f3"],
+    index: factIndex,
+  });
+  assert.equal(exact.length, 1);
+  assert.match(exact[0].usage, /sicheren Brettfakt/u);
+  assert.equal(exact[0].provenance.uci, "g1f3");
+
+  assert.deepEqual(pgnKnowledgeForPosition({
+    fen: `${storedKey} 0 2`,
+    rating: 800,
+    allowedExactMoveUcis: ["b1c3"],
+    index: factIndex,
+  }), []);
+  assert.deepEqual(pgnKnowledgeForPosition({
+    fen: `${storedKey} 0 2`,
+    rating: 800,
+    index: factIndex,
+  }), []);
+
+  const similar = pgnKnowledgeForPosition({
+    fen,
+    rating: 800,
+    question: "Wie entwickle ich meine Figuren?",
+    openingFamily: "King's Pawn Game",
+    index: factIndex,
+  });
+  assert.deepEqual(similar, []);
+});
+
+test("Engine-Kontext liefert einen Brettfakt nur für einen geprüften Zug", () => {
+  const startKey = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+  const exactMoveFact = {
+    id: "e4-fact",
+    comment: "Nach e4 steht ein Bauer im Zentrum.",
+    topics: ["center"],
+    audienceRating: 800,
+    category: "opening",
+    uci: "e2e4",
+    annotation: {
+      type: "deterministic_move_fact",
+      scope: "exact_position_move",
+      claims: [{
+        field: "boardFact.central_pawn",
+        confidence: 1,
+        verificationStatus: "automatically_verified",
+      }],
+      alternatives: [],
+    },
+  };
+  const factIndex = { positions: { [startKey]: [exactMoveFact] }, profiles: {} };
+
+  const wrongMove = pgnKnowledgeForEngineContext({
+    engineContext: {
+      fen: `${startKey} 0 1`,
+      moveReview: { playedMove: { uci: "g1f3" } },
+      lines: [{ bestMove: { uci: "d2d4" } }],
+    },
+    rating: 800,
+    index: factIndex,
+  });
+  assert.deepEqual(wrongMove, []);
+
+  const matchingCandidate = pgnKnowledgeForEngineContext({
+    engineContext: {
+      fen: `${startKey} 0 1`,
+      moveReview: { playedMove: { uci: "g1f3" } },
+      lines: [{ bestMove: { uci: "e2e4" } }],
+    },
+    rating: 800,
+    index: factIndex,
+  });
+  assert.equal(matchingCandidate.length, 1);
+  assert.equal(matchingCandidate[0].provenance.uci, "e2e4");
+  assert.equal(matchingCandidate[0].positionRole, "before");
+});
+
 test("kompakt gespeicherte Konzepte werden in einer unbekannten Stellung ausgegeben", () => {
   const known = "1b2q1k1/p7/p1p2p2/B1P3pp/3P1p2/7P/PP1Q1PPK/8 w - -";
   const unknown = "1b2q1k1/p7/pBp2p2/2P3pp/3P1p2/7P/PP1Q1PPK/8 b - -";
@@ -100,7 +217,7 @@ test("kompakt gespeicherte Konzepte werden in einer unbekannten Stellung ausgege
       [`phase:${profile.concepts.phase}`, [0]],
     ]),
     positions: {
-      [known]: [["concept", "Use the pawn majority and keep the king safe.", ["strategy"], 1000, "middlegame", ["game", 1, 1, "w", "Bb6", "a5b6", true], ["strategic", [], []]]],
+      [known]: [["concept", "Nutze deine Bauernmehrheit und schütze deinen König.", ["strategy"], 1000, "middlegame", ["game", 1, 1, "w", "Bb6", "a5b6", true], ["strategic", [["idea", 90, "human_approved"]], []]]],
     },
     profiles: { [known]: compactProfile },
   };
@@ -146,7 +263,7 @@ test("die konkrete Frage priorisiert thematisch passende PGN-Hinweise", () => {
 test("kompakte Laufzeiteinträge enthalten nur neutrale Wissensdaten", () => {
   const compactIndex = {
     positions: {
-      [key]: [["compact", "Control the center.", ["center"], 800, "opening", ["game", 1, 1, "w", "e4", "e2e4", true], ["strategic", [], []]]],
+      [key]: [["compact", "Der Bauer auf e4 greift das Zentrum an.", ["center"], 800, "opening", ["game", 1, 1, "w", "e4", "e2e4", true], ["strategic", [["idea", 90, "human_approved"]], []]]],
     },
   };
   const result = pgnKnowledgeForPosition({ fen, rating: 800, index: compactIndex });
@@ -160,6 +277,7 @@ test("PGN-Indexstatistik bleibt klein und explizit", () => {
     version: 1,
     positions: 1,
     comments: 2,
+    coachReady: 2,
     sources: 2,
     categoryCounts: {},
   });
@@ -172,8 +290,8 @@ test("Zugerklärung sucht Wissen vor dem Zug und nach gespieltem Zug sowie Alter
     version: 4,
     stats: { positions: 2, commentsIndexed: 2, uniqueFiles: 1 },
     positions: {
-      [beforeKey]: [{ id: "before", comment: "Before the move, finish development carefully.", topics: ["development"], category: "opening", audienceRating: 800 }],
-      [afterE4Key]: [{ id: "after", comment: "After the pawn move, the center has changed.", topics: ["center"], category: "opening", audienceRating: 800 }],
+      [beforeKey]: [approved({ id: "before", comment: "Bring vor dem Angriff deine Figuren ins Spiel.", topics: ["development"], category: "opening", audienceRating: 800 })],
+      [afterE4Key]: [approved({ id: "after", comment: "Der Bauer auf e4 greift nun das Zentrum an.", topics: ["center"], category: "opening", audienceRating: 800 })],
     },
     profiles: {},
   };
@@ -188,4 +306,57 @@ test("Zugerklärung sucht Wissen vor dem Zug und nach gespieltem Zug sowie Alter
   });
   assert.equal(result.some((entry) => entry.positionRole === "before"), true);
   assert.equal(result.some((entry) => entry.positionRole === "after_played"), true);
+});
+
+test("nur freigegebene, verständliche deutsche PGN-Hinweise erreichen den Coach", () => {
+  assert.equal(isCoachReadyPgnEntry(approved({
+    comment: "Der Springer auf f3 greift den Bauern auf e5 an.",
+    audienceRating: 800,
+    category: "opening",
+  })), true);
+  assert.equal(isCoachReadyPgnEntry(approved({
+    comment: "The knight on f3 attacks the pawn on e5.",
+    audienceRating: 800,
+    category: "opening",
+  })), false);
+  assert.equal(isCoachReadyPgnEntry(approved({
+    comment: "Moving away from the danger diagonal.",
+    audienceRating: 800,
+    category: "opening",
+  })), false);
+  assert.equal(isCoachReadyPgnEntry(approved({
+    comment: "Der Springer auf f3 greift den Bauern auf e5 an.",
+    audienceRating: 800,
+    category: "opening",
+  }, "strategic_only")), false);
+  assert.equal(isCoachReadyPgnEntry(approved({
+    comment: "Der Springer auf f3 greift den Bauern auf e5 an.",
+    audienceRating: 800,
+    category: "opening",
+  }, "unverified")), false);
+  assert.equal(isCoachReadyPgnEntry(approved({
+    comment: "Laut Kapitel 4 sollte der Springer nach f3.",
+    audienceRating: 800,
+    category: "opening",
+  })), false);
+});
+
+test("vorläufige PGN-Statuswerte bleiben auch bei gutem deutschem Text gesperrt", () => {
+  const entry = {
+    comment: "Der Springer auf f3 greift den Bauern auf e5 an.",
+    audienceRating: 800,
+    category: "opening",
+  };
+
+  ["strategic_only", "unverified", "pending", "auto_extracted", ""].forEach((status) => {
+    assert.equal(isCoachReadyPgnEntry(approved(entry, status)), false, status);
+  });
+  [
+    "automatically_verified",
+    "engine_confirmed",
+    "compatible",
+    "human_approved",
+  ].forEach((status) => {
+    assert.equal(isCoachReadyPgnEntry(approved(entry, status)), true, status);
+  });
 });

@@ -79,3 +79,33 @@ export function describeLiveMove(move) {
     detail: message,
   };
 }
+
+export function describeOpeningLiveMove(openingReview, baseFeedback = {}) {
+  if (
+    openingReview?.source !== "lichess-chess-openings"
+    || !openingReview?.played?.uci
+    || !openingReview?.played?.san
+  ) return null;
+  const alternative = (Array.isArray(openingReview.alternatives)
+    ? openingReview.alternatives
+    : [])
+    .find((entry) => (
+      entry?.source === "lichess-chess-openings"
+      && entry?.uci
+      && entry.uci !== openingReview.played.uci
+      && entry?.san
+    )) || null;
+  return {
+    ...baseFeedback,
+    tone: "good",
+    badge: "Eröffnungswahl",
+    detail: alternative
+      ? `Der Zug ist eine spielbare Eröffnungswahl. Auch ${alternative.san} steht im Eröffnungsbuch.`
+      : "Der Zug ist eine spielbare Eröffnungswahl.",
+    openingBook: true,
+    bestUci: "",
+    bestSan: "",
+    bookAlternativeUci: alternative?.uci || "",
+    bookAlternativeSan: alternative?.san || "",
+  };
+}

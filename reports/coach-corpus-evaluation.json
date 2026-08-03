@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "method": "deterministic_stratified_offline_position_replay",
+  "config": {
+    "indexPath": "data/pgn/coach-pgn-index.json",
+    "seed": "coach-corpus-v1",
+    "samplesPerCell": 200,
+    "ratings": [
+      800,
+      1000,
+      1400,
+      1800
+    ],
+    "phases": [
+      "opening",
+      "middlegame",
+      "endgame"
+    ],
+    "paidAiCalls": 0,
+    "engineEvaluationUsed": false,
+    "note": "Neutral bewertete legale Linien prüfen die Erklärungspipeline; Zugqualität wird in diesem Massentest nicht neu bewertet."
+  },
+  "corpus": {
+    "indexVersion": 6,
+    "indexedPositions": 19163,
+    "indexedComments": 20418,
+    "indexedSources": 134,
+    "sampledPositions": 2297,
+    "representedAnonymousGames": 1629,
+    "selectionHash": "b6660af077385bc7a5bffbadd62bfb3a90be46ffd1a07e861d0a1846d651b0a1"
+  },
+  "sourceCorpus": {
+    "entries": 20418,
+    "coachReady": 20418,
+    "coachReadyPercent": 100,
+    "visibleLanguagePassed": 20418,
+    "visibleLanguagePercent": 100,
+    "coachReadyLanguagePassed": 20418,
+    "coachReadyLanguagePercent": 100,
+    "rawCommentsAreDirectCoachOutput": false,
+    "byRating": {
+      "800": {
+        "entries": 2855,
+        "coachReady": 2855,
+        "visibleLanguagePassed": 2855,
+        "coachReadyPercent": 100,
+        "visibleLanguagePercent": 100
+      },
+      "1000": {
+        "entries": 12780,
+        "coachReady": 12780,
+        "visibleLanguagePassed": 12780,
+        "coachReadyPercent": 100,
+        "visibleLanguagePercent": 100
+      },
+      "1400": {
+        "entries": 2288,
+        "coachReady": 2288,
+        "visibleLanguagePassed": 2288,
+        "coachReadyPercent": 100,
+        "visibleLanguagePercent": 100
+      },
+      "1800": {
+        "entries": 2495,
+        "coachReady": 2495,
+        "visibleLanguagePassed": 2495,
+        "coachReadyPercent": 100,
+        "visibleLanguagePercent": 100
+      }
+    },
+    "issueCounts": {}
+  },
+  "coverage": [
+    {
+      "rating": 800,
+      "phase": "opening",
+      "availableRecords": 1111,
+      "availablePositions": 1001,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 800,
+      "phase": "middlegame",
+      "availableRecords": 1057,
+      "availablePositions": 1018,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 800,
+      "phase": "endgame",
+      "availableRecords": 687,
+      "availablePositions": 667,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1000,
+      "phase": "opening",
+      "availableRecords": 4977,
+      "availablePositions": 4627,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1000,
+      "phase": "middlegame",
+      "availableRecords": 6312,
+      "availablePositions": 6046,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1000,
+      "phase": "endgame",
+      "availableRecords": 1491,
+      "availablePositions": 1429,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1400,
+      "phase": "opening",
+      "availableRecords": 1025,
+      "availablePositions": 923,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1400,
+      "phase": "middlegame",
+      "availableRecords": 1160,
+      "availablePositions": 1087,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1400,
+      "phase": "endgame",
+      "availableRecords": 103,
+      "availablePositions": 97,
+      "requested": 200,
+      "selected": 97
+    },
+    {
+      "rating": 1800,
+      "phase": "opening",
+      "availableRecords": 980,
+      "availablePositions": 900,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1800,
+      "phase": "middlegame",
+      "availableRecords": 1235,
+      "availablePositions": 1166,
+      "requested": 200,
+      "selected": 200
+    },
+    {
+      "rating": 1800,
+      "phase": "endgame",
+      "availableRecords": 280,
+      "availablePositions": 271,
+      "requested": 200,
+      "selected": 200
+    }
+  ],
+  "overall": {
+    "evaluated": 2297,
+    "legalityPassed": 2297,
+    "evidencePassed": 2297,
+    "semanticsPassed": 2297,
+    "provenancePassed": 2297,
+    "readabilityPassed": 2297,
+    "exactDatabaseMatches": 2297,
+    "openingPluralismPassed": 800,
+    "openingPluralismEvaluated": 800,
+    "readingEaseTotal": 206806.17999999813,
+    "legalityPercent": 100,
+    "evidencePercent": 100,
+    "semanticsPercent": 100,
+    "provenancePercent": 100,
+    "readabilityPercent": 100,
+    "exactDatabaseMatchPercent": 100,
+    "openingPluralismPercent": 100,
+    "averageGermanReadingEase": 90.03
+  },
+  "byRating": {
+    "800": {
+      "evaluated": 600,
+      "legalityPassed": 600,
+      "evidencePassed": 600,
+      "semanticsPassed": 600,
+      "provenancePassed": 600,
+      "readabilityPassed": 600,
+      "exactDatabaseMatches": 600,
+      "openingPluralismPassed": 200,
+      "openingPluralismEvaluated": 200,
+      "readingEaseTotal": 53225.390000000014,
+      "legalityPercent": 100,
+      "evidencePercent": 100,
+      "semanticsPercent": 100,
+      "provenancePercent": 100,
+      "readabilityPercent": 100,
+      "exactDatabaseMatchPercent": 100,
+      "openingPluralismPercent": 100,
+      "averageGermanReadingEase": 88.71
+    },
+    "1000": {
+      "evaluated": 600,
+      "legalityPassed": 600,
+      "evidencePassed": 600,
+      "semanticsPassed": 600,
+      "provenancePassed": 600,
+      "readabilityPassed": 600,
+      "exactDatabaseMatches": 600,
+      "openingPluralismPassed": 200,
+      "openingPluralismEvaluated": 200,
+      "readingEaseTotal": 53215.049999999974,
+      "legalityPercent": 100,
+      "evidencePercent": 100,
+      "semanticsPercent": 100,
+      "provenancePercent": 100,
+      "readabilityPercent": 100,
+      "exactDatabaseMatchPercent": 100,
+      "openingPluralismPercent": 100,
+      "averageGermanReadingEase": 88.69
+    },
+    "1400": {
+      "evaluated": 497,
+      "legalityPassed": 497,
+      "evidencePassed": 497,
+      "semanticsPassed": 497,
+      "provenancePassed": 497,
+      "readabilityPassed": 497,
+      "exactDatabaseMatches": 497,
+      "openingPluralismPassed": 200,
+      "openingPluralismEvaluated": 200,
+      "readingEaseTotal": 45805.36999999994,
+      "legalityPercent": 100,
+      "evidencePercent": 100,
+      "semanticsPercent": 100,
+      "provenancePercent": 100,
+      "readabilityPercent": 100,
+      "exactDatabaseMatchPercent": 100,
+      "openingPluralismPercent": 100,
+      "averageGermanReadingEase": 92.16
+    },
+    "1800": {
+      "evaluated": 600,
+      "legalityPassed": 600,
+      "evidencePassed": 600,
+      "semanticsPassed": 600,
+      "provenancePassed": 600,
+      "readabilityPassed": 600,
+      "exactDatabaseMatches": 600,
+      "openingPluralismPassed": 200,
+      "openingPluralismEvaluated": 200,
+      "readingEaseTotal": 54560.36999999979,
+      "legalityPercent": 100,
+      "evidencePercent": 100,
+      "semanticsPercent": 100,
+      "provenancePercent": 100,
+      "readabilityPercent": 100,
+      "exactDatabaseMatchPercent": 100,
+      "openingPluralismPercent": 100,
+      "averageGermanReadingEase": 90.93
+    }
+  },
+  "byPhase": {
+    "opening": {
+      "evaluated": 800,
+      "legalityPassed": 800,
+      "evidencePassed": 800,
+      "semanticsPassed": 800,
+      "provenancePassed": 800,
+      "readabilityPassed": 800,
+      "exactDatabaseMatches": 800,
+      "openingPluralismPassed": 800,
+      "openingPluralismEvaluated": 800,
+      "readingEaseTotal": 69220.67000000004,
+      "legalityPercent": 100,
+      "evidencePercent": 100,
+      "semanticsPercent": 100,
+      "provenancePercent": 100,
+      "readabilityPercent": 100,
+      "exactDatabaseMatchPercent": 100,
+      "openingPluralismPercent": 100,
+      "averageGermanReadingEase": 86.53
+    },
+    "middlegame": {
+      "evaluated": 800,
+      "legalityPassed": 800,
+      "evidencePassed": 800,
+      "semanticsPassed": 800,
+      "provenancePassed": 800,
+      "readabilityPassed": 800,
+      "exactDatabaseMatches": 800,
+      "openingPluralismPassed": 0,
+      "openingPluralismEvaluated": 0,
+      "readingEaseTotal": 73935.34999999987,
+      "legalityPercent": 100,
+      "evidencePercent": 100,
+      "semanticsPercent": 100,
+      "provenancePercent": 100,
+      "readabilityPercent": 100,
+      "exactDatabaseMatchPercent": 100,
+      "openingPluralismPercent": 0,
+      "averageGermanReadingEase": 92.42
+    },
+    "endgame": {
+      "evaluated": 697,
+      "legalityPassed": 697,
+      "evidencePassed": 697,
+      "semanticsPassed": 697,
+      "provenancePassed": 697,
+      "readabilityPassed": 697,
+      "exactDatabaseMatches": 697,
+      "openingPluralismPassed": 0,
+      "openingPluralismEvaluated": 0,
+      "readingEaseTotal": 63650.15999999975,
+      "legalityPercent": 100,
+      "evidencePercent": 100,
+      "semanticsPercent": 100,
+      "provenancePercent": 100,
+      "readabilityPercent": 100,
+      "exactDatabaseMatchPercent": 100,
+      "openingPluralismPercent": 0,
+      "averageGermanReadingEase": 91.32
+    }
+  },
+  "issueCounts": {},
+  "gates": {
+    "safetyReady": true,
+    "languageReady": true,
+    "coverageReady": true,
+    "offlineReplayReady": true,
+    "pgnKnowledgeReady": true,
+    "releaseReady": true,
+    "beginnerReadabilityPercent": 100,
+    "warning": "Dieser Lauf prüft neutrale legale Wiedergaben. Echte Zugbewertungen und Online-KI brauchen eigene Prüfungen; quarantänisierte PGN-Rohtexte sind kein Teil des Laufzeitwissens."
+  },
+  "safetyFailureExamples": [],
+  "failureExamples": []
+}

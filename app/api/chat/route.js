@@ -1,5 +1,5 @@
 import {
-  coachResponseMetadata,
+  coachResponseMetadataForReply,
   normalizeChatPayload,
   requestCoachResponse,
   requestMoveExplanation,
@@ -96,7 +96,10 @@ export async function POST(request) {
       signal: controller.signal,
       safetyIdentifier: await safetyIdentifier(request),
     });
-    return json({ reply, ...coachResponseMetadata(normalized.value) });
+    return json({
+      reply,
+      ...coachResponseMetadataForReply(normalized.value, reply),
+    });
   } catch (error) {
     if (error?.code === "missing_api_key") {
       return json(

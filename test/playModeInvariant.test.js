@@ -86,6 +86,23 @@ test("Spielmodus aktualisiert Feedback und Präzisions-Streak ohne Genauigkeitsf
   assert.match(appSource, /this\.boardRow\?\.appendChild\(this\.playStreakEl\)/);
 });
 
+test("Live-Feedback behandelt Buchfortsetzungen ohne Engine-Bestzug", () => {
+  const feedbackSource = methodSource("recordLatestPlayFeedback", "renderSuggestions");
+  const renderSource = methodSource("renderPlayPanel", "setAppMode");
+  const openingBranchStart = renderSource.indexOf("if (latest.openingBook === true)");
+  const openingBranchEnd = renderSource.indexOf("} else {", openingBranchStart);
+  const openingBranch = renderSource.slice(openingBranchStart, openingBranchEnd);
+
+  assert.match(feedbackSource, /openingReviewForPath\(path, this\.openingBook/);
+  assert.match(feedbackSource, /describeOpeningLiveMove\(openingReview, feedback\)/);
+  assert.match(feedbackSource, /bestUci: openingReview \? ""/);
+  assert.match(feedbackSource, /bestSan: openingReview \? ""/);
+  assert.match(feedbackSource, /if \(!openingReview\) \{\s*this\.requestAutomaticPlayCoachFeedback/);
+  assert.ok(openingBranchStart >= 0 && openingBranchEnd > openingBranchStart);
+  assert.match(openingBranch, /Spielbare Eröffnungswahl/);
+  assert.doesNotMatch(openingBranch, /Bester Zug|bestSan|moveQualityPresentation/);
+});
+
 test("Analyse übergibt farbige Kurzerklärungen an die Zugliste", () => {
   const renderSource = methodSource("buildMoveAnnotations", "renderMoveList");
   assert.match(renderSource, /explainMoveQuality/);

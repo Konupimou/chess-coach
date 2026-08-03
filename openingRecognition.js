@@ -281,6 +281,42 @@ export function openingContinuationsForPath(path, book, { limit = 5 } = {}) {
     }));
 }
 
+export function openingReviewForPath(path, book, { limit = 3 } = {}) {
+  const nodes = Array.isArray(path) ? path : [];
+  if (!book?.entries || nodes.length < 2) return null;
+  const recognition = detectOpeningFromPath(nodes, book);
+  const currentPly = nodes.length - 1;
+  if (
+    recognition.inKnownSequence !== true
+    && !(recognition.matched === true && recognition.matchedPly === currentPly)
+  ) return null;
+
+  const playedUci = pathMoveToUci(nodes.at(-1)?.move);
+  if (!playedUci) return null;
+  const maximum = Math.max(0, Math.min(5, Number.parseInt(limit, 10) || 0));
+  const continuations = openingContinuationsForPath(
+    nodes.slice(0, -1),
+    book,
+    { limit: 8 },
+  );
+  const bookEntry = continuations.find((entry) => entry.uci === playedUci);
+  const playedSan = cleanText(nodes.at(-1)?.move?.san, 24)
+    || bookEntry?.san
+    || playedUci;
+
+  return {
+    source: OPENING_SOURCE,
+    recognition,
+    fenBefore: nodes.at(-2)?.fen || "",
+    played: bookEntry
+      ? { ...bookEntry, san: playedSan }
+      : { uci: playedUci, san: playedSan, openings: [], source: OPENING_SOURCE },
+    alternatives: continuations
+      .filter((entry) => entry.uci !== playedUci)
+      .slice(0, maximum),
+  };
+}
+
 function unknownResult(currentPly, extra = {}) {
   return {
     ...EMPTY_RESULT,

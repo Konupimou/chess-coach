@@ -1,8 +1,14 @@
-# Evaluationsbericht: Zug-für-Zug-Coach
+# Archivierter Evaluationsbericht: Zug-für-Zug-Coach
 
-Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
+Erzeugt am 2026-07-31 aus dem damaligen Stand der lokalen Fallback-Pipeline.
 
-## Zusammenfassung
+> **Archivhinweis:** Die folgenden Beispieltexte sind kein Nachweis für den
+> aktuellen Coach. Sie bleiben nur erhalten, um den früheren Entwicklungsstand
+> nachvollziehbar zu machen, und enthalten Formulierungen, die inzwischen
+> bewusst ersetzt wurden. Für die aktuelle Freigabe gelten
+> `coach-corpus-evaluation.md` und `coach-random-stockfish-stress.md`.
+
+## Historische Zusammenfassung
 
 - Kuratierte Einzelstellungen: 59
 - Abgedeckte Pflichtgruppen: 32
@@ -54,9 +60,11 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 | zentrum_antwort | 2 |
 | zwischenzug | 1 |
 
-## Zehn repräsentative Vorher-/Nachher-Beispiele
+## Zehn historische Vorher-/Nachher-Beispiele
 
-„Vorher“ bezeichnet die im Altcode beobachtete Schablonenklasse, nicht eine erneut ausgeführte Engine-Analyse. „Nachher“ ist die tatsächliche Ausgabe des aktuellen lokalen Coachs.
+„Vorher“ bezeichnet die im damaligen Altcode beobachtete Schablonenklasse, nicht
+eine erneut ausgeführte Engine-Analyse. „Nachher“ ist die am 31. Juli 2026
+erzeugte Ausgabe und ausdrücklich nicht die aktuelle Formulierung des Coachs.
 
 ### italian-01: e4
 
@@ -64,7 +72,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > e4 besetzt e4 und kontrolliert zusätzlich d5.
 > Das ist hier die genaueste Wahl.
@@ -76,7 +84,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > Qh5 übernimmt neu die Kontrolle über e5.
 > Das ist etwas ungenau, weil du eine präzisere Möglichkeit auslässt.
@@ -90,7 +98,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > Kf1: Über das Zielfeld f1 hinaus ist bei der aktuellen Analysetiefe noch kein konkret erklärbarer Zweck zuverlässig belegt.
 > Das ist ein Fehler, weil die stärkste Antwort deine Stellung konkret verschlechtert.
@@ -104,7 +112,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > f4 setzt einen Bauernhebel gegen e5 an.
 > Das Problem: Der Zug lässt Qh4# zu.
@@ -120,7 +128,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > Qd3 übernimmt neu die Kontrolle über e4.
 > Das Problem: In der geprüften Antwortfolge schneidet dein Zug beim Material schlechter ab.
@@ -136,7 +144,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > Nc7+ gibt sofort Schach und zwingt den König zu einer Antwort.
 > Das ist hier die genaueste Wahl.
@@ -149,7 +157,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > g3: Über das Zielfeld g3 hinaus ist bei der aktuellen Analysetiefe noch kein konkret erklärbarer Zweck zuverlässig belegt.
 > Das ist hier die genaueste Wahl.
@@ -161,7 +169,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > f4 setzt einen Bauernhebel gegen e5 an.
 > Das ist hier die genaueste Wahl.
@@ -173,7 +181,7 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > dxc4 nimmt auf c4 einen Bauern.
 > Das ist hier die genaueste Wahl.
@@ -185,16 +193,17 @@ Erzeugt am 2026-07-31 aus der lokalen, verifizierten Fallback-Pipeline.
 
 > Die Figur wechselt auf ihr Zielfeld. Die Alternative hielt die Stellung besser zusammen.
 
-**Nachher (aktuelle lokale Ausgabe)**
+**Nachher (Ausgabe am 31. Juli 2026)**
 
 > Ka7 bringt den König von a8 näher ins Zentrum nach a7.
 > Der Zug ist erzwungen: Es gibt keinen anderen legalen Zug.
 > **Der Unterschied:** Es gibt in dieser Stellung genau einen legalen Zug.
 > **Merksatz:** Lernregel: Prüfe vor deinem Zug immer zuerst alle gegnerischen Schachs.
 
-## Zwei vollständige Beispielpartien
+## Zwei historische Beispielpartien
 
-Alle Halbzüge werden aus der jeweiligen echten Vorher-Stellung erzeugt und legal auf dem Brett ausgeführt.
+Alle Halbzüge wurden für diesen historischen Bericht aus der jeweiligen echten
+Vorher-Stellung erzeugt und legal auf dem Brett ausgeführt.
 
 ### Narrenmatt
 
@@ -307,8 +316,8 @@ Erwarteter belegter Kernfakt: `gives_checkmate`
 - Seltene Motive wie Ablenkung, Überlastung oder ein langfristig günstiger Abtausch benötigen eine passende Variante; ohne belegte Ereignisfolge werden sie nicht behauptet.
 - Die KI-Fassung kann sprachlich variabler sein, muss aber dieselben Evidenz-IDs und legalen Zugreferenzen bestehen.
 
-## Prüfstatus
+## Historischer Prüfstatus
 
-- `npm test`: 435 Tests bestanden.
-- `npm run build`: Produktionsbuild erfolgreich.
-- Der Bericht wurde automatisch aus den festen Testdaten erzeugt und die repräsentativen Ausgaben wurden anschließend manuell auf Schachlogik, Reihenfolge und Sprache geprüft.
+- Die damals dokumentierten Tests und der damalige Build waren erfolgreich.
+- Diese Zahlen werden nicht als aktueller Freigabenachweis verwendet.
+- Aktuelle Messwerte stehen in den oben genannten Korpus- und Stresstestberichten.

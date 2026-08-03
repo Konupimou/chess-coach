@@ -53,6 +53,20 @@ const REQUIRED_CATEGORY_IDS = [
   "pattern-recognition",
 ];
 
+const BEGINNER_CONCEPT_IDS = [
+  "calculation.beginner-safety-check",
+  "strategy.good-exchange",
+  "strategy.exchange-sacrifice",
+  "pawns.pawn-majority",
+  "defence.active-defence",
+  "endgame.active-king",
+  "endgame.rule-of-square",
+  "endgame.rook-activity",
+  "endgame.rook-behind-passed-pawn",
+  "endgame.minor-piece-fit",
+  "endgame.drawing-resources",
+];
+
 function clone(value) {
   return structuredClone(value);
 }
@@ -67,9 +81,9 @@ test("Taxonomie enthält alle vorgegebenen Kategorien mit stabilen eindeutigen I
   assert.ok(ids.every((id) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)));
 });
 
-test("Wissensbasis enthält genau 30 vollständig validierte Kernkonzepte", () => {
+test("Wissensbasis enthält genau 41 vollständig validierte Kernkonzepte", () => {
   assert.equal(KNOWLEDGE_SCHEMA_VERSION, 1);
-  assert.equal(CORE_CHESS_CONCEPTS.length, 30);
+  assert.equal(CORE_CHESS_CONCEPTS.length, 41);
   assert.deepEqual(
     validateKnowledgeBase({ taxonomy: KNOWLEDGE_TAXONOMY, concepts: CORE_CHESS_CONCEPTS }),
     { valid: true, errors: [] },
@@ -84,6 +98,26 @@ test("Wissensbasis enthält genau 30 vollständig validierte Kernkonzepte", () =
     assert.ok(concept.practicalQuestions.de.length >= 2, `${concept.id}: Prüffragen fehlen`);
     assert.ok(concept.training.de.length >= 40, `${concept.id}: Training fehlt`);
   }
+});
+
+test("Wissensbasis enthält die einfachen Strategie- und Endspielkarten für 800 Elo", () => {
+  for (const id of BEGINNER_CONCEPT_IDS) {
+    const concept = getConceptById(id);
+    assert.ok(concept, `Anfängerkonzept fehlt: ${id}`);
+    assert.ok(concept.difficulty.includes("beginner"), `${id}: nicht für Anfänger markiert`);
+    assert.ok(concept.retrieval.signals.length >= 3, `${id}: zu wenige klare Retrieval-Signale`);
+  }
+
+  const rookEndgame = retrieveConcepts({ signals: ["rook-endgame"], phases: ["endgame"], limit: 3 });
+  assert.equal(rookEndgame[0].concept.id, "endgame.rook-activity");
+
+  const exchangeSacrifice = retrieveConcepts({ query: "Ist hier ein Qualitätsopfer gut?", phases: ["middlegame"] });
+  assert.equal(exchangeSacrifice[0].concept.id, "strategy.exchange-sacrifice");
+
+  assert.deepEqual(
+    retrieveConcepts({ signals: ["rule-of-square"], phases: ["opening"] }),
+    [],
+  );
 });
 
 test("Schema meldet doppelte IDs, ungültige Kategorien und kaputte Beziehungen", () => {

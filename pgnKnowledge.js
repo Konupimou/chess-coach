@@ -6,6 +6,8 @@ import {
   positionSimilarityProfile,
 } from "./positionSimilarity.js";
 import { conceptSearchTokens } from "./positionConcepts.js";
+import { validateCoachLanguage } from "./coachLanguageQuality.js";
+import { isExactPgnMoveFact } from "./pgnVerifiedFacts.js";
 
 const SUPPORTED_RATINGS = Object.freeze([800, 1000, 1400, 1800]);
 const QUESTION_TOPIC_PATTERNS = Object.freeze({
@@ -31,6 +33,43 @@ const SAFE_SIMILAR_TOPICS = new Set([
 const MIN_SIMILARITY_SCORE = 55;
 const MAX_CACHE_ENTRIES = 100;
 const knowledgeCacheByIndex = new WeakMap();
+const statsCacheByIndex = new WeakMap();
+const TRUSTED_PGN_STATUSES = new Set([
+  "automatically_verified",
+  "engine_confirmed",
+  "compatible",
+  "human_approved",
+]);
+
+export function isCoachReadyPgnEntry(entry) {
+  const comment = typeof entry?.comment === "string" ? entry.comment.trim() : "";
+  if (comment.length < 18 || comment.length > 360) return false;
+  if (
+    /https?:|www\.|@{2}|\[\/?variation|startbracket|endbracket|�/iu.test(comment)
+    || /\b(?:course|kurs|book|buch|video|chapter|kapitel|source|quelle|annotator)\b/iu.test(comment)
+    || /\b(?:according to|laut|as in|see also|siehe auch)\b/iu.test(comment)
+    || /\bplayer(?:\s+player){1,}\b/iu.test(comment)
+    || /^\s*(?:and|but|because|und|aber|weil)\b/iu.test(comment)
+  ) return false;
+  const claims = Array.isArray(entry?.annotation?.claims)
+    ? entry.annotation.claims
+    : [];
+  const alternatives = Array.isArray(entry?.annotation?.alternatives)
+    ? entry.annotation.alternatives
+    : [];
+  const statuses = [...claims, ...alternatives]
+    .map((item) => String(item?.verificationStatus || "").trim())
+    .filter(Boolean);
+  if (
+    statuses.length === 0
+    || !statuses.every((status) => TRUSTED_PGN_STATUSES.has(status))
+  ) return false;
+  return validateCoachLanguage(comment, {
+    rating: entry?.audienceRating || entry?.rating || 1000,
+    phase: entry?.category || entry?.phase || "",
+    strict: true,
+  }).valid;
+}
 
 export function normalizedPgnPositionKey(fen) {
   if (typeof fen !== "string") return "";
@@ -71,6 +110,7 @@ function expandedEntry(entry, index) {
       mainline: provenance[6] !== false,
       annotation: {
         type: structured[0] || "unknown",
+        scope: structured[3] || "",
         claims: (structured[1] || []).map((claim) => ({
           field: claim[0], value: "", confidence: (claim[1] || 0) / 100,
           verificationStatus: claim[2], excerpt: "",
@@ -98,6 +138,7 @@ function expandedEntry(entry, index) {
     mainline: provenance[7] !== false,
     annotation: {
       type: structured[0] || "unknown",
+      scope: structured[3] || "",
       claims: (structured[1] || []).map((claim) => ({
         field: claim[0], value: "", confidence: (claim[1] || 0) / 100,
         verificationStatus: claim[2], excerpt: "",
@@ -130,6 +171,7 @@ function compactEntry(entry, match = { type: "exact", score: 100, shared: [] }) 
       moveNumber: entry.moveNumber || 0,
       color: entry.color || "",
       move: entry.move || "",
+      uci: entry.uci || "",
       mainline: entry.mainline !== false,
     },
     annotation: entry.annotation || { type: "unknown", claims: [], alternatives: [] },
@@ -145,7 +187,9 @@ function compactEntry(entry, match = { type: "exact", score: 100, shared: [] }) 
       tacticalMismatch: match.conceptTransfer?.tacticalMismatch === true,
     },
     usage: exact
-      ? "Als menschlichen Erklärungshinweis aus exakt derselben Stellung paraphrasieren; nicht als Beleg für den besten Zug oder eine konkrete Variante verwenden."
+      ? isExactPgnMoveFact(entry)
+        ? "Nur als sicheren Brettfakt zum gespeicherten legalen Zug verwenden. Der Zug ist dadurch nicht automatisch gut oder der beste."
+        : "Als menschlichen Erklärungshinweis aus exakt derselben Stellung paraphrasieren; nicht als Beleg für den besten Zug oder eine konkrete Variante verwenden."
       : "Nur den ausdrücklich ausgewiesenen übertragbaren Plan paraphrasieren. Gemeinsamkeiten und Unterschiede konkret nennen; keine historischen Züge, Felder, Taktiken oder Bewertungen übernehmen.",
   };
 }
@@ -156,6 +200,7 @@ function computePgnKnowledgeForPosition({
   question = "",
   openingFamily = "",
   limit = 3,
+  allowedExactMoveUcis = [],
   index = pgnIndex,
 } = {}) {
   const key = normalizedPgnPositionKey(fen);
@@ -165,9 +210,15 @@ function computePgnKnowledgeForPosition({
   const topicMatches = (entry) => (entry.topics || [])
     .filter((topic) => requestedTopics.has(topic)).length;
   const maximum = Math.max(0, Math.min(5, Number.parseInt(limit, 10) || 0));
+  const allowedExactMoves = new Set(
+    (Array.isArray(allowedExactMoveUcis) ? allowedExactMoveUcis : [])
+      .map((uci) => String(uci || "").toLowerCase())
+      .filter((uci) => /^[a-h][1-8][a-h][1-8][qrbn]?$/u.test(uci)),
+  );
   const exact = (Array.isArray(index.positions[key]) ? index.positions[key] : [])
     .map((entry) => expandedEntry(entry, index))
-    .filter((entry) => typeof entry?.comment === "string" && entry.comment.trim())
+    .filter(isCoachReadyPgnEntry)
+    .filter((entry) => !isExactPgnMoveFact(entry) || allowedExactMoves.has(entry.uci))
     .sort((left, right) => (
       topicMatches(right) - topicMatches(left)
       || Math.abs((left.audienceRating || 1000) - targetRating)
@@ -202,7 +253,8 @@ function computePgnKnowledgeForPosition({
     if (match.conceptTransfer?.tacticalMismatch) continue;
     for (const storedEntry of index.positions[candidateKey]) {
       const entry = expandedEntry(storedEntry, index);
-      if (typeof entry?.comment !== "string" || !entry.comment.trim()) continue;
+      if (!isCoachReadyPgnEntry(entry)) continue;
+      if (isExactPgnMoveFact(entry)) continue;
       const topics = Array.isArray(entry.topics) ? entry.topics : [];
       const hasTransferableConcept = match.conceptTransfer?.transferableConcepts
         ?.some((concept) => !concept.blocked && concept.transferablePlan?.length > 0);
@@ -273,11 +325,16 @@ export function pgnKnowledgeForEngineContext({
     .filter(Boolean)
     .slice(0, 3);
   const positions = [
-    { role: "before", fen: fenBefore },
-    ...(reviewedUci ? [{ role: "after_played", fen: fenAfterUci(fenBefore, reviewedUci) }] : []),
+    { role: "before", fen: fenBefore, allowedExactMoveUcis: [reviewedUci, ...lineMoves] },
+    ...(reviewedUci ? [{
+      role: "after_played",
+      fen: fenAfterUci(fenBefore, reviewedUci),
+      allowedExactMoveUcis: [],
+    }] : []),
     ...lineMoves.map((uci, rank) => ({
       role: `after_alternative_${rank + 1}`,
       fen: fenAfterUci(fenBefore, uci),
+      allowedExactMoveUcis: [],
     })),
   ].filter((entry) => entry.fen);
   const results = [];
@@ -289,6 +346,7 @@ export function pgnKnowledgeForEngineContext({
       question,
       openingFamily,
       limit: Math.min(2, limit),
+      allowedExactMoveUcis: position.allowedExactMoveUcis,
       index,
     });
     for (const match of matches) {
@@ -318,6 +376,9 @@ export function pgnKnowledgeForPosition(options = {}) {
     String(options.question || "").trim().toLocaleLowerCase("de-DE"),
     String(options.openingFamily || "").trim().toLocaleLowerCase("de-DE"),
     Math.max(0, Math.min(5, Number.parseInt(options.limit, 10) || 0)),
+    (Array.isArray(options.allowedExactMoveUcis) ? options.allowedExactMoveUcis : [])
+      .map((uci) => String(uci || "").toLowerCase())
+      .sort(),
   ]);
   if (cache.has(cacheKey)) return cache.get(cacheKey);
 
@@ -330,11 +391,24 @@ export function pgnKnowledgeForPosition(options = {}) {
 }
 
 export function pgnKnowledgeIndexStats(index = pgnIndex) {
-  return {
+  if (index && typeof index === "object" && statsCacheByIndex.has(index)) {
+    return statsCacheByIndex.get(index);
+  }
+  let coachReady = 0;
+  for (const entries of Object.values(index?.positions || {})) {
+    if (!Array.isArray(entries)) continue;
+    entries.forEach((entry) => {
+      if (isCoachReadyPgnEntry(expandedEntry(entry, index))) coachReady += 1;
+    });
+  }
+  const result = {
     version: index?.version || 0,
     positions: index?.stats?.positions || 0,
     comments: index?.stats?.commentsIndexed || 0,
+    coachReady,
     sources: index?.sourceCount || index?.stats?.uniqueFiles || 0,
     categoryCounts: index?.stats?.categoryCounts || {},
   };
+  if (index && typeof index === "object") statsCacheByIndex.set(index, result);
+  return result;
 }

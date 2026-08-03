@@ -10,6 +10,7 @@ import {
   normalizeFenToEpd,
   openingContinuationsForPath,
   openingCoachContext,
+  openingReviewForPath,
   parseOpeningName,
 } from "../openingRecognition.js";
 
@@ -67,6 +68,27 @@ test("das Eröffnungsbuch liefert mehrere gleichberechtigte Fortsetzungen", () =
   );
   assert.ok(afterE4E5.length >= 2);
   assert.ok(afterE4E5.some((entry) => entry.uci === "g1f3"));
+});
+
+test("der Eröffnungs-Rückblick ordnet den gespielten Zug nicht als Bestzug ein", () => {
+  const review = openingReviewForPath(
+    pathFromUci("e2e4 e7e5 g1f3"),
+    book,
+    { limit: 3 },
+  );
+
+  assert.ok(review);
+  assert.equal(review.played.uci, "g1f3");
+  assert.equal(review.played.san, "Nf3");
+  assert.ok(review.alternatives.length > 0);
+  assert.ok(review.alternatives.every((entry) => entry.uci !== "g1f3"));
+});
+
+test("ein Zug außerhalb des Eröffnungsbuchs bekommt keinen Datenbank-Rückblick", () => {
+  assert.equal(
+    openingReviewForPath(pathFromUci("e2e4 e7e5 g1h3"), book),
+    null,
+  );
 });
 
 for (const [label, sequence, eco, sourceFragment] of cases) {

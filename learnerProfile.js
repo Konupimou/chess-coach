@@ -165,6 +165,8 @@ const RESPONSE_STYLE_BY_RATING = Object.freeze({
       "abstrakte Aussagen ohne konkrete Figur oder konkretes Feld",
       "steife Wörter wie «geprüfte Antwortfolge», «Anforderungen der Stellung» oder «konkret verschlechtert»",
       "Lob-Floskeln wie «Sauber» oder «genau das war gefragt»",
+      "leere Zusätze wie «verbessert seine Wirkung auf die Stellung»",
+      "herablassende Sätze wie «das solltest du eigentlich sehen» oder «Anfängerfehler»",
     ]),
   }),
   1000: Object.freeze({

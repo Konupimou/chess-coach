@@ -122,10 +122,20 @@ test("Coach-Elo ist in Spiel- und Analysemodus wählbar und bleibt vom Gegner ge
   assert.match(styleSource, /\.coach-rating-control select/);
 });
 
-test("800-Elo-Livefeedback verrät bei groben Fehlern nicht sofort die Lösung", () => {
-  assert.match(appSource, /const foundationsBlunder = this\.getCoachRating\(\) === 800/);
-  assert.match(appSource, /Verrate \$\{reportMove\.bestSan\} in dieser ersten Antwort noch nicht/);
-  assert.match(appSource, /Matt, ein gegnerischer Schlagzug oder eine ungedeckte Figur/);
+test("die Datenbox zeigt den verfügbaren Lichess-Trainingsbestand auch unbenutzt", () => {
+  assert.match(appSource, /label: "Lichess-Training"/);
+  assert.match(appSource, /7\.394 Übungen verfügbar/);
+  assert.match(appSource, /sources\.training\?\.detail/);
+});
+
+test("Livefeedback nutzt die belegte Zugerklärung statt eines freien KI-Prompts", () => {
+  const start = appSource.indexOf("  async requestAutomaticPlayCoachFeedback");
+  const end = appSource.indexOf("  async drainPlayCoachQueue", start);
+  const source = appSource.slice(start, end);
+  assert.match(source, /requestGroundedMoveExplanation/);
+  assert.match(source, /item\.coachExplanation = result\.explanation/);
+  assert.match(source, /moveExplanationToMarkdown/);
+  assert.doesNotMatch(source, /coachQueue\.push|Verrate|Bewerte .*Coach-Niveau/);
   assert.match(appSource, /latestAutomaticReply/);
 });
 
@@ -201,6 +211,16 @@ test("Vollanalyse sammelt zwei Kandidaten und lädt KI-Texte erst beim Öffnen e
   assert.match(appSource, /requestReviewJourneyCoach/);
 });
 
+test("eine verworfene freie Ganzpartie-Antwort lässt den lokalen Abschluss stehen", () => {
+  const start = appSource.indexOf("  async requestCoachGameFeedback(");
+  const end = appSource.indexOf("  renderFeedbackReport(", start);
+  const source = appSource.slice(start, end);
+  assert.ok(start >= 0 && end > start);
+  assert.match(source, /ENGINE_CONTEXT_MISSING_REPLY/);
+  assert.match(source, /ENGINE_CONTEXT_REJECTED_REPLY/);
+  assert.match(source, /return ""/);
+});
+
 test("KI-Zugerklärungen sind dauerhaft aktiv und besitzen nur einen lokalen Ausfall-Fallback", () => {
   const requestStart = appSource.indexOf("  async requestGroundedMoveExplanation({");
   const requestEnd = appSource.indexOf("  createChatPanel(", requestStart);
@@ -235,6 +255,7 @@ test("der Coach zeigt die Datengrundlage jeder Antwort sichtbar an", () => {
   assert.match(appSource, /renderCoachDataSources/);
   assert.match(appSource, /dataSources: data\?\.dataSources \|\| null/);
   assert.match(appSource, /Gleiche Eröffnung und Bauernstruktur|PGN-Sammlung/);
+  assert.match(appSource, /PGN-Fakten freigegeben/);
   assert.match(styleSource, /\.coach-data-sources\s*\{/);
   assert.match(appSource, /this\.coachDataSourcesEl\.hidden = false/);
   assert.match(appSource, /currentRecommendationDataSources/);
@@ -244,10 +265,28 @@ test("der Coach zeigt die Datengrundlage jeder Antwort sichtbar an", () => {
 
 test("bekannte Eröffnungen zeigen Datenbankoptionen ohne besten Engine-Zug", () => {
   assert.match(appSource, /openingContinuationsForPath/);
+  assert.match(appSource, /openingReviewForPath/);
   assert.match(appSource, /Mehrere gute Eröffnungswege/);
   assert.match(appSource, /Hier gibt es nicht den einen besten Zug/);
   assert.match(appSource, /ohne Engine-Rangliste/);
+  assert.match(appSource, /Spielbare Eröffnungswahl/);
+  assert.match(appSource, /Gängige Alternative/);
   assert.match(styleSource, /\.suggestion-line\.is-opening-option/);
+  assert.match(styleSource, /\.perspective-move-assessment\.is-opening-book/);
+
+  const openingReviewStart = appSource.indexOf("  renderOpeningMoveAssessment(");
+  const openingReviewEnd = appSource.indexOf("  renderLatestMoveAssessment(", openingReviewStart);
+  const openingReviewSource = appSource.slice(openingReviewStart, openingReviewEnd);
+  assert.match(openingReviewSource, /Lokale Datenbank/);
+  assert.doesNotMatch(openingReviewSource, /Bester Zug|beste[rn]? Zug|Engine-Rangliste/);
+
+  const latestAssessmentStart = openingReviewEnd;
+  const latestAssessmentEnd = appSource.indexOf("  getAnalysisPerspective()", latestAssessmentStart);
+  const latestAssessmentSource = appSource.slice(latestAssessmentStart, latestAssessmentEnd);
+  assert.ok(
+    latestAssessmentSource.indexOf("renderOpeningMoveAssessment")
+      < latestAssessmentSource.indexOf("getLatestVerifiedMoveReview"),
+  );
 });
 
 test("der letzte Zug zeigt bei Fehlern zuerst die konkrete taktische Begründung", () => {

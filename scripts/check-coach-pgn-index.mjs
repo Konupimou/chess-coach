@@ -1,7 +1,11 @@
 import { Chess } from "chess.js";
 import index from "../data/pgn/coach-pgn-index.json" with { type: "json" };
+import {
+  EXACT_PGN_MOVE_FACT_SCOPE,
+  primaryDeterministicPgnMoveFact,
+} from "../pgnVerifiedFacts.js";
 
-const EXPECTED_VERSION = 5;
+const EXPECTED_VERSION = 6;
 const SUPPORTED_CATEGORIES = new Set(["opening", "middlegame", "endgame", "other"]);
 const SUPPORTED_RATINGS = new Set([800, 1000, 1400, 1800]);
 const SUPPORTED_TOPICS = new Set([
@@ -59,9 +63,9 @@ export function checkCoachPgnIndex(candidate = index) {
     const positionComments = new Set();
     for (const entry of entries) {
       if (!Array.isArray(entry) || entry.length !== 7) {
-        fail(`Eintrag in ${positionKey} hat nicht das kompakte v5-Format`);
+        fail(`Eintrag in ${positionKey} hat nicht das kompakte v6-Format`);
       }
-      const [id, summary, topics, audienceRating, category] = entry;
+      const [id, summary, topics, audienceRating, category, provenance, annotation] = entry;
       if (!/^[a-f0-9]{16}$/.test(id) || ids.has(id)) fail(`ungültige oder doppelte ID ${id}`);
       ids.add(id);
       if (typeof summary !== "string" || summary.length < 18 || summary.length > 281) {
@@ -78,6 +82,23 @@ export function checkCoachPgnIndex(candidate = index) {
       }
       if (!SUPPORTED_RATINGS.has(audienceRating)) fail(`ungültige Ziel-Elo bei ${id}`);
       if (!SUPPORTED_CATEGORIES.has(category)) fail(`ungültige Kategorie bei ${id}`);
+      if (annotation?.[0] === "deterministic_move_fact") {
+        const claims = annotation?.[1];
+        const uci = provenance?.[5];
+        if (
+          annotation?.[3] !== EXACT_PGN_MOVE_FACT_SCOPE
+          || !Array.isArray(claims)
+          || claims.length !== 1
+          || claims[0]?.[2] !== "automatically_verified"
+        ) fail(`zuggebundener Brettfakt hat keinen vollständigen Prüfbeleg bei ${id}`);
+        const recomputed = primaryDeterministicPgnMoveFact({
+          fenBefore: `${positionKey} 0 1`,
+          uci,
+        });
+        if (!recomputed || recomputed.comment !== summary) {
+          fail(`zuggebundener Brettfakt ist nicht aus FEN und Zug reproduzierbar bei ${id}`);
+        }
+      }
       comments += 1;
     }
   }

@@ -13,6 +13,8 @@ import {
 } from "../coachExplanation.js";
 import { requestMoveExplanation } from "../api/chat.js";
 import { buildPositionEvidence } from "../positionEvidence.js";
+import { learnerProfileForCoach } from "../learnerProfile.js";
+import { validateCoachLanguage } from "../coachLanguageQuality.js";
 
 const START_FEN = new Chess().fen();
 
@@ -104,7 +106,7 @@ function groundedStructuredExplanation() {
   return buildLocalMoveExplanation({
     positionEvidence: evidenceFixture(),
     engineContext,
-    learnerProfile,
+    learnerProfile: learnerProfileForCoach(learnerProfile),
   });
 }
 
@@ -233,7 +235,74 @@ test("der lokale 800-Elo-Coach erklärt d4 als einfachen Zentrumszug", () => {
   assert.doesNotMatch(explanation.moveIdea.text, /Analysetiefe|Zielfeld/);
 });
 
-test("Na4 im Stafford-Gambit wird klar als Bxf2-Schach bewertet", () => {
+test("lokale Schweregrade folgen dem gemessenen Verlust statt einem widersprüchlichen Label", () => {
+  const explanationFor = (lossCp, quality) => {
+    const context = {
+      source: "stockfish",
+      kind: "move_review",
+      fen: START_FEN,
+      depth: 18,
+      evaluation: { unit: "cp", value: 20, perspective: "white" },
+      bestMove: { uci: "e2e4", san: "e4" },
+      primaryVariation: { uci: ["e2e4", "e7e5"], san: ["e4", "e5"] },
+      lines: [{
+        rank: 1,
+        depth: 18,
+        evaluation: { unit: "cp", value: 20, perspective: "white" },
+        bestMove: { uci: "e2e4", san: "e4" },
+        pv: { uci: ["e2e4", "e7e5"], san: ["e4", "e5"] },
+      }],
+      playedLine: {
+        evaluation: { unit: "cp", value: 20 - lossCp, perspective: "white" },
+        uci: ["a2a3", "e7e5"],
+        san: ["a3", "e5"],
+      },
+      moveReview: {
+        playedMove: { uci: "a2a3", san: "a3" },
+        bestMove: { uci: "e2e4", san: "e4" },
+        quality,
+        lossCp,
+        evaluationBefore: { unit: "cp", value: 20, perspective: "white" },
+        evaluationAfter: { unit: "cp", value: 20 - lossCp, perspective: "white" },
+        pv: { uci: ["e2e4", "e7e5"], san: ["e4", "e5"] },
+      },
+    };
+    const positionEvidence = buildPositionEvidence({
+      fenBefore: START_FEN,
+      playedUci: "a2a3",
+      candidateLines: [{
+        rank: 1,
+        evaluation: { unit: "cp", value: 20, perspective: "white" },
+        pvUci: ["e2e4", "e7e5"],
+      }],
+      playedLine: {
+        evaluation: { unit: "cp", value: 20 - lossCp, perspective: "white" },
+        pvUci: ["a2a3", "e7e5"],
+      },
+      lossCp,
+      quality,
+      engineDepth: 18,
+    });
+    return buildLocalMoveExplanation({
+      positionEvidence,
+      engineContext: context,
+      learnerProfile: {
+        ...learnerProfile,
+        responseStyle: { id: "foundations" },
+      },
+    });
+  };
+
+  const mislabeledSmallLoss = explanationFor(80, "blunder");
+  assert.doesNotMatch(
+    moveExplanationToMarkdown(mislabeledSmallLoss, { deep: true }),
+    /grober Fehler|klarer Fehler|viel schlechter|deutlich schlechter/iu,
+  );
+  assert.match(explanationFor(150, "good").verdict.text, /klarer Fehler/iu);
+  assert.match(explanationFor(300, "good").verdict.text, /grober Fehler/iu);
+});
+
+test("Na4 im Stafford-Gambit wird klar als Bxf2-Schach bewertet", async () => {
   const fen = "r1bqk2r/ppp2ppp/2p5/2b5/4P1n1/2NP4/PPP2PPP/R1BQKB1R w KQkq - 3 7";
   const reviewContext = {
     source: "stockfish",
@@ -242,6 +311,10 @@ test("Na4 im Stafford-Gambit wird klar als Bxf2-Schach bewertet", () => {
     depth: 18,
     evaluation: { unit: "cp", value: -30, perspective: "white" },
     bestMove: { uci: "c1e3", san: "Be3" },
+    primaryVariation: {
+      uci: ["c1e3", "g4e3", "f2e3"],
+      san: ["Be3", "Nxe3", "fxe3"],
+    },
     lines: [{
       rank: 1,
       depth: 18,
@@ -262,6 +335,12 @@ test("Na4 im Stafford-Gambit wird klar als Bxf2-Schach bewertet", () => {
       bestMove: { uci: "c1e3", san: "Be3" },
       quality: "mistake",
       lossCp: 280,
+      evaluationBefore: { unit: "cp", value: -30, perspective: "white" },
+      evaluationAfter: { unit: "cp", value: -310, perspective: "white" },
+      pv: {
+        uci: ["c1e3", "g4e3", "f2e3"],
+        san: ["Be3", "Nxe3", "fxe3"],
+      },
     },
   };
   const positionEvidence = buildPositionEvidence({
@@ -294,16 +373,92 @@ test("Na4 im Stafford-Gambit wird klar als Bxf2-Schach bewertet", () => {
   assert.match(explanation.verdict.text, /Bxf2\+/);
   assert.match(explanation.verdict.text, /Bauern auf f2/);
   assert.match(explanation.verdict.text, /Schach/);
-  assert.match(explanation.opponentReply.text, /Bxf2\+.*f2.*Schach/);
+  assert.equal(explanation.opponentReply, null);
   assert.doesNotMatch(
     moveExplanationToMarkdown(explanation),
     /konkreter Grund ist .* nicht zuverlässig erklärbar/i,
   );
   assert.equal(
     compactMoveExplanationClaims(explanation, { maximum: 7 })
-      .some((claim) => claim.semanticField === "opponentReply"),
+      .some((claim) => claim.semanticField === "verdict"),
     true,
   );
+  const staffordLanguage = validateCoachLanguage(
+    moveExplanationToMarkdown(explanation, { deep: true }),
+    {
+      rating: 800,
+      phase: "opening",
+      evidence: {
+        materialLoss: true,
+        significantLoss: true,
+        severeLoss: false,
+      },
+      strict: true,
+    },
+  );
+  assert.equal(staffordLanguage.valid, true, JSON.stringify(staffordLanguage));
+
+  const trustedEvidence = buildTrustedExplanationEvidence({
+    positionEvidence,
+    engineContext: reviewContext,
+  });
+  const checkedLocal = verifyMoveExplanation(explanation, {
+    positionEvidence: trustedEvidence,
+    engineContext: reviewContext,
+  });
+  assert.equal(checkedLocal.valid, true, checkedLocal.errors.join(" "));
+
+  const falseMaterialClaims = [
+    explanation.verdict.text.replace("deinen Bauern", "deine Dame"),
+    explanation.verdict.text.replace("auf f2 ein", "auf e2 ein"),
+  ];
+  for (const falseVerdict of falseMaterialClaims) {
+    const candidate = structuredClone(explanation);
+    candidate.verdict.text = falseVerdict;
+    const result = await requestMoveExplanation(
+      {
+        engineContext: reviewContext,
+        learnerProfile: {
+          ...learnerProfile,
+          responseStyle: { id: "foundations" },
+        },
+        openingContext: null,
+      },
+      {
+        apiKey: "test-key",
+        cache: new Map(),
+        fetchImpl: async () => ({
+          ok: true,
+          async json() {
+            return { output_text: JSON.stringify(candidate) };
+          },
+        }),
+      },
+    );
+
+    assert.equal(result.source, "local");
+    assert.equal(result.reason, "ai_wording_rejected");
+    assert.match(result.explanation.verdict.text, /Bauern auf f2/);
+    assert.doesNotMatch(result.explanation.verdict.text, /Dame|auf e2 ein/);
+  }
+
+  const falseLoss = structuredClone(explanation);
+  falseLoss.verdict.text = "Na4 ist ein klarer Fehler. Du verlierst deine Dame auf f2: Bxf2+ nimmt sie mit Schach.";
+  const checkedFalseLoss = verifyMoveExplanation(falseLoss, {
+    positionEvidence: trustedEvidence,
+    engineContext: reviewContext,
+  });
+  assert.equal(checkedFalseLoss.valid, false);
+  assert.ok(checkedFalseLoss.errors.some((error) => /Figurenart|Schlagfeld/.test(error)));
+
+  const falseCapture = structuredClone(explanation);
+  falseCapture.verdict.text = "Na4 ist ein klarer Fehler. Bxf2+ nimmt deine Dame auf f2 mit Schach.";
+  const checkedFalseCapture = verifyMoveExplanation(falseCapture, {
+    positionEvidence: trustedEvidence,
+    engineContext: reviewContext,
+  });
+  assert.equal(checkedFalseCapture.valid, false);
+  assert.ok(checkedFalseCapture.errors.some((error) => /Figurenart|Schlagfeld/.test(error)));
 });
 
 test("ein direkter Figurenverlust wird einfach und deutlich benannt", () => {
@@ -365,6 +520,36 @@ test("ein direkter Figurenverlust wird einfach und deutlich benannt", () => {
   assert.match(explanation.verdict.text, /Qxd3 nimmt sie/);
   assert.match(explanation.verdict.text, /Stellung wird dadurch viel schlechter/);
   assert.doesNotMatch(explanation.verdict.text, /Antwortfolge|Analysetiefe|Bewertungszahl/);
+  const hangingQueenLanguage = validateCoachLanguage(
+    moveExplanationToMarkdown(explanation, { deep: true }),
+    {
+      rating: 800,
+      phase: "middlegame",
+      evidence: {
+        materialLoss: true,
+        significantLoss: true,
+        severeLoss: true,
+      },
+      strict: true,
+    },
+  );
+  assert.equal(
+    hangingQueenLanguage.valid,
+    true,
+    JSON.stringify(hangingQueenLanguage),
+  );
+  const checkedQueenLoss = verifyMoveExplanation(explanation, {
+    positionEvidence: buildTrustedExplanationEvidence({
+      positionEvidence,
+      engineContext: reviewContext,
+    }),
+    engineContext: reviewContext,
+  });
+  assert.equal(
+    checkedQueenLoss.valid,
+    true,
+    checkedQueenLoss.errors.join(" "),
+  );
 });
 
 test("bei Fehlern kommt die Erklärung des gespielten Zuges vor der Alternative", () => {
@@ -808,7 +993,7 @@ test("der Cache-Digest ändert sich mit Variante, Bewertung und Wissensinhalt", 
 
   assert.notEqual(first, changedLine);
   assert.notEqual(first, changedKnowledge);
-  assert.match(first, /^v6:[a-f0-9]{64}$/);
+  assert.match(first, /^v7:[a-f0-9]{64}$/);
 });
 
 test("Eröffnungsankündigungen und Zugumstellungen gehören zum Cache-Schlüssel", () => {
@@ -966,6 +1151,75 @@ test("Zugerklärungen wiederholen keine separaten Eröffnungsankündigungen", ()
   }
 });
 
+test("erkannte Eröffnungen zeigen nur datenbankbelegte Antworten als typisch", () => {
+  const positionEvidence = evidenceFixture();
+  const baseOpening = {
+    matched: true,
+    eco: "C20",
+    displayName: "Königbauernspiel",
+    sourceName: "King's Pawn Game",
+    family: "King's Pawn Game",
+    source: "lichess-chess-openings",
+    matchedPly: 1,
+    currentPly: 1,
+  };
+  const withoutReplyEvidence = buildLocalMoveExplanation({
+    positionEvidence,
+    engineContext,
+    learnerProfile,
+    openingContext: {
+      ...baseOpening,
+      continuations: [{
+        uci: "g1f3",
+        san: "Nf3",
+        source: "lichess-chess-openings",
+      }],
+    },
+  });
+
+  assert.ok(withoutReplyEvidence);
+  assert.equal(withoutReplyEvidence.opponentReply, null);
+  assert.doesNotMatch(
+    moveExplanationToMarkdown(withoutReplyEvidence, { deep: true }),
+    /(?:Stärkste|Typische) Antwort/,
+  );
+
+  const withReplyEvidence = buildLocalMoveExplanation({
+    positionEvidence,
+    engineContext,
+    learnerProfile,
+    openingContext: {
+      ...baseOpening,
+      continuations: [{
+        uci: "e7e5",
+        san: "e5",
+        variationCount: 12,
+        source: "lichess-chess-openings",
+      }],
+    },
+  });
+  const markdown = moveExplanationToMarkdown(withReplyEvidence, { deep: true });
+
+  assert.ok(withReplyEvidence?.opponentReply);
+  assert.ok(withReplyEvidence.opponentReply.evidenceIds.includes(
+    "opening.continuation:e7e5",
+  ));
+  assert.match(markdown, /\*\*Typische Antwort:\*\* Danach folgt oft e5\./);
+  assert.doesNotMatch(markdown, /(?:stärkste|beste) Antwort|Am stärksten/iu);
+});
+
+test("außerhalb erkannter Eröffnungen bleibt die stärkste Antwort kompakt", () => {
+  const explanation = buildLocalMoveExplanation({
+    positionEvidence: evidenceFixture(),
+    engineContext,
+    learnerProfile,
+  });
+  const markdown = moveExplanationToMarkdown(explanation, { deep: true });
+
+  assert.match(markdown, /\*\*Stärkste Antwort:\*\* Danach folgt e5\./);
+  assert.doesNotMatch(markdown, /Stärkste Antwort:\*\*\s*Am stärksten/iu);
+});
+
 test("die Online-Vertiefung nutzt Structured Outputs und anschließend den Cache", async () => {
   const cache = new Map();
   let requests = 0;
@@ -1018,6 +1272,10 @@ test("die Online-Vertiefung nutzt Structured Outputs und anschließend den Cache
   assert.equal(captured.body.text.format.strict, true);
   assert.equal(captured.body.text.format.schema.additionalProperties, false);
   assert.match(captured.body.instructions, /evidenceIds/);
+  assert.match(
+    captured.body.instructions,
+    /erkannte[nr]? Eröffnung.*typische.*niemals als beste oder stärkste Antwort/iu,
+  );
   assert.match(captured.body.input, /<position_evidence>/);
   assert.match(captured.body.input, /<verified_knowledge>/);
   assert.match(captured.body.input, /<grounded_draft>/);
@@ -1078,6 +1336,35 @@ test("eine ungültige strukturierte Antwort fällt sicher auf die lokale Erklär
     /evidence\.erfunden/,
   );
   assert.ok(ungrounded.explanation);
+});
+
+test("eine KI-Lobfloskel wird aus der strukturierten Zugerklärung entfernt", async () => {
+  const candidate = groundedStructuredExplanation();
+  candidate.verdict = {
+    ...candidate.verdict,
+    text: "Sauber – genau das war hier gefragt.",
+  };
+  const result = await requestMoveExplanation(
+    {
+      engineContext,
+      learnerProfile,
+      openingContext: null,
+    },
+    {
+      apiKey: "test-key",
+      cache: new Map(),
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return { output_text: JSON.stringify(candidate) };
+        },
+      }),
+    },
+  );
+
+  assert.equal(result.source, "local");
+  assert.equal(result.reason, "ai_wording_rejected");
+  assert.doesNotMatch(result.reply, /Sauber|genau das war/iu);
 });
 
 test("lokaler Fallback erklärt erst das erlaubte Schach und dann die Alternative", () => {
@@ -1193,7 +1480,65 @@ test("bei knapper Faktenlage bleiben optionale Felder null statt Fülltext zu er
   assert.equal(explanation.takeaway, null);
 });
 
+test("im Positionsmodus darf der zweitplatzierte Endspielzug als gleichwertige Alternative erscheinen", () => {
+  const fen = "8/5k2/8/8/8/5K2/6P1/8 w - - 0 40";
+  const candidateLines = [
+    {
+      rank: 1,
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      pvUci: ["g2g3", "f7e8"],
+    },
+    {
+      rank: 2,
+      evaluation: { unit: "cp", value: -5, perspective: "white" },
+      pvUci: ["g2g4", "f7e8"],
+    },
+  ];
+  const positionEvidence = buildPositionEvidence({
+    fenBefore: fen,
+    playedUci: "g2g3",
+    candidateLines,
+  });
+  const context = {
+    source: "stockfish",
+    kind: "position",
+    fen,
+    depth: 15,
+    evaluation: { unit: "cp", value: 0, perspective: "white" },
+    bestMove: { uci: "g2g3", san: "g3" },
+    primaryVariation: { uci: ["g2g3", "f7e8"], san: ["g3", "Ke8"] },
+    lines: candidateLines.map((line) => ({
+      rank: line.rank,
+      depth: 15,
+      evaluation: line.evaluation,
+      bestMove: {
+        uci: line.pvUci[0],
+        san: line.rank === 1 ? "g3" : "g4",
+      },
+      pv: {
+        uci: line.pvUci,
+        san: [line.rank === 1 ? "g3" : "g4", "Ke8"],
+      },
+    })),
+  };
+
+  const explanation = buildLocalMoveExplanation({ positionEvidence, engineContext: context });
+
+  assert.ok(explanation);
+  assert.match(explanation.alternative.text, /g4/);
+  assert.doesNotMatch(explanation.alternative.text, /besser|genauer/i);
+  assert.equal(
+    validateCoachLanguage(moveExplanationToMarkdown(explanation), {
+      rating: 800,
+      phase: "endgame",
+      practicallyEquivalent: true,
+    }).valid,
+    true,
+  );
+});
+
 test("onlyMove wird erklärt, ohne eine künstlich gleichwertige Alternative zu behaupten", () => {
+  const onlyMoveFen = START_FEN.replace(/ 0 1$/u, " 0 20");
   const candidateLines = [
     {
       rank: 1,
@@ -1207,12 +1552,13 @@ test("onlyMove wird erklärt, ohne eine künstlich gleichwertige Alternative zu 
     },
   ];
   const positionEvidence = buildPositionEvidence({
-    fenBefore: START_FEN,
+    fenBefore: onlyMoveFen,
     playedUci: "e2e4",
     candidateLines,
   });
   const context = {
     ...engineContext,
+    fen: onlyMoveFen,
     kind: "move_review",
     lines: candidateLines.map((line) => ({
       rank: line.rank,
@@ -1245,7 +1591,75 @@ test("onlyMove wird erklärt, ohne eine künstlich gleichwertige Alternative zu 
   const explanation = buildLocalMoveExplanation({ positionEvidence, engineContext: context });
 
   assert.ok(explanation);
-  assert.match(explanation.alternative.text, /fällt aber klar ab/);
+  assert.match(explanation.alternative.text, /deutlich schwächer/);
   assert.doesNotMatch(explanation.alternative.text, /gleichwertig/);
   assert.match(explanation.comparison.text, /klaren Nachteil/i);
+});
+
+test("eine direkte Rücknahme wird für Anfänger als vollständiger Tausch erklärt", () => {
+  const fen = "4k3/8/8/2p5/3n4/3QP3/8/4K3 w - - 0 1";
+  const line = ["d3d4", "c5d4", "e3d4"];
+  const positionEvidence = buildPositionEvidence({
+    fenBefore: fen,
+    playedUci: "d3d4",
+    candidateLines: [{
+      rank: 1,
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      pvUci: line,
+    }],
+    playedLine: {
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      pvUci: line,
+    },
+    lossCp: 0,
+    quality: "best",
+    engineDepth: 18,
+  });
+  const context = {
+    source: "stockfish",
+    kind: "move_review",
+    fen,
+    depth: 18,
+    evaluation: { unit: "cp", value: 0, perspective: "white" },
+    bestMove: { uci: "d3d4", san: "Qxd4" },
+    primaryVariation: { uci: line, san: ["Qxd4", "cxd4", "exd4"] },
+    lines: [{
+      rank: 1,
+      depth: 18,
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      bestMove: { uci: "d3d4", san: "Qxd4" },
+      pv: { uci: line, san: ["Qxd4", "cxd4", "exd4"] },
+    }],
+    playedLine: {
+      evaluation: { unit: "cp", value: 0, perspective: "white" },
+      uci: line,
+      san: ["Qxd4", "cxd4", "exd4"],
+    },
+    moveReview: {
+      playedMove: { uci: "d3d4", san: "Qxd4" },
+      bestMove: { uci: "d3d4", san: "Qxd4" },
+      quality: "best",
+      lossCp: 0,
+    },
+  };
+  const explanation = buildLocalMoveExplanation({
+    positionEvidence,
+    engineContext: context,
+    learnerProfile: learnerProfileForCoach({ rating: 800 }),
+  });
+
+  assert.ok(explanation?.opponentReply);
+  assert.match(explanation.opponentReply.text, /cxd4 nimmt deine Dame/);
+  assert.match(explanation.opponentReply.text, /mit exd4 den Bauern zurück/);
+  assert.equal(explanation.opponentReply.moveRefs[0].uci.length, 2);
+  assert.equal(
+    verifyMoveExplanation(explanation, {
+      positionEvidence: buildTrustedExplanationEvidence({
+        positionEvidence,
+        engineContext: context,
+      }),
+      engineContext: context,
+    }).valid,
+    true,
+  );
 });

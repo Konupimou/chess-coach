@@ -179,6 +179,48 @@ test("ohne Stellungsevidenz gibt es keine pauschalen Lehrbuchsätze", () => {
   );
 });
 
+test("neue 800-Elo-Regeln werden nur mit ihren konkreten Merkmalen ausgeliefert", () => {
+  const majority = retrieveKnowledgeClaims({
+    phase: "endgame",
+    featureIds: ["pawn.majority"],
+    learnerLevel: 800,
+  });
+  assert.ok(majority.some((claim) => claim.id === "pawn-majority-create-passed-pawn"));
+
+  const activeDefence = retrieveKnowledgeClaims({
+    phase: "middlegame",
+    featureIds: ["opponent.threat", "defence.active_resource"],
+    learnerLevel: 800,
+  });
+  assert.ok(activeDefence.some((claim) => claim.id === "defence-answer-threat-actively"));
+
+  const sacrifice = retrieveKnowledgeClaims({
+    phase: "middlegame",
+    featureIds: ["exchange.quality_sacrifice_in_best_line"],
+    learnerLevel: 800,
+  });
+  assert.ok(sacrifice.some((claim) => claim.id === "exchange-quality-sacrifice-needs-payoff"));
+
+  const missingEvidence = retrieveKnowledgeClaims({
+    phase: "middlegame",
+    featureIds: ["opponent.threat"],
+    learnerLevel: 800,
+  });
+  assert.ok(!missingEvidence.some((claim) => claim.id === "defence-answer-threat-actively"));
+});
+
+test("offene Trainingsdaten sind als CC0 markiert und Chess.com wird nicht gespeichert", () => {
+  const lichess = KNOWLEDGE_SOURCES.find(
+    (source) => source.id === "lichess-open-puzzle-database-2026",
+  );
+  assert.equal(lichess?.rights, "CC0-1.0");
+  assert.match(lichess?.url || "", /^https:\/\/database\.lichess\.org\//);
+  assert.equal(
+    JSON.stringify(rawDocument).toLowerCase().includes("chess.com"),
+    false,
+  );
+});
+
 test("Coach-Kontext ist knapp, belegt und enthält keinen Buchtext", () => {
   const context = buildCoachKnowledgeContext({
     phase: "opening",

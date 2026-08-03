@@ -24,7 +24,7 @@ test("ruhige strategische Varianten bleiben kurz und legal", () => {
       .filter((entry) => entry.role === "concept")
       .map((entry) => entry.square)
       .sort(),
-    ["d4", "d5", "e4", "e5"],
+    ["d5", "e4"],
   );
 });
 
@@ -61,6 +61,40 @@ test("eine konkrete Springergabel wird benannt und am Brett markiert", () => {
   assert.equal(plan.frames.at(-1).fen, plan.frames[0].fen);
 });
 
+test("Schach gegen den König und Angriff auf die Dame ergeben eine belegte Gabel", () => {
+  const plan = buildCoachVisualPlan({
+    fen: "8/8/3q1k2/8/8/2N5/8/7K w - - 0 1",
+    pv: ["c3e4"],
+  });
+
+  assert.equal(plan.motif, "Gabel");
+  assert.deepEqual(
+    plan.annotations.arrows
+      .filter((entry) => entry.role === "threat")
+      .map((entry) => entry.move)
+      .sort(),
+    ["e4d6", "e4f6"],
+  );
+});
+
+test("ein festgebundener Springer erzeugt keinen falschen Doppelangriff", () => {
+  const plan = buildCoachVisualPlan({
+    fen: "k3r3/8/8/8/3q1r2/8/8/2N1K3 w - - 0 1",
+    pv: ["c1e2"],
+  });
+
+  assert.ok(plan);
+  assert.equal(plan.tactical, false);
+  assert.equal(plan.motif, "");
+  assert.doesNotMatch(plan.headline, /Gabel|Doppelangriff/);
+  assert.equal(
+    plan.persistentAnnotations.arrows.filter(
+      (entry) => entry.role === "threat",
+    ).length,
+    0,
+  );
+});
+
 test("Qxd4 ist ein einfacher Schlagzug und kein Doppelangriff auf zwei Bauern", () => {
   const plan = buildCoachVisualPlan({
     fen: "r1bqkbnr/pppp1ppp/8/8/3nP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",
@@ -73,6 +107,17 @@ test("Qxd4 ist ein einfacher Schlagzug und kein Doppelangriff auf zwei Bauern", 
   assert.equal(plan.ideaKind, "capture");
   assert.doesNotMatch(plan.headline, /Doppelangriff/);
   assert.deepEqual(plan.san, ["Qxd4"]);
+});
+
+test("eine Dame mit zwei geometrischen Angriffen bekommt kein pauschales Taktiklob", () => {
+  const plan = buildCoachVisualPlan({
+    fen: "rnbqr3/2ppk1b1/pp2pn2/2P3p1/7p/P3P1PN/RPQP1PBR/1NB2K2 w - - 0 17",
+    pv: ["c2g6"],
+  });
+
+  assert.equal(plan.tactical, false);
+  assert.equal(plan.motif, "");
+  assert.doesNotMatch(plan.headline, /Doppelangriff|Taktische Idee/);
 });
 
 test("eine spätere Abtauschfolge macht einen strategischen Zug nicht zur Taktik", () => {
@@ -118,6 +163,8 @@ test("eine Entwicklungsregel zeigt nur den tatsächlich gespielten Entwicklungsz
 
   assert.equal(plan.ideaKind, "development");
   assert.equal(plan.piece, "n");
+  assert.equal(plan.headline, "Eine Figur entwickeln");
+  assert.equal(plan.explanation, "Nf3 entwickelt den Springer vom Startfeld g1.");
   assert.deepEqual(plan.persistentAnnotations.arrows, [{
     move: "g1f3",
     rank: 1,
@@ -130,7 +177,25 @@ test("eine Entwicklungsregel zeigt nur den tatsächlich gespielten Entwicklungsz
   ]);
 });
 
-test("offene Linien werden als vollständiger Wirkungsraum markiert", () => {
+test("ein ruhiger Figurenzug bekommt keine erfundene Aktivitätsgeschichte", () => {
+  const plan = buildCoachVisualPlan({
+    fen: "4k3/8/8/8/8/5N2/8/4K3 w - - 0 1",
+    pv: ["f3h4"],
+  });
+
+  assert.equal(plan.ideaKind, "activity");
+  assert.equal(plan.headline, "Die Figur neu aufstellen");
+  assert.equal(plan.explanation, "Nh4 stellt den Springer von f3 nach h4.");
+  assert.doesNotMatch(plan.explanation, /aktiv|verbessert|Plan/i);
+  assert.deepEqual(plan.persistentAnnotations.arrows, [{
+    move: "f3h4",
+    rank: 1,
+    impact: 1,
+    role: "primary",
+  }]);
+});
+
+test("offene Linien werden als Brettmerkmal ohne erfundenen Fernzug markiert", () => {
   const plan = buildCoachVisualPlan({
     fen: "4k3/8/8/8/8/8/R7/4K3 w - - 0 1",
     pv: ["a2d2", "e8f7"],
@@ -144,25 +209,47 @@ test("offene Linien werden als vollständiger Wirkungsraum markiert", () => {
       .sort(),
     ["d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8"],
   );
+  assert.equal(
+    plan.persistentAnnotations.arrows.some(
+      (arrow) => arrow.move === "d2d8",
+    ),
+    false,
+  );
 });
 
-test("Freibauern markieren ihren legalen Weg bis zur Umwandlungsreihe", () => {
+test("Freibauern markieren den Weg ohne einen illegalen Mehrfachzug zu zeichnen", () => {
   const plan = buildCoachVisualPlan({
     fen: "7k/8/8/4P3/8/8/8/7K w - - 0 1",
     pv: ["e5e6", "h8g7"],
   });
 
   assert.equal(plan.ideaKind, "passed-pawn");
-  assert.ok(
+  assert.equal(
     plan.persistentAnnotations.arrows.some(
-      (arrow) => arrow.move === "e6e8" && arrow.role === "concept",
+      (arrow) => arrow.move === "e6e8",
     ),
+    false,
   );
   assert.deepEqual(
     plan.persistentAnnotations.highlights
       .filter((entry) => entry.role === "concept")
       .map((entry) => entry.square),
     ["e7", "e8"],
+  );
+});
+
+test("ein Stein vor dem freien Bauern beendet die markierte Strecke", () => {
+  const plan = buildCoachVisualPlan({
+    fen: "4r2k/8/8/4P3/8/8/8/7K w - - 0 1",
+    pv: ["e5e6"],
+  });
+
+  assert.equal(plan.ideaKind, "passed-pawn");
+  assert.deepEqual(
+    plan.persistentAnnotations.highlights
+      .filter((entry) => entry.role === "concept")
+      .map((entry) => entry.square),
+    ["e7"],
   );
 });
 
@@ -242,7 +329,16 @@ test("Zugbewertungen unterscheiden Gleichwertigkeit und Fehlerzeichen", () => {
       bestUci: "e2e4",
       lossCp: 10,
     }),
-    { symbol: "!", label: "Ebenfalls bester Zug", tone: "excellent" },
+    { symbol: "!", label: "Genauso gut", tone: "excellent" },
+  );
+  assert.equal(
+    moveQualityPresentation({
+      quality: "excellent",
+      playedUci: "d2d4",
+      bestUci: "e2e4",
+      lossCp: 30,
+    }).label,
+    "Genauso gut",
   );
   assert.deepEqual(
     moveQualityPresentation({ quality: "inaccuracy", lossCp: 55 }),

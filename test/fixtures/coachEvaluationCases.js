@@ -63,13 +63,17 @@ function makeCase({
   expectedMotifs = [],
   bestCp = bestMove === playedMove ? 35 : 20,
   playedCp = bestMove === playedMove ? 35 : -180,
-  secondCp = 20,
+  secondCp = null,
   legalMoveCount = null,
   groups = [],
 } = {}) {
   const fallbackAlternative = alternateMove(fen, playedMove);
   const alternative = expectedAlternative
-    || (bestMove === playedMove ? fallbackAlternative : bestMove);
+    || (bestMove === playedMove && Number.isFinite(secondCp)
+      ? fallbackAlternative
+      : bestMove === playedMove
+        ? ""
+        : bestMove);
   const rankOne = [
     bestMove,
     bestReply,

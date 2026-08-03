@@ -264,9 +264,9 @@ sections.push(
   "",
   "## Prüfstatus",
   "",
-  "- `npm test`: 435 Tests bestanden.",
-  "- `npm run build`: Produktionsbuild erfolgreich.",
-  "- Der Bericht wurde automatisch aus den festen Testdaten erzeugt und die repräsentativen Ausgaben wurden anschließend manuell auf Schachlogik, Reihenfolge und Sprache geprüft.",
+  "- Dieser Bericht wird automatisch aus den festen Testdaten erzeugt.",
+  "- Aktuelle Gesamtzahlen für Tests und Build werden bewusst nicht fest in diesen Bericht geschrieben; sie müssen beim jeweiligen Freigabelauf neu gemessen werden.",
+  "- Die repräsentativen Ausgaben benötigen vor einer Freigabe zusätzlich eine aktuelle Prüfung auf Schachlogik, Reihenfolge und Sprache.",
   "",
 );
 

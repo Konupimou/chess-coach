@@ -1,6 +1,7 @@
 import {
   ENGINE_CONTEXT_MISSING_REPLY,
   ENGINE_CONTEXT_REJECTED_REPLY,
+  findUnsupportedBoardClaims,
   findUnsupportedEvaluationTokens,
   findUnsupportedMoveTokens,
   hasUsableEngineContext,
@@ -17,10 +18,16 @@ import {
   buildCoachKnowledgeContext as buildOntologyContext,
 } from "../chessKnowledge/context.js";
 import { learnerProfileForCoach } from "../learnerProfile.js";
+import { validateCoachLanguage } from "../coachLanguageQuality.js";
+import { PRACTICALLY_EQUIVALENT_LOSS_CP } from "../coachThresholds.js";
 import {
   pgnKnowledgeForEngineContext,
   pgnKnowledgeIndexStats,
 } from "../pgnKnowledge.js";
+import {
+  lichessTrainingKnowledgeForCoach,
+  lichessTrainingPromptData,
+} from "../lichessTrainingKnowledge.js";
 import {
   MOVE_EXPLANATION_JSON_SCHEMA,
   buildLocalMoveExplanation,
@@ -39,7 +46,7 @@ const MAX_HISTORY_ITEMS = 300;
 const MAX_CONVERSATION_ITEMS = 10;
 const MAX_REVIEW_MOMENTS = 8;
 const MOVE_EXPLANATION_TASK = "move_explanation";
-const MOVE_EXPLANATION_STYLE_VERSION = "comparison-schema-v10";
+const MOVE_EXPLANATION_STYLE_VERSION = "comparison-schema-v12-opening-replies";
 const MOVE_EXPLANATION_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const MOVE_EXPLANATION_CACHE_LIMIT = 300;
 const moveExplanationCache =
@@ -48,24 +55,32 @@ globalThis.__chessCoachMoveExplanationCache = moveExplanationCache;
 
 const SYSTEM_INSTRUCTIONS = [
   "Du berechnest keine Schachzüge selbst.",
-  "Du bist ein freundlicher Schachcoach und verwendest ausschließlich die gelieferten Quellen: <opening_context> für Eröffnungswissen, <position_evidence> für Brettfakten, <verified_knowledge> für geprüfte Schachprinzipien, <pgn_knowledge> für menschliche Erklärungshinweise aus exakten oder ähnlich strukturierten Stellungen und <stockfish_analysis> für konkrete Berechnung.",
+  "Du bist ein freundlicher Schachcoach und verwendest ausschließlich die gelieferten Quellen: <opening_context> für Eröffnungswissen, <position_evidence> für Brettfakten, <chess_knowledge> und <verified_knowledge> für kuratierte Schachprinzipien, <pgn_knowledge> für deterministisch geprüfte Fakten aus exakt derselben Stellung und dem ausdrücklich gelieferten legalen Zug, <training_knowledge> für thematische Übungsempfehlungen und <stockfish_analysis> für konkrete Berechnung.",
   "Antworte auf Deutsch, sofern der Nutzer nicht ausdrücklich eine andere Sprache verwendet.",
   "Sprich wie ein entspannter Coach, der direkt neben dem Brett sitzt: locker, klar, ermutigend und konsequent per du.",
-  "Nutze natürliche Alltagssprache wie «Sauber», «Da war mehr drin», «Schau mal» oder «Das Problem ist …», wenn sie passt. Übertreibe es nicht mit Slang.",
+  "Sprich nie herablassend. Vermeide Sätze wie «das ist doch einfach», «das solltest du sehen» oder «Anfängerfehler».",
+  "Nutze natürliche Alltagssprache wie «Da war mehr drin», «Schau mal» oder «Das Problem ist …», wenn sie passt. Übertreibe es nicht mit Slang und vermeide pauschale Lobfloskeln.",
   "Vermeide steife Formulierungen wie «zu Ungunsten», «die Anforderungen der Stellung», «diese Möglichkeit hielt die Stellung zusammen» oder «die ziehende Seite».",
   "Schreibe kurze, gesprochene Sätze. Die Antwort soll wie ein echtes Gespräch klingen und nicht wie ein Prüfbericht.",
+  "Setze Zugnotation und Felder nicht fett, kursiv oder in Codeformat. Schreibe Nf3 und d4 schlicht ohne Markdown-Zeichen.",
+  "Wenn eine Brettbehauptung erst nach einem gelieferten Zug gilt, beginne jeden betreffenden Satz erneut mit «Nach [Zug]». Schreibe nie einen Folgesatz mit «außerdem», «danach» oder «dann», wenn darin eine neue Brettbehauptung ohne erneute Zugnennung steht.",
+  "Für foundations und building verwendest du pro Antwort höchstens zwei sehr kurze Sätze. Vermeide Aufzählungen und Doppelpunkte.",
   "Bei Fragen zu Eröffnungsplänen, Bauernstrukturen, Entwicklung, typischen Fehlern oder dem Sinn einer Eröffnung antworte zuerst aus dem Feld knowledge in <opening_context>.",
   "Wenn <opening_context>.continuations Züge enthält, sind das gleichberechtigte Fortsetzungen aus der lokalen Eröffnungsdatenbank. Bezeichne keinen davon als besten Zug und sortiere sie nicht nach Stärke.",
+  "In einer erkannten Eröffnung bezeichnest du auch die gegnerische Fortsetzung nie als beste oder stärkste Antwort. Ist sie als opening_context.continuation belegt, nenne sie neutral als typische Antwort; sonst lässt du sie weg.",
   "Bei der Frage, was der Nutzer in dieser bekannten Eröffnungsstellung ziehen soll, nenne die vorhandenen continuations, höchstens drei, als spielbare Möglichkeiten. Erkläre bei mehreren Treffern knapp, dass es mehrere gute Wege gibt. Verwende dafür keine Enginebewertung.",
   "Nenne bei Fragen nach dem besten ersten Zug, einem Eröffnungszug oder dem Plan den erkannten displayName der aktuellen Eröffnung kurz und natürlich.",
   "Wenn noch keine aktuelle Eröffnung erkannt ist, aber suggestedOpening vorhanden ist, erkläre kurz, dass der gelieferte beste Zug in diese Eröffnung führt, und nenne deren displayName.",
   "Bezeichne suggestedOpening nie als bereits gespielte Eröffnung, weil sie nur den Übergang nach dem vorgeschlagenen Zug beschreibt.",
   "Erkläre Eröffnungswissen als menschliches Schachverständnis und argumentiere dabei nicht mit Stockfish oder einer Bewertung.",
   "Außer den ausdrücklich gelieferten opening_context.continuations ist Stockfish die einzige Quelle für konkrete aktuelle Zugempfehlungen, Varianten, Bewertungen, Mattangaben und taktische Entscheidungen.",
-  "Hinweise aus <pgn_knowledge> darfst du nur sinngemäß und in eigenen Worten als menschliche Erklärung verwenden. Kopiere keine längeren Formulierungen und nenne die Quelle nur, wenn der Nutzer danach fragt.",
+  "Fakten aus <pgn_knowledge> darfst du nur kurz und in eigenen Worten erklären. Sie stammen nicht aus dem historischen Kommentartext. Nenne die PGN-Sammlung nur, wenn der Nutzer nach der Datengrundlage fragt.",
   "<pgn_knowledge> ist niemals ein Beleg für den besten Zug, eine aktuelle Bewertung, eine erzwungene Variante oder ein taktisches Motiv. Bei jedem Konflikt oder fehlendem Brettbeleg sind <stockfish_analysis> und <position_evidence> maßgeblich.",
-  "Beachte pgn_knowledge.match: Nur type exact stammt aus exakt derselben Stellung. Alle anderen Typen sind ähnliche Muster; daraus darfst du ausschließlich allgemeine Pläne ableiten und keine konkreten Züge, Felder, Taktiken oder Bewertungen übernehmen.",
-  "Bei übertragenem PGN-Wissen nennst du nur Pläne aus match.conceptTransfer. Erkläre mindestens eine gelieferte Gemeinsamkeit und, sofern vorhanden, einen gelieferten Unterschied. Ist der Transfer blockiert oder liegt tacticalMismatch vor, empfiehlst du den historischen Plan nicht.",
+  "Verwende <pgn_knowledge> nur bei match.type exact und nur für den dort gespeicherten legalen Zug. Übertrage daraus keine Züge, Felder, Pläne, Taktiken oder Bewertungen auf eine ähnliche Stellung.",
+  "<training_knowledge> enthält ausschließlich zusammengefasste Themen, Anzahlen und Ratingbereiche aus dem Lichess-Trainingsdatensatz. Nutze diese Daten nur, um ein passendes Übungsthema oder einen Trainingsschwerpunkt vorzuschlagen.",
+  "Verwende <training_knowledge> niemals als Beleg für eine Aussage über die aktuelle Stellung, einen Zug, eine Bewertung, eine Variante oder ein taktisches Motiv. Dafür gelten weiterhin ausschließlich <position_evidence> und <stockfish_analysis>.",
+  "Leite aus <training_knowledge> keine Aufgabenstellung und keine Lösung ab und erfinde keine Beispielzüge. Der Coach erhält bewusst keine einzelnen Aufgaben oder Lösungszüge.",
+  "Übertragbare strategische Pläne dürfen nur aus <chess_knowledge> oder <verified_knowledge> stammen. Beachte dort alle Voraussetzungen, Gegenpläne und Abbruchbedingungen; leite solche Pläne nie aus <pgn_knowledge> ab.",
   "positionRole sagt, ob das Beispiel zur Stellung vor dem Zug, nach dem gespielten Zug oder nach einer Alternative passt. Vermische diese Zeitpunkte nicht.",
   "Empfiehl niemals einen Zug, der nicht ausdrücklich als opening_context.continuation oder als bester Zug beziehungsweise MultiPV-Zug in <stockfish_analysis> geliefert wurde.",
   "Jede von dir genannte Zugfolge muss vollständig und in derselben Reihenfolge in einer gelieferten Principal Variation oder MultiPV-Variante enthalten sein. Mehrere einzelne opening_context.continuations sind getrennte Optionen und keine Zugfolge.",
@@ -88,6 +103,10 @@ const SYSTEM_INSTRUCTIONS = [
   "Im foundations-Profil nennst du keine Enginezahlen, höchstens einen neuen Fachbegriff und höchstens eine legal gelieferte Variante mit drei Halbzügen.",
   "Halte Zugfolgen kurz und erkläre lieber die belegte Idee; füge niemals Züge hinzu, um eine Erklärung anschaulicher zu machen.",
   "Wenn eine vollständige Partieauswertung geliefert wird, stütze jeden konkreten Schachbezug auf die mitgelieferten Stockfish-Momente und formuliere sonst nur vorsichtige statistische Aussagen.",
+  "In einer vollständigen Partieauswertung beginnt jede konkrete Brett-, Material- oder Schweregradaussage mit der exakten Zugnummer und SAN des zugehörigen reviewMoments. Ohne diese eindeutige Zuordnung lässt du die Aussage weg.",
+  "Auch jeder Vergleich mit einer Alternative beginnt im selben Satz mit der exakten Zugnummer und SAN des gespielten reviewMoments. Bei höchstens 30 Centipawn Verlust darfst du die Alternative nur als genauso gut, nicht als besser oder genauer bezeichnen.",
+  "Bei einer vollständigen Partieauswertung für foundations oder building nutzt du pro reviewMoment höchstens einen kurzen Satz. Nenne darin zuerst das gespielte Moment und danach knapp seine Bewertung oder die belegte Alternative.",
+  "Halte dich bei einer vollständigen Partieauswertung exakt an <game_review_output_contract>. Schreibe keine zweite Aussage zu einem Moment in einen neuen Satz und keine Einleitung oder Zusammenfassung außerhalb dieses Formats.",
   "Verwende Eröffnungsnamen ausschließlich aus <opening_context>. Erfinde niemals einen Eröffnungsnamen, ECO-Code, eine Variante oder Untervariante.",
   "Verwende spezifische Pläne, Bauernstrukturen, Entwicklungsideen und typische Fehler nur, wenn sie im Feld knowledge von <opening_context> stehen.",
   "Wenn variationKnowledge vorhanden ist, nutze für die benannte Variante zuerst deren idea, whitePlan, blackPlan und watchFor; wiederhole sie nicht in späteren automatischen Zugerklärungen.",
@@ -104,7 +123,8 @@ const MOVE_EXPLANATION_INSTRUCTIONS = [
   "Beginne mit der konkreten Aufgabe oder Wirkung des gespielten Zuges und ordne dann ein, warum er gut, ungenau oder schlecht ist.",
   "Nutze zuerst coachAnalysis, dangers und die einzelnen moveComparison.difference-Einträge aus <position_evidence>. Ziehe erst danach die dazugehörigen legal geprüften Linien heran.",
   "Trenne den gespielten Zug und die Alternative sprachlich eindeutig.",
-  "Nenne die stärkste gegnerische Antwort, wenn opponentBestReply belegt ist.",
+  "Außerhalb einer erkannten Eröffnung nennst du die belegte gegnerische Antwort kompakt. Wiederhole eine Überschrift wie «Stärkste Antwort» nicht noch einmal mit «Am stärksten ...» im Satz.",
+  "In einer erkannten Eröffnung darf opponentReply nur gefüllt bleiben, wenn grounded_draft dafür einen opening.continuation-Beleg enthält. Formuliere sie dann als typische, niemals als beste oder stärkste Antwort.",
   "Nenne konkrete Figuren, Felder, Schachs, Schlagzüge und Materialereignisse statt allgemeiner Prinzipien.",
   "Verwende höchstens eine kurze Hauptvariante.",
   "Klinge wie ein lockerer, hilfreicher Coach am Brett. Nutze einfache gesprochene Sätze, direkte Du-Ansprache und natürliche Übergänge statt formeller Lehrbuchsprache.",
@@ -143,7 +163,7 @@ const MOVE_EXPLANATION_INSTRUCTIONS = [
   "Wenn der gespielte Zug bereits Rang 1 ist, ordne Rang 2 knapp als gleichwertige oder schwächere Alternative ein.",
   "Wenn moveNecessity only_legal_move, only_move_to_avoid_loss oder only_move_to_keep_advantage belegt, erkläre genau diese Art von Zwang. Ein großer Zahlenabstand oder clearly_best allein rechtfertigt keine Nur-Zug-Aussage.",
   "Bei praktisch gleichwertigen Zügen darfst du keinen eindeutigen Qualitätsunterschied behaupten.",
-  "Liegt lossCp bei höchstens 20 oder trägt die Alternative die relation equivalent, nenne sie genauso gut oder praktisch gleichwertig. Verwende dann nicht besser, genauer oder noch genauer.",
+  `Liegt lossCp bei höchstens ${PRACTICALLY_EQUIVALENT_LOSS_CP} oder trägt die Alternative die relation equivalent, nenne sie genauso gut. Verwende dann nicht besser, genauer oder noch genauer.`,
   "Leite keine Ursache allein aus einer Bewertungszahl ab.",
   "Vergleiche Material nur über materialComparison mit equalLength=true und demselben comparisonHorizon. Leite aus unterschiedlich langen Variantenenden keinen Materialunterschied ab.",
   "Vermeide in der sichtbaren Erklärung die Wörter Engine, Stockfish, PV, Centipawn und Kandidatenzug. Erkläre das Schach, nicht das Werkzeug.",
@@ -368,10 +388,15 @@ export function coachResponseMetadata(payload, { pgnIndex } = {}) {
     message: payload?.message,
     engineContext: openingChoice ? null : payload?.engineContext,
   });
+  const trainingKnowledge = lichessTrainingKnowledgeForCoach({
+    message: payload?.message,
+    knowledgeContext,
+  });
   const source = (
     openingChoice
     || hasUsableEngineContext(payload?.engineContext)
     || isOpeningKnowledgeQuestion(payload?.message, payload?.openingContext)
+    || trainingKnowledge.used
   ) ? "ai" : "local";
   const pgnMatches = hints.reduce((counts, hint) => {
     const type = hint?.match?.type === "exact" ? "exact" : "similar";
@@ -425,6 +450,7 @@ export function coachResponseMetadata(payload, { pgnIndex } = {}) {
         labels: [...new Set(hints.map((hint) => hint?.match?.label).filter(Boolean))],
         indexedPositions: pgnStats.positions,
         indexedComments: pgnStats.comments,
+        indexedCoachReady: pgnStats.coachReady,
         indexedSources: pgnStats.sources,
         indexedCategories: pgnStats.categoryCounts,
       },
@@ -432,11 +458,51 @@ export function coachResponseMetadata(payload, { pgnIndex } = {}) {
         used: (knowledgeContext?.concepts?.length || 0) > 0,
         count: knowledgeContext?.concepts?.length || 0,
       },
+      training: {
+        used: trainingKnowledge.used,
+        detail: trainingKnowledge.detail,
+      },
       coach: {
         rating: learnerProfile.rating,
       },
       ai: {
         used: source === "ai",
+      },
+    },
+  };
+}
+
+export function coachResponseMetadataForReply(payload, reply, options = {}) {
+  const metadata = coachResponseMetadata(payload, options);
+  if (reply !== ENGINE_CONTEXT_REJECTED_REPLY) return metadata;
+  return {
+    ...metadata,
+    source: "local",
+    pgnKnowledge: 0,
+    dataSources: {
+      ...metadata.dataSources,
+      stockfish: { ...metadata.dataSources.stockfish, used: false },
+      board: { ...metadata.dataSources.board, used: false },
+      opening: { ...metadata.dataSources.opening, used: false },
+      pgn: {
+        ...metadata.dataSources.pgn,
+        used: false,
+        count: 0,
+        exact: 0,
+        similar: 0,
+        categories: {},
+        labels: [],
+      },
+      principles: { ...metadata.dataSources.principles, used: false, count: 0 },
+      training: {
+        ...metadata.dataSources.training,
+        used: false,
+        detail: "Für diese lokale Sicherheitsantwort nicht genutzt",
+      },
+      ai: {
+        used: false,
+        requested: true,
+        rejected: true,
       },
     },
   };
@@ -466,6 +532,257 @@ export function addOpeningNameToReply(reply, payload) {
     ? `Hier geht es um **${displayName}**.`
     : `Mit diesem Zug beginnt **${displayName}**.`;
   return `${intro}\n\n${reply.trim()}`;
+}
+
+function replyForLanguageValidation(reply, payload) {
+  let result = typeof reply === "string" ? reply : "";
+  const context = payload?.openingContext;
+  const openings = [
+    context?.matched ? context : null,
+    context?.suggestedOpening?.matched ? context.suggestedOpening : null,
+  ].filter(Boolean);
+  const names = openings.flatMap((opening) => [
+    opening?.displayName,
+    opening?.sourceName,
+  ]).filter((name) => typeof name === "string" && name.trim());
+  names.forEach((name) => {
+    const escaped = name.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(escaped, "giu"), "Eröffnung");
+  });
+  return result;
+}
+
+function normalizedReviewLabel(value) {
+  return String(value || "")
+    .replace(/\*+/gu, "")
+    .replace(/(\d+)\s*(?:\.{3}|…|\.\s*\.\s*\.)\s*/gu, "$1… ")
+    .replace(/(\d+)\s*\.\s*/gu, "$1. ")
+    .replace(/\s+/gu, " ")
+    .trim()
+    .toLocaleLowerCase("de-DE");
+}
+
+function gameReviewMomentsForGuard(payload) {
+  const engine = normalizeEngineContext(payload?.engineContext);
+  if (engine?.kind !== "game_review") return [];
+  const byLabel = new Map();
+  engine.reviewMoments.forEach((moment) => {
+    const label = normalizedReviewLabel(moment?.label);
+    if (!label) return;
+    byLabel.set(label, {
+      label,
+      lossCp: Number.isFinite(moment.lossCp) ? moment.lossCp : null,
+      playedUci: moment.playedMove?.uci || "",
+      bestUci: moment.bestMove?.uci || "",
+      onlyMove: moment.onlyMove === true,
+      engineMoment: moment,
+    });
+  });
+  (Array.isArray(payload?.gameReview?.criticalMoments)
+    ? payload.gameReview.criticalMoments
+    : [])
+    .forEach((moment) => {
+      const label = normalizedReviewLabel(moment?.move);
+      if (!label) return;
+      const known = byLabel.get(label) || { label, playedUci: "", bestUci: "" };
+      byLabel.set(label, {
+        ...known,
+        lossCp: Number.isFinite(known.lossCp)
+          ? known.lossCp
+          : Number.isFinite(moment?.lossCp)
+            ? moment.lossCp
+            : null,
+      });
+    });
+  return [...byLabel.values()];
+}
+
+function sentenceContainsReviewLabel(sentence, label) {
+  if (!sentence || !label) return false;
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${escaped}(?=$|[^\\p{L}\\p{N}])`, "iu")
+    .test(normalizedReviewLabel(sentence));
+}
+
+function gameReviewLanguageEvidence(payload) {
+  const moments = gameReviewMomentsForGuard(payload);
+  if (moments.length === 0) return null;
+  const losses = moments.map((moment) => moment.lossCp).filter(Number.isFinite);
+  return {
+    onlyMove: moments.some((moment) => moment.onlyMove === true),
+    mate: false,
+    materialLoss: false,
+    significantLoss: losses.some((loss) => loss >= 140),
+    severeLoss: losses.some((loss) => loss >= 300),
+  };
+}
+
+function gameReviewSentences(reply) {
+  const protectedNotation = String(reply || "")
+    .replace(/(\d+)\s*\.{3}\s*(?=[KQRBNDTLSO0a-h])/gu, "$1\uE001")
+    .replace(/(\d+)\s*\.\s*(?=[KQRBNDTLSO0a-h])/gu, "$1\uE000");
+  return (protectedNotation.match(/[^.!?\n]+[.!?]?/gu) || [])
+    .map((sentence) => sentence
+      .replace(/\uE001/gu, "… ")
+      .replace(/\uE000/gu, ". ")
+      .trim())
+    .filter(Boolean);
+}
+
+function isGeneralGameReviewBoardDefinition(sentence) {
+  const text = String(sentence || "")
+    .replace(/\*\*/gu, "")
+    .replace(/^\s*(?:[-*>#]+\s*)+/u, "")
+    .trim();
+  const concreteReference = (
+    /(?<![a-z])(?:[a-h][1-8])(?![a-z0-9])/iu.test(text)
+    || /(?:\b(?:dein(?:e[rmns]?)?|du|euer|eure[rmns]?|hier|jetzt|aktuell|weiss|schwarz|diese[rmns]?\s+(?:stellung|zug|figur|bauer)|auf\s+dem\s+brett)\b|weiß)/iu
+      .test(text)
+  );
+  if (concreteReference) return false;
+  return (
+    /^(?:bei\s+)?(?:ein(?:e|er|en|em|es)?|der|die|das)\s+(?:gabel|fesselung|freibauer|doppelbauer|doppelbauern|isolierte[rmns]?\s+bauer|bauernmehrheit|bauernüberzahl|königsflügelmehrheit|damenflügelmehrheit|offene[rmns]?\s+linie|außenposten|aussenposten|rochade|umwandlung)\b/iu
+      .test(text)
+    || /^(?:isolierte?\s+bauern?|bauernmehrheit|bauernüberzahl|königsflügelmehrheit|damenflügelmehrheit|offene?\s+linie|außenposten|aussenposten)\b[^.!?]{0,80}\b(?:bedeutet|heißt|nennt\s+man|ist)\b/iu
+      .test(text)
+  );
+}
+
+function hasConcreteGameReviewBoardClaim(sentence) {
+  if (isGeneralGameReviewBoardDefinition(sentence)) return false;
+  const directBoardClaim = /\b(?:greift|attackiert|bedroht|deckt|schützt|verteidigt|hängt|ungedeckt|gabel|doppelangriff|fessel\w*|schach|matt|rochier\w*|freibauer|geschlagen|genommen|verloren|verschwindet|stellt\w*[^.!?]{0,35}\bein|verlier\w*[^.!?]{0,35}\b(?:material|bauer|springer|läufer|turm|dame|figur))\b/iu
+    .test(sentence);
+  if (directBoardClaim) return true;
+
+  const isolatedPawnClaim = /\b(?:isoliert\w*\s+bauern?|bauern?\b[^.!?]{0,32}\bisoliert\w*)\b/iu
+    .test(sentence);
+  const pawnMajorityClaim = /\b(?:bauernmehrheit|bauernüberzahl|königsflügelmehrheit|damenflügelmehrheit|mehrheit\s+der\s+bauern|mehrheit\s+(?:am|auf\s+dem)\s+(?:königs|damen)flügel)\b/iu
+    .test(sentence);
+  const kingSafetyClaim = (
+    /\bkönig\w*\b[^.!?]{0,50}\b(?:ist|steht|bleibt|wirkt)\b[^.!?]{0,30}\b(?:sicher|geschützt|unsicher|schutzlos|exponiert|offen|in\s+der\s+mitte|im\s+zentrum)\w*\b/iu
+      .test(sentence)
+    || /\b(?:sicher|geschützt|unsicher|schutzlos|exponiert)\w*\b[^.!?]{0,30}\bkönig\w*\b/iu
+      .test(sentence)
+  );
+  const centerControlClaim = (
+    /\b(?:kontrolliert|beherrscht|dominiert)\b[^.!?]{0,32}\b(?:das\s+)?zentrum\b/iu
+      .test(sentence)
+    || /\bzentrum\b[^.!?]{0,32}\b(?:kontrolliert|beherrscht|dominiert)\b/iu
+      .test(sentence)
+  ) && /(?<![a-z])(?:[a-h][1-8])(?![a-z0-9])|(?:\b(?:dein(?:e[rmns]?)?|du|euer|eure[rmns]?|hier|jetzt|aktuell|weiss|schwarz|dieser\s+zug|die\s+stellung|bauer|springer|läufer|turm|dame|könig)\b|weiß)/iu
+    .test(sentence);
+  const openFileClaim = /\boffene[rmns]?\b[^.!?]{0,16}\b[a-h](?:-|‑|–)?linie\b|\b[a-h](?:-|‑|–)?linie\b[^.!?]{0,30}\b(?:offen|geöffnet)\w*\b/iu
+    .test(sentence);
+  const outpostClaim = /\b(?:außenposten|aussenposten)\b/iu.test(sentence);
+
+  return isolatedPawnClaim
+    || pawnMajorityClaim
+    || kingSafetyClaim
+    || centerControlClaim
+    || openFileClaim
+    || outpostClaim;
+}
+
+function exactMomentBoardClaimErrors(sentence, moment) {
+  if (!hasConcreteGameReviewBoardClaim(sentence)) return [];
+  if (!moment?.engineMoment) return [sentence.trim()];
+  const exactContext = {
+    source: "stockfish",
+    kind: "game_review",
+    fen: moment.engineMoment.fen || "",
+    depth: moment.engineMoment.depth || 0,
+    evaluation: null,
+    bestMove: null,
+    primaryVariation: { uci: [], san: [] },
+    lines: [],
+    reviewMoments: [moment.engineMoment],
+  };
+  return findUnsupportedBoardClaims(sentence, exactContext);
+}
+
+function findUnsupportedGameReviewClaims(reply, payload) {
+  if (typeof reply !== "string" || !reply.trim()) return [];
+  const moments = gameReviewMomentsForGuard(payload);
+  if (moments.length === 0) return [];
+  const unsupported = [];
+  const sentences = gameReviewSentences(reply);
+  sentences.forEach((sentence) => {
+    const matched = moments.filter((moment) => (
+      sentenceContainsReviewLabel(sentence, moment.label)
+    ));
+    const normalized = sentence.toLocaleLowerCase("de-DE");
+    const negatedSeverity = /\b(?:kein(?:e[nrms]?)?|nicht)\b[^.!?]{0,24}\b(?:(?:grober|klarer|schwerer|entscheidender)\s+)?(?:fehler|patzer)\b|\bnicht\b[^.!?]{0,24}\b(?:schlechter|katastrophal|desaströs|fatal)\b/iu
+      .test(sentence);
+    const severeSeverityClaim = !negatedSeverity && (
+      /\b(?:grober|schwerer|entscheidender|fataler)\s+fehler\b|\bpatzer\b|\b(?:katastrophal|desaströs|fatal)\w*\b|\b(?:stellung|partie)\b[^.!?]{0,24}\bverloren\b|\bverlier\w*\b[^.!?]{0,24}\b(?:die\s+)?partie\b|\bviel\s+schlechter\b/iu
+        .test(sentence)
+    );
+    const significantSeverityClaim = !negatedSeverity && (
+      severeSeverityClaim
+      || /\bklarer\s+fehler\b|\bdeutlich\s+schlechter\b|\b(?:ist|war|wäre|bleibt)\b[^.!?]{0,20}\b(?:ein\s+)?(?:fehler|schlechter\s+zug)\b|\b(?:ein|der)\s+fehler\b/iu
+        .test(sentence)
+    );
+    const severityClaim = severeSeverityClaim || significantSeverityClaim;
+    const equivalentComparisonClaim = /\b(?:genauso\s+gut|(?:fast|nahezu|praktisch)\s+genauso\s+(?:gut|stark)|praktisch\s+gleichwertig|gleichwertig|(?:unterschied|abstand)\s+(?:war|ist)\s+(?:klein|gering)|kaum\s+ein\s+unterschied|ähnlich\s+gut)\b/iu
+      .test(sentence);
+    const rankedComparisonClaim = /\b(?:besser|genauer|präziser|stärker|klarer)\s+(?:war|wäre|ist|geht)\b|\b(?:war|wäre|ist)\s+(?:etwas\s+|klar\s+)?(?:besser|genauer|präziser|stärker|klarer)\b|\b(?:bessere|genauere|präzisere|stärkere|klarere)\s+(?:idee|alternative|möglichkeit|wahl|entwicklung)\b|\b(?:war|ist)\s+(?:klar\s+)?vorzuziehen\b/iu
+      .test(sentence);
+    const comparisonClaim = equivalentComparisonClaim || rankedComparisonClaim;
+    if (matched.length === 0) {
+      if (
+        severityClaim
+        || comparisonClaim
+        || hasConcreteGameReviewBoardClaim(sentence)
+      ) {
+        unsupported.push(sentence.trim());
+      }
+      return;
+    }
+    if (matched.some((moment) => exactMomentBoardClaimErrors(sentence, moment).length > 0)) {
+      unsupported.push(sentence.trim());
+      return;
+    }
+    if (
+      severeSeverityClaim
+      && matched.some((moment) => !Number.isFinite(moment.lossCp) || moment.lossCp < 300)
+    ) {
+      unsupported.push(sentence.trim());
+      return;
+    }
+    if (
+      significantSeverityClaim
+      && matched.some((moment) => !Number.isFinite(moment.lossCp) || moment.lossCp < 140)
+    ) {
+      unsupported.push(sentence.trim());
+      return;
+    }
+    if (
+      equivalentComparisonClaim
+      && matched.some((moment) => !Number.isFinite(moment.lossCp)
+        || moment.lossCp > PRACTICALLY_EQUIVALENT_LOSS_CP)
+    ) {
+      unsupported.push(sentence.trim());
+      return;
+    }
+    if (
+      rankedComparisonClaim
+      && matched.some((moment) => Number.isFinite(moment.lossCp)
+        && moment.lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP)
+    ) {
+      unsupported.push(sentence.trim());
+      return;
+    }
+    if (
+      /\b(?:war|ist)\b[^.!?]{0,24}\b(?:der\s+)?(?:beste|stärkste|genaueste)\s+(?:Zug|Wahl)\b/iu
+        .test(normalized)
+      && matched.some((moment) => (
+        !moment.playedUci || !moment.bestUci || moment.playedUci !== moment.bestUci
+      ))
+    ) {
+      unsupported.push(sentence.trim());
+    }
+  });
+  return [...new Set(unsupported)];
 }
 
 export function normalizeChatPayload(input = {}) {
@@ -507,6 +824,75 @@ function serializePromptData(value) {
   );
 }
 
+function gameReviewOutputContract(engineContext, learnerProfile) {
+  const engine = normalizeEngineContext(engineContext);
+  if (engine?.kind !== "game_review" || engine.reviewMoments.length === 0) return null;
+  const profile = learnerProfileForCoach(learnerProfile);
+  const maximumWordsPerSentence = ({
+    800: 16,
+    1000: 18,
+    1400: 21,
+    1800: 24,
+  })[profile.rating] || 18;
+  const compact = profile.rating <= 1000;
+  const momentRules = engine.reviewMoments.map((moment) => {
+    const lossCp = Number.isFinite(moment.lossCp) ? moment.lossCp : null;
+    const alternative = moment.bestMove?.san || "";
+    const playedIsBest = Boolean(
+      moment.playedMove?.uci
+      && moment.bestMove?.uci
+      && moment.playedMove.uci === moment.bestMove.uci
+    );
+    let wording = "Nenne nur eine neutrale, kurze Einordnung.";
+    let safeSentence = `- **${moment.label}:** Ordne diesen Zug nur neutral ein.`;
+    if (playedIsBest) {
+      wording = "Der gespielte Zug darf als gut bezeichnet werden und du nennst keine bessere Alternative.";
+      safeSentence = `- **${moment.label}:** Der Zug war gut.`;
+    } else if (lossCp !== null && lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP) {
+      wording = `Die Alternative ${alternative || "aus den Daten"} ist ausschließlich «genauso gut» und besser, genauer, präziser sowie stärker sind verboten.`;
+      safeSentence = alternative
+        ? `- **${moment.label}:** Der Zug war gut und ${alternative} geht genauso gut.`
+        : `- **${moment.label}:** Der Zug war gut.`;
+    } else if (lossCp !== null && lossCp >= 300) {
+      wording = `Der gespielte Zug darf grober Fehler heißen und ${alternative || "die gelieferte Alternative"} darf besser heißen.`;
+      safeSentence = alternative
+        ? `- **${moment.label}:** Das war ein grober Fehler und ${alternative} war besser.`
+        : `- **${moment.label}:** Das war ein grober Fehler.`;
+    } else if (lossCp !== null && lossCp >= 140) {
+      wording = `Der gespielte Zug darf klarer Fehler heißen und ${alternative || "die gelieferte Alternative"} darf besser heißen.`;
+      safeSentence = alternative
+        ? `- **${moment.label}:** Das war ein klarer Fehler und ${alternative} war besser.`
+        : `- **${moment.label}:** Das war ein klarer Fehler.`;
+    } else if (lossCp !== null && lossCp > PRACTICALLY_EQUIVALENT_LOSS_CP) {
+      wording = `${alternative || "Die gelieferte Alternative"} darf als besser bezeichnet werden, aber der gespielte Zug ist kein klarer oder grober Fehler.`;
+      safeSentence = alternative
+        ? `- **${moment.label}:** Der Zug war ungenau und ${alternative} war besser.`
+        : `- **${moment.label}:** Der Zug war ungenau.`;
+    }
+    return {
+      label: moment.label,
+      alternative,
+      wording,
+      safeSentence,
+    };
+  });
+  return {
+    format: "Eine Bullet pro ausgewähltem reviewMoment.",
+    exactLabels: engine.reviewMoments.map((moment) => moment.label).filter(Boolean),
+    momentRules,
+    rules: [
+      "Beginne jede Bullet mit - **EXAKTE_ZUGNUMMER_UND_SAN:**.",
+      compact
+        ? "Gib exakt die safeSentence jedes momentRules-Eintrags aus. Ändere oder erweitere diese Sätze nicht."
+        : "Jeder Satz beginnt erneut mit dem exakten Label des besprochenen reviewMoments.",
+      "Nenne eine Alternative ausschließlich im selben Satz wie das Label des gespielten Moments.",
+      `Nutze höchstens ${maximumWordsPerSentence} Wörter pro Satz.`,
+      "Verwende keinen Strichpunkt und außer dem Doppelpunkt nach dem Label keinen weiteren Doppelpunkt.",
+      "Schreibe keine Überschrift, Einleitung, Schlussfolgerung oder Trainingsfrage außerhalb der Bullets.",
+    ],
+  };
+}
+
 function escapePromptText(value) {
   return String(value ?? "").replace(/[&<>]/g, (character) => ({
     "&": "&amp;",
@@ -531,6 +917,10 @@ export function buildPrompt({
     message,
     engineContext: effectiveEngineContext,
   });
+  const trainingKnowledge = lichessTrainingKnowledgeForCoach({
+    message,
+    knowledgeContext,
+  });
   const coachLearnerProfile = learnerProfileForCoach(learnerProfile);
   const pgnKnowledge = openingChoice ? [] : pgnKnowledgeForEngineContext({
     engineContext: effectiveEngineContext,
@@ -553,6 +943,11 @@ export function buildPrompt({
   sections.push(
     `<chess_knowledge>\n${serializePromptData(knowledgeContext)}\n</chess_knowledge>`,
   );
+  if (trainingKnowledge.used) {
+    sections.push(
+      `<training_knowledge>\n${serializePromptData(lichessTrainingPromptData(trainingKnowledge))}\n</training_knowledge>`,
+    );
+  }
   if (pgnKnowledge.length > 0) {
     sections.push(
       `<pgn_knowledge>\n${serializePromptData(pgnKnowledge)}\n</pgn_knowledge>`,
@@ -570,6 +965,24 @@ export function buildPrompt({
     sections.push(
       `<verified_knowledge>\n${JSON.stringify(grounded.knowledgeContext)}\n</verified_knowledge>`,
     );
+    if (effectiveEngineContext?.kind !== "game_review") {
+      const subjectSan = grounded.positionEvidence?.playedMove?.san || "der gelieferte Zug";
+      const beginner = coachLearnerProfile.rating <= 1000;
+      sections.push(
+        `<coach_response_contract>\n${serializePromptData({
+          subjectSan,
+          maximumSentences: beginner ? 1 : 3,
+          rules: [
+            beginner
+              ? `Antworte mit genau einem kurzen Satz. Beginne ihn mit ${subjectSan} und nenne nur einen belegten Brettfakt. Verwende kein «und», keine Liste und keinen Doppelpunkt.`
+              : `Antworte mit höchstens drei kurzen Sätzen. Der erste Satz beginnt mit ${subjectSan}.`,
+            `Jeder weitere Satz über eine Wirkung nach dem Zug beginnt wörtlich mit «Nach ${subjectSan}» und nennt die Figur erneut statt nur «er», «sie» oder «dadurch».`,
+            "Verwende keinerlei Markdown-Hervorhebung für Züge oder Felder.",
+            "Lasse zusätzliche Wirkungen weg, wenn sie nicht in einem kurzen Satz eindeutig belegt werden können.",
+          ],
+        })}\n</coach_response_contract>`,
+      );
+    }
   }
   if (history.length > 0) {
     sections.push(`<moves_played>\n${history.join(" ")}\n</moves_played>`);
@@ -579,6 +992,16 @@ export function buildPrompt({
   }
   if (gameReview) {
     sections.push(`<game_review_statistics>\n${serializePromptData(gameReview)}\n</game_review_statistics>`);
+  }
+
+  const reviewOutputContract = gameReviewOutputContract(
+    effectiveEngineContext,
+    coachLearnerProfile,
+  );
+  if (reviewOutputContract) {
+    sections.push(
+      `<game_review_output_contract>\n${serializePromptData(reviewOutputContract)}\n</game_review_output_contract>`,
+    );
   }
 
   sections.push(`<user_question>\n${escapePromptText(message)}\n</user_question>`);
@@ -762,8 +1185,82 @@ function buildMoveExplanationContext(payload) {
     knowledgeContext,
     trustedEvidence,
     localExplanation,
+    openingContext: payload?.openingContext || null,
     cacheKey,
   };
+}
+
+function moveLanguageGuardOptions(context, payload = {}) {
+  const comparison = context?.positionEvidence?.moveComparison;
+  const review = context?.engineContext?.moveReview;
+  const openingContext = context?.openingContext || payload?.openingContext;
+  const recognizedOpening = Boolean(
+    context?.phase === "opening"
+    && openingContext?.matched === true
+    && openingContext?.source === "lichess-chess-openings",
+  );
+  const opponentReplyUci = comparison?.played?.opponentBestReply?.uci || "";
+  const typicalOpeningReplySupported = Boolean(
+    recognizedOpening
+    && opponentReplyUci
+    && (Array.isArray(openingContext?.continuations)
+      ? openingContext.continuations
+      : [])
+      .some((continuation) => (
+        continuation?.uci === opponentReplyUci
+        && (
+          !continuation?.source
+          || continuation.source === "lichess-chess-openings"
+        )
+      )),
+  );
+  const lossCp = Number.isFinite(comparison?.lossCp)
+    ? comparison.lossCp
+    : Number.isFinite(review?.lossCp)
+      ? review.lossCp
+      : null;
+  const verifiedMoves = (context?.positionEvidence?.verifiedLines || [])
+    .flatMap((line) => line?.moves || []);
+  const materialLoss = Boolean(
+    Number(comparison?.played?.materialBalanceDelta) < 0
+    || comparison?.played?.opponentBestReply?.capture,
+  );
+  return {
+    rating: context?.learnerProfile?.rating || payload?.learnerProfile?.rating || 1000,
+    phase: context?.phase || "",
+    practicallyEquivalent: (
+      comparison?.explanationType === "equivalent"
+      || comparison?.alternative?.relation === "equivalent"
+    ),
+    multipleGoodOpeningMoves: (
+      context?.phase === "opening"
+      && comparison?.onlyMove !== true
+    ),
+    recognizedOpening,
+    typicalOpeningReplySupported,
+    evidence: {
+      ...(comparison ? { onlyMove: comparison.onlyMove === true } : {}),
+      ...(verifiedMoves.length > 0
+        ? { mate: verifiedMoves.some((move) => move?.givesCheckmate === true) }
+        : {}),
+      ...(comparison ? { materialLoss } : {}),
+      ...(lossCp !== null ? {
+        significantLoss: lossCp >= 140,
+        severeLoss: lossCp >= 300,
+      } : {}),
+    },
+    strict: true,
+  };
+}
+
+function moveExplanationLanguageErrors(explanation, context, payload = {}) {
+  const text = moveExplanationToMarkdown(explanation, { deep: true });
+  const result = validateCoachLanguage(
+    text,
+    moveLanguageGuardOptions(context, payload),
+  );
+  return [...result.errors, ...result.warnings]
+    .map((entry) => `Sprache:${entry.id}`);
 }
 
 export function buildMoveExplanationPrompt({
@@ -899,6 +1396,15 @@ function verifyGroundedAiExplanation(candidate, context, payload) {
     context.localExplanation,
   );
   const rejectedFields = new Set();
+  const equivalent = (
+    context?.positionEvidence?.moveComparison?.explanationType === "equivalent"
+    || context?.positionEvidence?.moveComparison?.alternative?.relation === "equivalent"
+  );
+  if (equivalent && aiFields.has("verdict")) {
+    grounded.verdict = context.localExplanation.verdict;
+    aiFields.delete("verdict");
+    rejectedFields.add("verdict");
+  }
   const verify = () => verifyMoveExplanation(grounded, {
     positionEvidence: context.trustedEvidence,
     knowledgeContext: context.knowledgeContext,
@@ -913,6 +1419,8 @@ function verifyGroundedAiExplanation(candidate, context, payload) {
         payload?.openingContext,
       ),
       ...findUnsupportedEvaluationTokens(text, context.engineContext),
+      ...findUnsupportedBoardClaims(text, context.engineContext),
+      ...moveExplanationLanguageErrors(value, context, payload),
     ];
   };
   let checked = verify();
@@ -1079,7 +1587,25 @@ export async function requestMoveExplanation(
       knowledgeContext: context.knowledgeContext,
       engineContext: context.engineContext,
     });
-    if (checkedCache.valid) {
+    const cacheGuardErrors = checkedCache.valid
+      ? [
+        ...findUnsupportedMoveTokens(
+          moveExplanationToMarkdown(checkedCache.value, { deep: true }),
+          context.engineContext,
+          payload?.openingContext,
+        ),
+        ...findUnsupportedEvaluationTokens(
+          moveExplanationToMarkdown(checkedCache.value, { deep: true }),
+          context.engineContext,
+        ),
+        ...findUnsupportedBoardClaims(
+          moveExplanationToMarkdown(checkedCache.value, { deep: true }),
+          context.engineContext,
+        ),
+        ...moveExplanationLanguageErrors(checkedCache.value, context, payload),
+      ]
+      : ["invalid_evidence"];
+    if (checkedCache.valid && cacheGuardErrors.length === 0) {
       return {
         ...cached,
         explanation: checkedCache.value,
@@ -1184,10 +1710,10 @@ export async function requestMoveExplanation(
   }
   if (guardErrors.length > 0) {
     console.warn(
-      "[Move explanation] Antwort wegen nicht belegter Engine-Angaben verworfen:",
+      "[Move explanation] Antwort wegen unbelegter oder ungeeigneter Formulierungen verworfen:",
       guardErrors.join(", "),
     );
-    return localMoveExplanationResult(context, "engine_guard_failed");
+    return localMoveExplanationResult(context, "response_guard_failed");
   }
 
   const fullText = moveExplanationToMarkdown(checked.value, { deep: true });
@@ -1213,6 +1739,71 @@ export async function requestMoveExplanation(
   };
   if (cacheAllowed) cacheWrite(cache, serverCacheKey, result);
   return result;
+}
+
+function coachReplyGuardIssues(reply, payload, openingChoice) {
+  const unsupportedMoves = findUnsupportedMoveTokens(
+    reply,
+    openingChoice ? null : payload.engineContext,
+    payload.openingContext,
+  );
+  const unsupportedEvaluations = findUnsupportedEvaluationTokens(
+    reply,
+    openingChoice ? null : payload.engineContext,
+  );
+  const unsupportedBoardClaims = findUnsupportedBoardClaims(
+    reply,
+    payload.engineContext,
+  );
+  const unsupportedGameReviewClaims = findUnsupportedGameReviewClaims(reply, payload);
+  const grounded = buildMoveExplanationContext({
+    ...payload,
+    engineContext: openingChoice ? null : payload.engineContext,
+  });
+  const technicalQuestion = /\b(?:engine|stockfish|bewertung|centipawn|rechentief|pv|hauptvariante|kandidatenz)/iu
+    .test(payload?.message || "");
+  const phase = grounded?.phase || (
+    payload?.openingContext?.matched === true
+    || payload?.openingContext?.suggestedOpening?.matched === true
+      ? "opening"
+      : ""
+  );
+  const reviewEvidence = gameReviewLanguageEvidence(payload);
+  const language = validateCoachLanguage(replyForLanguageValidation(reply, payload), {
+    ...(grounded
+      ? moveLanguageGuardOptions(grounded, payload)
+      : {
+        rating: learnerProfileForCoach(payload?.learnerProfile).rating,
+        phase,
+        multipleGoodOpeningMoves: (
+          phase === "opening"
+          && Array.isArray(payload?.openingContext?.continuations)
+          && payload.openingContext.continuations.length > 1
+        ),
+        recognizedOpening: Boolean(
+          phase === "opening"
+          && payload?.openingContext?.matched === true
+          && payload.openingContext.source === "lichess-chess-openings"
+        ),
+        typicalOpeningReplySupported: Boolean(
+          phase === "opening"
+          && payload?.openingContext?.matched === true
+          && payload.openingContext.source === "lichess-chess-openings"
+          && Array.isArray(payload.openingContext.continuations)
+          && payload.openingContext.continuations.length > 0
+        ),
+        ...(reviewEvidence ? { evidence: reviewEvidence } : {}),
+        strict: true,
+      }),
+    allowTechnicalTerms: technicalQuestion,
+  });
+  return [
+    ...unsupportedMoves,
+    ...unsupportedEvaluations,
+    ...unsupportedBoardClaims,
+    ...unsupportedGameReviewClaims,
+    ...[...language.errors, ...language.warnings].map((entry) => entry.id),
+  ];
 }
 
 export async function requestCoachResponse(
@@ -1241,58 +1832,55 @@ export async function requestCoachResponse(
     throw new Error("Diese Node-Version unterstützt fetch nicht.");
   }
 
+  const baseInput = buildPrompt(payload);
   const requestBody = {
     model,
     instructions: SYSTEM_INSTRUCTIONS,
-    input: buildPrompt(payload),
+    input: baseInput,
     reasoning: { effort: "low" },
     text: { verbosity: "low" },
-    max_output_tokens: 550,
+    max_output_tokens: payload?.engineContext?.kind === "game_review" ? 900 : 550,
     store: false,
   };
   if (safetyIdentifier) requestBody.safety_identifier = safetyIdentifier;
 
-  const response = await fetchImpl(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-    signal,
-  });
+  let finalIssues = [];
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    requestBody.input = attempt === 0
+      ? baseInput
+      : `${baseInput}\n\n<repair_contract>\nDer vorige Entwurf wurde nicht angezeigt. Schreibe die Antwort vollständig neu. Halte dich diesmal exakt an coach_response_contract und game_review_output_contract. Nenne nur einen unmittelbar belegten Brettfakt pro Satz. Wiederhole vor jeder Folgewirkung den zugehörigen Zug. Verwende keine Markdown-Hervorhebung.\n</repair_contract>`;
+    const response = await fetchImpl(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+      signal,
+    });
 
-  if (!response.ok) {
-    const error = new Error(`OpenAI-Anfrage fehlgeschlagen (${response.status}).`);
-    error.code = "upstream_error";
-    error.status = response.status;
-    throw error;
-  }
+    if (!response.ok) {
+      const error = new Error(`OpenAI-Anfrage fehlgeschlagen (${response.status}).`);
+      error.code = "upstream_error";
+      error.status = response.status;
+      throw error;
+    }
 
-  const data = await response.json();
-  const reply = extractResponseText(data);
-  if (!reply) {
-    const error = new Error("OpenAI hat keine Textantwort geliefert.");
-    error.code = "empty_response";
-    throw error;
+    const data = await response.json();
+    const reply = extractResponseText(data);
+    if (!reply) {
+      const error = new Error("OpenAI hat keine Textantwort geliefert.");
+      error.code = "empty_response";
+      throw error;
+    }
+    finalIssues = coachReplyGuardIssues(reply, payload, openingChoice);
+    if (finalIssues.length === 0) return addOpeningNameToReply(reply, payload);
   }
-  const unsupportedMoves = findUnsupportedMoveTokens(
-    reply,
-    openingChoice ? null : payload.engineContext,
-    payload.openingContext,
+  console.warn(
+    "[Coach guard] Antwort nach Korrekturversuch verworfen:",
+    finalIssues.join(", "),
   );
-  const unsupportedEvaluations = findUnsupportedEvaluationTokens(
-    reply,
-    openingChoice ? null : payload.engineContext,
-  );
-  if (unsupportedMoves.length > 0 || unsupportedEvaluations.length > 0) {
-    console.warn(
-      "[Coach guard] Antwort wegen nicht belegter Engine-Angaben verworfen:",
-      [...unsupportedMoves, ...unsupportedEvaluations].join(", "),
-    );
-    return ENGINE_CONTEXT_REJECTED_REPLY;
-  }
-  return addOpeningNameToReply(reply, payload);
+  return ENGINE_CONTEXT_REJECTED_REPLY;
 }
 
 export const chatConfig = {

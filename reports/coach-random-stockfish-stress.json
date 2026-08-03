@@ -1,0 +1,214 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-03T08:24:21.461Z",
+  "method": "deterministic_random_legal_games_with_local_stockfish",
+  "config": {
+    "games": 300,
+    "positionsPerPhase": 75,
+    "maxPlies": 180,
+    "depth": 5,
+    "seed": "0x5eed1234",
+    "ratings": [
+      800,
+      1000,
+      1400,
+      1800
+    ],
+    "phases": [
+      "opening",
+      "middlegame",
+      "endgame"
+    ],
+    "paidAiCalls": 0,
+    "strictLanguageRules": true,
+    "maximumFailureExamples": 12
+  },
+  "engine": {
+    "name": "Stockfish 18 WASM Multithreaded",
+    "threads": 1,
+    "hashMb": 32,
+    "multiPv": 2,
+    "limit": {
+      "type": "depth",
+      "value": 5
+    }
+  },
+  "generation": {
+    "gamesGenerated": 300,
+    "generatedPlies": 46795,
+    "gamesReachingPhase": {
+      "opening": 300,
+      "middlegame": 285,
+      "endgame": 261
+    },
+    "endings": {
+      "checkmate": 52,
+      "draw": 4,
+      "plyLimit": 244
+    },
+    "coverage": [
+      {
+        "phase": "opening",
+        "gamesReachingPhase": 300,
+        "availableUniquePositions": 300,
+        "requestedPositions": 75,
+        "selectedPositions": 75
+      },
+      {
+        "phase": "middlegame",
+        "gamesReachingPhase": 285,
+        "availableUniquePositions": 285,
+        "requestedPositions": 75,
+        "selectedPositions": 75
+      },
+      {
+        "phase": "endgame",
+        "gamesReachingPhase": 261,
+        "availableUniquePositions": 261,
+        "requestedPositions": 75,
+        "selectedPositions": 75
+      }
+    ],
+    "selectionHash": "226c0b517c51002848210ec5f40256c488d973773f2fc0c149c4c62849ef90a7"
+  },
+  "totals": {
+    "selectedPositions": 225,
+    "analyzedPositions": 225,
+    "outputs": 900,
+    "passedOutputs": 900,
+    "failedOutputs": 0,
+    "evidenceFailures": 0,
+    "nullExplanations": 0,
+    "verificationFailures": 0,
+    "languageFailures": 0,
+    "semanticFailures": 0,
+    "unsupportedMoveFailures": 0,
+    "unsupportedBoardClaimFailures": 0,
+    "unsupportedEvaluationFailures": 0,
+    "phaseMismatches": 0,
+    "passPercent": 100
+  },
+  "byRating": {
+    "800": {
+      "evaluated": 225,
+      "passed": 225,
+      "failed": 0,
+      "languageFailures": 0,
+      "semanticFailures": 0,
+      "verificationFailures": 0,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "maximumSentences": 5,
+      "passPercent": 100
+    },
+    "1000": {
+      "evaluated": 225,
+      "passed": 225,
+      "failed": 0,
+      "languageFailures": 0,
+      "semanticFailures": 0,
+      "verificationFailures": 0,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "maximumSentences": 5,
+      "passPercent": 100
+    },
+    "1400": {
+      "evaluated": 225,
+      "passed": 225,
+      "failed": 0,
+      "languageFailures": 0,
+      "semanticFailures": 0,
+      "verificationFailures": 0,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "maximumSentences": 8,
+      "passPercent": 100
+    },
+    "1800": {
+      "evaluated": 225,
+      "passed": 225,
+      "failed": 0,
+      "languageFailures": 0,
+      "semanticFailures": 0,
+      "verificationFailures": 0,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "maximumSentences": 10,
+      "passPercent": 100
+    }
+  },
+  "byPhase": {
+    "opening": {
+      "evaluated": 300,
+      "passed": 300,
+      "failed": 0,
+      "languageFailures": 0,
+      "semanticFailures": 0,
+      "verificationFailures": 0,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "maximumSentences": 9,
+      "passPercent": 100
+    },
+    "middlegame": {
+      "evaluated": 300,
+      "passed": 300,
+      "failed": 0,
+      "languageFailures": 0,
+      "semanticFailures": 0,
+      "verificationFailures": 0,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "maximumSentences": 10,
+      "passPercent": 100
+    },
+    "endgame": {
+      "evaluated": 300,
+      "passed": 300,
+      "failed": 0,
+      "languageFailures": 0,
+      "semanticFailures": 0,
+      "verificationFailures": 0,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "maximumSentences": 10,
+      "passPercent": 100
+    }
+  },
+  "byQuality": {
+    "blunder": 41,
+    "excellent": 12,
+    "good": 36,
+    "inaccuracy": 39,
+    "mistake": 33,
+    "best": 64
+  },
+  "issueCounts": {
+    "language": {},
+    "semantics": {}
+  },
+  "gates": {
+    "coverageReady": true,
+    "safetyReady": true,
+    "languageReady": true,
+    "releaseReady": true,
+    "note": "Ein Zufallstest erhöht die messbare Sicherheit, beweist aber nicht jede denkbare Schachstellung."
+  },
+  "privacy": {
+    "rawGamesPersisted": false,
+    "playerIdentitiesPersisted": false,
+    "selectedPositionsPersisted": false,
+    "aggregateResultsOnly": true,
+    "failureExamplesMayContainFen": true
+  },
+  "failureExamples": [],
+  "durationSeconds": 57.09
+}

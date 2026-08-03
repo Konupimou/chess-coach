@@ -1,5 +1,6 @@
 import { Chess } from "chess.js";
 import { classifyMoveNecessity } from "./moveNecessity.js";
+import { PRACTICALLY_EQUIVALENT_LOSS_CP } from "./coachThresholds.js";
 
 export const MATE_CENTIPAWNS = 10_000;
 
@@ -13,6 +14,79 @@ export const MOVE_QUALITY = Object.freeze({
 });
 
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
+
+const REVIEW_COACH_RATINGS = [800, 1000, 1400, 1800];
+
+function normalizeReviewCoachRating(value, fallback = 800) {
+  const raw = typeof value === "object" && value !== null
+    ? value.coachRating ?? value.learnerProfile?.rating ?? value.rating
+    : value;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return REVIEW_COACH_RATINGS.reduce((closest, candidate) => (
+    Math.abs(candidate - parsed) < Math.abs(closest - parsed) ? candidate : closest
+  ), REVIEW_COACH_RATINGS[0]);
+}
+
+function simpleReviewLanguage(value) {
+  return normalizeReviewCoachRating(value) <= 1000;
+}
+
+function reviewPieceName(type) {
+  return {
+    p: "Bauer",
+    n: "Springer",
+    b: "Läufer",
+    r: "Turm",
+    q: "Dame",
+  }[type] || "Figur";
+}
+
+function immediateReplyConsequence(move) {
+  const verified = verifiedMoveReview(move);
+  if (!verified || !Number.isFinite(verified.lossCp) || verified.lossCp < 120) return "";
+  const replyUci = verified.playedContinuationUci?.[1];
+  if (!replyUci) return "";
+
+  const game = new Chess();
+  try {
+    game.load(verified.fenBefore);
+    game.move({
+      from: verified.playedUci.slice(0, 2),
+      to: verified.playedUci.slice(2, 4),
+      promotion: verified.playedUci.slice(4, 5) || undefined,
+    });
+    const reply = game.move({
+      from: replyUci.slice(0, 2),
+      to: replyUci.slice(2, 4),
+      promotion: replyUci.slice(4, 5) || undefined,
+    });
+    if (!reply?.captured) return "";
+    const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    const canRecapture = game.moves({ verbose: true }).some((candidate) => (
+      candidate.to === reply.to && Boolean(candidate.captured)
+    ));
+    const materialLossEvenAfterRecapture = (
+      (pieceValues[reply.captured] || 0) > (pieceValues[reply.piece] || 0)
+    );
+    if (canRecapture && !materialLossEvenAfterRecapture) return "";
+    const capturedSquare = reply.flags?.includes("e")
+      ? `${reply.to[0]}${reply.from[1]}`
+      : reply.to;
+    const piece = reviewPieceName(reply.captured);
+    const nominativeArticle = piece === "Dame" ? "deine" : "dein";
+    const accusativeArticle = piece === "Dame" ? "deine" : "deinen";
+    if (reply.captured === "p") {
+      return `Nach ${reply.san} geht dein Bauer auf ${capturedSquare} verloren.`;
+    }
+    if (verified.lossCp >= 250) {
+      return `Nach ${reply.san} geht ${nominativeArticle} ${piece} verloren.`;
+    }
+    return `Nach ${reply.san} kann dein Gegner ${accusativeArticle} ${piece} gewinnen.`;
+  } catch {
+    return "";
+  }
+}
 
 export function pathToNode(node, limit = 300) {
   if (!node) return [];
@@ -297,11 +371,26 @@ export function winPercentFromCp(cp) {
 export function classifyCentipawnLoss(lossCp) {
   if (!Number.isFinite(lossCp) || lossCp < 0) return "good";
   if (lossCp <= 10) return "best";
-  if (lossCp <= 30) return "excellent";
+  if (lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP) return "excellent";
   if (lossCp <= 70) return "good";
-  if (lossCp <= 140) return "inaccuracy";
-  if (lossCp <= 280) return "mistake";
+  if (lossCp < 140) return "inaccuracy";
+  if (lossCp < 300) return "mistake";
   return "blunder";
+}
+
+function reviewQualityForDisplay(move) {
+  const supplied = Object.hasOwn(MOVE_QUALITY, move?.quality) ? move.quality : "good";
+  if (!Number.isFinite(move?.lossCp)) {
+    return ["mistake", "blunder"].includes(supplied) ? "inaccuracy" : supplied;
+  }
+  const measured = classifyCentipawnLoss(move.lossCp);
+  if (
+    measured === "best"
+    && move?.playedUci
+    && move?.bestUci
+    && move.playedUci !== move.bestUci
+  ) return "excellent";
+  return measured;
 }
 
 export function classifyAccuracy(accuracy) {
@@ -340,95 +429,171 @@ export function calculateMoveAccuracy(beforeWhiteCp, afterWhiteCp, color) {
   };
 }
 
-export function explainMoveQuality(move) {
+export function explainMoveQuality(move, options = {}) {
   if (!move || typeof move !== "object") return "Für diesen Zug liegt noch keine Bewertung vor.";
+  const rating = normalizeReviewCoachRating(
+    typeof options === "number" ? options : options?.rating ?? move,
+  );
   const verified = verifiedMoveReview(move);
   const bestSan = verifiedBestSan(verified);
-  const quality = move.quality === "best"
-    ? verified?.quality === "best"
-      ? "best"
-      : "excellent"
-    : move.quality;
+  const quality = reviewQualityForDisplay(verified || move);
   const practicallyEqual = Boolean(
     bestSan
     && verified?.playedUci !== verified?.bestUci
     && (
-      (Number.isFinite(verified?.lossCp) && verified.lossCp <= 20)
+      (Number.isFinite(verified?.lossCp)
+        && verified.lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP)
       || move.quality === "best"
     )
   );
+  const consequence = immediateReplyConsequence(verified || move);
 
+  if (practicallyEqual) {
+    return `${bestSan} geht genauso gut.`;
+  }
   if (quality === "best") {
-    return "Entspricht der ersten Stockfish-Wahl; laut Bewertung geht kein messbarer Vorteil verloren.";
+    if (rating === 800) return "Das ist ein starker Zug. Du machst deine Stellung nicht schlechter.";
+    if (rating === 1000) return "Der Zug ist stark und hält deine Stellung.";
+    if (rating === 1400) return "Der Zug hält die Bewertung fast vollständig.";
+    return "Der Zug hält die Bewertung ohne messbaren Verlust.";
   }
   if (quality === "excellent") {
-    if (practicallyEqual) {
-      return `${bestSan} ist eine genauso gute Möglichkeit.`;
+    if (rating === 800) {
+      return bestSan
+        ? `Dein Zug ist gut. ${bestSan} war auch eine gute Möglichkeit.`
+        : "Dein Zug ist gut. Du gibst fast nichts ab.";
+    }
+    if (rating === 1000) {
+      return bestSan
+        ? `Dein Zug ist sehr gut. ${bestSan} war nur wenig besser.`
+        : "Dein Zug ist sehr gut und gibt fast nichts ab.";
+    }
+    if (rating === 1400) {
+      return bestSan
+        ? `Der Zug ist fast gleichwertig mit ${bestSan}.`
+        : "Der Zug hält die Bewertung fast vollständig.";
     }
     return bestSan
-      ? `Weicht nur wenig von Stockfishs erster Wahl ${bestSan} ab.`
-      : "Weicht laut Stockfish-Bewertung nur minimal von der besten Fortsetzung ab.";
+      ? `Der Bewertungsverlust gegenüber ${bestSan} ist minimal.`
+      : "Der Bewertungsverlust ist minimal.";
   }
   if (quality === "good") {
+    if (rating === 800) {
+      return bestSan
+        ? `Der Zug ist spielbar. ${bestSan} war etwas besser.`
+        : "Der Zug ist spielbar. Deine Stellung bleibt in Ordnung.";
+    }
+    if (rating === 1000) {
+      return bestSan
+        ? `Der Zug ist gut spielbar. ${bestSan} war etwas besser.`
+        : "Der Zug ist gut spielbar und kostet dich nur wenig.";
+    }
+    if (rating === 1400) {
+      return bestSan
+        ? `Der Zug bleibt nah an ${bestSan}; du gibst nur wenig ab.`
+        : "Der Zug ist solide und gibt nur wenig von der Stellung ab.";
+    }
     return bestSan
-      ? `Bleibt nah an Stockfishs erster Wahl ${bestSan}; der Bewertungsverlust ist klein.`
-      : "Der Stockfish-Bewertungsverlust bleibt klein.";
+      ? `Gegenüber ${bestSan} kostet der Zug nur wenig in der Bewertung.`
+      : "Der Bewertungsverlust bleibt klein.";
   }
   if (quality === "inaccuracy") {
+    if (rating === 800) {
+      return bestSan
+        ? `Du gibst etwas von deiner Stellung ab. Besser war ${bestSan}.`
+        : "Du gibst etwas von deiner Stellung ab.";
+    }
+    if (rating === 1000) {
+      return bestSan
+        ? `Deine Stellung wird etwas schlechter. Besser war ${bestSan}.`
+        : "Der Zug gibt etwas von deiner Stellung ab.";
+    }
+    if (rating === 1400) {
+      return bestSan
+        ? `Deine Stellung wird etwas schlechter. Besser war ${bestSan}.`
+        : "Deine Stellung wird etwas schlechter.";
+    }
     return bestSan
-      ? `Gibt etwas Vorteil ab; genauer war ${bestSan}.`
-      : "Gibt etwas Vorteil ab und erlaubt dem Gegner mehr Gegenspiel.";
+      ? `Die Bewertung fällt spürbar. ${bestSan} hielt die Stellung besser.`
+      : "Die Bewertung fällt spürbar.";
   }
   if (quality === "mistake") {
-    return bestSan
-      ? `Verschlechtert die Stellung deutlich; ${bestSan} hielt besser dagegen.`
-      : "Verschlechtert die Stellung deutlich und übersieht eine stärkere Fortsetzung.";
+    const verdict = consequence || "Das ist ein klarer Fehler und deine Stellung wird deutlich schlechter.";
+    return bestSan ? `${verdict} Besser war ${bestSan}.` : verdict;
   }
   if (quality === "blunder") {
-    return bestSan
-      ? `Kippt die Stellung; ${bestSan} hätte den großen Verlust vermieden.`
-      : "Kippt die Stockfish-Bewertung deutlich; eine Motiv-Erklärung benötigt die zugehörige Engine-Variante.";
+    const verdict = consequence || "Das ist ein grober Fehler und deine Stellung wird viel schlechter.";
+    return bestSan ? `${verdict} Besser war ${bestSan}.` : verdict;
   }
-  return "Die Enginebewertung dieses Zuges ist noch nicht vollständig.";
+  return "Dieser Zug ist noch nicht vollständig bewertet.";
 }
 
-export function describeMoveAssessment(move) {
+export function describeMoveAssessment(move, options = {}) {
   const verified = verifiedMoveReview(move);
   if (!verified) return null;
-  const quality = Object.hasOwn(MOVE_QUALITY, verified.quality) ? verified.quality : "good";
+  const rating = normalizeReviewCoachRating(
+    typeof options === "number" ? options : options?.rating ?? move,
+  );
+  const quality = reviewQualityForDisplay(verified);
   const bestSan = verifiedBestSan(verified);
   const practicallyEqual = Boolean(
     bestSan
     && verified.playedUci !== verified.bestUci
     && (
-      (Number.isFinite(verified.lossCp) && verified.lossCp <= 20)
+      (Number.isFinite(verified.lossCp)
+        && verified.lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP)
       || move.quality === "best"
     )
   );
+  const consequence = immediateReplyConsequence(verified);
   const descriptions = {
     best: {
       lead: "Das war der beste Zug.",
-      reason: "Der Zug passt hier richtig gut und gibt nichts her.",
+      reason: rating === 800
+        ? "Du machst deine Stellung damit nicht schlechter."
+        : rating === 1000
+          ? "Der Zug hält deine Stellung."
+          : rating === 1400
+            ? "Der Zug hält die Bewertung fast vollständig."
+            : "Der Zug hält die Bewertung ohne messbaren Verlust.",
     },
     excellent: {
       lead: "Stark gespielt.",
-      reason: "Damit bleibst du praktisch genauso gut im Spiel wie mit der ersten Wahl.",
+      reason: rating === 800
+        ? "Du gibst damit fast nichts ab."
+        : rating === 1000
+          ? "Damit bleibst du fast genauso gut."
+          : rating === 1400
+            ? "Der Zug ist fast genauso gut."
+            : "Der Unterschied zum ersten Vorschlag ist minimal.",
     },
     good: {
       lead: "Das passt.",
-      reason: "Die Stellung bleibt gut spielbar; da ist nichts Dramatisches passiert.",
+      reason: rating === 800
+        ? "Du gibst mit diesem Zug nur wenig ab."
+        : rating === 1000
+          ? "Der Zug kostet dich nur wenig."
+          : rating === 1400
+            ? "Der Zug kostet nur wenig."
+            : "Der Bewertungsverlust bleibt klein.",
     },
     inaccuracy: {
-      lead: "Fast – da war noch etwas mehr drin.",
-      reason: "So gibst du ein bisschen von deiner guten Stellung her und lässt mehr Gegenspiel zu.",
+      lead: "Der Zug ist spielbar.",
+      reason: rating === 800
+        ? "Du gibst etwas von deiner Stellung ab."
+        : rating === 1000
+          ? "Deine Stellung wird etwas schlechter."
+          : rating === 1400
+            ? "Deine Stellung wird etwas schlechter."
+            : "Die Bewertung fällt spürbar.",
     },
     mistake: {
       lead: "Das ist ein klarer Fehler.",
-      reason: "Deine Stellung wird dadurch deutlich schlechter.",
+      reason: consequence || "Deine Stellung wird dadurch deutlich schlechter.",
     },
     blunder: {
       lead: "Das ist ein grober Fehler.",
-      reason: "Deine Stellung wird dadurch viel schlechter.",
+      reason: consequence || "Deine Stellung wird dadurch viel schlechter.",
     },
   };
   return {
@@ -438,8 +603,8 @@ export function describeMoveAssessment(move) {
     reason: descriptions[quality].reason,
     alternative: bestSan
       ? practicallyEqual
-        ? `Genauso gut geht in der Stellung davor ${bestSan}.`
-        : `Besser geht’s in der Stellung davor mit ${bestSan}.`
+        ? `Genauso gut geht ${bestSan}.`
+        : `Besser war ${bestSan}.`
       : "",
   };
 }
@@ -453,16 +618,16 @@ export function groundedSuggestionReason({ rank = 1, san = "", uci = "" } = {}) 
   } else if (/[+#]$/.test(notation)) {
     idea = "Der Zug greift den König direkt an und zwingt zu einer Antwort.";
   } else if (notation.includes("x")) {
-    idea = "Der Zug nutzt einen möglichen Abtausch und verändert dadurch die Stellung konkret.";
+    idea = "Der Zug schlägt eine gegnerische Figur oder einen Bauern.";
   } else if (/^[a-h][1-8][a-h][1-8][qrbn]$/.test(move)) {
     idea = "Der Zug wandelt einen Bauern um und schafft dadurch unmittelbar neues Material.";
   } else if (["d4", "e4", "d5", "e5"].includes(move.slice(2, 4))) {
     idea = "Der Zug erhöht den Einfluss im Zentrum.";
   }
-  const comparison = rank === 1
-    ? "Der Zug packt die wichtigste Aufgabe der Stellung direkt an."
-    : "Die Idee funktioniert, aber die erste Wahl trifft den Kern der Stellung noch etwas besser.";
-  return [idea, comparison].filter(Boolean).join(" ");
+  if (idea) return idea;
+  return rank === 1
+    ? "Der Zug wurde als stärkste Möglichkeit berechnet."
+    : "Der Zug ist spielbar. Der erste Vorschlag wurde besser bewertet.";
 }
 
 export function analysisEntryFromInfo(info) {
@@ -628,11 +793,18 @@ export function selectCriticalMoments(moves, { playerColor = null, limit = 3 } =
 export function summarizeGameReview(
   path,
   evaluations,
-  { depth = null, final = true, playerColor = null } = {},
+  {
+    depth = null,
+    final = true,
+    playerColor = null,
+    coachRating = null,
+    learnerProfile = null,
+  } = {},
 ) {
   const nodes = Array.isArray(path) ? path : [];
   const entries = Array.isArray(evaluations) ? evaluations : [];
   const moves = [];
+  const reviewCoachRating = normalizeReviewCoachRating(coachRating ?? learnerProfile);
 
   for (let index = 1; index < nodes.length; index += 1) {
     const node = nodes[index];
@@ -727,6 +899,7 @@ export function summarizeGameReview(
       },
       moveNecessity,
       engineDepth: Number.isFinite(before?.depth) ? before.depth : null,
+      coachRating: reviewCoachRating,
       accuracy: rounded(metrics.accuracy),
       lossCp: Math.round(metrics.lossCp),
       winPercentLoss: rounded(metrics.winPercentLoss, 2),
@@ -734,7 +907,8 @@ export function summarizeGameReview(
         ? "excellent"
         : metrics.quality,
     };
-    reportMove.explanation = explainMoveQuality(reportMove);
+    reportMove.quality = reviewQualityForDisplay(reportMove);
+    reportMove.explanation = explainMoveQuality(reportMove, { rating: reviewCoachRating });
     moves.push(reportMove);
   }
 
@@ -764,6 +938,7 @@ export function summarizeGameReview(
     blackAverageCentipawnLoss: rounded(mean(blackMoves.map((move) => move.lossCp))),
     counts,
     moves,
+    coachRating: reviewCoachRating,
     playerColor: playerColor === "w" || playerColor === "b" ? playerColor : null,
     criticalMoments: selectCriticalMoments(moves, { playerColor, limit: 3 }),
   };
@@ -775,31 +950,70 @@ export function reviewDepthForPlies(plies, preferredDepth = 15) {
   return Math.max(8, Math.min(18, adaptive, preferred));
 }
 
+function reviewPositionPhaseFacts(fen) {
+  if (typeof fen !== "string" || !fen.trim()) return null;
+  const game = new Chess();
+  try {
+    game.load(fen);
+  } catch {
+    return null;
+  }
+
+  const phaseValues = { n: 1, b: 1, r: 2, q: 4 };
+  let phaseUnits = 0;
+  let nonPawnPieces = 0;
+  let queens = 0;
+  game.board().flat().forEach((piece) => {
+    if (!piece || !Object.hasOwn(phaseValues, piece.type)) return;
+    phaseUnits += phaseValues[piece.type];
+    nonPawnPieces += 1;
+    if (piece.type === "q") queens += 1;
+  });
+
+  const startingMinorPieces = [
+    ["b1", "w", "n"], ["g1", "w", "n"],
+    ["c1", "w", "b"], ["f1", "w", "b"],
+    ["b8", "b", "n"], ["g8", "b", "n"],
+    ["c8", "b", "b"], ["f8", "b", "b"],
+  ];
+  const undevelopedMinorPieces = startingMinorPieces.filter(([square, color, type]) => {
+    const piece = game.get(square);
+    return piece?.color === color && piece?.type === type;
+  }).length;
+
+  return { phaseUnits, nonPawnPieces, queens, undevelopedMinorPieces };
+}
+
 export function reviewPhaseForMove(move) {
   const moveNumber = Number.parseInt(move?.moveNumber, 10) || 1;
-  let nonPawnMaterial = null;
-  let queens = null;
-  try {
-    const game = new Chess(move?.fenBefore || "");
-    const values = { n: 3, b: 3, r: 5, q: 9 };
-    nonPawnMaterial = 0;
-    queens = 0;
-    game.board().flat().forEach((piece) => {
-      if (!piece || !Object.hasOwn(values, piece.type)) return;
-      nonPawnMaterial += values[piece.type];
-      if (piece.type === "q") queens += 1;
-    });
-  } catch {
-    // Die Zugnummer bleibt ein vorsichtiger Fallback für ältere gespeicherte Reviews.
-  }
-  if (moveNumber <= 15 && (!Number.isFinite(nonPawnMaterial) || nonPawnMaterial >= 40)) {
-    return "opening";
-  }
+  const facts = reviewPositionPhaseFacts(move?.fenBefore || "");
+  if (!facts) return moveNumber <= 12 ? "opening" : "middlegame";
+
+  const { phaseUnits, nonPawnPieces, queens, undevelopedMinorPieces } = facts;
   if (
-    Number.isFinite(nonPawnMaterial)
-    && (nonPawnMaterial <= 14 || (queens === 0 && nonPawnMaterial <= 20))
+    phaseUnits <= 8
+    || nonPawnPieces <= 4
+    || (queens === 0 && phaseUnits <= 10)
   ) return "endgame";
+  if (
+    (moveNumber <= 8 && phaseUnits >= 12)
+    || (moveNumber <= 16 && phaseUnits >= 14 && undevelopedMinorPieces >= 2)
+    || (moveNumber <= 12 && phaseUnits >= 18)
+  ) return "opening";
   return "middlegame";
+}
+
+export function openingMoveReviewPresentation(move, { inOpeningBook = false } = {}) {
+  if (reviewPhaseForMove(move) !== "opening") return null;
+  const quality = reviewQualityForDisplay(move);
+  if (["mistake", "blunder"].includes(quality)) return null;
+  return {
+    label: inOpeningBook ? "Spielbare Eröffnungswahl" : "Eröffnungszug",
+    reason: inOpeningBook
+      ? "Dieser Zug steht im lokalen Eröffnungsbuch. In der Eröffnung gibt es oft mehrere gute Wege."
+      : "Diese Stellung gehört noch zur Eröffnung. Ohne passenden Buchtreffer zeigt der Coach hier keine Bestzug-Rangliste.",
+    hideEngineRanking: true,
+  };
 }
 
 export function buildCoachPhaseSummary(report) {
@@ -810,7 +1024,8 @@ export function buildCoachPhaseSummary(report) {
   };
   const perspective = ["w", "b"].includes(report?.playerColor) ? report.playerColor : null;
   const moves = (Array.isArray(report?.moves) ? report.moves : [])
-    .filter((move) => move && (!perspective || move.color === perspective));
+    .filter((move) => move && (!perspective || move.color === perspective))
+    .map((move) => ({ ...move, quality: reviewQualityForDisplay(move) }));
   return ["opening", "middlegame", "endgame"].flatMap((phase) => {
     const phaseMoves = moves.filter((move) => reviewPhaseForMove(move) === phase);
     if (phaseMoves.length === 0) return [];
@@ -830,17 +1045,26 @@ export function buildCoachPhaseSummary(report) {
       strongMoves: strong.length,
       criticalMoves: critical.length,
       positive: bestExample
-        ? `${moveLabel(bestExample)} war eine deiner stabilen Entscheidungen.`
-        : "In dieser Phase ist noch keine klar starke Einzelentscheidung belegt.",
+        ? `${moveLabel(bestExample)} war gut gespielt.`
+        : "In dieser Phase ist noch kein klar starker Zug belegt.",
       focus: focus
-        ? `${moveLabel(focus)} ist der wichtigste Moment zum erneuten Durchdenken.`
-        : "In dieser Phase gab es keinen deutlichen Bewertungseinbruch.",
+        ? `${moveLabel(focus)} solltest du dir noch einmal ansehen.`
+        : "In dieser Phase gab es keinen großen Fehler.",
     }];
   });
 }
 
-export function buildLearningSummary(report) {
-  const allMoves = Array.isArray(report?.moves) ? report.moves.filter(Boolean) : [];
+export function buildLearningSummary(report, options = {}) {
+  const rating = normalizeReviewCoachRating(
+    typeof options === "number" ? options : options?.rating ?? report,
+  );
+  const simple = simpleReviewLanguage(rating);
+  const allMoves = Array.isArray(report?.moves)
+    ? report.moves.filter(Boolean).map((move) => ({
+      ...move,
+      quality: reviewQualityForDisplay(move),
+    }))
+    : [];
   const perspective = report?.playerColor === "w" || report?.playerColor === "b"
     ? report.playerColor
     : null;
@@ -850,24 +1074,27 @@ export function buildLearningSummary(report) {
   if (moves.length === 0) {
     return {
       strongestPhase: "Noch nicht zuverlässig erkennbar",
-      strongestPhaseDetail: "Dafür müssen zuerst mehrere Züge vollständig analysiert werden.",
-      biggestLesson: "Es liegt noch kein belastbarer Schlüsselmoment vor.",
-      recurringPattern: "Mit weiteren analysierten Zügen kann der Coach wiederkehrende Muster erkennen.",
-      learningGoal: "Analysiere zunächst eine vollständige Partie.",
-      exercise: "Spiele oder importiere eine Partie und starte danach die vollständige Analyse.",
+      strongestPhaseDetail: "Dafür braucht der Coach zuerst mehrere bewertete Züge.",
+      biggestLesson: "Es gibt noch keinen sicheren Schlüsselmoment.",
+      biggestLessonTitle: "Noch kein Moment bewertet",
+      recurringPattern: "Mit mehr bewerteten Zügen kann der Coach nach Mustern suchen.",
+      learningGoal: "Lass zuerst eine vollständige Partie bewerten.",
+      exercise: "Spiele oder importiere eine Partie und starte danach die Coach-Analyse.",
       confidence: "low",
     };
   }
 
-  const phaseNames = ["Eröffnung", "Mittelspiel", "Endphase"];
-  const phaseSize = Math.max(1, Math.ceil(moves.length / 3));
-  const phases = phaseNames
-    .map((name, index) => {
+  const phases = [
+    ["opening", "Eröffnung"],
+    ["middlegame", "Mittelspiel"],
+    ["endgame", "Endspiel"],
+  ]
+    .map(([id, name]) => {
       const values = moves
-        .slice(index * phaseSize, index === 2 ? moves.length : (index + 1) * phaseSize)
+        .filter((move) => reviewPhaseForMove(move) === id)
         .map((move) => move.accuracy)
         .filter(Number.isFinite);
-      return { name, values, average: mean(values) };
+      return { id, name, values, average: mean(values) };
     })
     .filter((phase) => phase.values.length > 0);
   const strongest = [...phases].sort((left, right) => right.average - left.average)[0];
@@ -882,43 +1109,65 @@ export function buildLearningSummary(report) {
     ? report.criticalMoments.find((move) => !perspective || move?.color === perspective)
     : null) || biggest || moves[0];
   const focusedLabel = `${focusedMoment.moveNumber}${focusedMoment.color === "b" ? "…" : "."} ${focusedMoment.san}`;
-  const focusedComparison = focusedMoment.bestSan
-    ? `vergleiche danach mit Stockfishs ${focusedMoment.bestSan} und spiele die gespeicherte Hauptvariante nach`
-    : Array.isArray(focusedMoment.bestPvSan) && focusedMoment.bestPvSan.length > 0
-      ? "vergleiche danach mit der gespeicherten Stockfish-Hauptvariante"
-      : "notiere deine Kandidatenzüge und prüfe danach mögliche Drohungen sowie ungedeckte Figuren";
+  const verifiedFocus = verifiedMoveReview(focusedMoment);
+  const focusedComparison = verifiedFocus?.bestSan
+    ? `Spiele danach ${verifiedFocus.bestSan} und die kurze Variante nach.`
+    : verifiedFocus?.bestPvSan?.length > 0
+      ? "Spiele danach die gespeicherte Variante nach."
+      : "Notiere zwei mögliche Züge. Prüfe dann die Antwort des Gegners.";
+  const focusedExercise = `Stelle die Position vor ${focusedLabel} wieder auf. Finde selbst einen guten Zug. ${focusedComparison}`;
 
   let recurringPattern;
   let learningGoal;
   let exercise;
   if (serious.length >= 2) {
-    recurringPattern = `${serious.length} deutliche Stockfish-Bewertungseinbrüche zeigen wiederholt kritische Entscheidungen; ein gemeinsames Schachmotiv lässt sich daraus allein noch nicht sicher ableiten.`;
-    learningGoal = "Vergleiche bei kritischen Entscheidungen deinen Zug mit Stockfishs erster Wahl und der zugehörigen Hauptvariante.";
-    exercise = `Stelle die Position vor ${focusedLabel} erneut auf. Finde zuerst selbst den stärksten Zug, ${focusedComparison}.`;
+    recurringPattern = simple
+      ? `Bei ${serious.length} Zügen wurde deine Stellung deutlich schlechter. Ein gemeinsamer Grund ist noch nicht sicher.`
+      : `${serious.length} klare Bewertungsverluste zeigen mehrere kritische Entscheidungen. Ein gemeinsames Motiv ist noch nicht sicher belegt.`;
+    learningGoal = simple
+      ? "Halte vor jedem Zug kurz an und prüfe die Antwort des Gegners."
+      : "Vergleiche bei kritischen Entscheidungen deinen Zug mit der besten geprüften Variante.";
+    exercise = focusedExercise;
   } else if (inaccuracies.length >= 2) {
-    recurringPattern = `${inaccuracies.length} Ungenauigkeiten zeigen eher mehrere kleine Planungsverluste als einen einzelnen großen Einbruch.`;
-    learningGoal = "Vergleiche die kleinen Abweichungen gezielt mit Stockfishs erster Wahl.";
-    exercise = `Stelle die Position vor ${focusedLabel} erneut auf. Finde zuerst selbst den stärksten Zug, ${focusedComparison}.`;
+    recurringPattern = simple
+      ? `Bei ${inaccuracies.length} Zügen hast du jeweils etwas von deiner Stellung abgegeben.`
+      : `${inaccuracies.length} kleine Verluste deuten auf mehrere ungenaue Entscheidungen statt eines großen Fehlers.`;
+    learningGoal = simple
+      ? "Suche vor deinem Zug nach zwei guten Möglichkeiten und vergleiche sie."
+      : "Vergleiche bei diesen Entscheidungen mindestens zwei Kandidatenzüge.";
+    exercise = focusedExercise;
   } else if (strong.length >= Math.max(2, Math.ceil(moves.length * 0.6))) {
-    recurringPattern = "Die vorhandenen Bewertungen zeigen überwiegend stabile Entscheidungen ohne häufige klare Einbrüche.";
-    learningGoal = "Untersuche, bei welchen Entscheidungen dein Zug mit Stockfishs erster Wahl übereinstimmte.";
-    exercise = `Stelle die Position vor ${focusedLabel} erneut auf und erkläre, warum dein Zug die Stockfish-Bewertung stabil hielt.`;
+    recurringPattern = simple
+      ? "Du hast meist gute, sichere Züge gefunden."
+      : "Du hast überwiegend stabile Entscheidungen ohne klare Einbrüche getroffen.";
+    learningGoal = "Erkläre bei deinen guten Zügen, welche Aufgabe sie lösen.";
+    exercise = `Stelle die Position vor ${focusedLabel} erneut auf und erkläre, warum dein Zug dort gut funktioniert.`;
   } else {
-    recurringPattern = "Die vorhandenen Daten zeigen noch kein eindeutiges wiederkehrendes Fehlermuster.";
-    learningGoal = "Arbeite zunächst mit den konkret gespeicherten Stockfish-Schlüsselmomenten.";
-    exercise = `Stelle die Position vor ${focusedLabel} erneut auf. Finde zuerst selbst den stärksten Zug, ${focusedComparison}.`;
+    recurringPattern = "Die bewerteten Züge zeigen noch kein klares Fehlermuster.";
+    learningGoal = "Arbeite zuerst mit dem wichtigsten Moment dieser Partie.";
+    exercise = focusedExercise;
   }
 
   const biggestLesson = biggest
-    ? `${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}: ${biggest.explanation || explainMoveQuality(biggest)}`
-    : "Kein einzelner Zug hebt sich zuverlässig als größter Fehler ab.";
+    ? `${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}: ${explainMoveQuality(biggest, { rating })}`
+    : "Kein einzelner Zug hebt sich sicher als größter Fehler ab.";
+  const biggestNeedsReview = Boolean(
+    biggest && ["inaccuracy", "mistake", "blunder"].includes(biggest.quality),
+  );
 
   return {
     strongestPhase: strongest?.name || "Stabilste Phase",
     strongestPhaseDetail: strongest
-      ? `Dort lag deine geschätzte Genauigkeit bei rund ${strongest.average.toFixed(0)} %.`
-      : "Noch nicht zuverlässig erkennbar.",
+      ? simple
+        ? `Deine Züge hatten hier rund ${strongest.average.toFixed(0)} % Genauigkeit.`
+        : `In dieser Phase lag deine Zuggenauigkeit bei rund ${strongest.average.toFixed(0)} %.`
+      : "Noch nicht sicher erkennbar.",
     biggestLesson,
+    biggestLessonTitle: !biggest
+      ? "Noch kein Moment bewertet"
+      : biggestNeedsReview
+        ? "Hier lohnt sich ein zweiter Blick"
+        : "Das hat gut funktioniert",
     recurringPattern,
     learningGoal,
     exercise,
@@ -926,51 +1175,54 @@ export function buildLearningSummary(report) {
   };
 }
 
-export function buildFallbackFeedback(report) {
+export function buildFallbackFeedback(report, options = {}) {
   if (!report || report.analyzedMoves === 0) {
-    return "**Noch keine vollständige Bewertung:** Für ein aussagekräftiges Feedback braucht die Partie mindestens einen analysierten Zug.";
+    return "**Noch keine vollständige Bewertung:** Der Coach braucht mindestens einen bewerteten Zug.";
   }
+  const rating = normalizeReviewCoachRating(
+    typeof options === "number" ? options : options?.rating ?? report,
+  );
   const perspective = report.playerColor === "w" || report.playerColor === "b"
     ? report.playerColor
     : null;
   const reportMoves = Array.isArray(report.moves) ? report.moves : [];
   const perspectiveMoves = reportMoves
     .filter((move) => move && typeof move === "object")
-    .filter((move) => !perspective || move.color === perspective);
+    .filter((move) => !perspective || move.color === perspective)
+    .map((move) => ({ ...move, quality: reviewQualityForDisplay(move) }));
   const perspectiveAccuracy = perspective === "w"
     ? report.whiteAccuracy
     : perspective === "b"
       ? report.blackAccuracy
       : report.overallAccuracy;
   const accuracy = Number.isFinite(perspectiveAccuracy)
-    ? `${perspectiveAccuracy.toFixed(1)} %`
-    : "noch offen";
+    ? `Deine Zuggenauigkeit lag bei ${perspectiveAccuracy.toFixed(1)} %.`
+    : "Deine Zuggenauigkeit ist noch offen.";
   const serious = perspectiveMoves
     .filter((move) => move.quality === "mistake" || move.quality === "blunder")
     .length;
+  const seriousLabel = serious === 1 ? "einen großen Fehler" : `${serious} große Fehler`;
+  const moveCountLabel = perspectiveMoves.length === 1 ? "einem Zug" : `${perspectiveMoves.length} Zügen`;
   const criticalMoments = Array.isArray(report.criticalMoments) ? report.criticalMoments : [];
   const biggest = criticalMoments
     .find((move) => move && typeof move === "object" && (!perspective || move.color === perspective));
-  const focus = biggest
-    ? `Prüfe besonders **${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}**. Dort veränderte sich die Stellung deutlich${biggest.bestSan ? `; stärker war **${biggest.bestSan}**` : ""}.`
-    : "Die Partie enthält keinen klaren kritischen Einbruch.";
-  const verdict = perspectiveAccuracy >= 90
-    ? "Du hast sehr konstant gespielt."
-    : perspectiveAccuracy >= 75
-      ? "Die Partie war insgesamt solide, mit einigen konkreten Verbesserungsmöglichkeiten."
-      : "Die größten Fortschritte liegen laut Auswertung in den Stellungen mit den stärksten Bewertungsabfällen.";
   const strongest = [...perspectiveMoves]
-    .filter((move) => move.quality === "best" || move.quality === "excellent")
+    .filter((move) => ["best", "excellent", "good"].includes(move.quality))
     .sort((left, right) => (right.accuracy || 0) - (left.accuracy || 0))[0];
   const strength = strongest
-    ? `Besonders gelungen war **${strongest.moveNumber}${strongest.color === "b" ? "…" : "."} ${strongest.san}**: ${strongest.explanation || "Der Zug hielt die Stellung präzise zusammen."}`
-    : "Die Partie hatte solide Phasen, auch wenn noch kein einzelner Zug deutlich herausragte.";
+    ? `**${strongest.moveNumber}${strongest.color === "b" ? "…" : "."} ${strongest.san}** war ein guter Zug.`
+    : "Es ist noch kein einzelner starker Zug sicher belegt.";
+  const exercise = biggest
+    ? `Stelle die Position vor **${biggest.moveNumber}${biggest.color === "b" ? "…" : "."} ${biggest.san}** wieder auf und suche zwei Züge. ${explainMoveQuality(biggest, { rating })}`
+    : strongest
+      ? `Sieh dir **${strongest.moveNumber}${strongest.color === "b" ? "…" : "."} ${strongest.san}** noch einmal an. Erkläre mit eigenen Worten, welche Aufgabe der Zug löst.`
+      : perspectiveMoves.length > 0
+        ? `Sieh dir **${perspectiveMoves[0].moveNumber}${perspectiveMoves[0].color === "b" ? "…" : "."} ${perspectiveMoves[0].san}** noch einmal an. Prüfe zuerst die Antwort des Gegners.`
+        : "Lass zuerst mindestens einen eigenen Zug bewerten.";
 
   return [
-    `**Spielverlauf:** ${accuracy} geschätzte Engine-Genauigkeit. ${verdict}`,
-    `**Engine-Muster:** ${serious} Fehler oder Patzer bei ${perspectiveMoves.length} eigenen analysierten Zügen. Ein gemeinsames taktisches Motiv wird ohne passende Stockfish-PV bewusst nicht behauptet.`,
-    `**Das war stark:** ${strength}`,
-    `**Das kannst du verbessern:** ${focus}`,
-    "**Trainingsfokus:** Spiele die gespeicherten Stockfish-Hauptvarianten der größten Bewertungseinbrüche nach und vergleiche sie mit deinen Partiezügen.",
+    `**Kurz gesagt:** ${accuracy} Du hattest ${seriousLabel} in ${moveCountLabel}.`,
+    `**Das war gut:** ${strength}`,
+    `**Nächster Schritt:** ${exercise}`,
   ].join("\n\n");
 }
