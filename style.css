@@ -309,20 +309,20 @@ summary:focus-visible,
   overflow: hidden;
   border: 0;
   border-radius: 10px;
-  background: #202a35;
+  background: #26322e;
   box-shadow:
     0 18px 44px rgba(0, 0, 0, 0.28),
     0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 #board .white-1e1d7 {
-  background-color: #e8d7b7;
-  color: #86684f;
+  background-color: #dfe6dc;
+  color: #66786e;
 }
 
 #board .black-3c85d {
-  background-color: #9d775c;
-  color: #ead9bb;
+  background-color: #718477;
+  color: #dfe6dc;
 }
 
 #board .square-55d63 {
@@ -332,6 +332,7 @@ summary:focus-visible,
 #board .piece-417db,
 body > .piece-417db {
   backface-visibility: hidden;
+  image-rendering: auto;
   transform: translateZ(0);
   user-select: none;
 }

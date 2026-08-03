@@ -240,7 +240,7 @@ export class ChessApp {
     this.board = window.Chessboard("board", {
       position: this.currentNode.fen,
       draggable: true,
-      pieceTheme: "./libs/img/{piece}.png",
+      pieceTheme: "/libs/img/rhosgfx/{piece}.svg",
       moveSpeed: this.reduceBoardMotion ? 0 : 130,
       appearSpeed: this.reduceBoardMotion ? 0 : 90,
       snapSpeed: this.reduceBoardMotion ? 0 : 55,

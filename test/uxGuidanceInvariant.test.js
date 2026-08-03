@@ -56,6 +56,20 @@ test("rechte Spalte zeigt vorläufig nur die Zugliste und pausiert Analyse-Assis
   assert.match(appSource, /Technische Auswertung anzeigen/);
 });
 
+test("Brett nutzt den scharfen CC0-SVG-Figurensatz", () => {
+  assert.match(appSource, /pieceTheme: "\/libs\/img\/rhosgfx\/\{piece\}\.svg"/);
+  for (const piece of ["bB", "bK", "bN", "bP", "bQ", "bR", "wB", "wK", "wN", "wP", "wQ", "wR"]) {
+    const svg = readFileSync(
+      new URL(`../public/libs/img/rhosgfx/${piece}.svg`, import.meta.url),
+      "utf8",
+    );
+    assert.match(svg, /^<svg\b/);
+    assert.doesNotMatch(svg, /<script|foreignObject|(?:xlink:)?href=/i);
+  }
+  assert.match(styleSource, /#board \.white-1e1d7[\s\S]*#dfe6dc/);
+  assert.match(styleSource, /#board \.black-3c85d[\s\S]*#718477/);
+});
+
 test("Eröffnungsbuch hält die Engine ruhig und Engine-Updates werden gedrosselt", () => {
   assert.match(appSource, /hasOpeningDatabaseRecommendation/);
   assert.match(appSource, /this\.engine\?\.cancelSearch\?\.\(\)/);

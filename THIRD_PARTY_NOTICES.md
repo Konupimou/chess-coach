@@ -1,5 +1,18 @@
 # Third-party notices
 
+## RhosGFX chess pieces
+
+- Asset: **RhosGFX chess piece set**
+- Author: RhosGFX
+- Source: https://github.com/lichess-org/lila/tree/master/public/piece/rhosgfx
+- Pinned Lichess commit: `32b4f7a57a006702d22015b01b1fa1dd97239513`
+- Imported: 3 August 2026
+- License: CC0 1.0 Universal
+
+The 12 unchanged SVG piece files are stored in `public/libs/img/rhosgfx`.
+The Lichess source repository identifies this set as CC0 and links the original
+author at https://rhosgfx.itch.io/.
+
 ## Lichess Chess Openings
 
 - Dataset: **Chess opening names**
