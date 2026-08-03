@@ -234,6 +234,8 @@ export class ChessApp {
     this.boardAnimationTimer = null;
     this.pendingDragBoardSync = false;
     this.pendingMoveUiRefresh = false;
+    this.moveUiRefreshHandle = null;
+    this.moveUiRefreshHandleType = "";
 
     this.board = window.Chessboard("board", {
       position: this.currentNode.fen,
@@ -256,7 +258,7 @@ export class ChessApp {
         }
         this.clearBoardDragHighlights();
         this.updateLastMoveHighlights();
-        this.flushAppliedMoveUiRefresh();
+        this.scheduleAppliedMoveUiRefresh();
         this.moveArrows?.setVisible(true);
       },
       onSnapbackEnd: () => {
@@ -264,7 +266,7 @@ export class ChessApp {
         this.clearBoardDragHighlights();
         this.board.position(this.game.fen(), false);
         this.updateLastMoveHighlights();
-        this.flushAppliedMoveUiRefresh();
+        this.scheduleAppliedMoveUiRefresh();
         this.moveArrows?.setVisible(true);
       }
     });
@@ -2080,6 +2082,7 @@ export class ChessApp {
     }
     const legalMoves = this.game.moves({ square: source, verbose: true });
     if (legalMoves.length === 0) return false;
+    this.cancelScheduledMoveUiRefresh();
     this.boardEl?.querySelector(`.square-${source}`)?.classList.add("board-drag-source");
     legalMoves.forEach((move) => {
       const square = this.boardEl?.querySelector(`.square-${move.to}`);
@@ -2103,19 +2106,24 @@ export class ChessApp {
 
   updateLastMoveHighlights() {
     if (!this.boardEl) return;
+    const move = this.currentNode?.move;
+    const fromSquare = move?.from
+      ? this.boardEl.querySelector(`.square-${move.from}`)
+      : null;
+    const toSquare = move?.to
+      ? this.boardEl.querySelector(`.square-${move.to}`)
+      : null;
+    if (
+      this.boardEl.querySelector(".board-last-move-from") === fromSquare
+      && this.boardEl.querySelector(".board-last-move-to") === toSquare
+    ) return;
     this.boardEl
       .querySelectorAll(".board-last-move-from, .board-last-move-to")
       .forEach((square) => {
         square.classList.remove("board-last-move-from", "board-last-move-to");
       });
-    const move = this.currentNode?.move;
-    if (!move?.from || !move?.to) return;
-    this.boardEl
-      .querySelector(`.square-${move.from}`)
-      ?.classList.add("board-last-move-from");
-    this.boardEl
-      .querySelector(`.square-${move.to}`)
-      ?.classList.add("board-last-move-to");
+    fromSquare?.classList.add("board-last-move-from");
+    toSquare?.classList.add("board-last-move-to");
   }
 
   applyMove(moveSpec, { actor = "analysis", deferBoardSync = false } = {}) {
@@ -2129,10 +2137,12 @@ export class ChessApp {
     if (!move) return null;
 
     this.currentNode = addMoveToTree(this.currentNode, move, this.game.fen());
-    this.currentNode.result = this.getGameResult();
+    const deferAnalysisUi = deferBoardSync && this.appMode === "analysis";
+    this.currentNode.result = deferAnalysisUi ? "*" : this.getGameResult();
     this.gameReviewReport = null;
     this.savedGameReview = null;
-    this.markGameDirty();
+    if (deferAnalysisUi) this.gameDirty = true;
+    else this.markGameDirty();
 
     if (this.appMode === "play" && this.playSession.active) {
       this.playSession.expectedFen = null;
@@ -2154,7 +2164,7 @@ export class ChessApp {
 
     this.pendingMoveUiRefresh = true;
     if (deferBoardSync) {
-      this.pendingDragBoardSync = true;
+      this.pendingDragBoardSync = /[ekqp]/.test(move.flags || "");
     } else if (actor === "engine") {
       this.board.position(this.game.fen());
     } else {
@@ -2163,9 +2173,41 @@ export class ChessApp {
     return move;
   }
 
+  cancelScheduledMoveUiRefresh() {
+    if (this.moveUiRefreshHandle === null) return;
+    if (
+      this.moveUiRefreshHandleType === "idle"
+      && typeof window.cancelIdleCallback === "function"
+    ) {
+      window.cancelIdleCallback(this.moveUiRefreshHandle);
+    } else {
+      window.clearTimeout(this.moveUiRefreshHandle);
+    }
+    this.moveUiRefreshHandle = null;
+    this.moveUiRefreshHandleType = "";
+  }
+
+  scheduleAppliedMoveUiRefresh() {
+    if (!this.pendingMoveUiRefresh || this.destroyed) return;
+    this.cancelScheduledMoveUiRefresh();
+    const run = () => {
+      this.moveUiRefreshHandle = null;
+      this.moveUiRefreshHandleType = "";
+      this.flushAppliedMoveUiRefresh();
+    };
+    if (typeof window.requestIdleCallback === "function") {
+      this.moveUiRefreshHandleType = "idle";
+      this.moveUiRefreshHandle = window.requestIdleCallback(run, { timeout: 160 });
+    } else {
+      this.moveUiRefreshHandleType = "timeout";
+      this.moveUiRefreshHandle = window.setTimeout(run, 32);
+    }
+  }
+
   flushAppliedMoveUiRefresh() {
     if (!this.pendingMoveUiRefresh || this.destroyed) return;
     this.pendingMoveUiRefresh = false;
+    this.currentNode.result = this.getGameResult();
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
@@ -2220,7 +2262,7 @@ export class ChessApp {
     }
     this.boardSurface?.classList.remove("is-navigating");
     this.updateLastMoveHighlights();
-    this.flushAppliedMoveUiRefresh();
+    this.scheduleAppliedMoveUiRefresh();
     if (!this.previewState && !this.moveListPreviewState) {
       this.moveArrows?.setVisible(true);
     }
@@ -9201,6 +9243,7 @@ export class ChessApp {
     this.suggestionCoachController?.abort();
     if (this.suggestionCoachTimer) window.clearTimeout(this.suggestionCoachTimer);
     if (this.suggestionRenderTimer) window.clearTimeout(this.suggestionRenderTimer);
+    this.cancelScheduledMoveUiRefresh();
     this.moveExplanationControllers.forEach((controller) => controller.abort());
     this.moveExplanationControllers.clear();
     this.coachGameGeneration += 1;

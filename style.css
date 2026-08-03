@@ -375,6 +375,16 @@ body > .piece-417db {
     inset 0 0 0 3px rgba(255, 218, 130, 0.48);
 }
 
+#board .board-last-move-to .piece-417db {
+  animation: board-piece-land 150ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes board-piece-land {
+  0% { transform: translateZ(0) scale(0.965); }
+  58% { transform: translateZ(0) scale(1.025); }
+  100% { transform: translateZ(0) scale(1); }
+}
+
 #board .notation-322f9 {
   z-index: 2;
   padding: 1px 2px;
@@ -4846,6 +4856,10 @@ button.perspective-alternative-button,
   .card button {
     animation: none;
     transition: none;
+  }
+
+  #board .board-last-move-to .piece-417db {
+    animation: none;
   }
 
   #board .piece-success-pop,

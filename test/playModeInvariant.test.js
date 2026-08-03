@@ -125,8 +125,10 @@ test("Klicknavigation animiert genau ein legales Ziel und beendet alte Vorschaue
   assert.match(appSource, /moveSpeed: this\.reduceBoardMotion \? 0 : 130/);
   assert.match(appSource, /dragThrottleRate:\s*8/);
   assert.match(appSource, /deferBoardSync: fromDrag/);
-  assert.match(appSource, /this\.pendingDragBoardSync = true/);
+  assert.match(appSource, /this\.pendingDragBoardSync = \/\[ekqp\]\//);
   assert.match(appSource, /this\.pendingMoveUiRefresh = true/);
+  assert.match(appSource, /requestIdleCallback\(run, \{ timeout: 160 \}\)/);
+  assert.match(appSource, /cancelScheduledMoveUiRefresh/);
   assert.match(appSource, /flushAppliedMoveUiRefresh/);
   assert.match(appSource, /updateLastMoveHighlights/);
   assert.match(appSource, /board-legal-target/);
