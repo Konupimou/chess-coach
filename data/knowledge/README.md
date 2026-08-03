@@ -28,6 +28,22 @@ Konkrete Taktik und die Legalität von Zügen müssen weiterhin durch Brettlogik
 und Engine geprüft werden. Die Claims erklären belegte Merkmale; sie ersetzen
 keine Variantenberechnung.
 
+## Erkenntnisse aus PGN-Kommentaren
+
+PGN-Rohkommentare werden nicht in den Laufzeitindex kopiert. Der Importer nutzt
+sie nur als Signal für einen kleinen Katalog klar definierter Schachkonzepte.
+Der FEN-basierte Stellungsdetektor muss das genannte Konzept unabhängig
+bestätigen. Taktische Motive wie Fesselung, Mehrfachangriff oder Mattzug gelten
+nur in der exakten Stellung. Strategische Motive wie Freibauer, Vorposten,
+offene Linie oder Raumvorteil brauchen zusätzlich mindestens zwei
+deduplizierte PGN-Quellen.
+
+Gespeichert werden ausschließlich neue, kurze deutsche Textvorlagen mit
+Pflicht-Konzept-ID und Prüfstatus. Namen, Titel, Dateinamen, Originalprosa,
+historische Varianten und historische Bewertungen bleiben außerhalb des
+Laufzeitwissens. Bei ähnlichen Stellungen darf nur eine Erkenntnis mit derselben
+nachgewiesenen Pflicht-Konzept-ID übertragen werden.
+
 ## Offene Puzzle-Daten für 800 Elo
 
 `lichess-puzzles-800.json` enthält einen am 1. August 2026 erzeugten,

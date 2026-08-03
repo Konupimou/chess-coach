@@ -8,6 +8,10 @@ import {
 import { conceptSearchTokens } from "./positionConcepts.js";
 import { validateCoachLanguage } from "./coachLanguageQuality.js";
 import { isExactPgnMoveFact } from "./pgnVerifiedFacts.js";
+import {
+  isPgnCommentInsight,
+  PGN_COMMENT_CONCEPT_SCOPE,
+} from "./pgnCommentKnowledge.js";
 
 const SUPPORTED_RATINGS = Object.freeze([800, 1000, 1400, 1800]);
 const QUESTION_TOPIC_PATTERNS = Object.freeze({
@@ -38,6 +42,7 @@ const TRUSTED_PGN_STATUSES = new Set([
   "automatically_verified",
   "engine_confirmed",
   "compatible",
+  "consensus_verified",
   "human_approved",
 ]);
 
@@ -111,6 +116,7 @@ function expandedEntry(entry, index) {
       annotation: {
         type: structured[0] || "unknown",
         scope: structured[3] || "",
+        requiredConceptIds: Array.isArray(structured[4]) ? structured[4] : [],
         claims: (structured[1] || []).map((claim) => ({
           field: claim[0], value: "", confidence: (claim[1] || 0) / 100,
           verificationStatus: claim[2], excerpt: "",
@@ -139,6 +145,7 @@ function expandedEntry(entry, index) {
     annotation: {
       type: structured[0] || "unknown",
       scope: structured[3] || "",
+      requiredConceptIds: Array.isArray(structured[4]) ? structured[4] : [],
       claims: (structured[1] || []).map((claim) => ({
         field: claim[0], value: "", confidence: (claim[1] || 0) / 100,
         verificationStatus: claim[2], excerpt: "",
@@ -189,8 +196,8 @@ function compactEntry(entry, match = { type: "exact", score: 100, shared: [] }) 
     usage: exact
       ? isExactPgnMoveFact(entry)
         ? "Nur als sicheren Brettfakt zum gespeicherten legalen Zug verwenden. Der Zug ist dadurch nicht automatisch gut oder der beste."
-        : "Als menschlichen Erklärungshinweis aus exakt derselben Stellung paraphrasieren; nicht als Beleg für den besten Zug oder eine konkrete Variante verwenden."
-      : "Nur den ausdrücklich ausgewiesenen übertragbaren Plan paraphrasieren. Gemeinsamkeiten und Unterschiede konkret nennen; keine historischen Züge, Felder, Taktiken oder Bewertungen übernehmen.",
+        : "Als anonymisierten und geprüften Kommentarhinweis aus exakt derselben Stellung paraphrasieren; nicht als Beleg für den besten Zug oder eine konkrete Variante verwenden."
+      : "Nur den geprüften übertragbaren Plan paraphrasieren. Gemeinsamkeiten und Unterschiede konkret nennen; keine historischen Züge, Felder, Taktiken oder Bewertungen übernehmen.",
   };
 }
 
@@ -255,6 +262,14 @@ function computePgnKnowledgeForPosition({
       const entry = expandedEntry(storedEntry, index);
       if (!isCoachReadyPgnEntry(entry)) continue;
       if (isExactPgnMoveFact(entry)) continue;
+      if (isPgnCommentInsight(entry)) {
+        if (entry.annotation?.scope !== PGN_COMMENT_CONCEPT_SCOPE) continue;
+        const required = new Set(entry.annotation?.requiredConceptIds || []);
+        const transferable = match.conceptTransfer?.transferableConcepts
+          ?.filter((concept) => !concept.blocked)
+          .map((concept) => concept.id) || [];
+        if (required.size === 0 || !transferable.some((conceptId) => required.has(conceptId))) continue;
+      }
       const topics = Array.isArray(entry.topics) ? entry.topics : [];
       const hasTransferableConcept = match.conceptTransfer?.transferableConcepts
         ?.some((concept) => !concept.blocked && concept.transferablePlan?.length > 0);
@@ -405,6 +420,9 @@ export function pgnKnowledgeIndexStats(index = pgnIndex) {
     version: index?.version || 0,
     positions: index?.stats?.positions || 0,
     comments: index?.stats?.commentsIndexed || 0,
+    verifiedFacts: index?.stats?.verifiedFactEntries || 0,
+    commentInsights: index?.stats?.commentInsightsIndexed || 0,
+    consensusInsights: index?.stats?.commentInsightsConsensusVerified || 0,
     coachReady,
     sources: index?.sourceCount || index?.stats?.uniqueFiles || 0,
     categoryCounts: index?.stats?.categoryCounts || {},

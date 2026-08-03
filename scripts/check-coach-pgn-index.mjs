@@ -4,8 +4,14 @@ import {
   EXACT_PGN_MOVE_FACT_SCOPE,
   primaryDeterministicPgnMoveFact,
 } from "../pgnVerifiedFacts.js";
+import {
+  isKnownPgnCommentInsightSummary,
+  PGN_COMMENT_CONCEPT_SCOPE,
+  PGN_COMMENT_EXACT_SCOPE,
+} from "../pgnCommentKnowledge.js";
+import { expandPositionSimilarityProfile } from "../positionSimilarity.js";
 
-const EXPECTED_VERSION = 6;
+const EXPECTED_VERSION = 7;
 const SUPPORTED_CATEGORIES = new Set(["opening", "middlegame", "endgame", "other"]);
 const SUPPORTED_RATINGS = new Set([800, 1000, 1400, 1800]);
 const SUPPORTED_TOPICS = new Set([
@@ -57,13 +63,13 @@ export function checkCoachPgnIndex(candidate = index) {
   const ids = new Set();
   for (const [positionKey, entries] of Object.entries(candidate.positions)) {
     checkPositionKey(positionKey);
-    if (!Array.isArray(entries) || entries.length === 0 || entries.length > 3) {
+    if (!Array.isArray(entries) || entries.length === 0 || entries.length > 5) {
       fail(`Stellung ${positionKey} enthält ${entries?.length ?? "keine"} Einträge`);
     }
     const positionComments = new Set();
     for (const entry of entries) {
       if (!Array.isArray(entry) || entry.length !== 7) {
-        fail(`Eintrag in ${positionKey} hat nicht das kompakte v6-Format`);
+        fail(`Eintrag in ${positionKey} hat nicht das kompakte v7-Format`);
       }
       const [id, summary, topics, audienceRating, category, provenance, annotation] = entry;
       if (!/^[a-f0-9]{16}$/.test(id) || ids.has(id)) fail(`ungültige oder doppelte ID ${id}`);
@@ -98,6 +104,26 @@ export function checkCoachPgnIndex(candidate = index) {
         if (!recomputed || recomputed.comment !== summary) {
           fail(`zuggebundener Brettfakt ist nicht aus FEN und Zug reproduzierbar bei ${id}`);
         }
+      } else if (annotation?.[0] === "comment_derived_concept") {
+        const claims = annotation?.[1];
+        const scope = annotation?.[3];
+        const requiredConceptIds = annotation?.[4];
+        const profile = expandPositionSimilarityProfile(candidate.profiles[positionKey]);
+        const positionConcepts = new Set(profile?.concepts?.conceptIds || []);
+        if (!isKnownPgnCommentInsightSummary(summary)) {
+          fail(`Kommentarwissen verwendet keine freigegebene Zusammenfassung bei ${id}`);
+        }
+        if (!Array.isArray(claims) || claims.length !== 1
+          || !Array.isArray(requiredConceptIds) || requiredConceptIds.length !== 1
+          || !positionConcepts.has(requiredConceptIds[0])) {
+          fail(`Kommentarwissen hat keinen reproduzierbaren Stellungskontext bei ${id}`);
+        }
+        const status = claims[0]?.[2];
+        if (
+          (scope === PGN_COMMENT_EXACT_SCOPE && status !== "automatically_verified")
+          || (scope === PGN_COMMENT_CONCEPT_SCOPE && status !== "consensus_verified")
+          || ![PGN_COMMENT_EXACT_SCOPE, PGN_COMMENT_CONCEPT_SCOPE].includes(scope)
+        ) fail(`Kommentarwissen hat einen unpassenden Prüfstatus bei ${id}`);
       }
       comments += 1;
     }

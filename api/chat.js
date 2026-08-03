@@ -55,7 +55,7 @@ globalThis.__chessCoachMoveExplanationCache = moveExplanationCache;
 
 const SYSTEM_INSTRUCTIONS = [
   "Du berechnest keine Schachzüge selbst.",
-  "Du bist ein freundlicher Schachcoach und verwendest ausschließlich die gelieferten Quellen: <opening_context> für Eröffnungswissen, <position_evidence> für Brettfakten, <chess_knowledge> und <verified_knowledge> für kuratierte Schachprinzipien, <pgn_knowledge> für deterministisch geprüfte Fakten aus exakt derselben Stellung und dem ausdrücklich gelieferten legalen Zug, <training_knowledge> für thematische Übungsempfehlungen und <stockfish_analysis> für konkrete Berechnung.",
+  "Du bist ein freundlicher Schachcoach und verwendest ausschließlich die gelieferten Quellen: <opening_context> für Eröffnungswissen, <position_evidence> für Brettfakten, <chess_knowledge> und <verified_knowledge> für kuratierte Schachprinzipien, <pgn_knowledge> für geprüfte Brettfakten und anonymisierte Kommentar-Erkenntnisse, <training_knowledge> für thematische Übungsempfehlungen und <stockfish_analysis> für konkrete Berechnung.",
   "Antworte auf Deutsch, sofern der Nutzer nicht ausdrücklich eine andere Sprache verwendet.",
   "Sprich wie ein entspannter Coach, der direkt neben dem Brett sitzt: locker, klar, ermutigend und konsequent per du.",
   "Sprich nie herablassend. Vermeide Sätze wie «das ist doch einfach», «das solltest du sehen» oder «Anfängerfehler».",
@@ -74,13 +74,13 @@ const SYSTEM_INSTRUCTIONS = [
   "Bezeichne suggestedOpening nie als bereits gespielte Eröffnung, weil sie nur den Übergang nach dem vorgeschlagenen Zug beschreibt.",
   "Erkläre Eröffnungswissen als menschliches Schachverständnis und argumentiere dabei nicht mit Stockfish oder einer Bewertung.",
   "Außer den ausdrücklich gelieferten opening_context.continuations ist Stockfish die einzige Quelle für konkrete aktuelle Zugempfehlungen, Varianten, Bewertungen, Mattangaben und taktische Entscheidungen.",
-  "Fakten aus <pgn_knowledge> darfst du nur kurz und in eigenen Worten erklären. Sie stammen nicht aus dem historischen Kommentartext. Nenne die PGN-Sammlung nur, wenn der Nutzer nach der Datengrundlage fragt.",
-  "<pgn_knowledge> ist niemals ein Beleg für den besten Zug, eine aktuelle Bewertung, eine erzwungene Variante oder ein taktisches Motiv. Bei jedem Konflikt oder fehlendem Brettbeleg sind <stockfish_analysis> und <position_evidence> maßgeblich.",
-  "Verwende <pgn_knowledge> nur bei match.type exact und nur für den dort gespeicherten legalen Zug. Übertrage daraus keine Züge, Felder, Pläne, Taktiken oder Bewertungen auf eine ähnliche Stellung.",
+  "Fakten aus <pgn_knowledge> darfst du nur kurz und in eigenen Worten erklären. Kommentar-Erkenntnisse sind anonymisierte, neu formulierte Zusammenfassungen; zitiere keinen historischen Text und nenne keine Person oder Quelle.",
+  "<pgn_knowledge> ist niemals allein ein Beleg für den besten Zug, eine aktuelle Bewertung oder eine erzwungene Variante. Bei jedem Konflikt sind <stockfish_analysis> und <position_evidence> maßgeblich.",
+  "Bei match.type exact darfst du den gelieferten Brettfakt oder Kommentarhinweis erklären. Bei einem ähnlichen Treffer darfst du nur einen Hinweis mit annotation.scope structural_concept verwenden und nur das ausdrücklich passende Stellungskonzept übertragen. Übernimm dabei keine historischen Züge, konkreten Felder, Bewertungen oder Varianten.",
   "<training_knowledge> enthält ausschließlich zusammengefasste Themen, Anzahlen und Ratingbereiche aus dem Lichess-Trainingsdatensatz. Nutze diese Daten nur, um ein passendes Übungsthema oder einen Trainingsschwerpunkt vorzuschlagen.",
   "Verwende <training_knowledge> niemals als Beleg für eine Aussage über die aktuelle Stellung, einen Zug, eine Bewertung, eine Variante oder ein taktisches Motiv. Dafür gelten weiterhin ausschließlich <position_evidence> und <stockfish_analysis>.",
   "Leite aus <training_knowledge> keine Aufgabenstellung und keine Lösung ab und erfinde keine Beispielzüge. Der Coach erhält bewusst keine einzelnen Aufgaben oder Lösungszüge.",
-  "Übertragbare strategische Pläne dürfen nur aus <chess_knowledge> oder <verified_knowledge> stammen. Beachte dort alle Voraussetzungen, Gegenpläne und Abbruchbedingungen; leite solche Pläne nie aus <pgn_knowledge> ab.",
+  "Übertragbare strategische Pläne dürfen aus <chess_knowledge>, <verified_knowledge> oder einem als structural_concept markierten <pgn_knowledge>-Hinweis stammen. Beachte Voraussetzungen, Gegenpläne und Abbruchbedingungen; konkrete Züge bleiben an Eröffnungsdaten oder Stockfish gebunden.",
   "positionRole sagt, ob das Beispiel zur Stellung vor dem Zug, nach dem gespielten Zug oder nach einer Alternative passt. Vermische diese Zeitpunkte nicht.",
   "Empfiehl niemals einen Zug, der nicht ausdrücklich als opening_context.continuation oder als bester Zug beziehungsweise MultiPV-Zug in <stockfish_analysis> geliefert wurde.",
   "Jede von dir genannte Zugfolge muss vollständig und in derselben Reihenfolge in einer gelieferten Principal Variation oder MultiPV-Variante enthalten sein. Mehrere einzelne opening_context.continuations sind getrennte Optionen und keine Zugfolge.",
@@ -410,6 +410,9 @@ export function coachResponseMetadata(payload, { pgnIndex } = {}) {
     counts[category] = (counts[category] || 0) + 1;
     return counts;
   }, {});
+  const usedCommentInsights = hints.filter((hint) => (
+    hint?.annotation?.type === "comment_derived_concept"
+  )).length;
   const opening = payload?.openingContext?.matched
     ? payload.openingContext
     : payload?.openingContext?.suggestedOpening;
@@ -446,10 +449,15 @@ export function coachResponseMetadata(payload, { pgnIndex } = {}) {
         count: hints.length,
         exact: pgnMatches.exact,
         similar: pgnMatches.similar,
+        factsUsed: hints.length - usedCommentInsights,
+        commentInsightsUsed: usedCommentInsights,
         categories: pgnCategories,
         labels: [...new Set(hints.map((hint) => hint?.match?.label).filter(Boolean))],
         indexedPositions: pgnStats.positions,
         indexedComments: pgnStats.comments,
+        indexedVerifiedFacts: pgnStats.verifiedFacts,
+        indexedCommentInsights: pgnStats.commentInsights,
+        indexedConsensusInsights: pgnStats.consensusInsights,
         indexedCoachReady: pgnStats.coachReady,
         indexedSources: pgnStats.sources,
         indexedCategories: pgnStats.categoryCounts,
@@ -968,18 +976,33 @@ export function buildPrompt({
     if (effectiveEngineContext?.kind !== "game_review") {
       const subjectSan = grounded.positionEvidence?.playedMove?.san || "der gelieferte Zug";
       const beginner = coachLearnerProfile.rating <= 1000;
+      const asksForConcept = /\b(?:plan|idee|strategie|struktur|endspiel|vorposten|freibauer|isoliert|entwicklung|linie|raum)\w*/iu
+        .test(String(message || ""));
+      const hasCommentInsight = pgnKnowledge.some((entry) => (
+        entry?.annotation?.type === "comment_derived_concept"
+      ));
+      const useConceptContract = asksForConcept && hasCommentInsight;
       sections.push(
         `<coach_response_contract>\n${serializePromptData({
-          subjectSan,
-          maximumSentences: beginner ? 1 : 3,
-          rules: [
-            beginner
-              ? `Antworte mit genau einem kurzen Satz. Beginne ihn mit ${subjectSan} und nenne nur einen belegten Brettfakt. Verwende kein «und», keine Liste und keinen Doppelpunkt.`
-              : `Antworte mit höchstens drei kurzen Sätzen. Der erste Satz beginnt mit ${subjectSan}.`,
-            `Jeder weitere Satz über eine Wirkung nach dem Zug beginnt wörtlich mit «Nach ${subjectSan}» und nennt die Figur erneut statt nur «er», «sie» oder «dadurch».`,
-            "Verwende keinerlei Markdown-Hervorhebung für Züge oder Felder.",
-            "Lasse zusätzliche Wirkungen weg, wenn sie nicht in einem kurzen Satz eindeutig belegt werden können.",
-          ],
+          subjectSan: useConceptContract ? null : subjectSan,
+          maximumSentences: useConceptContract ? (beginner ? 2 : 3) : (beginner ? 1 : 3),
+          rules: useConceptContract
+            ? [
+              beginner
+                ? "Erkläre genau eine gelieferte Kommentar-Erkenntnis in höchstens zwei sehr kurzen Sätzen und einfachen Worten."
+                : "Erkläre genau eine gelieferte Kommentar-Erkenntnis in höchstens drei kurzen Sätzen.",
+              "Nenne keinen konkreten Zug, wenn er nicht zusätzlich in der Eröffnungsdatenbank oder Stockfish-Analyse geliefert wurde.",
+              "Bei einem ähnlichen Treffer überträgst du nur das requiredConceptId und keine historischen Felder oder Varianten.",
+              "Verwende keinerlei Markdown-Hervorhebung für Züge oder Felder.",
+            ]
+            : [
+              beginner
+                ? `Antworte mit genau einem kurzen Satz. Beginne ihn mit ${subjectSan} und nenne nur einen belegten Brettfakt. Verwende kein «und», keine Liste und keinen Doppelpunkt.`
+                : `Antworte mit höchstens drei kurzen Sätzen. Der erste Satz beginnt mit ${subjectSan}.`,
+              `Jeder weitere Satz über eine Wirkung nach dem Zug beginnt wörtlich mit «Nach ${subjectSan}» und nennt die Figur erneut statt nur «er», «sie» oder «dadurch».`,
+              "Verwende keinerlei Markdown-Hervorhebung für Züge oder Felder.",
+              "Lasse zusätzliche Wirkungen weg, wenn sie nicht in einem kurzen Satz eindeutig belegt werden können.",
+            ],
         })}\n</coach_response_contract>`,
       );
     }

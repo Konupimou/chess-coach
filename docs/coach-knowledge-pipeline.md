@@ -2,14 +2,17 @@
 
 ## Zweck und Sicherheitsgrenze
 
-Die PGN-Sammlung liefert Stellungen und daraus deterministisch neu berechnete
-Brettfakten. Übertragbare strategische Pläne stammen ausschließlich aus dem
-getrennten kuratierten Konzeptkatalog. Stockfish bleibt die maßgebliche Quelle
-für konkrete Zugbewertung, Varianten und taktische Aussagen. Importierte
+Die PGN-Sammlung liefert Stellungen, deterministisch neu berechnete Brettfakten
+und kontrolliert abgeleitete Kommentar-Erkenntnisse. Ein Kommentar darf nur ein
+Konzept vorschlagen; der Stellungsdetektor muss es unabhängig aus der FEN
+bestätigen. Taktische Motive bleiben an die exakte Stellung gebunden.
+Strategische Hinweise brauchen zusätzlich mindestens zwei voneinander
+verschiedene, bereits deduplizierte PGN-Quellen. Stockfish bleibt die
+maßgebliche Quelle für konkrete Zugbewertung und Varianten. Importierte
 Kommentare gelten nie allein deshalb als wahr, weil sie in einer PGN-Datei
 stehen, und gelangen nicht als freie Prosa in das Laufzeitwissen.
 
-Die drei Wissensstufen bleiben technisch getrennt:
+Die Wissensstufen bleiben technisch getrennt:
 
 1. `generated`: aus den Originalquellen abgeleitet, automatisch strukturiert,
    zusammengefasst und anonymisiert, aber noch nicht sachlich bestätigt.
@@ -18,7 +21,11 @@ Die drei Wissensstufen bleiben technisch getrennt:
    Trainingsbestand kann der Status außerdem bedeuten, dass Stockfish eine
    konkrete Empfehlung bei identischem Suchlimit bestätigt oder als kompatibel
    eingestuft hat; rein strategische Aussagen bleiben dort `strategic_only`.
-3. `human_approved`: ein benannter Mensch hat einen kompatiblen oder bestätigten
+3. `consensus_verified`: mindestens zwei unabhängige PGN-Quellen nennen
+   dasselbe strategische Konzept in Stellungen, in denen der Brettdetektor das
+   Konzept ebenfalls erkennt. Gespeichert wird nur eine feste deutsche
+   Neufassung, nicht der Kommentartext.
+4. `human_approved`: ein benannter Mensch hat einen kompatiblen oder bestätigten
    Datensatz freigegeben. Konflikte und ungültige Datensätze können nicht
    freigegeben werden.
 
@@ -45,45 +52,59 @@ danach wird die Eingangsdatei entfernt.
 Der Parser liest Hauptvarianten und verschachtelte Nebenvarianten, Kommentare
 vor und nach einem Zug, numerische und symbolische NAGs, Start-FENs, SAN/UCI
 wie FEN vor und nach dem Zug. Der Dateiinhalt bleibt unverändert. Der produktive
-Laufzeitindex übernimmt keine frei formulierten Kommentare. Er erzeugt nur
-kurze Fakten, die sich aus FEN und legalem Zug erneut berechnen lassen. Datei-
-und Werktitel, Autoren-, Spieler- und Annotatornamen gelangen dadurch nicht in
-das Laufzeitwissen. Fehler in einer Partie werden protokolliert; sie brechen
-den Gesamtimport nicht ab.
+Laufzeitindex übernimmt keine frei formulierten Kommentare. Er erzeugt kurze
+Fakten aus FEN und legalem Zug. Zusätzlich erkennt er eng begrenzte Begriffe
+wie Freibauer, Vorposten, offene Linie, Fesselung oder Opposition. Nur wenn der
+gleiche Begriff als Brettkonzept reproduzierbar ist, kann daraus eine feste
+deutsche Kurz-Erkenntnis entstehen. Datei- und Werktitel, Autoren-, Spieler-
+und Annotatornamen gelangen dadurch nicht in das Laufzeitwissen. Fehler in
+einer Partie werden protokolliert; sie brechen den Gesamtimport nicht ab.
 
 Bytegleiche Dateien, doppelte Partien, doppelte Datensätze und gleiche
 Kommentare an derselben Stellung werden dedupliziert. Pro Quelldatei entsteht
 ein SHA-256-basierter Cache unter `.cache/coach-pgn/`. Dadurch ist ein erneuter
 Import fortsetzbar und deterministisch. Der produktive Laufzeitindex enthält
 keine vollständigen Trainingsdatensätze, keine Rohprosa und keine lesbaren
-Quellenangaben, sondern deterministische Brettfakten, technische IDs, Phasen,
-Profile und Such-Buckets.
+Quellenangaben, sondern Brettfakten, Kommentar-Erkenntnisse aus freigegebenen
+Textvorlagen, technische IDs, Phasen, Profile und Such-Buckets.
 
 Die aktuelle Sammlung wurde vollständig ohne Gesamtlimit verarbeitet:
 
-- 139 gefundene Dateien, 134 eindeutige Quellen und 5 Dateiduplikate
+- 138 gefundene Dateien, 134 eindeutige Quellen und 4 Dateiduplikate
 - 128.747 gelesene Partien, davon 9.187 mit Annotationen
-- 55.908 untersuchte Kommentare; 30.016 freie Rohtexte bleiben quarantänisiert
-- 20.418 deterministisch geprüfte Fakten an 19.163 Stellungen
-- davon 8.093 Eröffnung, 9.764 Mittelspiel und 2.561 Endspiel
-- 6.337 Fakten aus Nebenvarianten, 4.845 NAGs und 20.418 strukturierte Claims
+- 55.908 untersuchte Kommentare; 35.134 Datensätze liefern noch kein
+  freigegebenes Laufzeitwissen
+- 20.418 deterministisch geprüfte Brettfakten
+- 697 Kandidaten für Kommentar-Erkenntnisse, davon 599 freigegeben
+- von den 599 Erkenntnissen sind 347 taktische Motive direkt am Brett bestätigt
+  und 252 strategische Hinweise zusätzlich durch Quellenkonsens gestützt
+- insgesamt 21.017 Wissenseinträge an 19.418 Stellungen
+- davon 8.291 Eröffnung, 10.059 Mittelspiel und 2.667 Endspiel
+- 6.342 Fakten aus Nebenvarianten, 4.843 NAGs und 21.017 strukturierte Claims
 - 8.626 ungültige Partien und 3.170 gespeicherte Parserfehler; diese werden
   nicht stillschweigend als verlässliches Wissen behandelt
 - 17 doppelte Partien erkannt
 
 Alle gefundenen PGN-Dateien wurden verarbeitet. „Vollständig“ bedeutet hier
-nicht, dass jeder historische Kommentar als wahr gilt: Nur die 20.418 erneut
-berechenbaren Fakten sind im produktiven Index; die übrige Prosa bleibt bewusst
-außerhalb der Coach-Antworten.
+nicht, dass jeder historische Kommentar als wahr gilt: Im produktiven Index
+liegen nur 20.418 erneut berechenbare Fakten und 599 eng begrenzte, neu
+formulierte Erkenntnisse. Die übrige Prosa bleibt bewusst außerhalb der
+Coach-Antworten.
 
 ## Automatische Strukturierung und Stockfish-Prüfung
 
 Der Originalkommentar bleibt ausschließlich in der unveränderten PGN-Quelle
-erhalten. Ein optionaler Trainingsexport kann daraus anonymisierte Kandidaten
-mit Prüfstatus erzeugen; diese Kandidaten sind strikt vom produktiven
-Laufzeitindex getrennt und werden dem Coach nicht angezeigt. Der Laufzeitindex
-speichert nur neu berechnete Brettfakten mit technischer Datensatz-ID,
-Konfidenz, Prüfstatus und dem Geltungsbereich `exact_position_move`.
+erhalten. Der Laufzeitindex speichert neu berechnete Brettfakten mit dem
+Geltungsbereich `exact_position_move`. Kommentar-Erkenntnisse tragen entweder
+`exact_position_comment` für direkt erkannte taktische Motive oder
+`structural_concept` für strategische Konzepte mit Quellenkonsens. Jede
+Erkenntnis nennt eine Pflicht-Konzept-ID, die der Indexprüfer erneut im
+Stellungsprofil nachweist.
+
+Ein optionaler Trainingsexport enthält weiterhin anonymisierte Kandidaten für
+konkrete Varianten und Bewertungen. Diese Kandidaten sind strikt vom
+produktiven Laufzeitindex getrennt und werden dem Coach erst nach der
+Stockfish-Prüfung zugänglich gemacht.
 
 ```bash
 npm run pgn:training-export
@@ -100,8 +121,10 @@ empfohlener Zug erhalten dasselbe Tiefenlimit. Abweichungen bis 20 cp gelten als
 Die Stockfish-Prüfung bleibt für spätere Trainingskandidaten verfügbar. Solche
 Kandidaten werden erst nach bestandener Prüfung in einen getrennten,
 freigegebenen Bestand übernommen. Der produktive Index benötigt diesen Schritt
-nicht, weil seine engen Fakten direkt mit `chess.js` aus Stellung und legalem
-Zug rekonstruiert und beim Indexcheck nochmals verglichen werden.
+für seine engen Brettfakten und Konzept-Erkenntnisse nicht: Brettfakten werden
+mit `chess.js` rekonstruiert, Konzept-Erkenntnisse mit dem FEN-Fingerabdruck und
+dem Quellenkonsens geprüft. Konkrete Kommentarvarianten und Zugbewertungen
+bleiben ohne Stockfish-Bestätigung weiterhin gesperrt.
 
 Zusätzlich erzeugt der Importer sehr enge Brettfakten direkt aus FEN und einem
 legalen PGN-Zug. Dazu zählen Entwicklung vom Ausgangsfeld, tatsächliche
@@ -124,13 +147,17 @@ dem getrennten kuratierten Konzeptkatalog. Der Suchprozess ist mehrstufig:
 2. Vorberechnete Buckets für kuratierte Bauernstrukturen, Konzepte und taktische
    Schlüssel.
 3. Vergleich der Kandidaten nach Struktur und Konzeptbedingungen.
-4. Ausgabe nur eines im kuratierten Konzeptwissen ausdrücklich übertragbaren
-   Plans samt Voraussetzungen, Unterschieden, Gegenplänen und Abbruchbedingungen.
+4. Abgleich der Pflicht-Konzept-ID einer Kommentar-Erkenntnis mit den
+   tatsächlich übertragbaren Konzepten der Zielstellung.
+5. Ausgabe nur eines ausdrücklich übertragbaren Plans samt Voraussetzungen,
+   Unterschieden, Gegenplänen und Abbruchbedingungen.
 
 Eine ähnliche Optik reicht nicht. Unterschiedliche taktische Schlüssel sperren
-den Transfer. Historische PGN-Fakten, Züge, Felder und Bewertungen werden nie
-auf eine ähnliche Stellung kopiert. Für eine Zugerklärung wird getrennt vor dem
-Zug, nach dem gespielten Zug und nach bis zu drei Engine-Alternativen gesucht.
+den Transfer. Historische PGN-Züge, Felder, Bewertungen und taktische
+Kommentarhinweise werden nie auf eine ähnliche Stellung kopiert. Übertragen
+werden darf nur die neu formulierte strategische Erkenntnis mit identischer
+Pflicht-Konzept-ID. Für eine Zugerklärung wird getrennt vor dem Zug, nach dem
+gespielten Zug und nach bis zu drei Engine-Alternativen gesucht.
 
 Der Coach erhält diese Felder zusammen mit Stockfish und erzeugt ein festes
 Lernschema: `assessment`, `type`, `idea`, `what_was_good`, `problem`, `danger`,
@@ -151,7 +178,7 @@ Index-Benchmark mutiert indexierte Stellungen mit einem legalen Zug und prüft
 nur Stellungen, die nicht exakt im Index vorkommen. Das Ziel ist p95 unter
 300 ms. Einzelne kalte Ausreißer werden separat als `maxMs` ausgewiesen.
 
-Der Index ist eine reproduzierbare JSON-Datei mit `version: 6`; es war keine
+Der Index ist eine reproduzierbare JSON-Datei mit `version: 7`; es war keine
 SQL-Migration nötig. Ein Rollback besteht darin, die vorherige Indexdatei und
 den dazu passenden Code wieder bereitzustellen. Caches und Trainings-/Analyse-
 Artefakte sind abgeleitet, ignoriert und können ohne Verlust der PGN-Quellen neu
@@ -164,10 +191,12 @@ erzeugt werden.
   werden 19 dieser Kataloggruppen automatisch erkannt.
 - Automatische Mustererkennung ist kein Ersatz für taktische Berechnung.
 - Die gesamte PGN-Sammlung ist eingelesen, aber freie historische Kommentare
-  bleiben bis zu einer gesonderten Verifikation außerhalb des Laufzeitindex.
-- Zuggebundene PGN-Fakten gelten ausschließlich bei exakter Stellung und exakt
-  passendem legalen Zug; strategischer Transfer stammt aus dem getrennten,
-  kuratierten Konzeptwissen.
+  bleiben außerhalb des Laufzeitindex. Nur die 599 eng erkannten und neu
+  formulierten Erkenntnisse sind freigegeben.
+- Zuggebundene PGN-Fakten und taktische Kommentarhinweise gelten ausschließlich
+  bei exakter Stellung. Strategische Kommentar-Erkenntnisse dürfen nur bei
+  identischer Pflicht-Konzept-ID und ohne taktischen Widerspruch übertragen
+  werden.
 - Training/Fine-Tuning ist erst nach ausreichender automatischer Prüfung und
   menschlicher Freigabe sinnvoll. Die derzeitige Retrieval-Pipeline ist dafür
   die transparentere und sicherere Lösung.

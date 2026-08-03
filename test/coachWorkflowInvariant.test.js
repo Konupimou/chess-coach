@@ -255,7 +255,8 @@ test("der Coach zeigt die Datengrundlage jeder Antwort sichtbar an", () => {
   assert.match(appSource, /renderCoachDataSources/);
   assert.match(appSource, /dataSources: data\?\.dataSources \|\| null/);
   assert.match(appSource, /Gleiche Eröffnung und Bauernstruktur|PGN-Sammlung/);
-  assert.match(appSource, /PGN-Fakten freigegeben/);
+  assert.match(appSource, /PGN-Wissenseinträgen freigegeben/);
+  assert.match(appSource, /anonymisierte Kommentar-Erkenntnisse/);
   assert.match(styleSource, /\.coach-data-sources\s*\{/);
   assert.match(appSource, /this\.coachDataSourcesEl\.hidden = false/);
   assert.match(appSource, /currentRecommendationDataSources/);

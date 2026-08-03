@@ -8062,6 +8062,8 @@ export class ChessApp {
         count: 0,
         exact: 0,
         similar: 0,
+        factsUsed: 0,
+        commentInsightsUsed: 0,
       },
       training: {
         used: false,
@@ -8145,13 +8147,26 @@ export class ChessApp {
         detail: pgn.used
           ? [
             pgn.exact ? `${pgn.exact} exakter Fakten-Treffer` : "",
+            pgn.similar ? `${pgn.similar} ähnlicher Konzept-Treffer` : "",
+            pgn.commentInsightsUsed
+              ? `${pgn.commentInsightsUsed} Erkenntnis${pgn.commentInsightsUsed === 1 ? "" : "se"} aus anonymisierten Kommentaren`
+              : "",
             categoryText(pgn.categories),
             Array.isArray(pgn.labels) ? pgn.labels.join(" · ") : "",
             pgn.indexedPositions
               ? [
                 `Sammlung: ${Number(pgn.indexedPositions).toLocaleString("de-DE")} Stellungen`,
                 pgn.indexedComments
-                  ? `${Number(pgn.indexedComments).toLocaleString("de-DE")} geprüfte PGN-Fakten`
+                  ? `${Number(pgn.indexedComments).toLocaleString("de-DE")} geprüfte Wissenseinträge`
+                  : "",
+                pgn.indexedVerifiedFacts
+                  ? `${Number(pgn.indexedVerifiedFacts).toLocaleString("de-DE")} Brettfakten`
+                  : "",
+                pgn.indexedCommentInsights
+                  ? `${Number(pgn.indexedCommentInsights).toLocaleString("de-DE")} anonymisierte Kommentar-Erkenntnisse`
+                  : "",
+                pgn.indexedConsensusInsights
+                  ? `${Number(pgn.indexedConsensusInsights).toLocaleString("de-DE")} davon durch Quellenkonsens gestützt`
                   : "",
                 `${Number(pgn.indexedCoachReady || 0).toLocaleString("de-DE")} für den Coach freigegeben`,
                 pgn.indexedSources
@@ -8162,8 +8177,8 @@ export class ChessApp {
             categoryText(pgn.indexedCategories),
           ].filter(Boolean).join(" · ")
           : pgn.indexedPositions
-            ? `Kein exakter Treffer · ${Number(pgn.indexedCoachReady || 0).toLocaleString("de-DE")} von ${Number(pgn.indexedComments || 0).toLocaleString("de-DE")} PGN-Fakten freigegeben`
-            : "Kein passender PGN-Fakt genutzt",
+            ? `Kein passender Treffer · ${Number(pgn.indexedCoachReady || 0).toLocaleString("de-DE")} von ${Number(pgn.indexedComments || 0).toLocaleString("de-DE")} PGN-Wissenseinträgen freigegeben`
+            : "Kein passendes PGN-Wissen genutzt",
       },
       {
         label: "Lichess-Training",

@@ -235,6 +235,47 @@ test("kompakt gespeicherte Konzepte werden in einer unbekannten Stellung ausgege
   )), true);
 });
 
+test("anonymisiertes Kommentarwissen wird nur mit demselben Brettkonzept übertragen", () => {
+  const known = "1b2q1k1/p7/p1p2p2/B1P3pp/3P1p2/7P/PP1Q1PPK/8 w - -";
+  const unknown = "1b2q1k1/p7/pBp2p2/2P3pp/3P1p2/7P/PP1Q1PPK/8 b - -";
+  const profile = positionSimilarityProfile(known);
+  const commentIndex = {
+    positionKeys: [known],
+    searchBuckets: Object.fromEntries([
+      ...profile.concepts.conceptIds.map((id) => [`concept:${id}`, [0]]),
+      [`phase:${profile.concepts.phase}`, [0]],
+    ]),
+    positions: {
+      [known]: [[
+        "comment-concept",
+        "Ein isolierter Bauer braucht aktives Figurenspiel. Nutze dafür offene Linien.",
+        ["pawn_structure", "strategy"],
+        1000,
+        "middlegame",
+        ["game", 1, 1, "w", "Bb6", "a5b6", true],
+        [
+          "comment_derived_concept",
+          [["commentConcept.isolated_pawn", 96, "consensus_verified"]],
+          [],
+          "structural_concept",
+          ["isolated_pawn"],
+        ],
+      ]],
+    },
+    profiles: { [known]: compactPositionSimilarityProfile(profile) },
+  };
+
+  const result = pgnKnowledgeForPosition({
+    fen: `${unknown} 0 1`,
+    question: "Was ist hier der Plan?",
+    index: commentIndex,
+  });
+  assert.equal(result.length, 1);
+  assert.equal(result[0].annotation.type, "comment_derived_concept");
+  assert.equal(result[0].annotation.scope, "structural_concept");
+  assert.equal(result[0].match.type, "concept_transfer");
+});
+
 test("PGN-Hinweise werden nach Coach-Elo sortiert und kompakt begrenzt", () => {
   const beginner = pgnKnowledgeForPosition({ fen, rating: 800, index, limit: 1 });
   assert.equal(beginner.length, 1);
@@ -277,6 +318,9 @@ test("PGN-Indexstatistik bleibt klein und explizit", () => {
     version: 1,
     positions: 1,
     comments: 2,
+    verifiedFacts: 0,
+    commentInsights: 0,
+    consensusInsights: 0,
     coachReady: 2,
     sources: 2,
     categoryCounts: {},
@@ -355,6 +399,7 @@ test("vorläufige PGN-Statuswerte bleiben auch bei gutem deutschem Text gesperrt
     "automatically_verified",
     "engine_confirmed",
     "compatible",
+    "consensus_verified",
     "human_approved",
   ].forEach((status) => {
     assert.equal(isCoachReadyPgnEntry(approved(entry, status)), true, status);

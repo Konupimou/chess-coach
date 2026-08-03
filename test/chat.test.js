@@ -297,7 +297,7 @@ test("Prompt ergänzt nur exakt passende PGN-Hinweise", () => {
 
   assert.match(prompt, /<pgn_knowledge>/);
   assert.match(prompt, /Der Springer kommt ins Spiel/);
-  assert.match(prompt, /Als menschlichen Erklärungshinweis aus exakt derselben Stellung/);
+  assert.match(prompt, /Als anonymisierten und geprüften Kommentarhinweis aus exakt derselben Stellung/);
   assert.doesNotMatch(prompt, /Beginner Lesson|"event":"Entwicklung"|"author":|"title":/);
 
   const differentPosition = buildPrompt({
@@ -320,9 +320,61 @@ test("Prompt ergänzt nur exakt passende PGN-Hinweise", () => {
   assert.equal(metadata.dataSources.stockfish.used, true);
   assert.equal(metadata.dataSources.pgn.exact, 1);
   assert.equal(metadata.dataSources.pgn.similar, 0);
+  assert.equal(metadata.dataSources.pgn.factsUsed, 1);
+  assert.equal(metadata.dataSources.pgn.commentInsightsUsed, 0);
   assert.deepEqual(metadata.dataSources.pgn.categories, { opening: 1 });
   assert.equal("sources" in metadata.dataSources.pgn, false);
   assert.equal(metadata.dataSources.pgn.indexedPositions, 0);
+});
+
+test("Planfragen dürfen geprüfte Kommentar-Erkenntnisse einfach erklären und weisen sie aus", () => {
+  const positionKey = engineContext.fen.split(/\s+/).slice(0, 4).join(" ");
+  const pgnIndex = {
+    version: 7,
+    stats: {
+      positions: 1,
+      commentsIndexed: 1,
+      verifiedFactEntries: 0,
+      commentInsightsIndexed: 1,
+      commentInsightsConsensusVerified: 1,
+      uniqueFiles: 2,
+    },
+    positions: {
+      [positionKey]: [[
+        "comment-plan",
+        "Der Entwicklungsvorsprung gibt dir aktives Spiel. Bring jetzt die übrigen Figuren ins Spiel.",
+        ["development", "strategy"],
+        800,
+        "opening",
+        ["game", 1, 1, "w", "Nf3", "g1f3", true],
+        [
+          "comment_derived_concept",
+          [["commentConcept.development_advantage", 90, "consensus_verified"]],
+          [],
+          "structural_concept",
+          ["development_advantage"],
+        ],
+      ]],
+    },
+  };
+  const payload = {
+    message: "Was ist hier der Plan?",
+    engineContext,
+    openingContext,
+    learnerProfile: { rating: 800 },
+    history: [],
+    conversation: [],
+  };
+  const prompt = buildPrompt(payload, { pgnIndex });
+  assert.match(prompt, /Erkläre genau eine gelieferte Kommentar-Erkenntnis/);
+  assert.match(prompt, /"maximumSentences":2/);
+  assert.doesNotMatch(prompt, /Beginne ihn mit Nf3/);
+
+  const metadata = coachResponseMetadata(payload, { pgnIndex });
+  assert.equal(metadata.dataSources.pgn.commentInsightsUsed, 1);
+  assert.equal(metadata.dataSources.pgn.factsUsed, 0);
+  assert.equal(metadata.dataSources.pgn.indexedCommentInsights, 1);
+  assert.equal(metadata.dataSources.pgn.indexedConsensusInsights, 1);
 });
 
 test("Lichess-Training liefert nur Themen-Aggregate für passende Lernfragen", () => {

@@ -15,8 +15,12 @@ import {
 } from "../positionSimilarity.js";
 import { conceptSearchTokens } from "../positionConcepts.js";
 import { primaryDeterministicPgnMoveFact } from "../pgnVerifiedFacts.js";
+import {
+  approvedPgnCommentInsight,
+  pgnCommentKnowledgeCandidates,
+} from "../pgnCommentKnowledge.js";
 
-const INDEX_VERSION = 6;
+const INDEX_VERSION = 7;
 const SOURCE_CACHE_VERSION = 4;
 const DEFAULT_SOURCE_LIMIT = 500;
 const DEFAULT_POSITION_LIMIT = 3;
@@ -578,6 +582,10 @@ export async function buildCoachPgnIndex({
     nags: 0,
     structuredClaims: 0,
     verifiedFactEntries: 0,
+    commentInsightCandidates: 0,
+    commentInsightsIndexed: 0,
+    commentInsightsConsensusVerified: 0,
+    commentInsightsPositionVerified: 0,
     quarantinedComments: 0,
     positions: 0,
     categoryCounts: Object.fromEntries(PGN_KNOWLEDGE_CATEGORIES.map((category) => [category, 0])),
@@ -591,6 +599,8 @@ export async function buildCoachPgnIndex({
   const profiles = new Map();
   const sources = [];
   const trainingRecords = [];
+  const commentCandidates = [];
+  const usedCommentRecords = new Set();
   const parseErrors = [];
 
   for (const [fileIndex, filePath] of files.entries()) {
@@ -625,14 +635,43 @@ export async function buildCoachPgnIndex({
     let sourceEntries = 0;
     for (const record of safeRecords) {
       stats.commentsSeen += 1;
-      if (stats.commentsIndexed >= totalLimit) break;
-      const verifiedFact = primaryDeterministicPgnMoveFact(record);
-      if (!verifiedFact) {
-        stats.quarantinedComments += 1;
-        continue;
-      }
+      const recordKey = `${sourceId}|${record.gameId}|${record.path}`;
       const positionKey = normalizedPositionKey(record.fenBefore);
       if (!positionKey) continue;
+      const profile = profiles.get(positionKey) || positionSimilarityProfile(positionKey, {
+        openingFamily: record.metadata.opening,
+      });
+      if (profile) profiles.set(positionKey, profile);
+      const derivedCandidates = pgnCommentKnowledgeCandidates(record, profile, {
+        sourceId,
+        audienceRating,
+      }).map((candidate) => ({
+        ...candidate,
+        recordKey,
+        gameId: record.gameId,
+        ply: record.ply,
+        moveNumber: record.moveNumber,
+        color: record.color,
+        move: record.san,
+        uci: record.uci,
+        mainline: record.mainline,
+        category: knowledgeCategoryForRecord(record, profile),
+        positionKey,
+      }));
+      commentCandidates.push(...derivedCandidates);
+      stats.commentInsightCandidates += derivedCandidates.length;
+      trainingRecords.push({
+        ...record,
+        knowledge: {
+          category: knowledgeCategoryForRecord(record, profile),
+          summary: record.annotation?.originalComment || "",
+          topics: commentTopics(record.annotation?.originalComment || ""),
+        },
+      });
+
+      if (stats.commentsIndexed >= totalLimit) continue;
+      const verifiedFact = primaryDeterministicPgnMoveFact(record);
+      if (!verifiedFact) continue;
       const id = stableEntryId(record);
       if (seenRecords.has(id)) continue;
       const existing = positions.get(positionKey) || [];
@@ -640,10 +679,6 @@ export async function buildCoachPgnIndex({
       const displayComment = verifiedFact.comment;
       const normalizedComment = displayComment.toLocaleLowerCase("de-DE");
       if (existing.some((entry) => entry.comment.toLocaleLowerCase("de-DE") === normalizedComment)) continue;
-      const profile = profiles.get(positionKey) || positionSimilarityProfile(positionKey, {
-        openingFamily: record.metadata.opening,
-      });
-      if (profile) profiles.set(positionKey, profile);
       const topics = uniqueTopics([
         ...verifiedFact.topics,
         ...commentTopics(displayComment),
@@ -675,10 +710,7 @@ export async function buildCoachPgnIndex({
       stats.structuredClaims += storedAnnotation.claims.length;
       stats.verifiedFactEntries += 1;
       stats.categoryCounts[category] += 1;
-      trainingRecords.push({
-        ...record,
-        knowledge: { category, summary: displayComment, topics },
-      });
+      usedCommentRecords.add(recordKey);
     }
     sources.push({
       sourceId,
@@ -698,13 +730,62 @@ export async function buildCoachPgnIndex({
       indexedComments: stats.commentsIndexed,
       cacheHit: Boolean(cached),
     });
+  }
+
+  const supportSources = new Map();
+  for (const candidate of commentCandidates) {
+    const sourcesForClaim = supportSources.get(candidate.supportKey) || new Set();
+    sourcesForClaim.add(candidate.sourceId);
+    supportSources.set(candidate.supportKey, sourcesForClaim);
+  }
+  const insightCountsByPosition = new Map();
+  const approvedSupportKeys = new Set();
+  for (const candidate of commentCandidates) {
     if (stats.commentsIndexed >= totalLimit) {
       stats.truncatedByTotalLimit = true;
       break;
     }
+    const independentSources = supportSources.get(candidate.supportKey)?.size || 0;
+    const insight = approvedPgnCommentInsight(candidate, { independentSources });
+    if (!insight) continue;
+    const existing = positions.get(candidate.positionKey) || [];
+    const insightCount = insightCountsByPosition.get(candidate.positionKey) || 0;
+    if (existing.length >= 5 || insightCount >= 2) continue;
+    const normalizedComment = insight.comment.toLocaleLowerCase("de-DE");
+    if (existing.some((entry) => entry.comment.toLocaleLowerCase("de-DE") === normalizedComment)) continue;
+    const entry = {
+      id: insight.id,
+      gameId: insight.gameId,
+      ply: insight.ply,
+      moveNumber: insight.moveNumber,
+      color: insight.color,
+      move: insight.move,
+      uci: insight.uci,
+      mainline: insight.mainline,
+      comment: insight.comment,
+      topics: uniqueTopics(insight.topics),
+      category: insight.category,
+      audienceRating: insight.audienceRating,
+      annotation: insight.annotation,
+    };
+    existing.push(entry);
+    positions.set(candidate.positionKey, existing);
+    insightCountsByPosition.set(candidate.positionKey, insightCount + 1);
+    stats.commentsIndexed += 1;
+    stats.commentInsightsIndexed += 1;
+    stats.structuredClaims += entry.annotation.claims.length;
+    stats.categoryCounts[entry.category] += 1;
+    if (candidate.tactical) stats.commentInsightsPositionVerified += 1;
+    else stats.commentInsightsConsensusVerified += 1;
+    usedCommentRecords.add(candidate.recordKey);
+    approvedSupportKeys.add(candidate.supportKey);
+  }
+  for (const candidate of commentCandidates) {
+    if (approvedSupportKeys.has(candidate.supportKey)) usedCommentRecords.add(candidate.recordKey);
   }
 
   stats.positions = positions.size;
+  stats.quarantinedComments = Math.max(0, stats.commentsSeen - usedCommentRecords.size);
   return {
     version: INDEX_VERSION,
     processing: {
@@ -712,8 +793,10 @@ export async function buildCoachPgnIndex({
       deterministic: true,
       anonymized: true,
       summarized: true,
-      runtimeFactsOnly: true,
+      runtimeFactsOnly: false,
       rawCommentProseIncluded: false,
+      derivedCommentInsightsIncluded: true,
+      strategicCommentConsensusRequired: true,
       categories: PGN_KNOWLEDGE_CATEGORIES,
       engineAnalysisIncluded: false,
       generatedAnswersIncluded: false,
@@ -829,6 +912,7 @@ export function compactCoachPgnIndex(index) {
           Math.round(alternative.confidence * 100),
         ]),
         entry.annotation?.scope || "",
+        entry.annotation?.requiredConceptIds || [],
       ],
     ]),
   ]));

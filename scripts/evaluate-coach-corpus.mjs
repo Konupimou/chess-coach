@@ -148,6 +148,9 @@ export function auditPgnSourceCorpus(index) {
   let coachReady = 0;
   let visibleLanguagePassed = 0;
   let coachReadyLanguagePassed = 0;
+  let verifiedFacts = 0;
+  let commentInsights = 0;
+  let consensusInsights = 0;
   for (const record of records) {
     const ready = isCoachReadyPgnEntry(record);
     const language = validateCoachLanguage(record.comment, {
@@ -158,6 +161,12 @@ export function auditPgnSourceCorpus(index) {
     coachReady += Number(ready);
     visibleLanguagePassed += Number(language.valid);
     coachReadyLanguagePassed += Number(ready && language.valid);
+    verifiedFacts += Number(record.annotation?.type === "deterministic_move_fact");
+    commentInsights += Number(record.annotation?.type === "comment_derived_concept");
+    consensusInsights += Number(
+      record.annotation?.type === "comment_derived_concept"
+      && record.annotation?.claims?.some((claim) => claim.verificationStatus === "consensus_verified"),
+    );
     byRating[record.rating].entries += 1;
     byRating[record.rating].coachReady += Number(ready);
     byRating[record.rating].visibleLanguagePassed += Number(language.valid);
@@ -177,6 +186,9 @@ export function auditPgnSourceCorpus(index) {
     visibleLanguagePercent: percentage(visibleLanguagePassed, records.length),
     coachReadyLanguagePassed,
     coachReadyLanguagePercent: percentage(coachReadyLanguagePassed, coachReady),
+    verifiedFacts,
+    commentInsights,
+    consensusInsights,
     rawCommentsAreDirectCoachOutput: false,
     byRating,
     issueCounts: Object.fromEntries(
@@ -685,6 +697,9 @@ export async function evaluateCoachCorpus({
       indexVersion: index.version || 0,
       indexedPositions: index.stats?.positions || 0,
       indexedComments: index.stats?.commentsIndexed || 0,
+      indexedVerifiedFacts: index.stats?.verifiedFactEntries || 0,
+      indexedCommentInsights: index.stats?.commentInsightsIndexed || 0,
+      indexedConsensusInsights: index.stats?.commentInsightsConsensusVerified || 0,
       indexedSources: index.sourceCount || index.stats?.uniqueFiles || 0,
       sampledPositions: results.length,
       representedAnonymousGames: uniqueGames,
@@ -738,7 +753,7 @@ export function coachCorpusReportMarkdown(result) {
     `- Harte Sicherheitsprüfung: ${result.gates.safetyReady ? "bestanden" : "nicht bestanden"}`,
     `- Sprache für 800–1000 Elo: ${result.gates.beginnerReadabilityPercent.toFixed(2)} % ohne Regelverstoß`,
     `- Eröffnungen ohne unbelegten Alleinanspruch: ${result.overall.openingPluralismPercent.toFixed(2)} %`,
-    `- PGN-Laufzeitwissen: ${result.gates.pgnKnowledgeReady ? "deterministisch geprüfte Fakten verfügbar" : "noch keine geprüften Fakten verfügbar"}`,
+    `- PGN-Laufzeitwissen: ${result.gates.pgnKnowledgeReady ? "geprüfte Brettfakten und anonymisierte Kommentar-Erkenntnisse verfügbar" : "noch kein geprüftes Wissen verfügbar"}`,
     "",
     "| Prüfung | Bestanden |",
     "| --- | ---: |",
@@ -746,7 +761,7 @@ export function coachCorpusReportMarkdown(result) {
     `| Evidenz und Zugreferenzen | ${result.overall.evidencePercent.toFixed(2)} % |`,
     `| Direkte Brett-Semantik | ${result.overall.semanticsPercent.toFixed(2)} % |`,
     `| Anonyme Herkunft und Datenprovenienz | ${result.overall.provenancePercent.toFixed(2)} % |`,
-    `| Exakter, für den Coach freigegebener Datenbanktreffer | ${result.overall.exactDatabaseMatchPercent.toFixed(2)} % |`,
+    `| Exakter, für den Coach freigegebener Wissenseintrag | ${result.overall.exactDatabaseMatchPercent.toFixed(2)} % |`,
     `| Sprachregeln | ${result.overall.readabilityPercent.toFixed(2)} % |`,
     "",
     "## Abdeckung",
@@ -757,14 +772,17 @@ export function coachCorpusReportMarkdown(result) {
       `| ${cell.rating} | ${cell.phase} | ${cell.availablePositions} | ${cell.selected} |`
     )),
     "",
-    "## Qualität der geprüften PGN-Fakten",
+    "## Qualität des geprüften PGN-Wissens",
     "",
-    `- Geprüfte Laufzeitfakten: ${result.sourceCorpus.entries.toLocaleString("de-DE")}`,
+    `- Geprüfte Wissenseinträge: ${result.sourceCorpus.entries.toLocaleString("de-DE")}`,
+    `- Davon reproduzierbare Brettfakten: ${result.sourceCorpus.verifiedFacts.toLocaleString("de-DE")}`,
+    `- Davon anonymisierte Kommentar-Erkenntnisse: ${result.sourceCorpus.commentInsights.toLocaleString("de-DE")}`,
+    `- Strategische Erkenntnisse mit Quellenkonsens: ${result.sourceCorpus.consensusInsights.toLocaleString("de-DE")}`,
     `- Für den Coach freigegeben: ${result.sourceCorpus.coachReady.toLocaleString("de-DE")} (${result.sourceCorpus.coachReadyPercent.toFixed(2)} %)`,
-    `- Als kurze deutsche Faktvorlage geeignet: ${result.sourceCorpus.visibleLanguagePassed.toLocaleString("de-DE")} (${result.sourceCorpus.visibleLanguagePercent.toFixed(2)} %)`,
-    "- Ursprüngliche PGN-Kommentare sind nicht im Laufzeitindex enthalten. Der Coach erhält nur aus Stellung und legalem Zug erneut berechenbare Fakten.",
+    `- Als kurze deutsche Vorlage geeignet: ${result.sourceCorpus.visibleLanguagePassed.toLocaleString("de-DE")} (${result.sourceCorpus.visibleLanguagePercent.toFixed(2)} %)`,
+    "- Ursprüngliche PGN-Kommentare sind nicht im Laufzeitindex enthalten. Sie dienen nur als Signal für neu formulierte Erkenntnisse. Taktische Motive müssen am Brett reproduzierbar sein; strategische Hinweise brauchen außerdem mindestens zwei unabhängige Quellen.",
     "",
-    "| Elo | Laufzeitfakten | Freigegeben | Sprachgeeignet |",
+    "| Elo | Wissenseinträge | Freigegeben | Sprachgeeignet |",
     "| ---: | ---: | ---: | ---: |",
     ...Object.entries(result.sourceCorpus.byRating).map(([rating, row]) => (
       `| ${rating} | ${row.entries} | ${row.coachReady} (${row.coachReadyPercent.toFixed(1)} %) | ${row.visibleLanguagePassed} (${row.visibleLanguagePercent.toFixed(1)} %) |`
@@ -776,7 +794,7 @@ export function coachCorpusReportMarkdown(result) {
       ? Object.entries(result.sourceCorpus.issueCounts).slice(0, 10).map(([issue, count]) => (
         `- \`${issue}\`: ${count.toLocaleString("de-DE")}`
       ))
-      : ["- Keine Probleme in den geprüften Fakten."]),
+      : ["- Keine Probleme im geprüften PGN-Wissen."]),
     "",
     "## Nach Spielstärke",
     "",
@@ -828,7 +846,7 @@ export function coachCorpusReportMarkdown(result) {
     "",
     "- Die Auswahl ist nach 800/1000/1400/1800 Elo und Eröffnung/Mittelspiel/Endspiel geschichtet. Innerhalb jeder Gruppe bestimmt ein fester SHA-256-Hash die Fälle; dieselbe Datenbank und derselbe Seed ergeben dieselbe Auswahl.",
     "- Jeder gespeicherte Zug wird mit `chess.js` aus seiner echten FEN-Stellung gespielt. Danach werden alle Zugreferenzen und Evidenz-IDs erneut durch die produktive Verifikation geschickt.",
-    "- Für jeden Fall wird gemessen, ob ein freigegebener exakter PGN-Fakt verfügbar ist. Fehlt er, bleibt die Erklärung bei Brett-, Eröffnungs- und Variantenfakten. PGN-Fakten gelten nur für die exakte Stellung und den gespeicherten legalen Zug; sie beweisen ausdrücklich keinen besten Zug.",
+    "- Für jeden Fall wird gemessen, ob ein freigegebener exakter PGN-Wissenseintrag verfügbar ist. Zuggebundene Fakten gelten nur für die exakte Stellung und den gespeicherten legalen Zug. Kommentar-Erkenntnisse dürfen nur ihr geprüftes Brettkonzept übertragen. Beides beweist ausdrücklich keinen besten Zug.",
     "- Der Massentest verwendet neutrale Bewertungen. Er prüft deshalb Legalität, Erdung, unmittelbare Brettlogik, Herkunft und Sprache – nicht die Stockfish-Qualität des historischen Zuges. Kuratierte Engine-Tests ergänzen diese Prüfung.",
     "- Der deutsche Lesewert ist nur ein Vergleichswert. Die Freigaberegeln verwenden zusätzlich konkrete Satzlängen, unerwünschte Floskeln, abstrakte Wörter und den Verzicht auf einen unbelegten einzigen ‚besten Zug‘ in Eröffnungen.",
     "- Kein endlicher Test kann Eignung für jede denkbare Schachstellung absolut beweisen. Ein bestandener Bericht ist eine belastbare Freigabeschwelle, kein mathematischer Vollständigkeitsbeweis.",
@@ -838,7 +856,6 @@ export function coachCorpusReportMarkdown(result) {
     "```bash",
     `node scripts/evaluate-coach-corpus.mjs --samples-per-cell=${result.config.samplesPerCell} --seed=${result.config.seed}`,
     "```",
-    "",
   ];
   return `${sections.join("\n")}\n`;
 }

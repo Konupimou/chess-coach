@@ -52,7 +52,7 @@ test("PGN-Importer dedupliziert Dateien und indexiert kommentierte Stellungen", 
     assert.equal(entries.some((entry) => entry.comment.includes("[%eval")), false);
     assert.equal(entries.some((entry) => entry.topics.includes("center")), true);
     const compact = compactCoachPgnIndex(index);
-    assert.equal(compact.version, 6);
+    assert.equal(compact.version, 7);
     assert.equal(Array.isArray(Object.values(compact.positions)[0][0]), true);
     assert.equal(Array.isArray(Object.values(compact.profiles)[0]), true);
     assert.equal("sourceNames" in compact, false);
@@ -69,11 +69,44 @@ test("PGN-Importer dedupliziert Dateien und indexiert kommentierte Stellungen", 
     )), true);
     assert.equal(index.stats.verifiedFactEntries, 2);
     assert.equal(index.stats.quarantinedComments, 0);
-    assert.equal(compact.processing.runtimeFactsOnly, true);
+    assert.equal(compact.processing.runtimeFactsOnly, false);
+    assert.equal(compact.processing.derivedCommentInsightsIncluded, true);
     assert.equal(compact.processing.rawCommentProseIncluded, false);
     assert.equal("sources" in compact, false);
     const serialized = JSON.stringify(compact);
     assert.doesNotMatch(serialized, /Beginner Fundamentals|Max Mustermann|Geheime Lektion/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("Kommentarwissen wird anonymisiert, am Brett geprüft und erst mit Quellenkonsens indexiert", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "coach-pgn-comment-knowledge-"));
+  const lesson = (event) => `[Event "${event}"]
+[SetUp "1"]
+[FEN "8/8/8/4P3/8/8/4K3/7k w - - 0 1"]
+[Result "*"]
+
+1. Kf3 {The passed pawn should be supported before it advances.} Kg1 *
+`;
+  try {
+    await writeFile(join(directory, "lesson-one.pgn"), lesson("One"));
+    await writeFile(join(directory, "lesson-two.pgn"), lesson("Two"));
+    const index = await buildCoachPgnIndex({
+      inputDir: directory,
+      sourceLimit: 10,
+      positionLimit: 2,
+      totalLimit: 20,
+    });
+
+    assert.equal(index.stats.commentInsightCandidates, 2);
+    assert.equal(index.stats.commentInsightsConsensusVerified, 1);
+    assert.equal(index.stats.commentInsightsIndexed, 1);
+    const insight = Object.values(index.positions).flat()
+      .find((entry) => entry.annotation.type === "comment_derived_concept");
+    assert.ok(insight);
+    assert.match(insight.comment, /Freibauer/iu);
+    assert.doesNotMatch(JSON.stringify(compactCoachPgnIndex(index)), /passed pawn|lesson-one|lesson-two/iu);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
