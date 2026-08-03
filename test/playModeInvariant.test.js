@@ -122,7 +122,14 @@ test("Zuglisten-Hover zeigt nur eine temporäre Brettvorschau", () => {
 
 test("Klicknavigation animiert genau ein legales Ziel und beendet alte Vorschauen", () => {
   const jumpSource = methodSource("jumpToFen", "getMainlineNodes");
-  assert.match(appSource, /moveSpeed: this\.reduceBoardMotion \? 0 : 160/);
+  assert.match(appSource, /moveSpeed: this\.reduceBoardMotion \? 0 : 130/);
+  assert.match(appSource, /dragThrottleRate:\s*8/);
+  assert.match(appSource, /deferBoardSync: fromDrag/);
+  assert.match(appSource, /this\.pendingDragBoardSync = true/);
+  assert.match(appSource, /this\.pendingMoveUiRefresh = true/);
+  assert.match(appSource, /flushAppliedMoveUiRefresh/);
+  assert.match(appSource, /updateLastMoveHighlights/);
+  assert.match(appSource, /board-legal-target/);
   assert.match(appSource, /onMoveEnd: \(\) => this\.handleBoardMoveEnd\(\)/);
   assert.match(appSource, /onJump: \(fen, node\) => this\.jumpToFen\(fen, node\)/);
   assert.match(jumpSource, /this\.stopAllBoardPreviews\(\)/);

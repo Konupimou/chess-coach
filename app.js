@@ -232,21 +232,39 @@ export class ChessApp {
       window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
     );
     this.boardAnimationTimer = null;
+    this.pendingDragBoardSync = false;
+    this.pendingMoveUiRefresh = false;
 
     this.board = window.Chessboard("board", {
       position: this.currentNode.fen,
       draggable: true,
       pieceTheme: "./libs/img/{piece}.png",
-      moveSpeed: this.reduceBoardMotion ? 0 : 160,
-      appearSpeed: this.reduceBoardMotion ? 0 : 110,
-      trashSpeed: this.reduceBoardMotion ? 0 : 100,
+      moveSpeed: this.reduceBoardMotion ? 0 : 130,
+      appearSpeed: this.reduceBoardMotion ? 0 : 90,
+      snapSpeed: this.reduceBoardMotion ? 0 : 55,
+      snapbackSpeed: this.reduceBoardMotion ? 0 : 80,
+      trashSpeed: this.reduceBoardMotion ? 0 : 80,
+      dragThrottleRate: 8,
       onDragStart: (source, piece) => this.handleDragStart(source, piece),
-      onDrop: this.handleMove.bind(this),
+      onDrop: (source, target) => this.handleMove(source, target, { fromDrag: true }),
       dropOffBoard: "snapback",
       onMoveEnd: () => this.handleBoardMoveEnd(),
-      onSnapEnd: () => this.moveArrows?.setVisible(true),
+      onSnapEnd: () => {
+        if (this.pendingDragBoardSync) {
+          this.pendingDragBoardSync = false;
+          this.board.position(this.game.fen(), false);
+        }
+        this.clearBoardDragHighlights();
+        this.updateLastMoveHighlights();
+        this.flushAppliedMoveUiRefresh();
+        this.moveArrows?.setVisible(true);
+      },
       onSnapbackEnd: () => {
-        this.board.position(this.game.fen());
+        this.pendingDragBoardSync = false;
+        this.clearBoardDragHighlights();
+        this.board.position(this.game.fen(), false);
+        this.updateLastMoveHighlights();
+        this.flushAppliedMoveUiRefresh();
         this.moveArrows?.setVisible(true);
       }
     });
@@ -1874,6 +1892,7 @@ export class ChessApp {
         this.boardKeyboardFrame = requestAnimationFrame(() => {
           this.boardKeyboardFrame = null;
           this.updateBoardKeyboardHighlights();
+          this.updateLastMoveHighlights();
         });
       });
       this.boardKeyboardObserver.observe(boardEl, { childList: true, subtree: true });
@@ -1974,6 +1993,7 @@ export class ChessApp {
       event.preventDefault();
       event.stopPropagation();
       this.boardKeyboardSelectedSquare = null;
+      this.clearBoardDragHighlights();
       this.updateBoardKeyboardHighlights();
       this.announceBoardKeyboardSquare("Auswahl aufgehoben.");
       return;
@@ -2003,6 +2023,7 @@ export class ChessApp {
     const source = this.boardKeyboardSelectedSquare;
     if (source === square) {
       this.boardKeyboardSelectedSquare = null;
+      this.clearBoardDragHighlights();
       this.updateBoardKeyboardHighlights();
       this.announceBoardKeyboardSquare("Auswahl aufgehoben.");
       return;
@@ -2030,11 +2051,13 @@ export class ChessApp {
     }
     const san = this.currentNode?.move?.san || `${source} nach ${square}`;
     this.boardKeyboardSelectedSquare = null;
+    this.clearBoardDragHighlights();
     this.updateBoardKeyboardHighlights();
     this.announceBoardKeyboardSquare(`Zug ${san} gespielt.`);
   }
 
   handleDragStart(source, piece) {
+    this.clearBoardDragHighlights();
     if (this.previewState || this.moveListPreviewState || this.reviewRunning) return false;
     if (this.appMode === "play") {
       if (
@@ -2055,11 +2078,47 @@ export class ChessApp {
         return false;
       }
     }
+    const legalMoves = this.game.moves({ square: source, verbose: true });
+    if (legalMoves.length === 0) return false;
+    this.boardEl?.querySelector(`.square-${source}`)?.classList.add("board-drag-source");
+    legalMoves.forEach((move) => {
+      const square = this.boardEl?.querySelector(`.square-${move.to}`);
+      square?.classList.add(move.captured ? "board-legal-capture" : "board-legal-target");
+    });
     this.moveArrows?.setVisible(false);
     return true;
   }
 
-  applyMove(moveSpec, { actor = "analysis" } = {}) {
+  clearBoardDragHighlights() {
+    this.boardEl
+      ?.querySelectorAll(".board-drag-source, .board-legal-target, .board-legal-capture")
+      .forEach((square) => {
+        square.classList.remove(
+          "board-drag-source",
+          "board-legal-target",
+          "board-legal-capture",
+        );
+      });
+  }
+
+  updateLastMoveHighlights() {
+    if (!this.boardEl) return;
+    this.boardEl
+      .querySelectorAll(".board-last-move-from, .board-last-move-to")
+      .forEach((square) => {
+        square.classList.remove("board-last-move-from", "board-last-move-to");
+      });
+    const move = this.currentNode?.move;
+    if (!move?.from || !move?.to) return;
+    this.boardEl
+      .querySelector(`.square-${move.from}`)
+      ?.classList.add("board-last-move-from");
+    this.boardEl
+      .querySelector(`.square-${move.to}`)
+      ?.classList.add("board-last-move-to");
+  }
+
+  applyMove(moveSpec, { actor = "analysis", deferBoardSync = false } = {}) {
     if (actor === "analysis") this.declaredGameResult = null;
     let move;
     try {
@@ -2093,11 +2152,20 @@ export class ChessApp {
       }
     }
 
-    if (actor === "engine") {
+    this.pendingMoveUiRefresh = true;
+    if (deferBoardSync) {
+      this.pendingDragBoardSync = true;
+    } else if (actor === "engine") {
       this.board.position(this.game.fen());
     } else {
       window.setTimeout(() => this.board.position(this.game.fen()), 0);
     }
+    return move;
+  }
+
+  flushAppliedMoveUiRefresh() {
+    if (!this.pendingMoveUiRefresh || this.destroyed) return;
+    this.pendingMoveUiRefresh = false;
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
@@ -2105,10 +2173,9 @@ export class ChessApp {
     this.renderCoachAnalysisPanel();
     this.evaluateCurrentPosition();
     this.refreshOpeningRecognition();
-    return move;
   }
 
-  handleMove(source, target) {
+  handleMove(source, target, { fromDrag = false } = {}) {
     if (this.reviewRunning) return "snapback";
     this.stopAllBoardPreviews();
     if (
@@ -2119,25 +2186,28 @@ export class ChessApp {
         || this.game.turn() !== this.playSession.playerColor
       )
     ) {
-      window.setTimeout(() => this.board.position(this.game.fen()), 0);
+      this.clearBoardDragHighlights();
       return "snapback";
     }
     const turn = this.game.turn();
     const fromPiece = this.game.get(source);
     if (!fromPiece || (turn === "w" && fromPiece.color !== "w") || (turn === "b" && fromPiece.color !== "b")) {
-      setTimeout(() => this.board.position(this.game.fen()), 0);
+      this.clearBoardDragHighlights();
       return "snapback";
     }
     if (this.appMode === "play" && fromPiece.color !== this.playSession.playerColor) {
-      setTimeout(() => this.board.position(this.game.fen()), 0);
+      this.clearBoardDragHighlights();
       return "snapback";
     }
     const move = this.applyMove(
       { from: source, to: target, promotion: "q" },
-      { actor: this.appMode === "play" ? "player" : "analysis" },
+      {
+        actor: this.appMode === "play" ? "player" : "analysis",
+        deferBoardSync: fromDrag,
+      },
     );
     if (!move) {
-      setTimeout(() => this.board.position(this.game.fen()), 0);
+      this.clearBoardDragHighlights();
       return "snapback";
     }
     return undefined;
@@ -2149,6 +2219,8 @@ export class ChessApp {
       this.boardAnimationTimer = null;
     }
     this.boardSurface?.classList.remove("is-navigating");
+    this.updateLastMoveHighlights();
+    this.flushAppliedMoveUiRefresh();
     if (!this.previewState && !this.moveListPreviewState) {
       this.moveArrows?.setVisible(true);
     }
