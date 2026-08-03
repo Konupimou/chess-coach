@@ -34,6 +34,7 @@ export default function HomePage() {
                   <p id="keyboard-hint" className="keyboard-hint">← → navigieren · ↑ ↓ Variante wechseln</p>
                 </div>
                 <section id="game-review-sidebar" className="game-review-sidebar" aria-label="Partieanalyse">
+                  <div id="game-review-result" className="game-review-result" role="status" hidden />
                   <div className="game-review-actions">
                     <button id="game-review-start" type="button">Partie analysieren</button>
                     <button id="game-review-open" type="button" hidden>Auswertung</button>

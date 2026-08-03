@@ -460,6 +460,7 @@ export class ChessApp {
     this.moveListTitle = document.getElementById("move-list-title");
     this.keyboardHint = document.getElementById("keyboard-hint");
     this.gameReviewSidebar = document.getElementById("game-review-sidebar");
+    this.gameReviewResultEl = document.getElementById("game-review-result");
     this.gameReviewStartButton = document.getElementById("game-review-start");
     this.gameReviewOpenButton = document.getElementById("game-review-open");
     this.gameReviewProgressEl = document.getElementById("game-review-progress");
@@ -631,7 +632,10 @@ export class ChessApp {
     openingFact.append(openingCaption, this.detectedOpeningEl);
     facts.appendChild(openingFact);
     statusGroup.appendChild(facts);
-    boardToolbar.appendChild(statusGroup);
+    // Die Metadaten bleiben für Speichern und Import verfügbar, werden aber
+    // in der reduzierten Analyse nicht mehr als eigenes „Stellung“-Feld gezeigt.
+    statusGroup.hidden = true;
+    this.boardStatusGroup = statusGroup;
 
     const moreActions = document.createElement("details");
     moreActions.className = "board-more-actions game-library-actions";
@@ -720,7 +724,9 @@ export class ChessApp {
       moreActions.open = false;
     });
     moreMenu.appendChild(this.resetButton);
-    libraryHeader.appendChild(moreActions);
+    // Die Aktionen bleiben erreichbar, obwohl die große Metadatenkarte nicht
+    // mehr unter dem Brett angezeigt wird.
+    boardToolbar.appendChild(moreActions);
     boardStack.appendChild(boardToolbar);
 
     this.createReviewJourneyPanel();
@@ -1569,17 +1575,20 @@ export class ChessApp {
       status = "Der Schachcomputer denkt …";
     } else if (session.phase === "game-over") {
       const result = this.getGameResult();
+      const terminal = terminalPositionState(this.game.fen());
       const playerWon = (session.playerColor === "w" && result === "1-0")
         || (session.playerColor === "b" && result === "0-1");
       const engineWon = (session.engineColor === "w" && result === "1-0")
         || (session.engineColor === "b" && result === "0-1");
-      status = result === "1/2-1/2"
-        ? "Partie beendet · Remis"
-        : playerWon
-          ? "Partie beendet · Du gewinnst"
-          : engineWon
-            ? "Partie beendet · Der Computer gewinnt"
-            : "Partie beendet";
+      status = terminal.status === "stalemate"
+        ? "Partie beendet · Patt · Remis"
+        : result === "1/2-1/2"
+          ? "Partie beendet · Remis"
+          : playerWon
+            ? "Partie beendet · Du gewinnst"
+            : engineWon
+              ? "Partie beendet · Der Computer gewinnt"
+              : "Partie beendet";
     }
     this.playTurnStatusEl.textContent = status;
 
@@ -5060,6 +5069,27 @@ export class ChessApp {
     const path = this.getCurrentPath();
     const moveCount = Math.max(0, path.length - 1);
     const report = this.gameReviewReport || this.savedGameReview;
+    const terminal = terminalPositionState(this.game.fen());
+    if (this.gameReviewResultEl) {
+      const finished = !["ongoing", "invalid"].includes(terminal.status);
+      this.gameReviewResultEl.hidden = !finished;
+      this.gameReviewResultEl.className = `game-review-result${finished ? ` is-${terminal.status}` : ""}`;
+      if (finished) {
+        const title = terminal.status === "stalemate"
+          ? "Patt · Remis"
+          : terminal.status === "checkmate"
+            ? `Schachmatt · ${terminal.result}`
+            : "Remis";
+        this.gameReviewResultEl.replaceChildren();
+        const strong = document.createElement("strong");
+        strong.textContent = title;
+        const copy = document.createElement("span");
+        copy.textContent = terminal.reason;
+        this.gameReviewResultEl.append(strong, copy);
+      } else {
+        this.gameReviewResultEl.replaceChildren();
+      }
+    }
     if (this.gameReviewStartButton) {
       this.gameReviewStartButton.disabled = moveCount < 1 || this.reviewRunning;
       this.gameReviewStartButton.textContent = this.reviewRunning

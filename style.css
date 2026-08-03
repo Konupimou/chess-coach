@@ -5034,6 +5034,7 @@ button.perspective-alternative-button,
 
 .analysis-only-page .board-toolbar {
   width: 100%;
+  justify-content: flex-end;
 }
 
 .analysis-only-page .game-library-card {
@@ -5199,6 +5200,36 @@ button.perspective-alternative-button,
 
 .analysis-only-page .game-review-sidebar [hidden] {
   display: none !important;
+}
+
+.analysis-only-page .game-review-result {
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px;
+  border: 1px solid rgba(104, 188, 150, 0.28);
+  border-radius: 9px;
+  background: rgba(104, 188, 150, 0.09);
+  color: var(--text-primary);
+}
+
+.analysis-only-page .game-review-result strong {
+  color: #8eddb7;
+  font-size: 0.76rem;
+}
+
+.analysis-only-page .game-review-result span {
+  color: var(--text-secondary);
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.analysis-only-page .game-review-result.is-checkmate {
+  border-color: rgba(255, 126, 116, 0.3);
+  background: rgba(255, 126, 116, 0.09);
+}
+
+.analysis-only-page .game-review-result.is-checkmate strong {
+  color: #ffaaa2;
 }
 
 .analysis-only-page .game-review-actions {

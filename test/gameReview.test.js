@@ -507,6 +507,9 @@ test("terminaler Zustand unterscheidet Matt, Patt und laufende Partie", () => {
   const stalemate = terminalPositionState("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1");
   assert.equal(stalemate.status, "stalemate");
   assert.equal(stalemate.result, "1/2-1/2");
+  assert.equal(stalemate.whiteCp, 0);
+  assert.equal(stalemate.inCheck, false);
+  assert.match(stalemate.reason, /patt.*kein legaler Zug.*kein Schach/i);
 
   assert.equal(terminalPositionState(START_FEN).status, "ongoing");
 });

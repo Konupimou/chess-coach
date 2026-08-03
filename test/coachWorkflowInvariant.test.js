@@ -187,6 +187,15 @@ test("Zugliste und Pfeiltastennavigation bleiben in der reduzierten Analyse erha
   assert.match(appSource, /attachKeyboard/);
 });
 
+test("reduzierte Analyse entfernt das Stellung-Feld und zeigt Patt ausdrücklich", () => {
+  const pageSource = readFileSync(new URL("../app/page.js", import.meta.url), "utf8");
+  assert.doesNotMatch(appSource, /boardToolbar\.appendChild\(statusGroup\)/);
+  assert.match(appSource, /statusGroup\.hidden = true/);
+  assert.match(appSource, /boardToolbar\.appendChild\(moreActions\)/);
+  assert.match(pageSource, /id="game-review-result"/);
+  assert.match(appSource, /Patt · Remis/);
+});
+
 test("Geführte Review navigiert durch Schlüsselmomente und markiert das Brett", () => {
   assert.match(appSource, /startReviewJourney/);
   assert.match(appSource, /navigateReviewJourney/);

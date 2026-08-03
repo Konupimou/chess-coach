@@ -36,6 +36,14 @@ test("Matt-Visualisierung markiert König, Angreifer und Angriffspfeil", () => {
   assert.ok(plan.persistentAnnotations.arrows.some((entry) => entry.role === "threat"));
 });
 
+test("Patt wird als Remis ohne Schach erklärt", () => {
+  const plan = buildTerminalVisualPlan("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1");
+  assert.equal(plan.terminal, "stalemate");
+  assert.match(plan.headline, /Patt/);
+  assert.match(plan.explanation, /nicht im Schach.*keinen legalen Zug.*remis/i);
+  assert.equal(plan.persistentAnnotations.arrows.length, 0);
+});
+
 test("eine konkrete Springergabel wird benannt und am Brett markiert", () => {
   const plan = buildCoachVisualPlan({
     fen: "k7/8/3q1r2/8/8/2N5/8/7K w - - 0 1",
