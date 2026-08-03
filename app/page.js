@@ -28,14 +28,14 @@ export default function HomePage() {
                 aria-label="Interaktives Schachbrett"
                 aria-describedby="board-keyboard-instructions"
               />
+              <section className="move-list-section" aria-labelledby="move-list-title">
+                <div className="section-heading">
+                  <h2 id="move-list-title">Züge</h2>
+                  <p id="keyboard-hint" className="keyboard-hint">← → navigieren · ↑ ↓ Variante wechseln</p>
+                </div>
+                <div id="move-list" />
+              </section>
             </div>
-          </section>
-          <section className="move-list-section" aria-labelledby="move-list-title">
-            <div className="section-heading">
-              <h2 id="move-list-title">Züge</h2>
-              <p id="keyboard-hint" className="keyboard-hint">← → navigieren · ↑ ↓ Variante wechseln</p>
-            </div>
-            <div id="move-list" />
           </section>
         </main>
       </div>

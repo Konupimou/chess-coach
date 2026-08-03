@@ -107,7 +107,7 @@ test("Analyse übergibt farbige Kurzerklärungen an die Zugliste", () => {
   const renderSource = methodSource("buildMoveAnnotations", "renderMoveList");
   assert.match(renderSource, /explainMoveQuality/);
   assert.match(renderSource, /MOVE_QUALITY/);
-  assert.match(appSource, /showExplanations: this\.appMode !== "play"/);
+  assert.match(appSource, /showExplanations = this\.appMode !== "play" && this\.analysisAssistantsEnabled/);
   assert.match(appSource, /Zug für Zug/);
 });
 
@@ -122,7 +122,7 @@ test("Zuglisten-Hover zeigt nur eine temporäre Brettvorschau", () => {
 
 test("Klicknavigation animiert genau ein legales Ziel und beendet alte Vorschauen", () => {
   const jumpSource = methodSource("jumpToFen", "getMainlineNodes");
-  assert.match(appSource, /moveSpeed: this\.reduceBoardMotion \? 0 : 360/);
+  assert.match(appSource, /moveSpeed: this\.reduceBoardMotion \? 0 : 160/);
   assert.match(appSource, /onMoveEnd: \(\) => this\.handleBoardMoveEnd\(\)/);
   assert.match(appSource, /onJump: \(fen, node\) => this\.jumpToFen\(fen, node\)/);
   assert.match(jumpSource, /this\.stopAllBoardPreviews\(\)/);

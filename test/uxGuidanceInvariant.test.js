@@ -27,7 +27,17 @@ test("Analyse bietet nur zwei klar benannte Aufgaben", () => {
   assert.match(appSource, /aria-label="Art der Analyse"/);
 });
 
-test("Schachcomputer steht in der Analyse vor dem Coach", () => {
+test("rechte Spalte zeigt vorläufig nur die Zugliste und pausiert Analyse-Assistenten", () => {
+  assert.match(pageSource, /id="board-container"[\s\S]*className="move-list-section"/);
+  assert.match(appSource, /const ANALYSIS_ASSISTANTS_ENABLED = false/);
+  assert.match(appSource, /analysisColumn\.hidden = !this\.analysisAssistantsEnabled/);
+  assert.match(appSource, /this\.evalBar\.container\.hidden = !this\.analysisAssistantsEnabled/);
+  assert.match(
+    appSource,
+    /this\.appMode === "analysis" && !this\.analysisAssistantsEnabled[\s\S]*this\.engine\?\.cancelSearch/,
+  );
+  assert.match(styleSource, /\.analysis-only-page \.analysis-column\[hidden\]/);
+  assert.match(styleSource, /\.analysis-only-page \.move-list-section[\s\S]*order:\s*2/);
   assert.match(appSource, /analysisColumn\.appendChild\(this\.suggestionsEl\)/);
   assert.match(appSource, /analysisColumn\.appendChild\(chatWrapper\)/);
   assert.ok(
@@ -41,10 +51,6 @@ test("Schachcomputer steht in der Analyse vor dem Coach", () => {
   assert.match(appSource, /this\.suggestionCount = 1/);
   assert.match(appSource, /syncAnalysisColumnHeight\(\)/);
   assert.match(appSource, /this\.analysisColumn\.style\.height = `\$\{boardStackHeight\}px`/);
-  assert.match(styleSource, /@media \(min-width: 1101px\)[\s\S]*\.chat-wrapper[\s\S]*flex: 1 1 0/);
-  assert.match(styleSource, /@media \(min-width: 1101px\)[\s\S]*\.coach-card[\s\S]*height: 100%/);
-  assert.match(styleSource, /\.coach-card[\s\S]*height: 480px/);
-  assert.match(styleSource, /#coach-chat \.chat-body[\s\S]*overflow-y: auto/);
   assert.doesNotMatch(appSource, /Lernprinzip/);
   assert.match(appSource, /review-technical-details/);
   assert.match(appSource, /Technische Auswertung anzeigen/);

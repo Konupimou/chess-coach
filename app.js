@@ -111,6 +111,9 @@ import {
 } from "./coachVisualization.js";
 
 const MAX_CHAT_MESSAGES = 160;
+// Vorläufige, bewusst schlanke Analyseoberfläche: Die vollständigen Coach- und
+// Engine-Komponenten bleiben erhalten, werden aber weder angezeigt noch automatisch gestartet.
+const ANALYSIS_ASSISTANTS_ENABLED = false;
 
 function movePathSignature(path, maximumPly = null) {
   const nodes = Array.isArray(path) ? path : [];
@@ -200,6 +203,7 @@ export class ChessApp {
     this.engineFailed = false;
     this.engineReady = false;
     this.appMode = "analysis";
+    this.analysisAssistantsEnabled = ANALYSIS_ASSISTANTS_ENABLED;
     this.playSession = {
       active: false,
       colorPreference: "random",
@@ -233,9 +237,9 @@ export class ChessApp {
       position: this.currentNode.fen,
       draggable: true,
       pieceTheme: "./libs/img/{piece}.png",
-      moveSpeed: this.reduceBoardMotion ? 0 : 360,
-      appearSpeed: this.reduceBoardMotion ? 0 : 220,
-      trashSpeed: this.reduceBoardMotion ? 0 : 180,
+      moveSpeed: this.reduceBoardMotion ? 0 : 160,
+      appearSpeed: this.reduceBoardMotion ? 0 : 110,
+      trashSpeed: this.reduceBoardMotion ? 0 : 100,
       onDragStart: (source, piece) => this.handleDragStart(source, piece),
       onDrop: this.handleMove.bind(this),
       dropOffBoard: "snapback",
@@ -434,9 +438,11 @@ export class ChessApp {
     this.moveListTitle = document.getElementById("move-list-title");
     this.keyboardHint = document.getElementById("keyboard-hint");
 
-    const engineAvailable = this.ensureEngine();
+    const engineAvailable = this.analysisAssistantsEnabled && this.ensureEngine();
 
     this.evalBar = new EvalBar({ parentEl: boardRow, width: 32, height: null });
+    this.evalBar.container.hidden = !this.analysisAssistantsEnabled;
+    analysisColumn.hidden = !this.analysisAssistantsEnabled;
     this.scheduleBoardResize();
 
     const boardToolbar = document.createElement("div");
@@ -2160,7 +2166,7 @@ export class ChessApp {
     if (this.boardAnimationTimer) window.clearTimeout(this.boardAnimationTimer);
     this.boardAnimationTimer = window.setTimeout(
       () => this.handleBoardMoveEnd(),
-      this.reduceBoardMotion ? 0 : 520,
+      this.reduceBoardMotion ? 0 : 240,
     );
   }
 
@@ -2276,6 +2282,13 @@ export class ChessApp {
     if (this.suggestionRenderTimer) {
       window.clearTimeout(this.suggestionRenderTimer);
       this.suggestionRenderTimer = null;
+    }
+    if (this.appMode === "analysis" && !this.analysisAssistantsEnabled) {
+      this.engine?.cancelSearch?.();
+      this.suggestionState = null;
+      this.lastEvalPawns = null;
+      this.moveArrows?.clear();
+      return;
     }
     const fen = this.game.fen();
     const searchPlan = this.getCurrentSearchPlan();
@@ -4030,7 +4043,7 @@ export class ChessApp {
     if (this.destroyed) return;
     this.syncCoachRatingControls();
     this.resetSuggestionCoachState({ abortChat: true });
-    if (this.appMode !== "analysis") return;
+    if (this.appMode !== "analysis" || !this.analysisAssistantsEnabled) return;
     const lines = this.suggestionState?.lines
       ? Array.from(this.suggestionState.lines.entries())
         .sort(([left], [right]) => left - right)
@@ -8940,9 +8953,10 @@ export class ChessApp {
 
   renderMoveList() {
     this.stopMoveListPreview();
+    const showExplanations = this.appMode !== "play" && this.analysisAssistantsEnabled;
     this.listView.render(this.moveTree, this.currentNode, {
-      annotations: this.buildMoveAnnotations(),
-      showExplanations: this.appMode !== "play",
+      annotations: showExplanations ? this.buildMoveAnnotations() : new Map(),
+      showExplanations,
     });
   }
 
