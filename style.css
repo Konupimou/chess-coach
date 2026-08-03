@@ -4770,3 +4770,333 @@ button.perspective-alternative-button,
     }
   }
 }
+
+/* Reduzierte Analyseoberfläche */
+.analysis-only-page {
+  --bg: #0c111b;
+  --surface: #121925;
+  --surface-raised: #172131;
+}
+
+.analysis-only-page .site-header {
+  padding: 18px 20px 0;
+}
+
+.analysis-only-page .header-inner,
+.analysis-only-page .workbench {
+  width: min(1180px, calc(100% - 32px));
+}
+
+.analysis-only-page .header-inner {
+  min-height: 42px;
+}
+
+.analysis-only-page .brand {
+  gap: 11px;
+}
+
+.analysis-only-page .brand .logo {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  background: #151e2d;
+  box-shadow: none;
+  color: #9cc8ff;
+  font-size: 21px;
+}
+
+.analysis-only-page .brand h1 {
+  font-size: 1.05rem;
+  font-weight: 720;
+  letter-spacing: -0.01em;
+}
+
+.analysis-only-page .brand p {
+  margin-top: 1px;
+  font-size: 0.72rem;
+}
+
+.analysis-only-page .account-button {
+  min-width: 0;
+  padding: 5px;
+  border-color: transparent;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.analysis-only-page .account-button:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.analysis-only-page .account-button-copy {
+  display: none;
+}
+
+.analysis-only-page .account-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #1a2637;
+  color: #a9d2ff;
+}
+
+.analysis-only-page .workbench {
+  gap: 16px;
+  margin: 18px auto 40px;
+}
+
+.analysis-only-page #board-container {
+  grid-template-columns: minmax(0, 570px) minmax(320px, 1fr);
+  gap: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.analysis-only-page .board-stack,
+.analysis-only-page .analysis-column {
+  gap: 12px;
+}
+
+.analysis-only-page .board-surface {
+  max-width: 534px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: #151c28;
+}
+
+.analysis-only-page .board-toolbar {
+  width: min(100%, 570px);
+}
+
+.analysis-only-page .game-library-card {
+  min-height: 42px;
+  padding: 6px 7px 6px 10px;
+  border-color: rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  background: #111824;
+  box-shadow: none;
+}
+
+.analysis-only-page .game-library-facts {
+  display: block;
+}
+
+.analysis-only-page .game-library-player,
+.analysis-only-page .game-library-fact:not(.game-library-opening) {
+  display: none;
+}
+
+.analysis-only-page .game-library-opening {
+  display: grid;
+  padding-top: 4px;
+  border-top-color: rgba(255, 255, 255, 0.05);
+}
+
+.analysis-only-page .save-status {
+  opacity: 0.72;
+}
+
+.analysis-only-page .card,
+.analysis-only-page .move-list-section {
+  border-color: rgba(255, 255, 255, 0.07);
+  border-radius: 13px;
+  background: #121925;
+  box-shadow: none;
+}
+
+.analysis-only-page .suggestions-card {
+  padding: 12px;
+}
+
+.analysis-only-page .suggestions-heading-hint {
+  display: none;
+}
+
+.analysis-only-page .computer-ai-status {
+  padding: 2px 7px;
+  border-color: rgba(83, 224, 161, 0.24);
+  background: rgba(83, 224, 161, 0.07);
+}
+
+.analysis-only-page .analysis-coach-mode {
+  width: 100%;
+  margin-top: 9px;
+  border-color: rgba(255, 255, 255, 0.07);
+  background: #0d1420;
+}
+
+.analysis-only-page .suggestions-card .analysis-coach-mode button.is-active {
+  background: #1b2b41;
+  box-shadow: none;
+}
+
+.analysis-only-page .coach-card {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: #121925;
+  box-shadow: none;
+}
+
+.analysis-only-page .coach-card-header {
+  min-height: 38px;
+  margin: 0;
+  align-items: center;
+}
+
+.analysis-only-page .coach-card-header .card-title {
+  font-size: 0.9rem;
+}
+
+.analysis-only-page .coach-card-header p:last-child {
+  margin-top: 0;
+  font-size: 0.68rem;
+}
+
+.analysis-only-page .coach-chat-content {
+  inset: 60px 14px 14px;
+}
+
+.analysis-only-page .coach-rating-control.is-compact {
+  margin-bottom: 7px;
+}
+
+.analysis-only-page .coach-rating-control select {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #0d1420;
+  color: #dbe9fb;
+}
+
+.analysis-only-page .coach-data-sources {
+  padding: 7px 9px;
+  border-color: rgba(255, 255, 255, 0.07);
+  background: #0f1723;
+}
+
+.analysis-only-page .coach-data-sources:not([open]) > p,
+.analysis-only-page .coach-data-sources:not([open]) > ul {
+  display: none;
+}
+
+.analysis-only-page .coach-message {
+  padding: 9px 10px;
+  border-radius: 10px;
+}
+
+.analysis-only-page .coach-message.is-assistant {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: #182131;
+}
+
+.analysis-only-page .coach-message.is-user {
+  border-color: rgba(90, 162, 255, 0.13);
+  background: rgba(90, 162, 255, 0.07);
+}
+
+.analysis-only-page .coach-card .coach-prompt-button {
+  border-color: rgba(255, 255, 255, 0.07);
+  background: transparent;
+  color: #c9d7e9;
+}
+
+.analysis-only-page .coach-form textarea {
+  min-height: 46px;
+  border-color: rgba(255, 255, 255, 0.09);
+  border-radius: 9px;
+  background: #0d1420;
+}
+
+.analysis-only-page .coach-form button,
+.analysis-only-page .primary-action-button {
+  border-radius: 9px;
+  background: #3f82d8;
+  box-shadow: none;
+}
+
+.analysis-only-page .move-list-section {
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+
+.analysis-only-page .section-heading {
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.analysis-only-page .section-heading h2 {
+  font-size: 0.9rem;
+}
+
+.analysis-only-page .keyboard-hint {
+  font-size: 0.68rem;
+}
+
+.analysis-only-page #move-list table {
+  font-size: 0.82rem;
+}
+
+.analysis-only-page #move-list th,
+.analysis-only-page #move-list td {
+  padding: 6px 8px;
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+@media (min-width: 1101px) {
+  .analysis-only-page .analysis-column {
+    height: var(--analysis-height, 570px);
+  }
+
+  .analysis-only-page .suggestions-card {
+    max-height: 45%;
+  }
+}
+
+@media (max-width: 1100px) {
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .analysis-only-page .chat-wrapper {
+    max-height: 480px;
+  }
+}
+
+@media (max-width: 768px) {
+  .analysis-only-page .site-header {
+    padding: 12px 12px 0;
+  }
+
+  .analysis-only-page .header-inner,
+  .analysis-only-page .workbench {
+    width: calc(100% - 20px);
+  }
+
+  .analysis-only-page .brand p {
+    display: none;
+  }
+
+  .analysis-only-page .workbench {
+    margin-top: 12px;
+  }
+
+  .analysis-only-page #board-container {
+    gap: 14px;
+  }
+
+  .analysis-only-page .board-surface {
+    width: calc(100% - 48px);
+    border-radius: 9px;
+  }
+
+  .analysis-only-page .coach-card {
+    height: 440px;
+  }
+
+  .analysis-only-page .keyboard-hint {
+    display: none;
+  }
+}

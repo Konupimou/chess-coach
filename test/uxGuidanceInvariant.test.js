@@ -7,25 +7,24 @@ const appSource = readFileSync(new URL("../app.js", import.meta.url), "utf8");
 const styleSource = readFileSync(new URL("../style.css", import.meta.url), "utf8");
 const evalBarSource = readFileSync(new URL("../evalBar.js", import.meta.url), "utf8");
 
-test("Bereichsnavigation führt direkt zu Spielen, Analyse und Coach-Analyse", () => {
-  assert.match(pageSource, /id="play-mode-button"/);
-  assert.match(pageSource, /id="analysis-mode-button"/);
-  assert.match(pageSource, /id="coach-analysis-mode-button"/);
-  assert.match(pageSource, /Coach-Analyse/);
-  assert.doesNotMatch(pageSource, /Was möchtest du heute verbessern\?/);
-  assert.doesNotMatch(pageSource, /id="start-guide"/);
+test("Oberfläche konzentriert sich ausschließlich auf die Analyse", () => {
+  assert.match(pageSource, /<h1>Analyse<\/h1>/);
+  assert.match(pageSource, /className="page analysis-only-page"/);
+  assert.doesNotMatch(pageSource, /mode-navigation/);
+  assert.doesNotMatch(pageSource, /play-mode-button/);
+  assert.doesNotMatch(pageSource, /coach-analysis-mode-button/);
+  assert.doesNotMatch(pageSource, />Spielen</);
+  assert.doesNotMatch(pageSource, />Coach-Analyse</);
+  assert.match(appSource, /this\.appMode = "analysis"/);
+  assert.doesNotMatch(appSource, /this\.createPlayPanel\(engineAvailable\)/);
+  assert.doesNotMatch(appSource, /this\.createCoachAnalysisPanel\(\)/);
 });
 
-test("Coach-Analyse besitzt einen eigenen geführten Arbeitsbereich", () => {
-  assert.match(appSource, /createCoachAnalysisPanel/);
-  assert.match(appSource, /Verstehe deine Partie – nicht nur die Bewertung/);
-  assert.match(appSource, /Eröffnung/);
-  assert.match(appSource, /Mittelspiel/);
-  assert.match(appSource, /Schlüsselmomente/);
-  assert.match(appSource, /Endspiel/);
-  assert.match(appSource, /ein bis drei konkrete Lernpunkte/);
-  assert.match(appSource, /this\.setAppMode\("coach"\)/);
-  assert.match(styleSource, /\.coach-analysis-card/);
+test("Analyse bietet nur zwei klar benannte Aufgaben", () => {
+  assert.match(appSource, />Nächster Zug<\/button>/);
+  assert.match(appSource, />Letzter Zug<\/button>/);
+  assert.doesNotMatch(appSource, />Weiterspielen<\/button>/);
+  assert.match(appSource, /aria-label="Art der Analyse"/);
 });
 
 test("Schachcomputer steht in der Analyse vor dem Coach", () => {

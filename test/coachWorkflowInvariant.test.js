@@ -139,10 +139,10 @@ test("Livefeedback nutzt die belegte Zugerklärung statt eines freien KI-Prompts
   assert.match(appSource, /latestAutomaticReply/);
 });
 
-test("Ein sichtbarer Coach-Schalter trennt Zugoptionen vom Rückblick unabhängig von der Farbe", () => {
+test("Der Analyse-Schalter trennt nächsten und letzten Zug unabhängig von der Farbe", () => {
   assert.match(appSource, /setAnalysisPerspective/);
-  assert.match(appSource, /data-analysis-coach-mode="continue">Weiterspielen/);
-  assert.match(appSource, /data-analysis-coach-mode="review">Zug verstehen/);
+  assert.match(appSource, /data-analysis-coach-mode="continue">Nächster Zug/);
+  assert.match(appSource, /data-analysis-coach-mode="review">Letzter Zug/);
   assert.match(appSource, /setAnalysisCoachMode/);
   assert.match(appSource, /this\.getAnalysisCoachMode\(\) === "review"/);
   assert.match(appSource, /this\.buildPositionCoachEngineContext\(\)/);

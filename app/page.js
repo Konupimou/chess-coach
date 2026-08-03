@@ -4,15 +4,14 @@ export default function HomePage() {
   return (
     <>
       <a className="skip-link" href="#board">Zum Schachbrett springen</a>
-      <div className="page">
+      <div className="page analysis-only-page">
         <header className="site-header">
           <div className="header-inner">
             <div className="brand">
               <div className="logo" aria-hidden="true">♞</div>
               <div>
-                <p className="eyebrow">Dein persönlicher Schachcoach</p>
-                <h1>Chess Coach</h1>
-                <p>Spiele gegen Stockfish oder untersuche deine Partien Zug für Zug.</p>
+                <h1>Analyse</h1>
+                <p>Verstehe die Stellung und deinen letzten Zug.</p>
               </div>
             </div>
             <div id="account-slot" className="account-slot" />
@@ -20,42 +19,6 @@ export default function HomePage() {
         </header>
 
         <main className="workbench">
-          <nav className="mode-navigation" aria-label="Chess-Coach-Bereich">
-            <button
-              id="play-mode-button"
-              className="mode-navigation-button is-active"
-              type="button"
-              aria-current="page"
-            >
-              <span aria-hidden="true">♟</span>
-              <span>
-                <strong>Spielen</strong>
-                <small>Gegen den Schachcomputer mit Live-Feedback</small>
-              </span>
-            </button>
-            <button
-              id="analysis-mode-button"
-              className="mode-navigation-button"
-              type="button"
-            >
-              <span aria-hidden="true">⌁</span>
-              <span>
-                <strong>Analyse</strong>
-                <small>Stellungen, Varianten und Partiefeedback</small>
-              </span>
-            </button>
-            <button
-              id="coach-analysis-mode-button"
-              className="mode-navigation-button"
-              type="button"
-            >
-              <span aria-hidden="true">♞</span>
-              <span>
-                <strong>Coach-Analyse</strong>
-                <small>Pläne, Schlüsselmomente und Lernaufgaben</small>
-              </span>
-            </button>
-          </nav>
           <section id="app" className="board-stage" aria-label="Schachanalyse">
             <div id="board-container" className="board-wrapper">
               <div
@@ -69,10 +32,7 @@ export default function HomePage() {
           </section>
           <section className="move-list-section" aria-labelledby="move-list-title">
             <div className="section-heading">
-              <div>
-                <p id="move-list-eyebrow" className="eyebrow">Partieverlauf</p>
-                <h2 id="move-list-title">Zugliste</h2>
-              </div>
+              <h2 id="move-list-title">Züge</h2>
               <p id="keyboard-hint" className="keyboard-hint">← → navigieren · ↑ ↓ Variante wechseln</p>
             </div>
             <div id="move-list" />

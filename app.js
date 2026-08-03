@@ -199,7 +199,7 @@ export class ChessApp {
     this.engine = null;
     this.engineFailed = false;
     this.engineReady = false;
-    this.appMode = "play";
+    this.appMode = "analysis";
     this.playSession = {
       active: false,
       colorPreference: "random",
@@ -425,9 +425,9 @@ export class ChessApp {
     this.boardContainer = wrap;
     this.boardStage = document.getElementById("app");
     this.boardSurface = boardSurface;
-    this.playModeButton = document.getElementById("play-mode-button");
-    this.analysisModeButton = document.getElementById("analysis-mode-button");
-    this.coachAnalysisModeButton = document.getElementById("coach-analysis-mode-button");
+    this.playModeButton = null;
+    this.analysisModeButton = null;
+    this.coachAnalysisModeButton = null;
     this.moveListSection = document.querySelector(".move-list-section");
     this.moveListEyebrow = document.getElementById("move-list-eyebrow");
     this.moveListTitle = document.getElementById("move-list-title");
@@ -449,7 +449,7 @@ export class ChessApp {
     libraryHeader.className = "game-library-header";
     const contextEyebrow = document.createElement("span");
     contextEyebrow.className = "board-context-eyebrow";
-    contextEyebrow.textContent = "Partie";
+    contextEyebrow.textContent = "Stellung";
     libraryHeader.appendChild(contextEyebrow);
     this.saveStatusEl = document.createElement("div");
     this.saveStatusEl.className = "save-status is-unsaved";
@@ -609,24 +609,21 @@ export class ChessApp {
     libraryHeader.appendChild(moreActions);
     boardStack.appendChild(boardToolbar);
 
-    this.createPlayPanel(engineAvailable);
     this.createReviewJourneyPanel();
-    this.createCoachAnalysisPanel();
 
     this.suggestionsEl = document.createElement('div');
     this.suggestionsEl.id = 'engine-suggestions';
     this.suggestionsEl.className = 'card suggestions-card';
     this.suggestionsEl.innerHTML = [
       '<div class="suggestions-heading">',
-      '<p class="eyebrow">Schachcomputer</p>',
+      '<p class="eyebrow">Analyse</p>',
       '<div class="suggestions-heading-status">',
-      '<span class="suggestions-heading-hint">Berühren oder fokussieren: am Brett ansehen</span>',
       '<span class="computer-ai-status is-active" role="status" aria-label="KI-Erklärungen sind aktiv">KI aktiv</span>',
       '</div>',
       '</div>',
-      '<div class="analysis-coach-mode" role="group" aria-label="Ansicht des Schachcoachs">',
-      '<button type="button" data-analysis-coach-mode="continue">Weiterspielen</button>',
-      '<button type="button" data-analysis-coach-mode="review">Zug verstehen</button>',
+      '<div class="analysis-coach-mode" role="group" aria-label="Art der Analyse">',
+      '<button type="button" data-analysis-coach-mode="continue">Nächster Zug</button>',
+      '<button type="button" data-analysis-coach-mode="review">Letzter Zug</button>',
       '</div>',
       '<div class="lines muted">Warten auf Analyse…</div>',
     ].join('');
@@ -812,12 +809,6 @@ export class ChessApp {
     this.createFeedbackDialog();
     this.createSaveGameDialog();
     this.createAccountPanel();
-    this._onPlayModeClick = () => this.setAppMode("play");
-    this._onAnalysisModeClick = () => this.setAppMode("analysis");
-    this._onCoachAnalysisModeClick = () => this.setAppMode("coach");
-    this.playModeButton?.addEventListener("click", this._onPlayModeClick);
-    this.analysisModeButton?.addEventListener("click", this._onAnalysisModeClick);
-    this.coachAnalysisModeButton?.addEventListener("click", this._onCoachAnalysisModeClick);
     this.detachKeys = attachKeyboard({
       onLeft: () => this.reviewJourney
         ? this.navigateReviewJourney(-1)
@@ -8244,22 +8235,15 @@ export class ChessApp {
 
     const header = document.createElement("summary");
     header.className = "coach-card-header coach-chat-summary";
-    const avatar = document.createElement("span");
-    avatar.className = "coach-avatar";
-    avatar.setAttribute("aria-hidden", "true");
-    avatar.textContent = "♞";
     const heading = document.createElement("div");
-    const eyebrow = document.createElement("p");
-    eyebrow.className = "eyebrow";
-    eyebrow.textContent = "Dein Coach";
     const title = document.createElement('h2');
     title.id = "coach-chat-title";
     title.className = 'card-title';
-    title.textContent = 'Fragen zum Brett';
+    title.textContent = 'Coach';
     const subtitle = document.createElement("p");
-    subtitle.textContent = "Frag nach dem Plan, einer Gefahr oder einer einfacheren Erklärung.";
-    heading.append(eyebrow, title, subtitle);
-    header.append(avatar, heading);
+    subtitle.textContent = "Frag zur aktuellen Stellung.";
+    heading.append(title, subtitle);
+    header.append(heading);
     panel.appendChild(header);
 
     const content = document.createElement("div");
@@ -8273,7 +8257,7 @@ export class ChessApp {
 
     const dataSources = document.createElement("details");
     dataSources.className = "coach-data-sources";
-    dataSources.open = true;
+    dataSources.open = false;
     this.coachDataSourcesEl = dataSources;
     const dataSourcesSummary = document.createElement("summary");
     const dataSourcesTitle = document.createElement("strong");
