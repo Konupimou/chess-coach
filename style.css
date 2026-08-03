@@ -4892,6 +4892,8 @@ button.perspective-alternative-button,
   --bg: #0c111b;
   --surface: #121925;
   --surface-raised: #172131;
+  --analysis-board-size: min(calc(100vh - 160px), calc(100vw - 318px), 1160px);
+  --analysis-board-size: min(calc(100dvh - 160px), calc(100vw - 318px), 1160px);
 }
 
 .analysis-only-page .site-header {
@@ -4900,7 +4902,7 @@ button.perspective-alternative-button,
 
 .analysis-only-page .header-inner,
 .analysis-only-page .workbench {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1650px, calc(100% - 32px));
 }
 
 .analysis-only-page .header-inner {
@@ -4960,12 +4962,13 @@ button.perspective-alternative-button,
 
 .analysis-only-page .workbench {
   gap: 16px;
-  margin: 18px auto 40px;
+  margin: 14px auto 24px;
 }
 
 .analysis-only-page #board-container {
-  grid-template-columns: minmax(0, 590px) minmax(320px, 1fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, var(--analysis-board-size)) minmax(220px, 270px);
+  justify-content: center;
+  gap: 16px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -4983,7 +4986,8 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .board-surface {
-  max-width: 552px;
+  width: 100%;
+  max-width: none;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 13px;
@@ -4992,7 +4996,7 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .board-toolbar {
-  width: min(100%, 590px);
+  width: 100%;
 }
 
 .analysis-only-page .game-library-card {
@@ -5142,13 +5146,13 @@ button.perspective-alternative-button,
   order: 2;
   height: var(--analysis-height, 570px);
   min-height: 0;
-  padding: 14px 16px;
+  padding: 11px 10px;
   overflow: auto;
 }
 
 .analysis-only-page .section-heading {
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .analysis-only-page .section-heading h2 {
@@ -5156,17 +5160,21 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .keyboard-hint {
-  font-size: 0.68rem;
+  display: none;
 }
 
 .analysis-only-page #move-list table {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
 }
 
 .analysis-only-page #move-list th,
 .analysis-only-page #move-list td {
-  padding: 6px 8px;
+  padding: 5px 4px;
   border-color: rgba(255, 255, 255, 0.07);
+}
+
+.analysis-only-page #move-list .move-num {
+  width: 30px;
 }
 
 @media (min-width: 1101px) {

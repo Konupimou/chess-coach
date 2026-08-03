@@ -38,6 +38,12 @@ test("rechte Spalte zeigt vorläufig nur die Zugliste und pausiert Analyse-Assis
   );
   assert.match(styleSource, /\.analysis-only-page \.analysis-column\[hidden\]/);
   assert.match(styleSource, /\.analysis-only-page \.move-list-section[\s\S]*order:\s*2/);
+  assert.match(styleSource, /--analysis-board-size:\s*min\(calc\(100dvh - 160px\)/);
+  assert.match(
+    styleSource,
+    /grid-template-columns:\s*minmax\(0, var\(--analysis-board-size\)\) minmax\(220px, 270px\)/,
+  );
+  assert.match(styleSource, /\.analysis-only-page \.board-surface[\s\S]*max-width:\s*none/);
   assert.match(appSource, /analysisColumn\.appendChild\(this\.suggestionsEl\)/);
   assert.match(appSource, /analysisColumn\.appendChild\(chatWrapper\)/);
   assert.ok(
