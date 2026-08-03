@@ -5454,7 +5454,7 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .site-header {
-  padding-top: 14px;
+  display: none;
 }
 
 .analysis-only-page .header-inner,
@@ -5463,22 +5463,27 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .workbench {
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .analysis-only-page #board-container {
   grid-template-columns:
-    minmax(0, calc(var(--analysis-board-size) + 48px))
+    minmax(0, calc(var(--analysis-board-size) + 96px))
     minmax(238px, 286px);
   gap: clamp(18px, 2vw, 30px);
 }
 
 .analysis-only-page .board-stack {
-  gap: 10px;
+  gap: 0;
 }
 
 .analysis-only-page .board-row {
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-only-page .board-stack > :not(.board-row) {
+  display: none !important;
 }
 
 .analysis-only-page .board-surface {
@@ -5562,16 +5567,20 @@ button.perspective-alternative-button,
 
 .analysis-only-page .board-dock {
   display: flex;
+  order: -2;
+  flex: 0 0 40px;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: calc(100% - 48px);
-  min-height: 42px;
-  margin-left: 48px;
+  justify-content: center;
+  gap: 8px;
+  width: 40px;
+  min-height: 0;
+  margin: 0;
 }
 
 .analysis-only-page .board-dock-group {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 3px;
   padding: 3px;
@@ -5602,9 +5611,7 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .board-dock-label {
-  font-size: 0.7rem;
-  font-weight: 720;
-  letter-spacing: 0.01em;
+  display: none;
 }
 
 .analysis-only-page .board-dock-button:hover:not(:disabled) {
@@ -5627,8 +5634,7 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .board-toolbar {
-  width: calc(100% - 48px);
-  margin-left: 48px;
+  display: none !important;
 }
 
 .analysis-only-page .game-library-card {
@@ -5660,7 +5666,7 @@ button.perspective-alternative-button,
 
 @media (max-width: 1100px) {
   .analysis-only-page {
-    --analysis-board-size: min(calc(100dvh - 180px), calc(100vw - 70px), 800px);
+    --analysis-board-size: min(calc(100dvh - 28px), calc(100vw - 66px), 800px);
   }
 
   .analysis-only-page #board-container {
@@ -5672,19 +5678,14 @@ button.perspective-alternative-button,
     margin-inline: auto;
   }
 
-  .analysis-only-page .analysis-column {
-    width: min(100%, calc(var(--analysis-board-size) + 48px));
-    margin-inline: auto;
+  .analysis-only-page #board-container > :not(.board-stack) {
+    display: none !important;
   }
 }
 
 @media (max-width: 700px) {
   .analysis-only-page {
-    --analysis-board-size: calc(100vw - 20px);
-  }
-
-  .analysis-only-page .site-header {
-    padding: 9px 10px 0;
+    --analysis-board-size: calc(100vw - 66px);
   }
 
   .analysis-only-page .header-inner,
@@ -5693,7 +5694,10 @@ button.perspective-alternative-button,
   }
 
   .analysis-only-page .workbench {
-    margin-top: 9px;
+    min-height: 100dvh;
+    margin-top: 0;
+    padding-block: 8px;
+    place-content: center;
   }
 
   .analysis-only-page #analysis-panel {
@@ -5705,30 +5709,16 @@ button.perspective-alternative-button,
     width: 100%;
   }
 
-  .analysis-only-page .board-row {
-    display: block;
-  }
-
   .analysis-only-page .board-surface {
-    width: 100%;
+    width: calc(100% - 48px);
     max-width: none;
     border-radius: 7px;
   }
 
-  .analysis-only-page .board-dock,
-  .analysis-only-page .board-toolbar {
-    width: 100%;
-    margin-left: 0;
-  }
-
   .analysis-only-page .board-dock-button {
-    min-width: 39px;
-    height: 38px;
-    padding-inline: 9px;
-  }
-
-  .analysis-only-page .board-dock-label {
-    display: none;
+    min-width: 34px;
+    height: 34px;
+    padding-inline: 7px;
   }
 }
 
@@ -5761,12 +5751,12 @@ body.board-focus-mode {
 
 .board-focus-mode .analysis-only-page #board-container {
   display: block;
-  width: min(calc(100vw - 20px), calc(100dvh - 72px), 980px);
+  width: min(calc(100vw - 20px), calc(100dvh + 30px), 1030px);
 }
 
 .board-focus-mode .analysis-only-page .board-stack {
   width: 100%;
-  gap: 8px;
+  gap: 0;
 }
 
 .board-focus-mode .analysis-only-page #analysis-panel {
@@ -5774,18 +5764,18 @@ body.board-focus-mode {
 }
 
 .board-focus-mode .analysis-only-page .board-row {
-  display: block;
+  display: flex;
 }
 
-.board-focus-mode .analysis-only-page .board-surface,
-.board-focus-mode .analysis-only-page .board-dock {
-  width: 100%;
+.board-focus-mode .analysis-only-page .board-surface {
+  width: calc(100% - 48px);
   max-width: none;
-  margin-left: 0;
 }
 
 .board-focus-mode .analysis-only-page .board-dock {
-  min-height: 44px;
+  width: 40px;
+  min-height: 0;
+  margin: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

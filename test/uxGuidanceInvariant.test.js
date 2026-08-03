@@ -109,3 +109,21 @@ test("Mobile Hierarchie nutzt große Ziele und einspaltige Coach-Bereiche", () =
   assert.match(styleSource, /\.learning-summary-grid[\s\S]*grid-template-columns: 1fr/);
   assert.match(styleSource, /\.coach-form[\s\S]*grid-template-columns: 1fr/);
 });
+
+test("Brett hält seine Ober- und Unterkante dauerhaft frei", () => {
+  assert.match(appSource, /boardRow\.insertBefore\(boardDock, boardSurface\)/);
+  assert.doesNotMatch(appSource, /boardStack\.appendChild\(boardDock\)/);
+  assert.match(appSource, /boardToolbar\.hidden = true/);
+  assert.match(
+    styleSource,
+    /\.analysis-only-page \.board-stack > :not\(\.board-row\) \{\s*display: none !important;/,
+  );
+  assert.match(
+    styleSource,
+    /\.analysis-only-page \.site-header \{\s*display: none;/,
+  );
+  assert.match(
+    styleSource,
+    /\.analysis-only-page #board-container > :not\(\.board-stack\) \{\s*display: none !important;/,
+  );
+});

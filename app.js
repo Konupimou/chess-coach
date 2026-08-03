@@ -548,13 +548,14 @@ export class ChessApp {
     );
     boardDockTools.append(this.boardDockFlipButton, this.boardFocusButton);
     boardDock.append(boardDockNavigation, boardDockTools);
-    boardStack.appendChild(boardDock);
+    boardRow.insertBefore(boardDock, boardSurface);
     this.boardDock = boardDock;
     this.boardFocusEnabled = false;
     this.scheduleBoardResize();
 
     const boardToolbar = document.createElement("div");
     boardToolbar.className = "board-toolbar";
+    boardToolbar.hidden = true;
     this.boardToolbar = boardToolbar;
 
     const statusGroup = document.createElement("section");
