@@ -377,13 +377,15 @@ export class Engine {
   }
 
   // emit always WHITE-centric (positive = better for White)
-  _emitInfo(parsed) {
+  _emitInfo(parsed, { final = false } = {}) {
+    if (!final) return;
     const score = parsed?.whiteScore;
     if ((!parsed?.multipv || parsed.multipv === 1) && score && typeof score.pawns === "number") {
       try {
         this.onEvaluation(score.pawns, {
           fen: parsed.fen,
           searchId: parsed.searchId,
+          final: true,
         });
       } catch {}
     }
@@ -456,8 +458,6 @@ export class Engine {
         }
       }
       if (!parsed.multipv || parsed.multipv === 1) this.latestPrimaryInfo = parsed;
-      const target = this.currentTargetDepth || this.depth;
-      if (!this.pendingSearch && parsed.depth && parsed.depth >= target) this._emitInfo(parsed);
       return;
     }
 
@@ -478,7 +478,7 @@ export class Engine {
         this._startSearch(nextSearch);
       } else if (completedInfo) {
         this._applyDirtyOptions();
-        this._emitInfo(completedInfo);
+        this._emitInfo(completedInfo, { final: true });
       } else {
         this._applyDirtyOptions();
       }

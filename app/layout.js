@@ -55,7 +55,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <Script src="/libs/jquery-3.6.0.min.js" strategy="beforeInteractive" />
-        <Script src="/libs/chessboard-1.0.0.min.js" strategy="beforeInteractive" />
+        <Script src="/libs/chessboard-1.0.0.min.js?v=drop-stable-3" strategy="beforeInteractive" />
         {children}
       </body>
     </html>

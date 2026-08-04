@@ -27,6 +27,10 @@ test("eine ausgewählte Variation wird hervorgehoben", () => {
     view.container.innerHTML,
     /class="variant-move current-move"[^>]*>d4<\/span>/,
   );
+  assert.match(
+    view.container.innerHTML,
+    /class="move-num-content"><span class="arrow">▾<\/span><span>1<\/span>/,
+  );
 });
 
 test("SAN und FEN werden vor dem Rendern escaped", () => {

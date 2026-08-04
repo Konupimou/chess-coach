@@ -121,8 +121,8 @@ function normalizeMoveReview(value, fen) {
   const qualityAliases = new Map([
     ["brilliant", "brilliant"],
     ["brillant", "brilliant"],
-    ["great", "great"],
-    ["großartig", "great"],
+    ["great", "excellent"],
+    ["großartig", "excellent"],
     ["book", "book"],
     ["buchzug", "book"],
     ["best", "best"],
@@ -135,8 +135,8 @@ function normalizeMoveReview(value, fen) {
     ["ungenauigkeit", "inaccuracy"],
     ["mistake", "mistake"],
     ["fehler", "mistake"],
-    ["miss", "miss"],
-    ["verpasste chance", "miss"],
+    ["miss", "mistake"],
+    ["verpasste chance", "mistake"],
     ["blunder", "blunder"],
     ["patzer", "blunder"],
   ]);
@@ -151,9 +151,13 @@ function normalizeMoveReview(value, fen) {
     : requestedQuality;
   const classificationQuality =
     qualityAliases.get(classification.toLowerCase()) || "";
-  const safeClassification = classificationQuality === "best" && topMoveMismatch
+  const safeClassification = topMoveMismatch && classificationQuality === "best"
     ? "Sehr gut"
-    : classification;
+    : classificationQuality === "excellent" && ["great", "großartig"].includes(classification.toLowerCase())
+      ? "Sehr gut"
+      : classificationQuality === "mistake" && ["miss", "verpasste chance"].includes(classification.toLowerCase())
+        ? "Fehler"
+        : classification;
   return {
     playedMove,
     bestMove: resolvedBestMove,

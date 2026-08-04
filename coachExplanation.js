@@ -1992,7 +1992,7 @@ export function buildLocalMoveExplanation({
     (line) => line.moves?.[0]?.uci === subject.uci,
   );
   const primaryDifference = comparison.differences?.[0];
-  if (["inaccuracy", "mistake", "miss", "blunder"].includes(quality)) {
+  if (["inaccuracy", "mistake", "blunder"].includes(quality)) {
     if (primaryDifference?.type === "allows_check") {
       verdictText = `Das Problem: Der Zug erlaubt sofort ${playedLine?.moves?.[1]?.san || "ein Schach"}.`;
     } else if (primaryDifference?.type === "allows_checkmate") {
@@ -2057,7 +2057,7 @@ export function buildLocalMoveExplanation({
       impactText,
     ].filter(Boolean).join(" ");
   } else if (
-    ["inaccuracy", "mistake", "miss", "blunder"].includes(quality)
+    ["inaccuracy", "mistake", "blunder"].includes(quality)
     && ["allows_check", "allows_checkmate"].includes(primaryDifference?.type)
     && opponent?.san
   ) {
@@ -2430,7 +2430,7 @@ export function verifyMoveExplanation(
     };
   });
   if (
-    ["inaccuracy", "mistake", "miss", "blunder"].includes(engineContext?.moveReview?.quality)
+    ["inaccuracy", "mistake", "blunder"].includes(engineContext?.moveReview?.quality)
     && normalized.alternative
     && !normalized.verdict?.text
   ) {

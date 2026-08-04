@@ -30,6 +30,27 @@ function cloneJsonObject(value) {
   }
 }
 
+function normalizePositionFeedback(value) {
+  if (!value || typeof value !== "object") return null;
+  const rating = ["helpful", "not_helpful"].includes(value.rating) ? value.rating : "";
+  const fenBefore = cleanText(value.fenBefore, 120);
+  if (!fenBefore) return null;
+  return {
+    id: cleanText(value.id, 100) || `feedback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    fenBefore,
+    fenAfter: cleanText(value.fenAfter, 120),
+    moveUci: cleanText(value.moveUci, 10),
+    moveSan: cleanText(value.moveSan, 30),
+    path: Array.isArray(value.path) ? value.path.slice(0, 300).map(Number).filter(Number.isInteger) : null,
+    rating,
+    text: cleanText(value.text, 2_000),
+    coachText: cleanText(value.coachText, 2_000),
+    patternIds: Array.isArray(value.patternIds) ? value.patternIds.slice(0, 12).map((id) => cleanText(id, 80)).filter(Boolean) : [],
+    createdAt: cleanText(value.createdAt, 40) || new Date().toISOString(),
+    updatedAt: cleanText(value.updatedAt, 40) || new Date().toISOString(),
+  };
+}
+
 function normalizeMetadata(metadata) {
   if (!metadata || typeof metadata !== "object") return null;
   const playerColor = metadata.playerColor === "w" || metadata.playerColor === "b"
@@ -128,6 +149,9 @@ function normalizeGameRecord(record) {
     pgn: cleanText(record.pgn, 30_000),
     tree: record.tree,
     review: cloneJsonObject(record.review),
+    feedback: Array.isArray(record.feedback)
+      ? record.feedback.map(normalizePositionFeedback).filter(Boolean).slice(0, 200)
+      : [],
     metadata: normalizeMetadata(record.metadata),
   };
 }

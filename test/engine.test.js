@@ -164,7 +164,7 @@ test("alte Info während stop wird ignoriert und PV 1 liefert den finalen Eval",
   assert.equal(infos[0].whiteScore.pawns, -0.4);
   assert.deepEqual(evaluations, [{
     value: -0.4,
-    meta: { fen, searchId },
+    meta: { fen, searchId, final: true },
   }]);
 
   engine.evaluate(fen, 15);

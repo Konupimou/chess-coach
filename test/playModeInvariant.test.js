@@ -115,9 +115,14 @@ test("Zuglisten-Hover zeigt nur eine temporäre Brettvorschau", () => {
   const startSource = methodSource("startMoveListPreview", "stopMoveListPreview");
   const stopSource = methodSource("stopMoveListPreview", "formatScore");
   assert.match(appSource, /onPreview: \(fen, element\)/);
-  assert.match(startSource, /this\.board\?\.position\?\.\(fen, false\)/);
+  assert.match(
+    startSource,
+    /this\.board\?\.position\?\.\(\s*fen,\s*!this\.reduceBoardMotion\s*&&\s*!isPreviewTransition,\s*\)/,
+  );
   assert.doesNotMatch(startSource, /this\.game\.load|this\.currentNode\s*=/);
   assert.match(stopSource, /this\.game\.fen\(\)/);
+  assert.match(moveListSource, /const nextHit = relatedMoveHit\(event\.relatedTarget\)/);
+  assert.match(moveListSource, /startPreviewInput\(nextHit, "pointer"\)/);
 });
 
 test("Klicknavigation animiert genau ein legales Ziel und beendet alte Vorschauen", () => {
@@ -134,7 +139,9 @@ test("Klicknavigation animiert genau ein legales Ziel und beendet alte Vorschaue
   assert.match(appSource, /board-legal-target/);
   assert.match(appSource, /onMoveEnd: \(\) => this\.handleBoardMoveEnd\(\)/);
   assert.match(appSource, /onJump: \(fen, node\) => this\.jumpToFen\(fen, node\)/);
-  assert.match(jumpSource, /this\.stopAllBoardPreviews\(\)/);
+  assert.match(jumpSource, /previewAlreadyVisible = this\.moveListPreviewState\?\.fen === fen/);
+  assert.match(jumpSource, /restore: !previewAlreadyVisible/);
+  assert.match(jumpSource, /if \(previewAlreadyVisible\)[\s\S]*else \{\s*this\.animateBoardPosition/);
   assert.match(jumpSource, /root !== this\.moveTree/);
   assert.match(jumpSource, /this\.animateBoardPosition\(node\.fen, \{ fromFen: sourceFen \}\)/);
   assert.doesNotMatch(jumpSource, /this\.board\.position\(node\.fen\)/);

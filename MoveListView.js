@@ -53,13 +53,15 @@ export class MoveListView {
       style.id = "move-list-styles";
       style.textContent = `
         #move-list table { width: 100%; border-collapse: collapse; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
-        #move-list th, #move-list td { padding: 6px 8px; text-align: center; vertical-align: top; }
+        #move-list th, #move-list td { height: 28px; padding: 0 8px; text-align: center; vertical-align: middle; }
         #move-list td[data-fen] { cursor: pointer; }
-        #move-list .variant-row td { font-style: italic; text-align: left; padding: 6px 10px; }
+        #move-list .variant-row td { font-style: italic; text-align: center; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #move-list .variant-row .variant-hint { margin-left: 8px; font-size: 11px; font-style: normal; opacity: .62; }
         #move-list .variant-badge { display: inline-block; font-size: 11px; border-radius: 10px; padding: 0 6px; margin-right: 6px; }
         #move-list .variant-move { margin-right: 6px; }
         #move-list td.move-num { cursor: pointer; user-select: none; width: 46px; }
-        #move-list td.move-num .arrow { display: inline-block; width: 1em; }
+        #move-list td.move-num .move-num-content { display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap; }
+        #move-list td.move-num .arrow { display: inline-block; width: auto; flex: 0 0 auto; }
       `;
       document.head.appendChild(style);
     }
@@ -97,6 +99,11 @@ export class MoveListView {
     });
 
     const moveHit = (event) => event.target?.closest?.("[data-fen]") || null;
+    const relatedMoveHit = (relatedTarget) => (
+      relatedTarget instanceof Element
+        ? relatedTarget.closest?.("[data-fen]") || null
+        : null
+    );
     const entersHit = (hit, relatedTarget) => (
       hit && !(relatedTarget instanceof Node && hit.contains(relatedTarget))
     );
@@ -130,6 +137,12 @@ export class MoveListView {
     this.container.addEventListener("pointerout", (event) => {
       const hit = moveHit(event);
       if (!entersHit(hit, event.relatedTarget)) return;
+      const nextHit = relatedMoveHit(event.relatedTarget);
+      if (nextHit && nextHit !== hit) {
+        previewInputState(hit).pointer = false;
+        startPreviewInput(nextHit, "pointer");
+        return;
+      }
       stopPreviewInput(hit, "pointer");
     });
     this.container.addEventListener("focusin", (event) => {
@@ -139,6 +152,12 @@ export class MoveListView {
     this.container.addEventListener("focusout", (event) => {
       const hit = moveHit(event);
       if (!entersHit(hit, event.relatedTarget)) return;
+      const nextHit = relatedMoveHit(event.relatedTarget);
+      if (nextHit && nextHit !== hit) {
+        previewInputState(hit).focus = false;
+        startPreviewInput(nextHit, "focus");
+        return;
+      }
       stopPreviewInput(hit, "focus");
     });
   }
@@ -168,8 +187,8 @@ export class MoveListView {
   qualityClass(node) {
     const quality = this.annotationFor(node)?.quality;
     return [
-      "brilliant", "great", "book", "best", "excellent",
-      "good", "inaccuracy", "mistake", "miss", "blunder",
+      "brilliant", "book", "best", "excellent", "good",
+      "inaccuracy", "mistake", "blunder",
     ].includes(quality)
       ? `move-quality-${quality}`
       : "";
@@ -310,47 +329,15 @@ export class MoveListView {
     return html;
   }
 
-  // Build rows for a variant and its sub-variants as extra table rows
+  // Compact entry point for a variant. Once selected, the normal left/right
+  // keyboard navigation walks through the variant's mainline.
   rowsForVariantRecursive(node, startMoveNum, sideLetter, depth = 0, indexLabel = "", suppressParentOnce = null, parentMoveNum = null, hidden = false) {
     const indent = `<span class="variant-indent" style="display:inline-block;width:${depth * 16}px"></span>`;
     const badge = `<span class="variant-badge${depth>0 ? ' nested' : ''}">${escapeHtml(sideLetter)}${escapeHtml(indexLabel)}</span>`;
     let rows = "";
 
-    // Row for THIS variant (flat snippet only)
-    const snippet = this.simpleVariantSnippet(node, startMoveNum);
-    rows += `<tr class="variant-row" data-parent-movenum="${parentMoveNum ?? ''}" style="${hidden ? 'display:none;' : ''}"><td></td><td colspan="2">${indent}${badge}${snippet}</td></tr>`;
-
-    // Now walk down this variant's mainline and emit its OWN sub-variants as extra rows
-    let cur = node;
-    let moveNum = startMoveNum;
-    let suppressionConsumed = false;
-
-    while (cur && cur.move) {
-      const parent = cur.parent;
-      const color = cur.move.color; // 'w' or 'b'
-      const skipHere = suppressParentOnce && !suppressionConsumed && parent === suppressParentOnce;
-
-      if (!skipHere && parent && Array.isArray(parent.variations) && parent.variations.length > 0) {
-        const alts = parent.variations.filter(v => v !== cur && v.move && v.move.color === color);
-        for (const alt of alts) {
-          // recurse; nested variants do not carry index numbers
-          rows += this.rowsForVariantRecursive(
-            alt,
-            moveNum,
-            color === 'w' ? 'W' : 'S',
-            depth + 1,
-            "",
-            parent,
-            parentMoveNum,
-            hidden
-          );
-        }
-      }
-      if (skipHere) suppressionConsumed = true;
-
-      if (color === 'b') moveNum++;
-      cur = cur.mainline;
-    }
+    const snippet = `(${node.move.color === "w" ? `${startMoveNum}.` : `${startMoveNum}...`} ${this.variantMove(node)})`;
+    rows += `<tr class="variant-row" data-parent-movenum="${parentMoveNum ?? ''}" style="${hidden ? 'display:none;' : ''}"><td></td><td colspan="2">${indent}${badge}${snippet}<span class="variant-hint">· Pfeiltasten</span></td></tr>`;
 
     return rows;
   }
@@ -432,7 +419,7 @@ export class MoveListView {
       if (hasVar) {
         const isCollapsed = this.collapsed.has(String(moveNum));
         const arrow = isCollapsed ? '▸' : '▾';
-        html += `<tr class="main-row" data-movenum="${moveNum}"><td class="move-num" data-movenum="${moveNum}"><span class="arrow">${arrow}</span> ${moveNum}</td>${whiteCell}${blackCell}</tr>`;
+        html += `<tr class="main-row" data-movenum="${moveNum}"><td class="move-num" data-movenum="${moveNum}"><span class="move-num-content"><span class="arrow">${arrow}</span><span>${moveNum}</span></span></td>${whiteCell}${blackCell}</tr>`;
       } else {
         // no variants: plain number, no arrow, not clickable
         html += `<tr class="main-row" data-movenum="${moveNum}"><td>${moveNum}</td>${whiteCell}${blackCell}</tr>`;

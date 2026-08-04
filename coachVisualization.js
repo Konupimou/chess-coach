@@ -862,17 +862,15 @@ export function moveQualityPresentation({
 } = {}) {
   const presentations = {
     brilliant: { symbol: "!!", label: "Brillant", tone: "brilliant" },
-    great: { symbol: "!", label: "Großartig", tone: "great" },
     book: { symbol: "📖", label: "Buchzug", tone: "book" },
     best: { symbol: "★", label: "Bester Zug", tone: "best" },
-    excellent: { symbol: "👍", label: "Sehr gut", tone: "excellent" },
+    excellent: { symbol: "✓", label: "Sehr gut", tone: "excellent" },
     good: { symbol: "✓", label: "Gut", tone: "good" },
     inaccuracy: { symbol: "?!", label: "Ungenauigkeit", tone: "inaccuracy" },
     mistake: { symbol: "?", label: "Fehler", tone: "mistake" },
-    miss: { symbol: "✕", label: "Verpasste Chance", tone: "miss" },
     blunder: { symbol: "??", label: "Grober Fehler", tone: "blunder" },
   };
-  if (["brilliant", "great", "book"].includes(quality)) return presentations[quality];
+  if (["brilliant", "book"].includes(quality)) return presentations[quality];
   const exactBest = Boolean(playedUci && bestUci && playedUci === bestUci);
   const equivalent = !exactBest
     && Number.isFinite(lossCp)

@@ -27,9 +27,9 @@ test("Analyse bietet nur zwei klar benannte Aufgaben", () => {
   assert.match(appSource, /aria-label="Art der Analyse"/);
 });
 
-test("rechte Spalte zeigt vorläufig nur die Zugliste und pausiert Analyse-Assistenten", () => {
+test("rechte Spalte zeigt Zugliste und aktive Analyse-Assistenten", () => {
   assert.match(pageSource, /id="board-container"[\s\S]*className="move-list-section"/);
-  assert.match(appSource, /const ANALYSIS_ASSISTANTS_ENABLED = false/);
+  assert.match(appSource, /const ANALYSIS_ASSISTANTS_ENABLED = true/);
   assert.match(appSource, /analysisColumn\.hidden = !this\.analysisAssistantsEnabled/);
   assert.match(appSource, /this\.evalBar\.container\.hidden = !this\.analysisAssistantsEnabled/);
   assert.match(
@@ -111,8 +111,8 @@ test("Mobile Hierarchie nutzt große Ziele und einspaltige Coach-Bereiche", () =
 });
 
 test("Brett hält seine Ober- und Unterkante dauerhaft frei", () => {
-  assert.match(appSource, /boardRow\.insertBefore\(boardDock, boardSurface\)/);
-  assert.doesNotMatch(appSource, /boardStack\.appendChild\(boardDock\)/);
+  assert.doesNotMatch(appSource, /board-dock/);
+  assert.doesNotMatch(styleSource, /\.board-dock/);
   assert.match(appSource, /boardToolbar\.hidden = true/);
   assert.match(
     styleSource,
@@ -125,5 +125,20 @@ test("Brett hält seine Ober- und Unterkante dauerhaft frei", () => {
   assert.match(
     styleSource,
     /\.analysis-only-page #board-container > :not\(\.board-stack\) \{\s*display: none !important;/,
+  );
+});
+
+test("Brett nutzt ohne feste Obergrenze das verfügbare Browserfenster", () => {
+  assert.match(
+    styleSource,
+    /--analysis-board-size:\s*min\(calc\(100dvh - 16px\), calc\(100vw - 440px\)\)/,
+  );
+  assert.match(
+    styleSource,
+    /@media \(max-width: 1100px\)[\s\S]*--analysis-board-size:\s*min\(calc\(100dvh - 16px\), calc\(100vw - 66px\)\)/,
+  );
+  assert.doesNotMatch(
+    styleSource.slice(styleSource.indexOf("/* Board-first visual pass */")),
+    /--analysis-board-size:[^;]*(?:840px|800px|1160px)/,
   );
 });

@@ -101,9 +101,14 @@ import {
 import {
   buildLocalMoveExplanation,
   compactMoveExplanationClaims,
+  knowledgeFeatureIdsFromPositionEvidence,
   moveExplanationCacheKey,
   moveExplanationToMarkdown,
+  phaseFromPositionEvidence,
 } from "./coachExplanation.js";
+import { buildCoachKnowledgeContext as buildVerifiedKnowledgeContext } from "./knowledgeClaims.js";
+import { buildCoachKnowledgeContext as buildOntologyContext } from "./chessKnowledge/context.js";
+import { PATTERN_LABELS, recognizePositionPatterns } from "./patternRecognition.js";
 import {
   buildCoachVisualPlan,
   buildTerminalVisualPlan,
@@ -114,6 +119,9 @@ const MAX_CHAT_MESSAGES = 160;
 // Vorläufige, bewusst schlanke Analyseoberfläche: Die vollständigen Coach- und
 // Engine-Komponenten bleiben erhalten, werden aber weder angezeigt noch automatisch gestartet.
 const ANALYSIS_ASSISTANTS_ENABLED = false;
+// Etwas mehr Rechenzeit liefert stabilere Zwischenbewertungen für die Leiste,
+// ohne die Züge im Spielmodus oder die explizite Tiefeneinstellung zu ändern.
+const MINIMAL_ANALYSIS_DEPTH = 12;
 
 function movePathSignature(path, maximumPly = null) {
   const nodes = Array.isArray(path) ? path : [];
@@ -169,6 +177,7 @@ export class ChessApp {
         this.engine = new Engine({
           onEvaluation: (evalPawns, meta) => {
             if (meta?.fen && meta.fen !== this.analysisFen) return;
+            if (meta?.final !== true) return;
             if (
               meta?.searchId
               && this.suggestionState?.searchId
@@ -202,6 +211,8 @@ export class ChessApp {
     this.engine = null;
     this.engineFailed = false;
     this.engineReady = false;
+    this.engineRestartAttempts = 0;
+    this.engineRestartTimer = null;
     this.appMode = "analysis";
     this.analysisAssistantsEnabled = ANALYSIS_ASSISTANTS_ENABLED;
     this.playSession = {
@@ -228,27 +239,35 @@ export class ChessApp {
     this.declaredGameResult = null;
     this.moveTree = new MoveTreeNode({ fen: this.game.fen() });
     this.currentNode = this.moveTree;
+    // Normale Brettnavigation darf ruhig sichtbar ablaufen. Die
+    // Betriebssystem-Einstellung für reduzierte Bewegung bleibt respektiert.
     this.reduceBoardMotion = Boolean(
-      window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches,
+      window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
     );
     this.boardAnimationTimer = null;
     this.pendingDragBoardSync = false;
     this.pendingMoveUiRefresh = false;
     this.moveUiRefreshHandle = null;
     this.moveUiRefreshHandleType = "";
+    this.evaluationTimer = null;
+    this.pendingPromotion = null;
 
     this.board = window.Chessboard("board", {
       position: this.currentNode.fen,
       draggable: true,
       pieceTheme: "/libs/img/rhosgfx/{piece}.svg",
-      moveSpeed: this.reduceBoardMotion ? 0 : 130,
-      appearSpeed: this.reduceBoardMotion ? 0 : 90,
-      snapSpeed: this.reduceBoardMotion ? 0 : 55,
-      snapbackSpeed: this.reduceBoardMotion ? 0 : 80,
-      trashSpeed: this.reduceBoardMotion ? 0 : 80,
+      moveSpeed: this.reduceBoardMotion ? 0 : 360,
+      appearSpeed: this.reduceBoardMotion ? 0 : 260,
+      snapSpeed: 0,
+      snapbackSpeed: this.reduceBoardMotion ? 0 : 220,
+      // Geschlagene Figuren werden sichtbar ausgeblendet/verkleinert.
+      trashSpeed: this.reduceBoardMotion ? 0 : 300,
       dragThrottleRate: 8,
       onDragStart: (source, piece) => this.handleDragStart(source, piece),
-      onDrop: (source, target) => this.handleMove(source, target, { fromDrag: true }),
+      onDrop: (source, target) => {
+        const result = this.handleMove(source, target, { fromDrag: true });
+        return result === "promotion-pending" ? "snapback" : result;
+      },
       dropOffBoard: "snapback",
       onMoveEnd: () => this.handleBoardMoveEnd(),
       onSnapEnd: () => {
@@ -459,6 +478,20 @@ export class ChessApp {
     this.moveListEyebrow = document.getElementById("move-list-eyebrow");
     this.moveListTitle = document.getElementById("move-list-title");
     this.keyboardHint = document.getElementById("keyboard-hint");
+    this.stageFourPanel = document.getElementById("stage-four-explanation");
+    this.stageFourFactsEl = document.getElementById("stage-four-facts");
+    this.stageFourFeedbackEl = document.getElementById("stage-four-feedback");
+    this.stageFourTacticalOpen = false;
+    this.stageFourStrategicOpen = false;
+    this.stageFourCoachEl = document.getElementById("stage-four-coach");
+    this.stageFourCoachTextEl = document.getElementById("stage-four-coach-text");
+    this.stageFourAiBasisEl = document.getElementById("stage-four-ai-basis");
+    this.stageFourAiSourceEl = document.getElementById("stage-four-ai-source");
+    this.stageFourAiFactsEl = document.getElementById("stage-four-ai-facts");
+    this.stageFourPhraseChoices = new Map();
+    this.stageFourAiCache = new Map();
+    this.stageFourAiController = null;
+    this.stageFourAiRequestKey = "";
     this.gameReviewSidebar = document.getElementById("game-review-sidebar");
     this.gameReviewResultEl = document.getElementById("game-review-result");
     this.gameReviewStartButton = document.getElementById("game-review-start");
@@ -474,83 +507,13 @@ export class ChessApp {
       if (!this.feedbackDialog?.open) this.feedbackDialog?.showModal();
     });
 
-    const engineAvailable = this.analysisAssistantsEnabled && this.ensureEngine();
+    const engineAvailable = this.ensureEngine();
 
     this.evalBar = new EvalBar({ parentEl: boardRow, width: 32, height: null });
-    this.evalBar.container.hidden = !this.analysisAssistantsEnabled;
+    boardRow.insertBefore(this.evalBar.container, boardSurface);
+    this.evalBar.container.hidden = this.appMode !== "analysis";
     analysisColumn.hidden = !this.analysisAssistantsEnabled;
 
-    const boardDock = document.createElement("nav");
-    boardDock.className = "board-dock";
-    boardDock.setAttribute("aria-label", "Brettsteuerung");
-    const boardDockNavigation = document.createElement("div");
-    boardDockNavigation.className = "board-dock-group board-dock-navigation";
-    const boardDockTools = document.createElement("div");
-    boardDockTools.className = "board-dock-group board-dock-tools";
-    const makeBoardDockButton = ({ label, symbol, shortLabel = "", onClick }) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "board-dock-button";
-      button.setAttribute("aria-label", label);
-      button.title = label;
-      const icon = document.createElement("span");
-      icon.className = "board-dock-icon";
-      icon.setAttribute("aria-hidden", "true");
-      icon.textContent = symbol;
-      button.appendChild(icon);
-      if (shortLabel) {
-        const copy = document.createElement("span");
-        copy.className = "board-dock-label";
-        copy.textContent = shortLabel;
-        button.appendChild(copy);
-      }
-      button.addEventListener("click", onClick);
-      return button;
-    };
-    this.boardStartButton = makeBoardDockButton({
-      label: "Zur Anfangsstellung",
-      symbol: "↤",
-      onClick: () => this.jumpToBoardBoundary("start"),
-    });
-    this.boardBackButton = makeBoardDockButton({
-      label: "Einen Zug zurück",
-      symbol: "←",
-      onClick: () => this.goBackOnePly(),
-    });
-    this.boardForwardButton = makeBoardDockButton({
-      label: "Einen Zug vor",
-      symbol: "→",
-      onClick: () => this.goForwardOnePly(),
-    });
-    this.boardEndButton = makeBoardDockButton({
-      label: "Zur letzten Stellung",
-      symbol: "↦",
-      onClick: () => this.jumpToBoardBoundary("end"),
-    });
-    this.boardDockFlipButton = makeBoardDockButton({
-      label: "Brett drehen",
-      symbol: "⇅",
-      shortLabel: "Drehen",
-      onClick: () => this.flipButton?.click(),
-    });
-    this.boardFocusButton = makeBoardDockButton({
-      label: "Fokusmodus öffnen",
-      symbol: "⛶",
-      shortLabel: "Fokus",
-      onClick: () => this.setBoardFocusMode(!this.boardFocusEnabled),
-    });
-    this.boardFocusButton.setAttribute("aria-pressed", "false");
-    boardDockNavigation.append(
-      this.boardStartButton,
-      this.boardBackButton,
-      this.boardForwardButton,
-      this.boardEndButton,
-    );
-    boardDockTools.append(this.boardDockFlipButton, this.boardFocusButton);
-    boardDock.append(boardDockNavigation, boardDockTools);
-    boardRow.insertBefore(boardDock, boardSurface);
-    this.boardDock = boardDock;
-    this.boardFocusEnabled = false;
     this.scheduleBoardResize();
 
     const boardToolbar = document.createElement("div");
@@ -672,6 +635,9 @@ export class ChessApp {
       if (this.appMode !== "play") {
         this.setAnalysisPerspective(orientation === "black" ? "b" : "w", {
           updateBoard: false,
+          // Das Drehen des Bretts ist nur eine Ansichtseinstellung. Die
+          // Partie-Metadaten, insbesondere die Spielerfarbe, bleiben gleich.
+          syncDraft: false,
         });
       }
       this.resetBoardKeyboardCursor();
@@ -690,17 +656,6 @@ export class ChessApp {
       moreActions.open = false;
     });
     moreMenu.prepend(this.saveGameButton);
-
-    this.feedbackButton = document.createElement("button");
-    this.feedbackButton.type = "button";
-    this.feedbackButton.className = "secondary-button";
-    this.feedbackButton.textContent = "Partie analysieren";
-    this.feedbackButton.disabled = true;
-    this.feedbackButton.addEventListener("click", () => {
-      this.startFullGameReview();
-      moreActions.open = false;
-    });
-    moreMenu.insertBefore(this.feedbackButton, this.engineSettingsButton);
 
     this.exportButton = document.createElement("button");
     this.exportButton.type = "button";
@@ -928,6 +883,7 @@ export class ChessApp {
     document.body.appendChild(controls);
 
     this.createFeedbackDialog();
+    this.createPromotionDialog();
     this.createSaveGameDialog();
     this.createAccountPanel();
     this.detachKeys = attachKeyboard({
@@ -955,12 +911,6 @@ export class ChessApp {
       this.boardStackResizeObserver.observe(this.boardStack);
     }
     this._onKeyDown = (event) => {
-      if (event.key === "Escape" && this.boardFocusEnabled) {
-        event.preventDefault();
-        this.stopAllBoardPreviews();
-        this.setBoardFocusMode(false);
-        return;
-      }
       if (
         event.key === "Escape"
         && (this.previewState || this.moveListPreviewState)
@@ -1345,7 +1295,7 @@ export class ChessApp {
     actions.append(this.coachAnalysisStartButton, this.coachAnalysisResultButton);
     panel.appendChild(actions);
     this.analysisColumn.appendChild(panel);
-    this.renderCoachAnalysisPanel();
+    if (this.analysisAssistantsEnabled) this.renderCoachAnalysisPanel();
   }
 
   renderCoachAnalysisPanel() {
@@ -2150,6 +2100,12 @@ export class ChessApp {
     }
 
     const result = this.handleMove(source, square);
+    if (result === "promotion-pending") {
+      this.boardKeyboardSelectedSquare = null;
+      this.updateBoardKeyboardHighlights();
+      this.announceBoardKeyboardSquare("Wähle jetzt die Umwandlungsfigur.");
+      return;
+    }
     if (result === "snapback") {
       this.announceBoardKeyboardSquare("Dieser Zug ist nicht legal.");
       return;
@@ -2164,6 +2120,20 @@ export class ChessApp {
   handleDragStart(source, piece) {
     this.clearBoardDragHighlights();
     if (this.previewState || this.moveListPreviewState || this.reviewRunning) return false;
+    // Während des Ziehens darf keine laufende Analyse CPU-Zeit beanspruchen.
+    this.engine?.cancelSearch?.();
+    if (this.appMode === "analysis" && this.engine) {
+      // Stockfish kann nach „stop“ noch kurz CPU-Zeit verbrauchen. Für absolut
+      // ruckelfreies Ziehen wird der Worker daher wirklich beendet.
+      try { this.engine.quit?.(); } catch {}
+      this.engine = null;
+      this.engineReady = false;
+      this.engineFailed = false;
+    }
+    if (this.evaluationTimer !== null) {
+      window.clearTimeout(this.evaluationTimer);
+      this.evaluationTimer = null;
+    }
     if (this.appMode === "play") {
       if (
         !this.playSession.active
@@ -2240,6 +2210,18 @@ export class ChessApp {
     if (!move) return null;
 
     this.currentNode = addMoveToTree(this.currentNode, move, this.game.fen());
+    // Die Notation gehört unmittelbar zum abgeschlossenen legalen Zug. Sie
+    // darf weder auf die Brettanimation noch auf Engine- oder Coach-Arbeit
+    // warten. Die vollständige, annotierte Darstellung folgt weiterhin im
+    // nachgelagerten UI-Refresh.
+    this.listView?.render(this.moveTree, this.currentNode, {
+      annotations: new Map(),
+      showExplanations: false,
+    });
+    this.renderStageFourExplanation();
+    // Das Eröffnungsbuch ist lokal: den Buchstatus sofort anzeigen, ohne auf
+    // die nachgelagerte Enginebewertung oder das UI-Refresh zu warten.
+    this.updateCurrentMoveQualityBadge();
     const deferAnalysisUi = deferBoardSync && this.appMode === "analysis";
     this.currentNode.result = deferAnalysisUi ? "*" : this.getGameResult();
     this.gameReviewReport = null;
@@ -2311,18 +2293,26 @@ export class ChessApp {
     if (!this.pendingMoveUiRefresh || this.destroyed) return;
     this.pendingMoveUiRefresh = false;
     this.currentNode.result = this.getGameResult();
-    this.renderMoveList();
     this.updateGameStatus();
-    this.refreshLiveAccuracy();
-    this.renderPlayPanel();
-    this.renderCoachAnalysisPanel();
-    this.evaluateCurrentPosition();
-    this.refreshOpeningRecognition();
+    // Nie während des Zuges rechnen oder große DOM-Bäume neu aufbauen.
+    if (this.evaluationTimer !== null) window.clearTimeout(this.evaluationTimer);
+    this.evaluationTimer = window.setTimeout(() => {
+      this.evaluationTimer = null;
+      if (this.destroyed) return;
+      if (this.appMode === "analysis") this.ensureEngine();
+      this.renderMoveList();
+      this.refreshLiveAccuracy();
+      if (this.analysisAssistantsEnabled) this.renderCoachAnalysisPanel();
+      this.evaluateCurrentPosition();
+      this.refreshOpeningRecognition();
+    }, 300);
   }
 
   handleMove(source, target, { fromDrag = false } = {}) {
     if (this.reviewRunning) return "snapback";
-    this.stopAllBoardPreviews();
+    if (this.previewState || this.moveListPreviewState) {
+      this.stopAllBoardPreviews();
+    }
     if (
       this.appMode === "play"
       && (
@@ -2344,8 +2334,15 @@ export class ChessApp {
       this.clearBoardDragHighlights();
       return "snapback";
     }
+    const promotionMove = this.game.moves({ square: source, verbose: true }).find(
+      (candidate) => candidate.to === target && candidate.promotion,
+    );
+    if (promotionMove) {
+      this.clearBoardDragHighlights();
+      return this.requestPromotion(source, target, { color: fromPiece.color, fromDrag });
+    }
     const move = this.applyMove(
-      { from: source, to: target, promotion: "q" },
+      { from: source, to: target },
       {
         actor: this.appMode === "play" ? "player" : "analysis",
         deferBoardSync: fromDrag,
@@ -2365,6 +2362,8 @@ export class ChessApp {
     }
     this.boardSurface?.classList.remove("is-navigating");
     this.updateLastMoveHighlights();
+    this.updateCurrentMoveQualityBadge();
+    this.updateBoardStatusHighlights();
     this.scheduleAppliedMoveUiRefresh();
     if (!this.previewState && !this.moveListPreviewState) {
       this.moveArrows?.setVisible(true);
@@ -2372,8 +2371,75 @@ export class ChessApp {
     this.updateBoardKeyboardHighlights();
   }
 
+  updateCurrentMoveQualityBadge(override = null) {
+    if (!this.boardEl) return;
+    this.boardEl.querySelectorAll(".board-move-quality-badge").forEach((badge) => badge.remove());
+    const animatedPiece = Array.from(document.body.children).some((element) => (
+      element.classList?.contains("piece-417db")
+      && getComputedStyle(element).display !== "none"
+    ));
+    if (animatedPiece) {
+      window.setTimeout(() => this.updateCurrentMoveQualityBadge(override), 40);
+      return;
+    }
+    // Chessboard.js animates the moving piece in a separate layer. Show the
+    // quality symbol only after that piece has reached the destination.
+    if (this.boardSurface?.classList.contains("is-navigating")) return;
+    const move = this.currentNode?.move;
+    if (!move?.to) return;
+
+    const annotation = override || this.buildMoveAnnotations()?.get(this.currentNode);
+    if (!annotation?.quality && !annotation?.symbol) return;
+    const presentation = moveQualityPresentation({
+      quality: annotation.quality,
+      playedUci: annotation.playedUci || "",
+      bestUci: annotation.bestUci || "",
+      lossCp: annotation.lossCp,
+    });
+    const symbol = annotation.symbol || presentation?.symbol;
+    if (!symbol) return;
+    const square = this.boardEl.querySelector(`.square-${move.to}`);
+    if (!square) return;
+    const badge = document.createElement("span");
+    badge.className = `board-move-quality-badge is-${annotation.tone || presentation.tone}`;
+    let waitForBadgeImage = false;
+    if (annotation.quality === "book") {
+      const icon = document.createElement("img");
+      icon.src = "/assets/opening-book-badge.png";
+      icon.alt = "";
+      badge.appendChild(icon);
+      waitForBadgeImage = !icon.complete;
+      if (waitForBadgeImage) {
+        icon.addEventListener("load", () => {
+          if (!badge.isConnected && square.isConnected) square.appendChild(badge);
+        }, { once: true });
+      }
+    } else {
+      badge.textContent = symbol;
+    }
+    badge.title = annotation.label || presentation.label;
+    badge.setAttribute("aria-label", annotation.label || presentation.label);
+    if (!waitForBadgeImage) square.appendChild(badge);
+  }
+
   animateBoardPosition(fen, { fromFen = null } = {}) {
     if (!fen || !this.board) return;
+
+    // The move is applied to the game state before Chessboard.js starts its
+    // visual animation. Remove an already-rendered marker now; it is added
+    // again by handleBoardMoveEnd after the piece has arrived.
+    this.boardEl?.querySelectorAll(".board-move-quality-badge").forEach((badge) => badge.remove());
+
+    // Chessboard.js creates a separate, absolutely positioned image for every
+    // animated move. Finish the previous animation before starting another
+    // one; otherwise rapid navigation can leave the old image in the DOM and
+    // briefly show the piece twice.
+    if (this.boardAnimationTimer) {
+      window.clearTimeout(this.boardAnimationTimer);
+      this.boardAnimationTimer = null;
+    }
+    this.cancelBoardPreviewAnimation();
+    this.board.position(this.board.position(), false);
     if (fromFen && this.board.fen?.() !== fromFen.split(/\s+/)[0]) {
       this.board.position(fromFen, false);
     }
@@ -2383,8 +2449,73 @@ export class ChessApp {
     if (this.boardAnimationTimer) window.clearTimeout(this.boardAnimationTimer);
     this.boardAnimationTimer = window.setTimeout(
       () => this.handleBoardMoveEnd(),
-      this.reduceBoardMotion ? 0 : 240,
+      this.reduceBoardMotion ? 0 : 420,
     );
+  }
+
+  updateBoardStatusHighlights() {
+    const boardEl = this.boardEl;
+    const boardSurface = this.boardSurface;
+    if (!boardEl || !this.game) return;
+
+    boardEl
+      .querySelectorAll(
+        ".board-status-check-square, .board-status-checkmate-square, .board-status-stalemate-square",
+      )
+      .forEach((square) => square.classList.remove(
+        "board-status-check-square",
+        "board-status-checkmate-square",
+        "board-status-stalemate-square",
+      ));
+
+    const fen = this.game.fen();
+    const terminal = terminalPositionState(fen);
+    const status = terminal.status === "checkmate"
+      ? "checkmate"
+      : terminal.status === "stalemate"
+        ? "stalemate"
+        : this.game.isCheck()
+          ? "check"
+          : "";
+    if (boardSurface) {
+      boardSurface.dataset.boardStatus = status;
+      boardSurface.classList.toggle("is-board-status-check", status === "check");
+      boardSurface.classList.toggle(
+        "is-board-status-checkmate",
+        status === "checkmate",
+      );
+      boardSurface.classList.toggle(
+        "is-board-status-stalemate",
+        status === "stalemate",
+      );
+    }
+    if (!status) return;
+
+    const kingSquareFor = (color) => {
+      for (const file of "abcdefgh") {
+        for (let rank = 1; rank <= 8; rank += 1) {
+          const square = `${file}${rank}`;
+          const piece = this.game.get(square);
+          if (piece?.type === "k" && piece.color === color) return square;
+        }
+      }
+      return null;
+    };
+    const mark = (square, ...classes) => {
+      if (!square) return;
+      boardEl.querySelector(`.square-${square}`)?.classList.add(...classes);
+    };
+
+    if (status === "stalemate") {
+      mark(kingSquareFor("w"), "board-status-stalemate-square");
+      mark(kingSquareFor("b"), "board-status-stalemate-square");
+      return;
+    }
+    const checkedKing = kingSquareFor(this.game.turn());
+    mark(checkedKing, "board-status-check-square");
+    if (status === "checkmate") {
+      mark(checkedKing, "board-status-checkmate-square");
+    }
   }
 
   goBackOnePly() {
@@ -2402,55 +2533,6 @@ export class ChessApp {
     this.refreshLiveAccuracy();
     this.refreshOpeningRecognition();
     this.evaluateCurrentPosition();
-  }
-
-  jumpToBoardBoundary(boundary) {
-    if (this.reviewRunning || this.appMode === "play") return;
-    let target = this.currentNode;
-    if (boundary === "start") {
-      target = this.moveTree;
-    } else if (boundary === "end") {
-      const visited = new Set();
-      while (target?.mainline && !visited.has(target)) {
-        visited.add(target);
-        target = target.mainline;
-      }
-    }
-    if (!target || target === this.currentNode) return;
-    this.jumpToFen(target.fen, target);
-  }
-
-  setBoardFocusMode(enabled) {
-    const next = Boolean(enabled);
-    this.boardFocusEnabled = next;
-    document.body.classList.toggle("board-focus-mode", next);
-    if (this.boardFocusButton) {
-      this.boardFocusButton.classList.toggle("is-active", next);
-      this.boardFocusButton.setAttribute("aria-pressed", String(next));
-      const label = next ? "Fokusmodus schließen" : "Fokusmodus öffnen";
-      this.boardFocusButton.setAttribute("aria-label", label);
-      this.boardFocusButton.title = label;
-    }
-    requestAnimationFrame(() => {
-      this.scheduleBoardResize();
-      if (next) this.boardEl?.focus?.({ preventScroll: true });
-    });
-  }
-
-  updateBoardDock() {
-    const navigationLocked = this.reviewRunning || this.appMode === "play";
-    if (this.boardStartButton) {
-      this.boardStartButton.disabled = navigationLocked || !this.currentNode?.parent;
-    }
-    if (this.boardBackButton) {
-      this.boardBackButton.disabled = navigationLocked || !this.currentNode?.parent;
-    }
-    if (this.boardForwardButton) {
-      this.boardForwardButton.disabled = navigationLocked || !this.currentNode?.mainline;
-    }
-    if (this.boardEndButton) {
-      this.boardEndButton.disabled = navigationLocked || !this.currentNode?.mainline;
-    }
   }
 
   goForwardOnePly() {
@@ -2532,12 +2614,9 @@ export class ChessApp {
   }
 
   hasOpeningDatabaseRecommendation(path = this.getCurrentPath()) {
+    // Der Minimalmodus startet immer mit einer echten Enginebewertung.
     if (!this.openingBook || this.appMode !== "analysis") return false;
-    if (this.getAnalysisCoachMode() === "review") {
-      return Boolean(openingReviewForPath(path, this.openingBook, { limit: 3 }));
-    }
-    if (this.suggestionCount < 1) return false;
-    return openingContinuationsForPath(path, this.openingBook, { limit: 1 }).length > 0;
+    return false;
   }
 
   evaluateCurrentPosition() {
@@ -2549,16 +2628,11 @@ export class ChessApp {
       window.clearTimeout(this.suggestionRenderTimer);
       this.suggestionRenderTimer = null;
     }
-    if (this.appMode === "analysis" && !this.analysisAssistantsEnabled) {
-      this.engine?.cancelSearch?.();
-      this.suggestionState = null;
-      this.lastEvalPawns = null;
-      this.moveArrows?.clear();
-      return;
-    }
     const fen = this.game.fen();
     const searchPlan = this.getCurrentSearchPlan();
-    const targetDepth = searchPlan?.depth || this.engine?.depth || 15;
+    const targetDepth = this.appMode === "analysis"
+      ? Math.min(searchPlan?.depth || this.engine?.depth || 15, MINIMAL_ANALYSIS_DEPTH)
+      : (searchPlan?.depth || this.engine?.depth || 15);
     this.analysisFen = fen;
     this.lastEvalPawns = null;
     this.evalBar?.setPending?.();
@@ -2573,7 +2647,7 @@ export class ChessApp {
     };
     this.expandedSuggestionRanks.clear();
     this.moveArrows?.clear();
-    this.renderSuggestions();
+    if (this.analysisAssistantsEnabled) this.renderSuggestions();
     if (this.hasOpeningDatabaseRecommendation()) {
       this.engine?.cancelSearch?.();
       this.evalBar?.setOpeningBook?.();
@@ -2595,7 +2669,7 @@ export class ChessApp {
       this.currentNode.result = terminal.result;
       this.refreshLiveAccuracy();
       this.renderMoveList();
-      this.renderSuggestions();
+      if (this.analysisAssistantsEnabled) this.renderSuggestions();
       if (this.appMode === "analysis") this.scheduleLatestMoveExplanation();
       if (this.appMode === "play" && this.playSession.active) {
         if (this.playSession.liveFeedback) this.recordLatestPlayFeedback();
@@ -2666,27 +2740,9 @@ export class ChessApp {
       this.suggestionState.depth = Math.max(this.suggestionState.depth || 0, info.depth);
     }
     if (index === 1) {
-      const analysis = verifiedInfo.pvComplete
-        ? analysisEntryFromInfo(verifiedInfo)
-        : null;
-      const node = this.suggestionState.node;
-      const analysisReady = (
-        analysis
-        && node
-        && node.fen === info.fen
-        && (!info.depth || info.depth >= this.suggestionState.targetDepth)
-      );
-      if (analysisReady) {
-        if (
-          !node.analysis?.depth
-          || !analysis.depth
-          || analysis.depth >= node.analysis.depth
-        ) {
-          node.analysis = analysis;
-        }
-        this.refreshLiveAccuracy();
-        this.scheduleLatestMoveExplanation();
-      }
+      // `info` bleibt bis zum finalen bestmove eine Vorschau. Persistente
+      // Zugbewertungen werden erst in handleEngineBestMove übernommen.
+      this.suggestionState.primaryPvComplete = verifiedInfo.pvComplete;
     }
     if (this.appMode === "analysis" && this.suggestionCount > 0) {
       if (this.previewState) {
@@ -2723,6 +2779,19 @@ export class ChessApp {
       const ponderFrames = legalPv(result.fen, [verifiedBestMove.uci, result.ponder], 2);
       this.suggestionState.bestMoveUci = verifiedBestMove.uci;
       this.suggestionState.ponderUci = ponderFrames[1]?.uci || "";
+      const finalInfo = this.suggestionState.lines.get(1);
+      if (
+        finalInfo?.pvComplete
+        && (!finalInfo.depth || finalInfo.depth >= this.suggestionState.targetDepth)
+      ) {
+        const finalAnalysis = analysisEntryFromInfo(finalInfo);
+        const node = this.suggestionState.node;
+        if (finalAnalysis && node?.fen === result.fen) {
+          node.analysis = { ...finalAnalysis, final: true };
+          this.refreshLiveAccuracy();
+          this.scheduleLatestMoveExplanation();
+        }
+      }
       if (!this.suggestionState.lines.has(1)) {
         this.suggestionState.lines.set(1, {
           ...(result.info || {}),
@@ -3017,12 +3086,14 @@ export class ChessApp {
   celebratePlayedPiece(square, quality) {
     if (
       !/^[a-h][1-8]$/.test(square || "")
-      || !["brilliant", "great", "book", "best", "excellent", "good"].includes(quality)
+      || !["brilliant", "book", "best", "excellent", "good"].includes(quality)
       || !this.boardEl
     ) return;
     const squareEl = this.boardEl.querySelector(`.square-${square}`);
     const pieceEl = squareEl?.querySelector(".piece-417db");
     if (!squareEl || !pieceEl) return;
+
+    this.updateCurrentMoveQualityBadge({ quality });
 
     if (this.successAnimationTimer) {
       window.clearTimeout(this.successAnimationTimer);
@@ -3035,7 +3106,7 @@ export class ChessApp {
       );
     });
 
-    const brilliant = ["brilliant", "great", "best", "excellent"].includes(quality);
+    const brilliant = ["brilliant", "best", "excellent"].includes(quality);
     squareEl.classList.remove("move-success-square", "is-brilliant");
     pieceEl.classList.remove("piece-success-pop", "is-brilliant");
     void pieceEl.offsetWidth;
@@ -4024,7 +4095,7 @@ export class ChessApp {
         && verified.lossCp <= PRACTICALLY_EQUIVALENT_LOSS_CP)
       || evidenceSaysEquivalent
     );
-    const isError = ["inaccuracy", "mistake", "miss", "blunder"]
+    const isError = ["inaccuracy", "mistake", "blunder"]
       .includes(verified?.quality);
     body.style.color = "#fff";
     const row = document.createElement("div");
@@ -4702,6 +4773,7 @@ export class ChessApp {
     };
     row?.classList.add('is-previewing');
     this.moveArrows?.setAnnotations(plan.annotations);
+    this.cancelBoardPreviewAnimation();
     this.board.position(fen, false);
     if (this.previewBadge) {
       this.previewBadge.hidden = false;
@@ -4734,6 +4806,7 @@ export class ChessApp {
       const frame = frames[index];
       if (!frame) return;
       this.previewState.index = index;
+      this.cancelBoardPreviewAnimation();
       this.board.position(frame.fen, true);
       const next = frames[index + 1];
       const frameAnnotations = plan.frameAnnotations?.[index] || {
@@ -4817,11 +4890,18 @@ export class ChessApp {
       this.moveListPreviewState?.fen === fen
       && this.moveListPreviewState?.element === element
     ) return;
+    const isPreviewTransition = Boolean(this.moveListPreviewState);
     this.stopAllBoardPreviews({ restore: false, deferRender: true });
     this.moveListPreviewState = { fen, element };
     element?.classList.add("is-previewing");
     this.moveArrows?.setVisible(false);
-    this.board?.position?.(fen, false);
+    this.cancelBoardPreviewAnimation();
+    // Nur beim ersten Hover animieren. Beim direkten Wechsel zwischen zwei
+    // Vorschauen verhindert ein zweiter Tween das sichtbare Figuren-Flackern.
+    this.board?.position?.(
+      fen,
+      !this.reduceBoardMotion && !isPreviewTransition,
+    );
 
     const boardSurface = this.boardSurface || document.getElementById("board-surface");
     if (!this.previewBadge && boardSurface) {
@@ -4835,12 +4915,27 @@ export class ChessApp {
     }
   }
 
+  cancelBoardPreviewAnimation(fen = null) {
+    const jq = typeof window !== "undefined" ? window.jQuery : null;
+    if (typeof jq === "function") {
+      jq("body > .piece-417db")
+        .filter(function isActivePreviewPiece() {
+          return this.style.display !== "none";
+        })
+        .stop(true, false)
+        .remove();
+    }
+    if (fen && this.board) this.board.position(fen, false);
+  }
+
   stopMoveListPreview(
     element = null,
     { restore = true, deferRender = false } = {},
   ) {
     if (!this.moveListPreviewState) return;
     if (element && this.moveListPreviewState.element !== element) return;
+    const previewFen = this.moveListPreviewState.fen;
+    this.cancelBoardPreviewAnimation(previewFen);
     this.moveListPreviewState.element?.classList.remove("is-previewing");
     this.moveListPreviewState = null;
     if (!this.destroyed && restore) {
@@ -4935,6 +5030,18 @@ export class ChessApp {
     }
   }
 
+  getBookMovePlies(path = this.getCurrentPath()) {
+    const bookMovePlies = new Set();
+    if (!this.openingBook || !Array.isArray(path)) return bookMovePlies;
+    for (let ply = 1; ply < path.length; ply += 1) {
+      const review = openingReviewForPath(path.slice(0, ply + 1), this.openingBook, {
+        limit: 0,
+      });
+      if (Number.isFinite(review?.played?.variationCount)) bookMovePlies.add(ply);
+    }
+    return bookMovePlies;
+  }
+
   refreshLiveAccuracy() {
     const path = this.getCurrentPath();
     const minimumDepth = this.appMode === "play" && this.playSession.active
@@ -4950,6 +5057,7 @@ export class ChessApp {
     this.liveAccuracyReport = summarizeGameReview(path, evaluations, {
       depth: this.engine?.depth || null,
       final: false,
+      bookMovePlies: this.getBookMovePlies(path),
       playerColor: this.appMode === "play" && this.playSession.active
         ? this.playSession.playerColor
         : this.gameSaveDraft?.playerColor || this.analysisPerspective,
@@ -4995,6 +5103,90 @@ export class ChessApp {
     this.toastTimer = window.setTimeout(() => {
       this.toastEl?.classList.remove('is-visible');
     }, 2600);
+  }
+
+  createPromotionDialog() {
+    const dialog = document.createElement("dialog");
+    dialog.id = "promotion-dialog";
+    dialog.className = "modal-dialog promotion-dialog";
+    dialog.setAttribute("aria-labelledby", "promotion-title");
+    this.promotionDialog = dialog;
+
+    const title = document.createElement("div");
+    title.id = "promotion-title";
+    title.className = "card-title";
+    title.textContent = "Bauernumwandlung";
+    dialog.appendChild(title);
+
+    const description = document.createElement("p");
+    description.className = "dialog-description";
+    description.textContent = "Welche Figur soll auf dem letzten Feld entstehen?";
+    dialog.appendChild(description);
+
+    const choices = document.createElement("div");
+    choices.className = "promotion-choices";
+    const pieces = [
+      ["q", "Dame"],
+      ["r", "Turm"],
+      ["b", "Läufer"],
+      ["n", "Springer"],
+    ];
+    pieces.forEach(([piece, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "promotion-choice";
+      button.dataset.promotion = piece;
+      button.setAttribute("aria-label", `In ${label} umwandeln`);
+      const image = document.createElement("img");
+      image.className = "promotion-piece";
+      image.alt = "";
+      button.append(image, document.createTextNode(label));
+      button.addEventListener("click", () => this.completePromotion(piece));
+      choices.appendChild(button);
+    });
+    dialog.appendChild(choices);
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "secondary-button promotion-cancel";
+    cancel.textContent = "Abbrechen";
+    cancel.addEventListener("click", () => dialog.close());
+    dialog.appendChild(cancel);
+    dialog.addEventListener("close", () => {
+      this.pendingPromotion = null;
+      this.clearBoardDragHighlights();
+    });
+    document.body.appendChild(dialog);
+  }
+
+  requestPromotion(source, target, { color, fromDrag = false } = {}) {
+    if (this.pendingPromotion) return "promotion-pending";
+    this.pendingPromotion = { source, target, color, fromDrag };
+    this.promotionDialog.querySelectorAll(".promotion-choice").forEach((button) => {
+      const image = button.querySelector(".promotion-piece");
+      const piece = button.dataset.promotion?.toUpperCase() || "Q";
+      image.src = `/libs/img/rhosgfx/${color}${piece}.svg`;
+    });
+    this.promotionDialog.showModal();
+    this.promotionDialog.querySelector(".promotion-choice")?.focus();
+    return "promotion-pending";
+  }
+
+  completePromotion(piece) {
+    const pending = this.pendingPromotion;
+    if (!pending || !["q", "r", "b", "n"].includes(piece)) return;
+    this.pendingPromotion = null;
+    this.promotionDialog.close();
+    const move = this.applyMove(
+      { from: pending.source, to: pending.target, promotion: piece },
+      { actor: this.appMode === "play" ? "player" : "analysis" },
+    );
+    if (!move) {
+      this.showToast("Die Umwandlung konnte nicht ausgeführt werden.");
+      return;
+    }
+    this.board.position(this.game.fen(), false);
+    this.handleBoardMoveEnd();
   }
 
   createFeedbackDialog() {
@@ -5095,7 +5287,11 @@ export class ChessApp {
       this.gameReviewStartButton.disabled = moveCount < 1 || this.reviewRunning;
       this.gameReviewStartButton.textContent = this.reviewRunning
         ? "Analyse läuft …"
-        : report?.final ? "Neu analysieren" : "Partie analysieren";
+        : report?.final
+          ? "Neu analysieren"
+          : this.reviewAnalysisCache?.size > 0
+            ? "Analyse fortsetzen"
+            : "Partie analysieren";
     }
     if (this.gameReviewOpenButton) this.gameReviewOpenButton.hidden = !report?.final;
 
@@ -5144,6 +5340,10 @@ export class ChessApp {
       categories.appendChild(item);
     });
     this.gameReviewSummaryEl.append(accuracy, categories);
+    const coverage = document.createElement("p");
+    coverage.className = "game-review-coverage";
+    coverage.textContent = `${report.analyzedMoves || 0}/${report.totalMoves || 0} Züge analysiert · ${Number.isFinite(report.coverage) ? Math.round(report.coverage) : 0} % Abdeckung`;
+    this.gameReviewSummaryEl.appendChild(coverage);
 
     this.gameReviewMoveDetailEl.replaceChildren();
     const ply = path.length - 1;
@@ -5216,17 +5416,33 @@ export class ChessApp {
     const entry = analysisEntryFromInfo(info);
     if (!entry) return;
     pending.entries.set(entry.rank || 1, entry);
+  }
+
+  handleReviewEngineBestMove(result) {
+    const pending = this.reviewPendingSearch;
+    if (
+      !pending
+      || !result
+      || result.searchId !== pending.searchId
+      || result.fen !== pending.fen
+    ) return;
     const ready = [...pending.entries.values()]
       .filter((candidate) => (candidate.depth || 0) >= pending.depth);
     const combined = analysisEntryFromMultiPv(ready, {
       requiredLines: pending.requiredLines,
     });
-    if (combined?.complete) {
-      pending.resolve({
-        ...combined,
-        legalMoveCount: pending.legalMoveCount,
-      });
+    if (!combined?.complete) {
+      const error = new Error("Stockfish lieferte kein vollständiges finales Ergebnis.");
+      error.name = "EngineIncompleteResultError";
+      pending.reject(error);
+      return;
     }
+    pending.resolve({
+      ...combined,
+      legalMoveCount: pending.legalMoveCount,
+      final: true,
+      bestmove: result.move,
+    });
   }
 
   analyzeReviewFen(fen, depth) {
@@ -5297,7 +5513,7 @@ export class ChessApp {
     }
     let path;
     try {
-      path = pathToNode(this.currentNode);
+      path = this.getMainlinePath();
     } catch (error) {
       this.showToast(error?.message || 'Diese Partie kann nicht analysiert werden.');
       return;
@@ -5335,6 +5551,7 @@ export class ChessApp {
         hashMB: 32,
         multiPV: 3,
         onInfo: (info) => this.handleReviewEngineInfo(info),
+        onBestMove: (result) => this.handleReviewEngineBestMove(result),
         onError: (error) => {
           this.reviewPendingSearch?.reject(error);
         },
@@ -5383,24 +5600,18 @@ export class ChessApp {
       const reviewPlayerColor = ["w", "b"].includes(this.gameSaveDraft?.playerColor)
         ? this.gameSaveDraft.playerColor
         : this.analysisPerspective;
-      const bookMovePlies = new Set();
-      if (this.openingBook) {
-        for (let ply = 1; ply < path.length; ply += 1) {
-          const bookReview = openingReviewForPath(path.slice(0, ply + 1), this.openingBook, {
-            limit: 0,
-          });
-          if (Number.isFinite(bookReview?.played?.variationCount)) bookMovePlies.add(ply);
-        }
-      }
       report = summarizeGameReview(path, evaluations, {
         depth,
         final: true,
         playerColor: reviewPlayerColor,
         learnerProfile: this.getCoachLearnerProfile(),
-        bookMovePlies,
+        bookMovePlies: this.getBookMovePlies(path),
       });
       this.attachLocalMoveExplanations(report, path);
-      report.result = this.getGameResult();
+      const finalState = terminalPositionState(path.at(-1)?.fen || "");
+      report.result = finalState.status === "ongoing" || finalState.status === "invalid"
+        ? "*"
+        : finalState.result;
       report.feedback = buildFallbackFeedback(report, {
         rating: this.getCoachRating(),
       });
@@ -5413,7 +5624,12 @@ export class ChessApp {
     } catch (error) {
       if (error?.name === 'AbortError') {
         if (this.feedbackDialog.open) {
-          this.renderReviewProgress(0, 1, depth, 'Analyse abgebrochen. Deine Partie bleibt unverändert.');
+          this.renderReviewProgress(
+            0,
+            path.length,
+            depth,
+            'Analyse angehalten. Deine Partie bleibt unverändert. Erneutes Starten setzt die Analyse fort.',
+          );
         }
       } else {
         console.error('[ChessApp] Partieanalyse fehlgeschlagen', error);
@@ -5998,10 +6214,10 @@ export class ChessApp {
     this.reviewJourneyTitleEl.textContent =
       `${move.moveNumber}${move.color === "b" ? "…" : "."} ${move.san}`;
     this.reviewJourneyMoveEl.className = `review-journey-move quality-${quality.tone}`;
-    this.reviewJourneyMoveEl.textContent = ["brilliant", "great", "book", "best", "excellent"].includes(move.quality)
+    this.reviewJourneyMoveEl.textContent = ["brilliant", "book", "best", "excellent"].includes(move.quality)
       ? `${quality.label} · Die Stellung bleibt unter Kontrolle`
       : `${quality.label} · Hier verändert sich die Partie deutlich`;
-    const coachIntro = ["brilliant", "great", "book", "best", "excellent"].includes(move.quality)
+    const coachIntro = ["brilliant", "book", "best", "excellent"].includes(move.quality)
       ? "Das war stark, weil"
       : move.quality === "good"
         ? "Das war solide, weil"
@@ -7574,6 +7790,31 @@ export class ChessApp {
 
   async analyzeSavedPathInBackground(path, depth) {
     let pending = null;
+    const resolveFinal = (result) => {
+      if (
+        !pending
+        || !result
+        || result.searchId !== pending.searchId
+        || result.fen !== pending.fen
+      ) return;
+      const ready = [...pending.entries.values()]
+        .filter((candidate) => (candidate.depth || 0) >= pending.depth);
+      const combined = analysisEntryFromMultiPv(ready, {
+        requiredLines: pending.requiredLines,
+      });
+      if (!combined?.complete) {
+        const error = new Error("Stockfish lieferte kein vollständiges finales Ergebnis.");
+        error.name = "EngineIncompleteResultError";
+        pending.reject(error);
+        return;
+      }
+      pending.resolve({
+        ...combined,
+        legalMoveCount: pending.legalMoveCount,
+        final: true,
+        bestmove: result.move,
+      });
+    };
     const engine = new Engine({
       depth,
       threads: 1,
@@ -7588,18 +7829,8 @@ export class ChessApp {
         const entry = analysisEntryFromInfo(info);
         if (!entry) return;
         pending.entries.set(entry.rank || 1, entry);
-        const ready = [...pending.entries.values()]
-          .filter((candidate) => (candidate.depth || 0) >= pending.depth);
-        const combined = analysisEntryFromMultiPv(ready, {
-          requiredLines: pending.requiredLines,
-        });
-        if (combined?.complete) {
-          pending.resolve({
-            ...combined,
-            legalMoveCount: pending.legalMoveCount,
-          });
-        }
       },
+      onBestMove: resolveFinal,
       onError: (error) => pending?.reject(error),
     });
     this.batchReviewEngines.add(engine);
@@ -7671,18 +7902,14 @@ export class ChessApp {
   async analyzeSavedRecordInBackground(record) {
     const root = deserializeMoveTree(record?.tree);
     if (!root) throw new Error(`„${record?.title || "Partie"}“ enthält keinen gültigen Spielstand.`);
-    const node = (Array.isArray(record.currentPath)
-      ? findNodeByPath(root, record.currentPath)
-      : null)
-      || findNodeByFen(root, record.currentFen)
-      || root;
-    const path = pathToNode(node);
+    const path = this.getMainlinePath(root);
     if (path.length < 2) throw new Error(`„${record.title}“ enthält noch keinen Zug.`);
     const depth = reviewDepthForPlies(path.length - 1, this.engine?.depth || 15);
     const evaluations = await this.analyzeSavedPathInBackground(path, depth);
     const report = summarizeGameReview(path, evaluations, {
       depth,
       final: true,
+      bookMovePlies: this.getBookMovePlies(path),
       learnerProfile: this.getCoachLearnerProfile(),
     });
     this.attachLocalMoveExplanations(report, path);
@@ -7907,6 +8134,10 @@ export class ChessApp {
         currentPath: nodePathFromRoot(this.currentNode),
         pgn: moveTreeToPgn(this.moveTree),
         tree: serializeMoveTree(this.moveTree),
+        feedback: [
+          ...(existing?.feedback || []),
+          ...this.readPositionFeedbackDraft(),
+        ],
         review: compactReviewForStorage(completeReview),
         metadata: {
           playerColor: draft.playerColor,
@@ -8069,6 +8300,7 @@ export class ChessApp {
       this.openingBook = await loadOpeningBook();
       if (this.destroyed) return;
       this.refreshOpeningRecognition();
+      this.renderMoveList();
       if (this.appMode === "analysis") this.evaluateCurrentPosition();
       else this.refreshCoachContextAfterProfileChange();
     } catch (error) {
@@ -9265,8 +9497,10 @@ export class ChessApp {
 
   jumpToFen(fen, exactNode = null) {
     if (this.reviewRunning || this.appMode === "play") return;
-    this.stopAllBoardPreviews();
-    if (!fen) return;
+    if (!fen) {
+      this.stopAllBoardPreviews();
+      return;
+    }
     let node = exactNode;
     if (node?.fen === fen) {
       const visited = new Set();
@@ -9280,13 +9514,26 @@ export class ChessApp {
       node = null;
     }
     node ||= findNodeByFen(this.moveTree, fen);
-    if (!node) return;
+    if (!node) {
+      this.stopAllBoardPreviews();
+      return;
+    }
+    const previewAlreadyVisible = this.moveListPreviewState?.fen === fen;
+    this.stopAllBoardPreviews({
+      restore: !previewAlreadyVisible,
+      deferRender: previewAlreadyVisible,
+    });
     const sourceFen = this.currentNode?.fen || this.game.fen();
     this.currentNode = node;
     this.game.load(node.fen);
     this.gameReviewReport = null;
     this.markGameDirty();
-    this.animateBoardPosition(node.fen, { fromFen: sourceFen });
+    if (previewAlreadyVisible) {
+      this.updateLastMoveHighlights();
+      this.moveArrows?.setVisible(true);
+    } else {
+      this.animateBoardPosition(node.fen, { fromFen: sourceFen });
+    }
     this.renderMoveList();
     this.updateGameStatus();
     this.refreshLiveAccuracy();
@@ -9294,15 +9541,15 @@ export class ChessApp {
     this.evaluateCurrentPosition();
   }
 
-  getMainlineNodes() {
+  getMainlineNodes(root = this.moveTree) {
     const arr = [];
-    let n = this.moveTree.mainline;
+    let n = root?.mainline;
     while (n && n.move) { arr.push(n); n = n.mainline; }
     return arr;
   }
 
-  getMainlinePath() {
-    return [this.moveTree, ...this.getMainlineNodes()].filter(Boolean);
+  getMainlinePath(root = this.moveTree) {
+    return [root, ...this.getMainlineNodes(root)].filter(Boolean);
   }
 
   buildMoveAnnotations() {
@@ -9397,6 +9644,29 @@ export class ChessApp {
         }
       });
     }
+
+    // Eröffnungsbuch-Züge werden auch ohne abgeschlossene Engineanalyse
+    // direkt als solche am Zielfeld kenntlich gemacht.
+    if (this.openingBook) {
+      const currentPath = this.getCurrentPath();
+      currentPath.forEach((node, ply) => {
+        if (!node?.move || ply < 1) return;
+        const review = openingReviewForPath(
+          currentPath.slice(0, ply + 1),
+          this.openingBook,
+          { limit: 0 },
+        );
+        if (!Number.isFinite(review?.played?.variationCount)) return;
+        // Ein Buchzug bleibt als Buchzug sichtbar, auch wenn die Engine ihn
+        // zusätzlich als „gut“ oder „bester Zug“ bewertet.
+        annotations.set(node, {
+          quality: "book",
+          label: MOVE_QUALITY.book.label,
+          symbol: MOVE_QUALITY.book.symbol,
+          explanation: "Dieser Zug steht im lokalen Eröffnungsbuch.",
+        });
+      });
+    }
     return annotations;
   }
 
@@ -9406,13 +9676,752 @@ export class ChessApp {
     // Die Baumprüfung ist nur nach einer fertigen Partieanalyse nötig. So bleibt
     // das Ablegen einer Figur frei von zusätzlicher synchroner Analysearbeit.
     const showAnnotations = this.appMode !== "play"
-      && Boolean(this.gameReviewReport?.moves?.length || this.savedGameReview?.moves?.length);
+      && Boolean(
+        this.gameReviewReport?.moves?.length
+        || this.savedGameReview?.moves?.length
+        || this.liveAccuracyReport?.moves?.length,
+      );
     this.listView.render(this.moveTree, this.currentNode, {
       annotations: showAnnotations ? this.buildMoveAnnotations() : new Map(),
       showExplanations,
     });
-    this.updateBoardDock();
+    this.updateCurrentMoveQualityBadge();
+    this.renderStageFourExplanation();
     this.renderGameReviewSidebar();
+  }
+
+  renderStageFourExplanation() {
+    if (!this.stageFourPanel) return;
+    const reviewedMove = this.getLatestVerifiedMoveReview();
+    const node = this.currentNode;
+    const parent = node?.parent;
+    const moverSign = node?.move?.color === "b" ? -1 : 1;
+    const playedUci = node?.move
+      ? `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}`.toLowerCase()
+      : "";
+    const continuationFrames = node?.analysis?.pv?.length
+      ? buildPvFrames(node.fen, node.analysis.pv, 6)
+      : [];
+    const continuation = continuationFrames.map((frame) => frame.san);
+    const liveMove = node?.move && parent?.fen && playedUci
+      ? {
+          color: node.move.color,
+          san: node.move.san,
+          captured: node.move.captured || "",
+          playedUci,
+          fenBefore: parent.fen,
+          fenAfter: node.fen,
+          evaluationBeforeCp: Number.isFinite(parent.analysis?.whiteCp)
+            ? Math.round(parent.analysis.whiteCp * moverSign)
+            : null,
+          evaluationAfterCp: Number.isFinite(node.analysis?.whiteCp)
+            ? Math.round(node.analysis.whiteCp * moverSign)
+            : null,
+          bestPvSan: continuation,
+          playedLine: {
+            pvUci: [playedUci, ...continuationFrames.map((frame) => frame.uci)],
+            pvSan: [node.move.san, ...continuation],
+          },
+        }
+      : null;
+    const move = reviewedMove || liveMove;
+    if (!move) {
+      this.stageFourPanel.hidden = false;
+      const pending = document.createElement("p");
+      pending.className = "stage-four-pending";
+      pending.textContent = "Wähle oder spiele einen Zug, um seine Fakten zu sehen.";
+      this.stageFourFactsEl.replaceChildren(pending);
+      if (this.stageFourFeedbackEl) {
+        this.stageFourFeedbackEl.replaceChildren();
+        this.stageFourFeedbackEl.hidden = true;
+      }
+      if (this.stageFourCoachEl) this.stageFourCoachEl.hidden = true;
+      return;
+    }
+    this.stageFourPatternMode = true;
+    this.stageFourDetectedPatterns = this.renderStageFourPatterns(move, node);
+    this.renderStageFourFeedback(move, node);
+    this.stageFourPanel.hidden = false;
+    const facts = [];
+    const addFact = (label, value) => facts.push({ label, value });
+    const coachSentences = [];
+    const phrase = (situation, variants) => {
+      const key = `${move.fenBefore}|${move.playedUci}|${situation}`;
+      if (!this.stageFourPhraseChoices.has(key)) {
+        this.stageFourPhraseChoices.set(key, Math.floor(Math.random() * variants.length));
+      }
+      return variants[this.stageFourPhraseChoices.get(key) % variants.length];
+    };
+    const evidence = {
+      evaluationDelta: null,
+      materialDelta: null,
+      futureMaterialLoss: 0,
+      materialLossEvent: null,
+      givesCheck: false,
+      captured: "",
+      developedMinor: false,
+      castled: false,
+      shieldDelta: 0,
+      engineReply: "",
+    };
+    const signedPawns = (cp) => `${cp >= 0 ? "+" : ""}${(cp / 100).toFixed(2)}`;
+    if (Number.isFinite(move.evaluationBeforeCp) && Number.isFinite(move.evaluationAfterCp)) {
+      const delta = move.evaluationAfterCp - move.evaluationBeforeCp;
+      addFact(
+        "Bewertungsänderung",
+        `${signedPawns(move.evaluationBeforeCp)} → ${signedPawns(move.evaluationAfterCp)} (${delta >= 0 ? "+" : ""}${(delta / 100).toFixed(2)})`,
+      );
+      evidence.evaluationDelta = delta;
+    } else {
+      addFact("Bewertungsänderung", "Keine vollständige Engine-Bewertung vorhanden");
+    }
+
+    const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+    const pieceNames = { p: "Bauer", n: "Springer", b: "Läufer", r: "Turm", q: "Dame", k: "König" };
+    const materialBalance = (position, color) => position.board().flat().reduce((sum, piece) => {
+      if (!piece) return sum;
+      const value = pieceValues[piece.type] || 0;
+      return sum + (piece.color === color ? value : -value);
+    }, 0);
+    const undevelopedMinors = (position, color) => {
+      const homes = color === "w" ? ["b1", "g1", "c1", "f1"] : ["b8", "g8", "c8", "f8"];
+      return homes.filter((square) => {
+        const piece = position.get(square);
+        return piece?.color === color && ["n", "b"].includes(piece.type);
+      }).length;
+    };
+    const pawnShield = (position, color) => {
+      let kingSquare = "";
+      for (const file of "abcdefgh") {
+        for (let rank = 1; rank <= 8; rank += 1) {
+          const square = `${file}${rank}`;
+          const piece = position.get(square);
+          if (piece?.color === color && piece.type === "k") kingSquare = square;
+        }
+      }
+      if (!kingSquare) return 0;
+      const rank = Number(kingSquare[1]) + (color === "w" ? 1 : -1);
+      return [-1, 0, 1].reduce((count, offset) => {
+        const fileCode = kingSquare.charCodeAt(0) + offset;
+        if (fileCode < 97 || fileCode > 104 || rank < 1 || rank > 8) return count;
+        const piece = position.get(`${String.fromCharCode(fileCode)}${rank}`);
+        return count + Number(piece?.color === color && piece.type === "p");
+      }, 0);
+    };
+    const game = new Chess();
+    try {
+      game.load(move.fenBefore);
+      const mover = move.color;
+      const materialBefore = materialBalance(game, mover);
+      const developmentBefore = undevelopedMinors(game, mover);
+      const shieldBefore = pawnShield(game, mover);
+      const inCheckBefore = game.isCheck();
+      const played = game.move({ from: move.playedUci.slice(0, 2), to: move.playedUci.slice(2, 4), promotion: move.playedUci.slice(4, 5) || undefined });
+      const materialAfter = materialBalance(game, mover);
+      const materialDelta = materialAfter - materialBefore;
+      evidence.materialDelta = materialDelta;
+      addFact("Material", materialDelta === 0 ? `Unverändert (${materialAfter >= 0 ? "+" : ""}${materialAfter})` : `${materialBefore >= 0 ? "+" : ""}${materialBefore} → ${materialAfter >= 0 ? "+" : ""}${materialAfter}`);
+      addFact("Schach", game.isCheck() ? "Der gegnerische König steht im Schach" : "Kein Schach");
+      evidence.givesCheck = game.isCheck();
+      addFact("Schlagzug", played?.captured ? `${played.san}: ${pieceNames[played.captured]} geschlagen` : "Kein Schlagzug");
+      evidence.captured = played?.captured || "";
+      const developmentAfter = undevelopedMinors(game, mover);
+      evidence.developedMinor = developmentAfter < developmentBefore;
+      addFact("Entwicklung", developmentAfter < developmentBefore ? `${developmentBefore} → ${developmentAfter} unentwickelte Leichtfiguren` : `Unverändert (${developmentAfter} unentwickelte Leichtfiguren)`);
+      const shieldAfter = pawnShield(game, mover);
+      const castled = played?.flags?.includes("k") || played?.flags?.includes("q");
+      evidence.castled = castled;
+      evidence.shieldDelta = shieldAfter - shieldBefore;
+      addFact(
+        "Königssicherheit",
+        castled
+          ? `Rochade; Bauernschutz ${shieldBefore} → ${shieldAfter}`
+          : `${inCheckBefore ? "Vorher im Schach; " : ""}Bauernschutz ${shieldBefore} → ${shieldAfter}`,
+      );
+
+      const playedLineUci = Array.isArray(move.playedLine?.pvUci)
+        ? move.playedLine.pvUci.slice(0, 6)
+        : [];
+      if (playedLineUci[0] === move.playedUci) {
+        const lineGame = new Chess(move.fenBefore);
+        let lowestMaterial = materialBefore;
+        for (const uci of playedLineUci) {
+          const frame = legalUciMove(lineGame.fen(), uci);
+          if (!frame) break;
+          const lineMove = lineGame.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci.slice(4, 5) || undefined });
+          const nextMaterial = materialBalance(lineGame, mover);
+          if (
+            !evidence.materialLossEvent
+            && lineMove?.color !== mover
+            && lineMove?.captured
+            && nextMaterial < materialAfter
+          ) {
+            evidence.materialLossEvent = {
+              san: lineMove.san,
+              captured: lineMove.captured,
+            };
+          }
+          lowestMaterial = Math.min(lowestMaterial, nextMaterial);
+        }
+        evidence.futureMaterialLoss = Math.max(0, materialAfter - lowestMaterial);
+      }
+    } catch {
+      addFact("Material", "Nicht bestimmbar");
+      addFact("Schach", "Nicht bestimmbar");
+      addFact("Schlagzug", "Nicht bestimmbar");
+      addFact("Entwicklung", "Nicht bestimmbar");
+      addFact("Königssicherheit", "Nicht bestimmbar");
+    }
+    const playedLineSan = Array.isArray(move.playedLine?.pvSan) ? move.playedLine.pvSan : [];
+    const pv = playedLineSan.length > 1
+      ? playedLineSan.slice(0, 6).join(" ")
+      : Array.isArray(move.bestPvSan) ? move.bestPvSan.slice(0, 6).join(" ") : "";
+    addFact("Engine-Variante", pv || "Keine vollständige Variante vorhanden");
+
+    evidence.engineReply = playedLineSan[0] === move.san
+      ? playedLineSan[1] || ""
+      : continuation[0] || "";
+    const ownMate = move.san?.includes("#");
+    const opponentMate = !ownMate
+      ? playedLineSan.slice(1).find((san) => san.includes("#")) || ""
+      : "";
+    // Always inspect the exact path of the move being explained. This is also
+    // the path used for the book badge on the board.
+    const currentPath = node ? pathToNode(node) : this.getCurrentPath();
+    const openingReview = this.openingBook
+      ? openingReviewForPath(currentPath, this.openingBook, { limit: 0 })
+      : null;
+    const openingContext = this.buildOpeningCoachContext(currentPath);
+    const isBookMove = Boolean(
+      openingReview
+      && openingReview.played
+      && Number.isFinite(openingReview.played.variationCount),
+    );
+    const tacticallyBadQuality = new Set(["inaccuracy", "mistake", "blunder"])
+      .has(reviewedMove?.quality);
+    const directTacticalDanger = Boolean(
+      ownMate
+      || opponentMate
+      || (tacticallyBadQuality && (
+        evidence.futureMaterialLoss > 0
+        || /[+#]/u.test(evidence.engineReply)
+      ))
+    );
+    // `openingReviewForPath` is the authoritative book-move check. Requiring the
+    // separately derived lifecycle context as well caused genuine book moves to
+    // fall back to engine facts while the board already showed the book badge.
+    const openingKnowledgeMode = isBookMove && !directTacticalDanger;
+    if (openingKnowledgeMode) {
+      const reviewedOpeningName = openingReview?.played?.openings?.[0]
+        || openingReview?.recognition?.displayName
+        || openingReview?.recognition?.name
+        || "Bekannte Eröffnung";
+      const retainedFacts = facts.filter(({ label }) => ![
+        "Bewertungsänderung",
+        "Engine-Variante",
+      ].includes(label));
+      facts.splice(0, facts.length,
+        { label: "Eröffnung", value: openingContext?.displayName || openingContext?.family || reviewedOpeningName },
+        { label: "Quelle", value: "Lokales Eröffnungsbuch und Wissensdatenbank" },
+        { label: "Buchstatus", value: `${move.san} ist ein bekannter Eröffnungszug` },
+        ...retainedFacts,
+      );
+    }
+
+    const goodQualities = new Set(["brilliant", "book", "best", "excellent", "good"]);
+    const badQualities = new Set(["inaccuracy", "mistake", "blunder"]);
+    const isGood = reviewedMove
+      ? goodQualities.has(reviewedMove.quality)
+      : Number.isFinite(evidence.evaluationDelta) && evidence.evaluationDelta >= -15;
+    const isBad = reviewedMove
+      ? badQualities.has(reviewedMove.quality)
+      : Number.isFinite(evidence.evaluationDelta) && evidence.evaluationDelta <= -40;
+    const capturedNames = { p: "einen Bauern", n: "einen Springer", b: "einen Läufer", r: "einen Turm", q: "die Dame" };
+
+    if (ownMate) {
+      coachSentences.push(phrase("own-mate", [
+        "Matt! Stark gespielt. Die Partie ist vorbei.",
+        "Schachmatt! Du hast gewonnen. Aus und vorbei.",
+        "Das ist Matt. Dein Gegner kommt nicht mehr raus – du gewinnst!",
+      ]));
+    } else if (opponentMate) {
+      coachSentences.push(phrase("opponent-mate", [
+        `Das ist Matt! Aus und vorbei. Nach ${move.san} kommt ${opponentMate}.`,
+        `Auweia – ${opponentMate} ist Schachmatt. Die Partie ist vorbei.`,
+        `Der Zug lässt ${opponentMate} zu. Das ist sofort Matt!`,
+        `Nach ${move.san} folgt ${opponentMate}. Matt – da gibt es keinen Ausweg mehr.`,
+      ]));
+    } else if (openingKnowledgeMode) {
+      const openingName = openingContext?.displayName
+        || openingContext?.family
+        || openingReview?.played?.openings?.[0]
+        || "dieser Eröffnung";
+      const guidance = openingGuidanceForPerspective({
+        familyName: openingContext?.family || openingName,
+        variationName: openingContext?.variation || "",
+        color: move.color,
+      });
+      coachSentences.push(phrase("opening-book", [
+        `Das ist ein bekannter Zug aus ${openingName}. Er passt zum üblichen Aufbau dieser Eröffnung.`,
+        `${move.san} gehört zum Eröffnungsbuch von ${openingName}. Der Zug folgt dem bekannten Plan.`,
+        `Diesen Zug kennt das Eröffnungsbuch. In ${openingName} ist das ein normaler Aufbauzug.`,
+      ]));
+      if (evidence.developedMinor) {
+        coachSentences.push("Du bringst dabei eine Figur ins Spiel.");
+      } else if (evidence.castled) {
+        coachSentences.push("Du rochierst und stellst König und Turm um.");
+      } else if (guidance.plan) {
+        coachSentences.push(`Der Plan dahinter: ${guidance.plan}`);
+      }
+    } else if (isGood) {
+      if (evidence.materialDelta > 0 && evidence.captured) {
+        coachSentences.push(phrase("good-capture", [
+          `Gut gemacht: Du schlägst ${capturedNames[evidence.captured]} und hast danach mehr Material.`,
+          `Schön gespielt! Du gewinnst ${capturedNames[evidence.captured]}.`,
+          `Das lohnt sich: Du nimmst ${capturedNames[evidence.captured]} vom Brett.`,
+        ]));
+      } else if (evidence.developedMinor) {
+        coachSentences.push(phrase("good-development", [
+          "Gut gemacht: Du holst eine Figur vom Startfeld. Jetzt kann sie besser mitspielen.",
+          "Schön! Deine Figur kommt raus und kann jetzt mitkämpfen.",
+          "Das hilft: Eine weitere Figur macht jetzt im Spiel mit.",
+        ]));
+      } else if (evidence.castled) {
+        coachSentences.push(phrase("good-castle", [
+          "Gut gemacht: Mit der Rochade bewegst du König und Turm auf einmal.",
+          "Schöne Rochade! König und Turm kommen gemeinsam auf neue Felder.",
+          "Clever: Mit einem Zug stellst du König und Turm um.",
+        ]));
+      } else if (evidence.shieldDelta > 0) {
+        coachSentences.push(phrase("good-shield", [
+          "Gut gemacht: Jetzt stehen mehr Bauern schützend vor deinem König.",
+          "Dein König bekommt mehr Schutz durch seine Bauern.",
+          "Schön: Vor deinem König stehen jetzt mehr schützende Bauern.",
+        ]));
+      } else if (evidence.givesCheck) {
+        coachSentences.push(phrase("good-check", [
+          "Du gibst Schach. Dein Gegner muss sich sofort darum kümmern.",
+          "Schach! Dein Gegner muss jetzt auf den König aufpassen.",
+          "Du greifst den König an. Darauf muss dein Gegner sofort reagieren.",
+        ]));
+      } else {
+        coachSentences.push(phrase("good-quiet", [
+          "Das ist ein guter Zug. Deine Stellung bleibt stark.",
+          "Passt! Mit diesem Zug bleibt alles in Ordnung.",
+          "Gut gespielt. Du gibst deinem Gegner nichts Einfaches.",
+        ]));
+      }
+    } else if (isBad) {
+      if (Number.isFinite(evidence.evaluationDelta)) {
+        coachSentences.push(evidence.evaluationDelta <= -150
+          ? phrase("bad-large", [
+              "Oh, dieser Zug ist ein großer Fehler.",
+              "Auweia, hier geht etwas Wichtiges schief.",
+              "Dieser Zug tut deiner Stellung richtig weh.",
+            ])
+          : phrase("bad-small", [
+              "Dieser Zug ist leider nicht so gut.",
+              "Hier war ein besserer Zug möglich.",
+              "Der Zug macht deine Stellung etwas schwächer.",
+            ]));
+      }
+      if (evidence.futureMaterialLoss > 0) {
+        if (evidence.materialLossEvent) {
+          const lostNames = { p: "deinen Bauern", n: "deinen Springer", b: "deinen Läufer", r: "deinen Turm", q: "deine Dame" };
+          const lostPiece = lostNames[evidence.materialLossEvent.captured] || "deine Figur";
+          coachSentences.push(phrase("bad-material-reply", [
+            `Warum? Nach ${move.san} kann dein Gegner ${evidence.materialLossEvent.san} spielen und ${lostPiece} schlagen.`,
+            `Der Grund: Auf ${move.san} folgt ${evidence.materialLossEvent.san}. Dann ist ${lostPiece} weg.`,
+            `Nach ${move.san} kommt ${evidence.materialLossEvent.san} – und ${lostPiece} geht verloren.`,
+          ]));
+          if (evidence.materialDelta > 0 && evidence.captured) {
+            const wonPiece = pieceNames[evidence.captured];
+            const lostPieceName = pieceNames[evidence.materialLossEvent.captured];
+            const wonText = wonPiece === "Dame" ? "die Dame" : `einen ${wonPiece === "Bauer" ? "Bauern" : wonPiece}`;
+            const lostSubject = lostPieceName === "Dame" ? "deine Dame" : `dein ${lostPieceName}`;
+            coachSentences.push((pieceValues[evidence.materialLossEvent.captured] || 0) > (pieceValues[evidence.captured] || 0)
+              ? phrase("bad-trade-value", [
+                  `Du holst dir zwar ${wonText}, aber ${lostSubject} ist mehr wert.`,
+                  `${wonText[0].toUpperCase()}${wonText.slice(1)} zu gewinnen reicht nicht: ${lostSubject} kostet mehr.`,
+                  `Der Tausch lohnt sich nicht. ${lostSubject[0].toUpperCase()}${lostSubject.slice(1)} ist wertvoller.`,
+                ])
+              : `Du holst dir zwar ${wonText}, aber danach geht ${lostSubject} verloren.`);
+          }
+        } else {
+          coachSentences.push("Warum? In der gezeigten Zugfolge verlierst du danach Material.");
+        }
+      } else if (evidence.engineReply) {
+        coachSentences.push(`Dein Gegner kann jetzt ${evidence.engineReply} spielen.`);
+      }
+    } else {
+      if (evidence.captured) coachSentences.push(`Mit ${move.san} schlägst du ${capturedNames[evidence.captured]}.`);
+      if (evidence.givesCheck) coachSentences.push("Du gibst Schach. Dein Gegner muss darauf reagieren.");
+      if (evidence.developedMinor) coachSentences.push("Du holst eine Figur vom Startfeld. Jetzt kann sie mitspielen.");
+      if (coachSentences.length === 0) {
+        coachSentences.push("Ich sehe den Zug schon. Für ein sicheres Urteil rechnet die Engine aber noch.");
+      }
+    }
+
+    if (!this.stageFourPatternMode) this.stageFourFactsEl.replaceChildren(...facts.map(({ label, value }) => {
+      const item = document.createElement("div");
+      item.className = "stage-four-fact";
+      const name = document.createElement("strong");
+      name.textContent = label;
+      const detail = document.createElement("span");
+      detail.textContent = value;
+      item.append(name, detail);
+      return item;
+    }));
+    if (this.stageFourCoachEl && this.stageFourCoachTextEl) {
+      this.stageFourCoachEl.hidden = false;
+      const decisivePattern = (this.stageFourDetectedPatterns || []).find((entry) => (
+        entry.category === "tactical"
+        && entry.timing === "created"
+        && entry.status === "winning"
+      ));
+      const localExplanation = decisivePattern
+        ? `${coachSentences[0] || "Dieser Zug verändert die Taktik der Stellung."} Taktischer Grund: ${decisivePattern.explanation}`
+        : coachSentences.join(" ");
+      this.stageFourCoachTextEl.textContent = localExplanation;
+      const aiFacts = (this.stageFourDetectedPatterns || []).slice(0, 6).map((entry) => ({
+        label: PATTERN_LABELS[entry.type] || entry.type,
+        value: [
+          entry.status,
+          entry.timingText,
+          entry.explanation,
+          entry.knowledgeId ? `Wissensregel ${entry.knowledgeId}` : "",
+          entry.engineEvidence?.status === "primary_line" ? "durch Engine-Hauptvariante bestätigt" : "",
+        ].filter(Boolean).join("; "),
+      }));
+      const aiKnowledge = this.stageFourKnowledgeForMove(reviewedMove, node, {
+        openingOnly: openingKnowledgeMode,
+      });
+      (this.stageFourDetectedPatterns || []).forEach((entry) => {
+        if (!entry.knowledge?.id || aiKnowledge.some((known) => known.id === entry.knowledge.id)) return;
+        aiKnowledge.push({
+          id: entry.knowledge.id,
+          kind: "Ausführbare Motivregel",
+          title: entry.knowledge.name,
+          text: [entry.knowledge.definition, entry.knowledge.explanation].filter(Boolean).join(" "),
+          source: "Kuratierte Schachwissensdatenbank",
+        });
+      });
+      this.renderStageFourAiBasis({
+        source: "Lokale Sicherheitsantwort",
+        facts: aiFacts,
+        knowledge: aiKnowledge,
+        status: this.coachConfigured === false
+          ? "KI ist nicht verbunden."
+          : "KI-Formulierung wird vorbereitet …",
+      });
+      this.requestStageFourAiExplanation({
+        moveKey: `${move.fenBefore}|${move.playedUci}|${move.fenAfter || ""}`,
+        localExplanation,
+        facts: aiFacts,
+        knowledge: aiKnowledge,
+        mode: openingKnowledgeMode ? "opening_knowledge" : "engine_facts",
+      });
+    }
+  }
+
+  renderStageFourPatterns(move, node) {
+    this.stageFourPanel.hidden = false;
+    const patterns = recognizePositionPatterns({
+      fenBefore: move.fenBefore,
+      fenAfter: move.fenAfter,
+      currentFen: node?.fen,
+      engine: {
+        lineUci: Array.isArray(node?.analysis?.pv) ? node.analysis.pv : [],
+        depth: node?.analysis?.depth,
+        lastMoveUci: move.playedUci,
+        lastMoveWasCapture: Boolean(move.captured),
+      },
+    });
+    const tactical = patterns.filter((entry) => entry.category === "tactical");
+    const strategic = patterns.filter((entry) => entry.category === "strategic");
+    const sideName = (side) => side === "w" ? "Weiß" : "Schwarz";
+    const statusLabel = (entry) => ({
+      winning: "Wirksam",
+      refuted: "Nicht wirksam",
+      unclear: "Unklar",
+      warning: "Schwäche",
+      active: "Aktiv",
+    })[entry.status] || "Erkannt";
+    const renderGroup = (title, entries, emptyText, collapsible = false, openState = false, onToggle = null) => {
+      const group = document.createElement(collapsible ? "details" : "section");
+      group.className = "pattern-group";
+      if (collapsible) {
+        group.open = openState;
+        group.addEventListener("toggle", () => onToggle?.(group.open));
+      }
+      const heading = document.createElement("h4");
+      heading.textContent = title;
+      if (collapsible) {
+        const summary = document.createElement("summary");
+        summary.appendChild(heading);
+        group.appendChild(summary);
+      } else group.appendChild(heading);
+      if (!entries.length) {
+        const empty = document.createElement("p");
+        empty.className = "pattern-empty";
+        empty.textContent = emptyText;
+        group.appendChild(empty);
+        return group;
+      }
+      entries.slice(0, 6).forEach((entry) => {
+        const card = document.createElement("article");
+        card.className = `pattern-card status-${entry.status}`;
+        const titleLine = document.createElement("strong");
+        titleLine.textContent = `${PATTERN_LABELS[entry.type] || entry.type} · ${statusLabel(entry)}`;
+        const side = document.createElement("span");
+        side.className = "pattern-side";
+        side.textContent = sideName(entry.side);
+        const detail = document.createElement("p");
+        detail.textContent = entry.explanation;
+        const meta = document.createElement("small");
+        const moveText = entry.move?.san ? `Zug: ${entry.move.san}` : "Stellungsmuster";
+        const lineText = entry.proofLine?.length ? ` · Variante: ${entry.proofLine.join(" ")}` : "";
+        meta.textContent = `${entry.timingText} · ${moveText}${lineText}`;
+        const source = document.createElement("small");
+        source.className = "pattern-evidence";
+        const engineText = entry.engineEvidence?.status === "primary_line"
+          ? `Engine bestätigt${entry.engineEvidence.depth ? ` (Tiefe ${entry.engineEvidence.depth})` : ""}`
+          : entry.engineEvidence?.status === "not_primary_line"
+            ? "Nicht in der Engine-Hauptvariante – dadurch nicht widerlegt"
+            : "Engine-Beleg noch offen";
+        const knowledgeText = entry.knowledge?.name
+          ? `Wissensregel: ${entry.knowledge.name}`
+          : "Keine Wissensregel verknüpft";
+        source.textContent = `${engineText} · ${knowledgeText}`;
+        card.append(titleLine, side, detail, meta, source);
+        group.appendChild(card);
+      });
+      return group;
+    };
+    this.stageFourFactsEl.replaceChildren(
+      renderGroup("Taktische Muster", tactical, "Keine unmittelbare taktische Kombination erkannt.", true, this.stageFourTacticalOpen, (open) => { this.stageFourTacticalOpen = open; }),
+      renderGroup("Strategische Muster", strategic, "Kein klares strategisches Muster erkannt.", true, this.stageFourStrategicOpen, (open) => { this.stageFourStrategicOpen = open; }),
+    );
+    return patterns;
+  }
+
+  renderStageFourFeedback(move, node) {
+    if (!this.stageFourFeedbackEl) return;
+    const current = this.accountState?.games?.find((game) => game.id === this.activeGameId);
+    const fenBefore = move.fenBefore || node?.parent?.fen || "";
+    const moveUci = move.playedUci || "";
+    const saved = current?.feedback?.find((item) => item.fenBefore === fenBefore && item.moveUci === moveUci)
+      || this.readPositionFeedbackDraft().find((item) => item.fenBefore === fenBefore && item.moveUci === moveUci);
+    const root = document.createElement("section");
+    root.className = "feedback-card";
+    const title = document.createElement("h4");
+    title.textContent = "Dein Feedback";
+    const prompt = document.createElement("p");
+    prompt.textContent = "War die Coach-Erklärung für diese Stellung hilfreich?";
+    const rating = document.createElement("div");
+    rating.className = "feedback-rating";
+    let selected = saved?.rating || "";
+    const buttons = [["helpful", "Hilfreich"], ["not_helpful", "Nicht hilfreich"]].map(([value, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.className = selected === value ? "is-selected" : "";
+      button.addEventListener("click", () => { selected = value; buttons.forEach((item) => item.classList.toggle("is-selected", item.dataset.rating === selected)); });
+      button.dataset.rating = value;
+      rating.appendChild(button);
+      return button;
+    });
+    const textarea = document.createElement("textarea");
+    textarea.rows = 3;
+    textarea.maxLength = 2000;
+    textarea.placeholder = "Was war hilfreich oder unklar?";
+    textarea.value = saved?.text || "";
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "feedback-save";
+    save.textContent = saved ? "Feedback aktualisieren" : "Feedback speichern";
+    const status = document.createElement("small");
+    status.className = "feedback-status";
+    save.addEventListener("click", () => {
+      if (!selected && !textarea.value.trim()) { status.textContent = "Wähle eine Bewertung oder schreibe einen Hinweis."; return; }
+      const record = { id: saved?.id || `feedback-${Date.now()}`, fenBefore, fenAfter: move.fenAfter || node?.fen || "", moveUci, moveSan: move.san || "", path: nodePathFromRoot(node || this.currentNode), rating: selected, text: textarea.value.trim(), coachText: this.stageFourCoachTextEl?.textContent || "", patternIds: (this.stageFourDetectedPatterns || []).map((entry) => entry.type), createdAt: saved?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString() };
+      const draft = this.readPositionFeedbackDraft().filter((item) => item.fenBefore !== fenBefore || item.moveUci !== moveUci);
+      draft.unshift(record);
+      this.writePositionFeedbackDraft(draft);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...record, gameId: this.activeGameId }),
+      }).catch(() => {});
+      const games = this.accountState.games.map((game) => {
+        if (game.id !== this.activeGameId) return game;
+        const feedback = Array.isArray(game.feedback) ? [...game.feedback] : [];
+        const index = feedback.findIndex((item) => item.fenBefore === fenBefore && item.moveUci === moveUci);
+        if (index >= 0) feedback[index] = record; else feedback.unshift(record);
+        return { ...game, feedback, updatedAt: record.updatedAt };
+      });
+      if (this.accountState?.games?.some((game) => game.id === this.activeGameId)) {
+        const nextState = { ...this.accountState, games };
+        if (!saveAccountState(this.browserStorage, this.accountStorageKey, nextState)) { status.textContent = "Das Feedback konnte nicht gespeichert werden."; return; }
+        this.accountState = nextState;
+      }
+      status.textContent = "Gespeichert – danke für dein Feedback.";
+    });
+    root.append(title, prompt, rating, textarea, save, status);
+    this.stageFourFeedbackEl.replaceChildren(root);
+    this.stageFourFeedbackEl.hidden = false;
+  }
+
+  readPositionFeedbackDraft() {
+    try {
+      const raw = this.browserStorage?.getItem(`${this.accountStorageKey}:feedback:${this.activeGameId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.slice(0, 200) : [];
+    } catch { return []; }
+  }
+
+  writePositionFeedbackDraft(feedback) {
+    try {
+      this.browserStorage?.setItem(`${this.accountStorageKey}:feedback:${this.activeGameId}`, JSON.stringify(feedback.slice(0, 200)));
+    } catch {}
+  }
+
+  stageFourKnowledgeForMove(reviewedMove, node, { openingOnly = false } = {}) {
+    const path = this.getCurrentPath();
+    const openingContext = this.buildOpeningCoachContext(path);
+    const engineContext = reviewedMove
+      ? this.buildMoveCoachEngineContext(reviewedMove)
+      : null;
+    const bundle = engineContext
+      ? this.buildLocalMoveExplanationBundle(engineContext, openingContext)
+      : null;
+    const entries = [];
+    if (bundle?.positionEvidence) {
+      const phase = phaseFromPositionEvidence(bundle.positionEvidence);
+      const featureIds = knowledgeFeatureIdsFromPositionEvidence(bundle.positionEvidence);
+      buildVerifiedKnowledgeContext({
+        phase,
+        featureIds,
+        learnerLevel: bundle.learnerProfile?.level || "beginner",
+        limit: 3,
+      }).forEach((claim) => entries.push({
+        id: claim.id,
+        kind: "Geprüftes Schachwissen",
+        title: claim.principle,
+        text: claim.rationale,
+        source: claim.sources?.map((source) => source.title).filter(Boolean).join(", ") || "Wissensdatenbank",
+      }));
+    }
+    if (engineContext && !openingOnly) {
+      const ontology = buildOntologyContext({ engineContext }, { limit: 3 });
+      ontology.concepts
+        .filter((concept) => concept.basis === "position-evidence")
+        .forEach((concept) => entries.push({
+          id: `concept:${concept.id}`,
+          kind: "Taktik/Strategie",
+          title: concept.name,
+          text: concept.explanation,
+          source: "Schachontologie",
+        }));
+    }
+    if (openingContext?.matched && path.length <= 30) {
+      const guidance = openingGuidanceForPerspective({
+        familyName: openingContext.family || openingContext.displayName,
+        variationName: openingContext.variation || "",
+        color: node?.move?.color || "w",
+      });
+      entries.push({
+        id: `opening:${openingContext.eco || openingContext.displayName}`,
+        kind: "Eröffnungstheorie",
+        title: openingContext.displayName || openingContext.family || "Eröffnung",
+        text: [guidance.overview, guidance.plan, guidance.watchFor].filter(Boolean).join(" "),
+        source: openingContext.source || "Lokale Eröffnungsdatenbank",
+      });
+    }
+    const unique = new Map();
+    entries.forEach((entry) => {
+      if (entry.id && entry.text && !unique.has(entry.id)) unique.set(entry.id, entry);
+    });
+    return [...unique.values()].slice(0, 6);
+  }
+
+  renderStageFourAiBasis({ source, facts = [], knowledge = [], status = "", usedKnowledgeIds = [] } = {}) {
+    if (!this.stageFourAiSourceEl || !this.stageFourAiFactsEl) return;
+    this.stageFourAiSourceEl.textContent = [source, status].filter(Boolean).join(" · ");
+    const used = new Set(usedKnowledgeIds);
+    const rows = facts.map(({ label, value }) => ({ text: `${label}: ${value}` }));
+    knowledge.forEach((entry) => rows.push({
+      text: `${used.has(entry.id) ? "Verwendetes Wissen" : "Verfügbares Wissen"} – ${entry.kind}: ${entry.title} (${entry.source})`,
+    }));
+    this.stageFourAiFactsEl.replaceChildren(...rows.map(({ text }) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      return item;
+    }));
+  }
+
+  async requestStageFourAiExplanation({ moveKey, localExplanation, facts, knowledge = [], mode = "engine_facts" }) {
+    if (this.coachConfigured === false || !moveKey || !localExplanation) return;
+    const requestKey = `${moveKey}|${mode}|${JSON.stringify(facts)}|${JSON.stringify(knowledge)}|${localExplanation}`;
+    const cached = this.stageFourAiCache.get(requestKey);
+    if (cached) {
+      this.stageFourCoachTextEl.textContent = cached.text;
+      this.renderStageFourAiBasis({
+        source: cached.source === "ai" ? "KI-Formulierung" : "Lokale Sicherheitsantwort",
+        facts,
+        knowledge,
+        usedKnowledgeIds: cached.usedKnowledgeIds,
+        status: cached.source === "ai" ? "gegen die Fakten geprüft" : cached.reason,
+      });
+      return;
+    }
+    if (this.stageFourAiRequestKey === requestKey) return;
+    this.stageFourAiController?.abort();
+    const controller = new AbortController();
+    this.stageFourAiController = controller;
+    this.stageFourAiRequestKey = requestKey;
+    this.renderStageFourAiBasis({ source: "Lokale Sicherheitsantwort", facts, knowledge, status: "KI formuliert gerade …" });
+    try {
+      const response = await fetch("/api/stage-four", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ localExplanation, facts, knowledge, mode }),
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`Coach-Anfrage fehlgeschlagen (${response.status})`);
+      const result = await response.json();
+      if (this.stageFourAiRequestKey !== requestKey || controller.signal.aborted) return;
+      const entry = {
+        text: typeof result.text === "string" && result.text.trim()
+          ? result.text.trim()
+          : localExplanation,
+        source: result.source === "ai" ? "ai" : "local",
+        reason: result.reason || "lokaler Fallback",
+        usedKnowledgeIds: Array.isArray(result.usedKnowledgeIds) ? result.usedKnowledgeIds : [],
+      };
+      this.stageFourAiCache.set(requestKey, entry);
+      this.stageFourCoachTextEl.textContent = entry.text;
+      this.renderStageFourAiBasis({
+        source: entry.source === "ai" ? "KI-Formulierung" : "Lokale Sicherheitsantwort",
+        facts,
+        knowledge,
+        usedKnowledgeIds: entry.usedKnowledgeIds,
+        status: entry.source === "ai" ? "gegen die Fakten geprüft" : entry.reason,
+      });
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      if (this.stageFourAiRequestKey !== requestKey) return;
+      this.stageFourCoachTextEl.textContent = localExplanation;
+      this.renderStageFourAiBasis({
+        source: "Lokale Sicherheitsantwort",
+        facts,
+        knowledge,
+        status: "KI momentan nicht erreichbar",
+      });
+    } finally {
+      if (this.stageFourAiController === controller) this.stageFourAiController = null;
+      if (this.stageFourAiRequestKey === requestKey) this.stageFourAiRequestKey = "";
+    }
   }
 
   scheduleBoardResize() {
@@ -9480,6 +10489,7 @@ export class ChessApp {
   }
 
   updateGameStatus() {
+    this.updateBoardStatusHighlights();
     this.updateBoardContext();
     this.updateFeedbackAvailability();
     this.renderPlayPanel();
@@ -9493,6 +10503,8 @@ export class ChessApp {
     this.stopReviewJourney({ silent: true });
     this.cancelPlaySession();
     this.cancelFullGameReview();
+    if (this.engineRestartTimer) window.clearTimeout(this.engineRestartTimer);
+    this.engineRestartTimer = null;
     if (this.automaticReviewTimer) window.clearTimeout(this.automaticReviewTimer);
     this.automaticReviewTimer = null;
     this.reviewCoachController?.abort();
@@ -9536,6 +10548,7 @@ export class ChessApp {
 
   handleEngineReady() {
     if (this.destroyed) return;
+    this.engineRestartAttempts = 0;
     this.engineReady = true;
     if (this.playStartButton) this.playStartButton.disabled = false;
     if (this.playSetupSubmitButton) this.playSetupSubmitButton.disabled = false;
@@ -9546,6 +10559,22 @@ export class ChessApp {
   handleEngineError(error) {
     console.error("[ChessApp] Engine nicht verfügbar", error);
     this.stopAllBoardPreviews();
+    if (!this.destroyed && this.engineRestartAttempts < 1) {
+      this.engineRestartAttempts += 1;
+      try { this.engine?.quit?.(); } catch {}
+      this.engine = null;
+      this.engineReady = false;
+      this.engineFailed = false;
+      if (this.playEngineBadgeEl) this.playEngineBadgeEl.textContent = "Neustart …";
+      this.engineRestartTimer = window.setTimeout(() => {
+        this.engineRestartTimer = null;
+        if (this.destroyed) return;
+        const available = this.ensureEngine();
+        if (available && this.appMode === "analysis") this.evaluateCurrentPosition();
+        this.renderPlayPanel();
+      }, 500);
+      return;
+    }
     this.engineFailed = true;
     this.engineReady = false;
     this.engine = null;
@@ -9593,6 +10622,7 @@ export class ChessApp {
         this.chatStatusEl.textContent = "Für den Coach fehlt noch OPENAI_API_KEY.";
       }
       if (status.coachConfigured && this.appMode === "analysis") this.renderSuggestions();
+      this.renderStageFourExplanation();
     } catch {
       // Die Schachanalyse funktioniert auch ohne Coach-Backend.
     }
@@ -9605,14 +10635,17 @@ export class ChessApp {
     this.destroyed = true;
     if (this.resizeFrame) cancelAnimationFrame(this.resizeFrame);
     if (this.boardKeyboardFrame) cancelAnimationFrame(this.boardKeyboardFrame);
-    if (this.toastTimer) window.clearTimeout(this.toastTimer);
-    if (this.successAnimationTimer) window.clearTimeout(this.successAnimationTimer);
-    if (this.automaticReviewTimer) window.clearTimeout(this.automaticReviewTimer);
+        if (this.toastTimer) window.clearTimeout(this.toastTimer);
+        if (this.successAnimationTimer) window.clearTimeout(this.successAnimationTimer);
+        if (this.automaticReviewTimer) window.clearTimeout(this.automaticReviewTimer);
+        if (this.engineRestartTimer) window.clearTimeout(this.engineRestartTimer);
     this.chatRequestController?.abort();
+    this.stageFourAiController?.abort();
     this.playCoachController?.abort();
     this.suggestionCoachController?.abort();
     if (this.suggestionCoachTimer) window.clearTimeout(this.suggestionCoachTimer);
-    if (this.suggestionRenderTimer) window.clearTimeout(this.suggestionRenderTimer);
+        if (this.suggestionRenderTimer) window.clearTimeout(this.suggestionRenderTimer);
+        if (this.evaluationTimer) window.clearTimeout(this.evaluationTimer);
     this.cancelScheduledMoveUiRefresh();
     this.moveExplanationControllers.forEach((controller) => controller.abort());
     this.moveExplanationControllers.clear();
@@ -9671,7 +10704,6 @@ export class ChessApp {
     if (this._onStorage) {
       window.removeEventListener("storage", this._onStorage);
     }
-    document.body.classList.remove("board-focus-mode");
     if (this._onPlayModeClick) {
       this.playModeButton?.removeEventListener("click", this._onPlayModeClick);
     }
@@ -9683,6 +10715,7 @@ export class ChessApp {
     }
     this.engineSettingsDialog?.remove();
     this.feedbackDialog?.remove();
+    this.promotionDialog?.remove();
     this.playerStoryDialog?.remove();
     this.saveGameDialog?.remove();
     this.playSetupDialog?.remove();

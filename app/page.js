@@ -28,26 +28,31 @@ export default function HomePage() {
                 aria-label="Interaktives Schachbrett"
                 aria-describedby="board-keyboard-instructions"
               />
+              <div className="review-column">
+                <section id="stage-four-explanation" className="stage-four-explanation" aria-labelledby="stage-four-title">
+                  <div className="stage-four-heading">
+                    <h3 id="stage-four-title">Erkannte Muster</h3>
+                  </div>
+                  <div id="stage-four-facts" className="stage-four-facts" />
+                  <div id="stage-four-feedback" className="stage-four-feedback" hidden />
+                  <div id="stage-four-coach" className="stage-four-coach" hidden>
+                    <h4>Kurz erklärt</h4>
+                    <p id="stage-four-coach-text" />
+                    <details id="stage-four-ai-basis" className="stage-four-ai-basis">
+                      <summary>Worauf basiert diese Antwort?</summary>
+                      <p id="stage-four-ai-source" />
+                      <ul id="stage-four-ai-facts" />
+                    </details>
+                  </div>
+                </section>
               <section className="move-list-section" aria-labelledby="move-list-title">
                 <div className="section-heading">
                   <h2 id="move-list-title">Züge</h2>
                   <p id="keyboard-hint" className="keyboard-hint">← → navigieren · ↑ ↓ Variante wechseln</p>
                 </div>
-                <section id="game-review-sidebar" className="game-review-sidebar" aria-label="Partieanalyse">
-                  <div id="game-review-result" className="game-review-result" role="status" hidden />
-                  <div className="game-review-actions">
-                    <button id="game-review-start" type="button">Partie analysieren</button>
-                    <button id="game-review-open" type="button" hidden>Auswertung</button>
-                  </div>
-                  <div id="game-review-progress" className="game-review-sidebar-progress" hidden>
-                    <progress aria-label="Fortschritt der Partieanalyse" />
-                    <span />
-                  </div>
-                  <div id="game-review-summary" className="game-review-sidebar-summary" hidden />
-                  <div id="game-review-move-detail" className="game-review-move-detail" hidden />
-                </section>
                 <div id="move-list" />
               </section>
+              </div>
             </div>
           </section>
         </main>

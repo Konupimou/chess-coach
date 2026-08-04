@@ -346,7 +346,7 @@ test("Spezialkategorien beachten Priorität, Matt und den einzigen legalen Zug",
     winChanceAfter: 70,
     secondBestWinChance: 50,
   };
-  assert.equal(classifyMoveReview(base).classification, "great");
+  assert.equal(classifyMoveReview(base).classification, "best");
   assert.equal(classifyMoveReview({ ...base, isOnlyMove: true }).classification, "best");
   assert.equal(classifyMoveReview({ ...base, isBookMove: true }).classification, "book");
   assert.equal(classifyMoveReview({ ...base, isSacrifice: true }).classification, "brilliant");
@@ -356,7 +356,7 @@ test("Spezialkategorien beachten Priorität, Matt und den einzigen legalen Zug",
     winChanceBefore: 100,
     winChanceAfter: 72,
     mateBefore: 3,
-  }).classification, "miss");
+  }).classification, "blunder");
   const allowedMate = classifyMoveReview({
     playedUci: "a2a3",
     bestMoveUci: "e2e4",
@@ -431,7 +431,7 @@ test("Partiebericht liefert das vollständige strukturierte Modell und getrennte
   assert.equal(first.accuracy, 100);
   assert.equal(report.whiteCounts.book, 1);
   assert.equal(report.blackCounts.best, 1);
-  assert.equal(Object.keys(report.whiteCounts).length, 10);
+  assert.equal(Object.keys(report.whiteCounts).length, 8);
 });
 
 test("fokussierter Partiebericht zeigt höchstens die drei entscheidendsten eigenen Momente", () => {

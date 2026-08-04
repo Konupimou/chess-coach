@@ -1,0 +1,20 @@
+[
+  {
+    "id": "feedback-1785822449699-ewiqwt",
+    "user": "local-user",
+    "gameId": "a336808b-6eaf-41a7-a14a-86052f51c772",
+    "fenBefore": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "fenAfter": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1",
+    "moveUci": "e2e4",
+    "moveSan": "e4",
+    "rating": "helpful",
+    "text": "Kannst du dieses Feedback hier lesen?",
+    "coachText": "Das ist ein bekannter Zug im Königbauernspiel. Er nimmt Raum in der Mitte und hilft dir, deine Figuren schnell zu entwickeln.",
+    "patternIds": [
+      "space_advantage",
+      "bad_bishop",
+      "bad_bishop"
+    ],
+    "createdAt": "2026-08-04T05:47:29.699Z"
+  }
+]

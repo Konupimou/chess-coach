@@ -1,15 +1,16 @@
 const QUALITY_KEYS = Object.freeze([
   "brilliant",
-  "great",
   "book",
   "best",
   "excellent",
   "good",
   "inaccuracy",
   "mistake",
-  "miss",
   "blunder",
 ]);
+
+const LEGACY_QUALITY_ALIASES = Object.freeze({ great: "excellent", miss: "mistake" });
+const normalizeQuality = (quality) => LEGACY_QUALITY_ALIASES[quality] || quality;
 
 const EMPTY_COUNTS = Object.freeze(Object.fromEntries(QUALITY_KEYS.map((key) => [key, 0])));
 
@@ -169,11 +170,15 @@ function readCounts(value) {
     const count = boundedNumber(value[quality], 0, 10_000);
     counts[quality] = count === null ? 0 : Math.round(count);
   }
+  counts.excellent += Math.round(boundedNumber(value.great, 0, 10_000) || 0);
+  counts.mistake += Math.round(boundedNumber(value.miss, 0, 10_000) || 0);
   return counts;
 }
 
 function addCounts(target, source) {
   for (const quality of QUALITY_KEYS) target[quality] += source[quality] || 0;
+  target.excellent += source.great || 0;
+  target.mistake += source.miss || 0;
 }
 
 function hasAnyCounts(counts) {
@@ -188,7 +193,7 @@ function countsFromMoves(moves, color = null) {
     const moveColor = normalizeColor(move.color);
     if (color && moveColor !== color) continue;
     if (!color || moveColor === color) matchingMoves += 1;
-    const quality = cleanText(move.quality, 24).toLocaleLowerCase("en");
+    const quality = normalizeQuality(cleanText(move.quality, 24).toLocaleLowerCase("en"));
     if (QUALITY_KEYS.includes(quality)) counts[quality] += 1;
   }
   return { counts, matchingMoves };

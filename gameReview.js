@@ -6,16 +6,24 @@ export const MATE_CENTIPAWNS = 10_000;
 
 export const MOVE_QUALITY = Object.freeze({
   brilliant: { label: "Brillant", shortLabel: "Brillant", symbol: "!!", tone: "brilliant" },
-  great: { label: "Großartig", shortLabel: "Großartig", symbol: "!", tone: "great" },
   book: { label: "Buchzug", shortLabel: "Buch", symbol: "📖", tone: "book" },
   best: { label: "Bester Zug", shortLabel: "Best", symbol: "★", tone: "best" },
-  excellent: { label: "Sehr gut", shortLabel: "Sehr gut", symbol: "👍", tone: "excellent" },
+  excellent: { label: "Sehr gut", shortLabel: "Sehr gut", symbol: "✓", tone: "excellent" },
   good: { label: "Gut", shortLabel: "Gut", symbol: "✓", tone: "good" },
   inaccuracy: { label: "Ungenauigkeit", shortLabel: "Ungenau", symbol: "?!", tone: "inaccuracy" },
   mistake: { label: "Fehler", shortLabel: "Fehler", symbol: "?", tone: "mistake" },
-  miss: { label: "Verpasste Chance", shortLabel: "Verpasst", symbol: "✕", tone: "miss" },
   blunder: { label: "Grober Fehler", shortLabel: "Grober Fehler", symbol: "??", tone: "blunder" },
 });
+
+const LEGACY_MOVE_QUALITY_ALIASES = Object.freeze({
+  great: "excellent",
+  miss: "mistake",
+});
+
+export function normalizeMoveQuality(quality, fallback = "good") {
+  const normalized = LEGACY_MOVE_QUALITY_ALIASES[quality] || quality;
+  return Object.hasOwn(MOVE_QUALITY, normalized) ? normalized : fallback;
+}
 
 // Alle fachlichen Schwellen stehen an einer Stelle. Das System ist bewusst
 // nachvollziehbar und ahmt keine proprietäre Klassifizierung exakt nach.
@@ -26,24 +34,17 @@ export const MOVE_CLASSIFICATION_CONFIG = Object.freeze({
   mistakeMaxLoss: 20,
   brilliantMaxLoss: 1,
   brilliantMinimumSacrifice: 1.5,
-  greatMaxLoss: 1.5,
-  greatSecondBestGap: 8,
-  missWinningChance: 80,
-  missMinimumLoss: 10,
-  tacticalMissMinimumChance: 65,
-  tacticalMissSecondBestGap: 15,
-  tacticalMissMinimumLoss: 5,
 });
 
 export const POSITIVE_MOVE_QUALITIES = Object.freeze([
-  "brilliant", "great", "book", "best", "excellent", "good",
+  "brilliant", "book", "best", "excellent", "good",
 ]);
 export const CRITICAL_MOVE_QUALITIES = Object.freeze([
-  "inaccuracy", "mistake", "miss", "blunder",
+  "inaccuracy", "mistake", "blunder",
 ]);
 
 /**
- * @typedef {"brilliant"|"great"|"book"|"best"|"excellent"|"good"|"inaccuracy"|"mistake"|"miss"|"blunder"} MoveClassification
+ * @typedef {"brilliant"|"book"|"best"|"excellent"|"good"|"inaccuracy"|"mistake"|"blunder"} MoveClassification
  *
  * MoveReview enthält zusätzlich ältere Aliasfelder (`playedUci`, `bestUci`,
  * `quality`, `winPercentLoss`), damit gespeicherte Analysen und der Coach
@@ -286,9 +287,9 @@ export function verifiedMoveReview(move) {
       pvUci: continuationFrames.map((frame) => frame.uci),
       pvSan: continuationFrames.map((frame) => frame.san),
     };
-  const quality = move.quality === "best" && played.uci !== best?.uci
+  const quality = normalizeMoveQuality(move.quality) === "best" && played.uci !== best?.uci
     ? "excellent"
-    : move.quality;
+    : normalizeMoveQuality(move.quality);
   return {
     ...move,
     san: played.san,
@@ -466,7 +467,7 @@ export function classifyCentipawnLoss(lossCp) {
 }
 
 function reviewQualityForDisplay(move) {
-  const supplied = Object.hasOwn(MOVE_QUALITY, move?.quality) ? move.quality : "good";
+  const supplied = normalizeMoveQuality(move?.quality);
   const isStructuredClassification = move?.classification === supplied
     && Number.isFinite(move?.winChanceLoss);
   if (!isStructuredClassification && Number.isFinite(move?.lossCp)) {
@@ -531,7 +532,6 @@ export function explainMoveQuality(move, options = {}) {
   const consequence = immediateReplyConsequence(verified || move);
 
   if (quality === "brilliant") return "Starker Fund: Du gibst bewusst Material und bekommst dafür genug Spiel.";
-  if (quality === "great") return "Das ist eine besonders starke Idee. Andere Züge waren deutlich schwächer.";
   if (quality === "book") return "Der Zug steht im Eröffnungsbuch und ist hier eine gute Wahl.";
   if (practicallyEqual) {
     return `${bestSan} geht genauso gut.`;
@@ -606,11 +606,6 @@ export function explainMoveQuality(move, options = {}) {
     const verdict = consequence || "Das ist ein klarer Fehler und deine Stellung wird deutlich schlechter.";
     return bestSan ? `${verdict} Besser war ${bestSan}.` : verdict;
   }
-  if (quality === "miss") {
-    return bestSan
-      ? `Hier verpasst du eine große Chance. Stark war ${bestSan}.`
-      : "Hier verpasst du eine große Chance.";
-  }
   if (quality === "blunder") {
     const verdict = consequence || "Das ist ein grober Fehler und deine Stellung wird viel schlechter.";
     return bestSan ? `${verdict} Besser war ${bestSan}.` : verdict;
@@ -640,10 +635,6 @@ export function describeMoveAssessment(move, options = {}) {
     brilliant: {
       lead: "Brillant gefunden.",
       reason: "Du gibst bewusst Material und bekommst dafür genug Spiel.",
-    },
-    great: {
-      lead: "Großartig gespielt.",
-      reason: "Diese Idee war deutlich stärker als die anderen Möglichkeiten.",
     },
     book: {
       lead: "Das ist ein Buchzug.",
@@ -692,10 +683,6 @@ export function describeMoveAssessment(move, options = {}) {
     mistake: {
       lead: "Das ist ein klarer Fehler.",
       reason: consequence || "Deine Stellung wird dadurch deutlich schlechter.",
-    },
-    miss: {
-      lead: "Du verpasst eine große Chance.",
-      reason: "Hier gab es eine deutlich stärkere Möglichkeit.",
     },
     blunder: {
       lead: "Das ist ein grober Fehler.",
@@ -960,7 +947,6 @@ export function classifyMoveReview({
   winChanceAfter = null,
   mateBefore = null,
   mateAfter = null,
-  secondBestWinChance = null,
   isBookMove = false,
   isOnlyMove = false,
   isSacrifice = false,
@@ -969,41 +955,22 @@ export function classifyMoveReview({
     ? Math.max(0, winChanceBefore - winChanceAfter)
     : 0;
   const isBestMove = Boolean(playedUci && bestMoveUci && playedUci === bestMoveUci);
-  const nearBest = isBestMove || loss <= MOVE_CLASSIFICATION_CONFIG.greatMaxLoss;
-  const secondBestGap = Number.isFinite(winChanceBefore) && Number.isFinite(secondBestWinChance)
-    ? Math.max(0, winChanceBefore - secondBestWinChance)
-    : 0;
   const missedMate = Number.isFinite(mateBefore) && mateBefore > 0
     && !(Number.isFinite(mateAfter) && mateAfter > 0);
   const allowedMate = Number.isFinite(mateAfter) && mateAfter < 0
     && !(Number.isFinite(mateBefore) && mateBefore < 0);
-  const winningChanceMissed = Number.isFinite(winChanceBefore)
-    && winChanceBefore >= MOVE_CLASSIFICATION_CONFIG.missWinningChance
-    && loss >= MOVE_CLASSIFICATION_CONFIG.missMinimumLoss;
-  const tacticalChanceMissed = Number.isFinite(winChanceBefore)
-    && winChanceBefore >= MOVE_CLASSIFICATION_CONFIG.tacticalMissMinimumChance
-    && secondBestGap >= MOVE_CLASSIFICATION_CONFIG.tacticalMissSecondBestGap
-    && loss >= MOVE_CLASSIFICATION_CONFIG.tacticalMissMinimumLoss;
 
   let classification;
   if (isBookMove) classification = "book";
   else if (
-    nearBest
-    && loss <= MOVE_CLASSIFICATION_CONFIG.brilliantMaxLoss
+    loss <= MOVE_CLASSIFICATION_CONFIG.brilliantMaxLoss
     && isSacrifice
     && Number.isFinite(winChanceAfter)
     && winChanceAfter >= 50
     && !isOnlyMove
   ) classification = "brilliant";
-  else if (
-    nearBest
-    && loss <= MOVE_CLASSIFICATION_CONFIG.greatMaxLoss
-    && secondBestGap >= MOVE_CLASSIFICATION_CONFIG.greatSecondBestGap
-    && !isOnlyMove
-  ) classification = "great";
   else if (isBestMove) classification = "best";
-  else if (allowedMate) classification = "blunder";
-  else if (missedMate || winningChanceMissed || tacticalChanceMissed) classification = "miss";
+  else if (allowedMate || missedMate) classification = "blunder";
   else classification = classifyWinChanceLoss(loss);
 
   return {
@@ -1420,7 +1387,7 @@ export function buildLearningSummary(report, options = {}) {
   const biggest = [...moves]
     .filter((move) => Number.isFinite(move.winPercentLoss))
     .sort((left, right) => right.winPercentLoss - left.winPercentLoss)[0];
-  const serious = moves.filter((move) => ["mistake", "miss", "blunder"].includes(move.quality));
+  const serious = moves.filter((move) => ["mistake", "blunder"].includes(move.quality));
   const inaccuracies = moves.filter((move) => move.quality === "inaccuracy");
   const strong = moves.filter((move) => POSITIVE_MOVE_QUALITIES.includes(move.quality));
   const focusedMoment = (Array.isArray(report?.criticalMoments)
@@ -1517,7 +1484,7 @@ export function buildFallbackFeedback(report, options = {}) {
     ? `Deine Zuggenauigkeit lag bei ${perspectiveAccuracy.toFixed(1)} %.`
     : "Deine Zuggenauigkeit ist noch offen.";
   const serious = perspectiveMoves
-    .filter((move) => ["mistake", "miss", "blunder"].includes(move.quality))
+    .filter((move) => ["mistake", "blunder"].includes(move.quality))
     .length;
   const seriousLabel = serious === 1 ? "einen großen Fehler" : `${serious} große Fehler`;
   const moveCountLabel = perspectiveMoves.length === 1 ? "einem Zug" : `${perspectiveMoves.length} Zügen`;

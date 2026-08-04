@@ -51,7 +51,7 @@ export class EvalBar {
     // Bar
     this.bar = document.createElement('div');
     this.bar.id = 'eval-bar';
-    this.bar.style.height = `${barHeight - 40}px`;
+    this.bar.style.height = `${barHeight}px`;
     this.bar.style.width = '28px';
     this.bar.style.border = '1px solid rgba(255, 255, 255, 0.22)';
     this.bar.style.margin = '0 auto';
@@ -67,7 +67,11 @@ export class EvalBar {
     this.overlay.style.left = '0';
     this.overlay.style.bottom = '0';
     this.overlay.style.width = '100%';
-    this.overlay.style.height = '50%';
+    this.overlay.style.height = '100%';
+    this.overlay.style.transformOrigin = 'bottom center';
+    this.overlay.style.transform = 'scaleY(0.5)';
+    this.overlay.style.willChange = 'transform';
+    this.overlay.style.transition = 'transform 1400ms cubic-bezier(0.22, 0.8, 0.25, 1)';
     this.overlay.style.background = '#f5f7fa';
 
     // Marker line
@@ -79,6 +83,9 @@ export class EvalBar {
     this.marker.style.height = '2px';
     this.marker.style.background = '#2a6';
     this.marker.style.top = '50%';
+    this.marker.style.display = 'none';
+    this.marker.style.transition = 'top 1400ms cubic-bezier(0.22, 0.8, 0.25, 1)';
+    this.marker.style.willChange = 'top';
 
     this.bar.appendChild(this.overlay);
     this.bar.appendChild(this.marker);
@@ -86,14 +93,25 @@ export class EvalBar {
     // Label
     this.label = document.createElement('div');
     this.label.id = 'eval-label';
+    this.label.className = 'eval-value-neutral';
     this.label.style.textAlign = 'center';
-    this.label.style.marginTop = '8px';
+    this.label.style.position = 'absolute';
+    this.label.style.left = '50%';
+    this.label.style.zIndex = '3';
     this.label.textContent = '0.00';
 
+    this.bar.appendChild(this.label);
     this.container.appendChild(this.bar);
-    this.container.appendChild(this.label);
 
     parent.appendChild(this.container);
+
+    // Engine-Updates kommen in kurzen, unregelmäßigen Abständen. Die Anzeige
+    // wird deshalb nicht direkt gesetzt, sondern weich zum jeweils neuesten
+    // Zielwert animiert.
+    this.animationFrame = null;
+    this.displayedScore = 0;
+    this.targetScore = 0;
+    this.lastAnimationTime = 0;
 
     // Initial state
     this.update(0);
@@ -105,16 +123,15 @@ export class EvalBar {
 
     // Clamp to +/- 8 pawns for display
     const clamped = Math.max(-8, Math.min(8, evalScore));
-    // Convert to white percentage (0..100). 0 -> 50%
-    const whitePct = 50 + (clamped / 8) * 50;
+    this.targetScore = clamped;
+    this.animateToTarget();
 
-    // Update visuals
-    this.overlay.style.height = `${whitePct}%`;
-    this.marker.style.top = `${100 - whitePct}%`;
-    this.marker.style.background = "#2a6";
-
-    // Label text: show +/- with two decimals
+    // Text and accessibility follow the newest engine value immediately.
     this.label.textContent = (evalScore >= 0 ? '+' : '') + evalScore.toFixed(2);
+    this.label.classList.remove('eval-value-positive', 'eval-value-negative', 'eval-value-neutral');
+    this.label.classList.add(
+      evalScore > 0 ? 'eval-value-positive' : evalScore < 0 ? 'eval-value-negative' : 'eval-value-neutral',
+    );
     this.container.setAttribute("aria-valuenow", String(clamped));
     this.container.setAttribute("aria-valuetext", `${this.label.textContent} Bauern für Weiß`);
     this.container.setAttribute("aria-label", this.defaultAriaLabel);
@@ -122,10 +139,27 @@ export class EvalBar {
     this.container.classList.remove("is-opening-book");
   }
 
+  animateToTarget() {
+    const whitePct = 50 + (this.targetScore / 8) * 50;
+    // Transform statt height verhindert Layout-Neuberechnungen pro Frame.
+    this.overlay.style.transform = `scaleY(${whitePct / 100})`;
+    this.marker.style.top = `${100 - whitePct}%`;
+    this.marker.style.background = "#2a6";
+
+  }
+
+  stopAnimation() {
+    if (this.animationFrame !== null) cancelAnimationFrame(this.animationFrame);
+    this.animationFrame = null;
+  }
+
   setPending() {
     if (!this.container) return;
+    this.stopAnimation();
     this.container.classList.add("is-pending");
     this.container.classList.remove("is-opening-book");
+    this.label.classList.remove('eval-value-positive', 'eval-value-negative');
+    this.label.classList.add('eval-value-neutral');
     this.label.textContent = "…";
     this.container.setAttribute("aria-label", this.defaultAriaLabel);
     this.container.removeAttribute("aria-valuenow");
@@ -134,10 +168,16 @@ export class EvalBar {
 
   setOpeningBook() {
     if (!this.container || !this.overlay || !this.marker || !this.label) return;
-    this.overlay.style.height = "50%";
+    this.stopAnimation();
+    this.displayedScore = 0;
+    this.targetScore = 0;
+    this.overlay.style.height = "100%";
+    this.overlay.style.transform = "scaleY(0.5)";
     this.marker.style.top = "50%";
     this.marker.style.background = "#e6b96f";
     this.label.textContent = "Buch";
+    this.label.classList.remove('eval-value-positive', 'eval-value-negative');
+    this.label.classList.add('eval-value-neutral');
     this.container.classList.remove("is-pending");
     this.container.classList.add("is-opening-book");
     this.container.setAttribute("aria-label", "Eröffnungsdatenbank aktiv");
@@ -153,10 +193,11 @@ export class EvalBar {
     const boardHeight = boardEl?.offsetHeight || boardEl?.clientHeight;
     if (!boardHeight || !this.container || !this.bar) return;
     this.container.style.minHeight = `${boardHeight}px`;
-    this.bar.style.height = `${Math.max(120, boardHeight - 40)}px`;
+    this.bar.style.height = `${Math.max(120, boardHeight)}px`;
   }
 
   destroy() {
+    this.stopAnimation();
     this.container?.remove();
   }
 }

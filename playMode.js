@@ -1,4 +1,4 @@
-import { MOVE_QUALITY } from "./gameReview.js";
+import { MOVE_QUALITY, normalizeMoveQuality } from "./gameReview.js";
 
 export const ENGINE_LEVELS = Object.freeze({
   easy: Object.freeze({
@@ -44,14 +44,14 @@ export function engineOpponentLabel(level) {
 
 export function nextStrongMoveStreak(current, quality) {
   const streak = Number.isInteger(current) && current > 0 ? current : 0;
-  return ["brilliant", "great", "book", "best", "excellent"].includes(quality)
+  return ["brilliant", "book", "best", "excellent"].includes(normalizeMoveQuality(quality))
     ? Math.min(99, streak + 1)
     : 0;
 }
 
 export function describeLiveMove(move) {
   if (!move || typeof move !== "object") return null;
-  const quality = Object.hasOwn(MOVE_QUALITY, move.quality) ? move.quality : "good";
+  const quality = normalizeMoveQuality(move.quality);
   const definition = MOVE_QUALITY[quality];
   const moveNumber = Number.isFinite(move.moveNumber) ? Math.max(1, move.moveNumber) : null;
   const prefix = moveNumber
@@ -60,8 +60,6 @@ export function describeLiveMove(move) {
   let message;
   if (quality === "brilliant") {
     message = "Das war eine brillante Idee.";
-  } else if (quality === "great") {
-    message = "Das war ein besonders starker Zug.";
   } else if (quality === "book") {
     message = "Das ist ein bekannter Eröffnungszug.";
   } else if (quality === "best") {
@@ -74,8 +72,6 @@ export function describeLiveMove(move) {
     message = "Etwas ungenau. Da war ein besserer Zug.";
   } else if (quality === "mistake") {
     message = "Das ist ein klarer Fehler. Deine Stellung wird deutlich schlechter.";
-  } else if (quality === "miss") {
-    message = "Hier verpasst du eine große Chance.";
   } else {
     message = "Das ist ein grober Fehler. Deine Stellung wird viel schlechter.";
   }

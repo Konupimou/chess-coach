@@ -45,6 +45,24 @@ test("Coach-Modus fällt ohne gespeicherten Wert auf Weiterspielen zurück", () 
   assert.equal(app.getAnalysisCoachMode(), "review");
 });
 
+test("Brettperspektive verändert nicht die Partie-Metadaten", () => {
+  const app = analysisApp({ perspective: "w" });
+  app.gameSaveDraft = { playerColor: "w" };
+  app.gameSaveDraftDirty = false;
+  app.gameDirty = false;
+  app.updateBoardContext = () => {};
+  app.renderSuggestions = () => {};
+  app.markGameDirty = () => { app.gameDirty = true; };
+  app.updateSaveGameButton = () => {};
+
+  app.setAnalysisPerspective("b", { updateBoard: false, syncDraft: false });
+
+  assert.equal(app.analysisPerspective, "b");
+  assert.equal(app.gameSaveDraft.playerColor, "w");
+  assert.equal(app.gameSaveDraftDirty, false);
+  assert.equal(app.gameDirty, false);
+});
+
 test("der letzte Zug wird ohne Farbfilter anhand des aktuellen Halbzuges gefunden", () => {
   const app = analysisApp({ perspective: "b", turn: "w" });
   const game = new Chess();
