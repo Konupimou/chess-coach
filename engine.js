@@ -345,7 +345,11 @@ export class Engine {
     this.handshakeTimer = setTimeout(() => {
       console.warn('[Engine] Handshake timeout, attempting fallback.');
       this._fallbackWorker(new Error('handshake timeout'));
-    }, 5000);
+    // The first uncached WASM download is roughly 7 MB. Mobile Safari and
+    // hosting CDNs can legitimately need well over five seconds before the
+    // worker is able to answer the initial UCI command. Falling back too early
+    // discards a healthy WASM worker and starts the much slower asm.js build.
+    }, 30000);
   }
 
   _notifyHashChange() {
