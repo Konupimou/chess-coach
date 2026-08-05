@@ -1927,6 +1927,7 @@ export function buildLocalMoveExplanation({
   engineContext = null,
   openingContext = null,
   learnerProfile = null,
+  recognizedPatterns = [],
 } = {}) {
   if (!positionEvidence?.valid) return null;
   const trusted = buildTrustedExplanationEvidence({
@@ -2181,6 +2182,14 @@ export function buildLocalMoveExplanation({
         : "";
   const moveIdeaText = foundationsMoveIdea
     || effectText(comparison.played, subject.san);
+  const matchingPattern = (recognizedPatterns || []).find((pattern) => (
+    pattern?.move?.uci === subject.uci
+    && ["winning", "active", "warning"].includes(pattern.status)
+    && pattern.timing !== "removed"
+  ));
+  const connectedMoveIdeaText = matchingPattern?.explanation
+    ? `${moveIdeaText} ${matchingPattern.explanation}`.trim()
+    : moveIdeaText;
   const candidate = {
     schemaVersion: MOVE_EXPLANATION_SCHEMA_VERSION,
     subjectUci: subject.uci,
@@ -2197,7 +2206,7 @@ export function buildLocalMoveExplanation({
         : [],
     ),
     moveIdea: semanticClaim(
-      moveIdeaText,
+      connectedMoveIdeaText,
       [positionEvidence.playedMove.evidenceId, "engine.move_comparison.played"],
       foundationsMoveIdea
         ? []

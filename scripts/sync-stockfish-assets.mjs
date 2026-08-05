@@ -1,4 +1,4 @@
-import { copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,4 +25,16 @@ await Promise.all([
     path.join(destinationDirectory, "COPYING.txt"),
   ),
 ]);
+
+// Hostinger's CDN may serve .wasm as text/plain. Avoid relying on
+// WebAssembly.instantiateStreaming(), which requires application/wasm.
+for (const name of assetNames.filter((entry) => entry.endsWith(".js"))) {
+  const target = path.join(destinationDirectory, name);
+  const source = await readFile(target, "utf8");
+  const patched = source.replace(
+    /WebAssembly\.instantiateStreaming\(([^,]+),([^\)]+)\)/g,
+    (_, response, imports) => `${response}.arrayBuffer().then(function(t){return WebAssembly.instantiate(t,${imports})})`,
+  );
+  await writeFile(target, patched);
+}
 console.log("Stockfish-18-Lite-Assets synchronisiert.");

@@ -13,6 +13,7 @@ import {
   openingKnowledgeForVariation,
 } from "../openingKnowledge.js";
 import { buildPositionEvidence } from "../positionEvidence.js";
+import { PATTERN_LABELS, recognizePositionPatterns } from "../patternRecognition.js";
 import { buildCoachKnowledgeContext } from "../knowledgeClaims.js";
 import {
   buildCoachKnowledgeContext as buildOntologyContext,
@@ -1164,6 +1165,16 @@ function buildMoveExplanationContext(payload) {
     || !positionEvidence.verifiedLines.some((line) => line?.legal && line?.complete)
   ) return null;
   const learnerProfile = learnerProfileForCoach(payload?.learnerProfile);
+  const recognizedPatterns = recognizePositionPatterns({
+    fenBefore: engineContext.fen,
+    fenAfter: positionEvidence?.after?.fen || "",
+    engine: {
+      lineUci: engineContext.primaryVariation?.uci || [],
+      depth: engineContext.depth,
+      lastMoveUci: positionEvidence.playedMove?.uci || "",
+      lastMoveWasCapture: Boolean(positionEvidence.playedMove?.capture),
+    },
+  });
   const phase = phaseFromPositionEvidence(positionEvidence);
   const featureIds = knowledgeFeatureIdsFromPositionEvidence(positionEvidence);
   const verifiedKnowledge = buildCoachKnowledgeContext({
@@ -1187,6 +1198,7 @@ function buildMoveExplanationContext(payload) {
     engineContext,
     openingContext: payload?.openingContext,
     learnerProfile,
+    recognizedPatterns,
   });
   const subject = positionEvidence.playedMove;
   const cacheKey = moveExplanationCacheKey({
@@ -1198,6 +1210,7 @@ function buildMoveExplanationContext(payload) {
     engineContext,
     positionEvidence: trustedEvidence,
     knowledgeContext,
+    recognizedPatterns,
   });
   return {
     engineContext,
@@ -1295,6 +1308,7 @@ export function buildMoveExplanationPrompt({
   knowledgeContext,
   openingContext,
   localExplanation,
+  recognizedPatterns = [],
 }) {
   const compactBranch = (branch) => branch
     ? {
@@ -1362,10 +1376,21 @@ export function buildMoveExplanationPrompt({
     `<stockfish_analysis>\n${JSON.stringify(compactEngine)}\n</stockfish_analysis>`,
     `<opening_context>\n${JSON.stringify(openingContext || null)}\n</opening_context>`,
     `<verified_knowledge>\n${JSON.stringify(knowledgeContext)}\n</verified_knowledge>`,
+    `<recognized_patterns>\n${JSON.stringify(recognizedPatterns.slice(0, 6).map((pattern) => ({
+      id: pattern.id,
+      type: pattern.type,
+      label: PATTERN_LABELS[pattern.type] || pattern.type,
+      status: pattern.status,
+      timing: pattern.timing,
+      explanation: pattern.explanation,
+      knowledgeId: pattern.knowledgeId || null,
+      engineStatus: pattern.engineEvidence?.status || null,
+    })))}\n</recognized_patterns>`,
     `<grounded_draft>\n${JSON.stringify(localExplanation)}\n</grounded_draft>`,
     [
       "<task>",
       "Erkläre genau den legal verifizierten playedMove aus position_evidence.",
+      "Wenn ein recognized_pattern zum playedMove passt, verbinde die Erklärung natürlich mit diesem Muster. Nutze dabei nur Muster mit status winning, active oder warning; ein refuted-Muster darfst du nur als widerlegte Idee erwähnen.",
       "grounded_draft legt fest, welche Felder belegt sind: Übernimm schemaVersion, subjectUci, subjectSan, null-Felder, evidenceIds und moveRefs daraus exakt und in derselben Reihenfolge.",
       "Du darfst ausschließlich die text-Werte der nichtleeren semantischen Felder sprachlich verbessern und confidence unverändert übernehmen.",
       "Füge keine Zugnotation in einen Text ein, wenn der zugehörige grounded_draft-Text keine Zugnotation enthält.",
