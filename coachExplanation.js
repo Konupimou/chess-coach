@@ -1440,6 +1440,77 @@ function piecePronoun(piece) {
   return piece === "q" || !PIECE_NAMES[piece] ? "sie" : "ihn";
 }
 
+function directPlayedMoveIdeaText(move) {
+  if (!move) return "";
+  const capture = move.capture;
+  if (capture && move.givesCheckmate) {
+    return `${move.san} nimmt ${accusativePiece(capture.capturedPiece)} und setzt den König matt.`;
+  }
+  if (capture && move.givesCheck) {
+    return `${move.san} nimmt ${accusativePiece(capture.capturedPiece)} und gibt Schach.`;
+  }
+  if (capture) {
+    return `${move.san} nimmt ${accusativePiece(capture.capturedPiece)}.`;
+  }
+  if (move.givesCheckmate) return `${move.san} setzt den gegnerischen König matt.`;
+  if (move.givesCheck) return `${move.san} gibt dem gegnerischen König Schach.`;
+  return "";
+}
+
+function learnerPieceSubject(piece) {
+  return piece === "q" ? "Sie" : "Er";
+}
+
+function explanatoryPlayedMoveIdeaText(move, effects = []) {
+  if (!move) return "";
+  const first = (type) => effects.find((effect) => effect.type === type);
+  const castle = first("castles");
+  if (castle) {
+    return `Du rochierst ${castle.side === "kingside" ? "kurz" : "lang"}. Dadurch verlässt dein König die Mitte und dein Turm kommt ins Spiel.`;
+  }
+
+  const development = first("develops_piece");
+  const center = first("occupies_center");
+  const control = effects.find((effect) => (
+    effect.type === "controls_new_square"
+    && effect.square !== center?.square
+  ));
+  const activity = first("improves_piece_activity");
+  const subjectPronoun = learnerPieceSubject(move.piece);
+
+  if (development) {
+    const base = `Damit entwickelst du ${accusativePiece(development.piece)} nach ${development.square}.`;
+    if (control) {
+      return `${base} ${subjectPronoun} kontrolliert das Feld ${control.square}.`;
+    }
+    if (activity) {
+      return `${base} Dort hat ${subjectPronoun.toLocaleLowerCase("de-DE")} mehr mögliche Felder.`;
+    }
+    return `${base} So kommt eine weitere Figur ins Spiel.`;
+  }
+
+  if (center) {
+    const base = `Damit stellst du einen Bauern auf ${center.square} ins Zentrum.`;
+    return control
+      ? `${base} Von dort kontrolliert er das Feld ${control.square}.`
+      : `${base} So kämpfst du direkt um die Mitte.`;
+  }
+
+  const moved = first("moves_piece");
+  const base = moved
+    ? moved.piece === "p"
+      ? `Damit ziehst du deinen Bauern nach ${moved.to}.`
+      : `Damit stellst du ${ownedAccusativePiece(moved.piece)} nach ${moved.to}.`
+    : "";
+  if (base && control) {
+    return `${base} ${subjectPronoun} kontrolliert das Feld ${control.square}.`;
+  }
+  if (base && activity) {
+    return `${base} Dort hat ${subjectPronoun.toLocaleLowerCase("de-DE")} mehr mögliche Felder.`;
+  }
+  return base;
+}
+
 function singleMoveReference(positionEvidence, uci, { preferPlayed = false } = {}) {
   const normalized = cleanUci(uci);
   if (!normalized) return [];
@@ -2110,11 +2181,18 @@ export function buildLocalMoveExplanation({
     : "";
   let alternativeText = "";
   if (alternative && (!openingPhase || ["mistake", "blunder"].includes(quality))) {
-    if (simpleLearner && alternative.relation === "better") {
+    if (primaryDifference?.type === "allows_checkmate" && opponent?.san) {
+      alternativeText = `Besser war ${alternative.move.san}. Damit verhinderst du ${opponent.san}.`;
+    } else if (simpleLearner && alternative.relation === "better") {
       const developed = alternative.immediateEffects?.find(
         (effect) => effect.type === "develops_piece",
       );
-      alternativeText = developed
+      const castle = alternative.immediateEffects?.find(
+        (effect) => effect.type === "castles",
+      );
+      alternativeText = castle
+        ? `Besser war ${alternative.move.san}. Damit rochierst du ${castle.side === "kingside" ? "kurz" : "lang"}.`
+        : developed
         ? `Besser war ${alternative.move.san}. Damit entwickelst du ${accusativePiece(developed.piece)}.`
         : alternativeIdea
           ? `Besser: ${alternativeIdea}`
@@ -2167,19 +2245,11 @@ export function buildLocalMoveExplanation({
     return false;
   });
   const playedEffects = comparison.played.immediateEffects || [];
-  const foundationsDevelopment = simpleLearner
-    ? playedEffects.find((effect) => effect.type === "develops_piece")
-    : null;
-  const foundationsCenterPawn = simpleLearner
-    && positionEvidence.playedMove.piece === "p"
-    && playedEffects.some((effect) => effect.type === "occupies_center");
-  const foundationsMoveIdea = foundationsDevelopment
-    ? `Damit entwickelst du ${accusativePiece(foundationsDevelopment.piece)}!`
-    : foundationsCenterPawn
-      ? "Damit stellst du einen Bauern ins Zentrum!"
-      : simpleLearner
-        ? `Damit ziehst du ${ownedAccusativePiece(positionEvidence.playedMove.piece)} nach ${positionEvidence.playedMove.to}.`
-        : "";
+  const directPlayedMoveIdea = directPlayedMoveIdeaText(positionEvidence.playedMove);
+  const foundationsMoveIdea = directPlayedMoveIdea
+    || (simpleLearner
+      ? explanatoryPlayedMoveIdeaText(positionEvidence.playedMove, playedEffects)
+      : "");
   const moveIdeaText = foundationsMoveIdea
     || effectText(comparison.played, subject.san);
   const matchingPattern = (recognizedPatterns || []).find((pattern) => (
@@ -2208,9 +2278,11 @@ export function buildLocalMoveExplanation({
     moveIdea: semanticClaim(
       connectedMoveIdeaText,
       [positionEvidence.playedMove.evidenceId, "engine.move_comparison.played"],
-      foundationsMoveIdea
-        ? []
-        : singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true }),
+      directPlayedMoveIdea
+        ? singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true })
+        : foundationsMoveIdea
+          ? []
+          : singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true }),
     ),
     opponentReply: opponentText
       ? semanticClaim(
@@ -2324,11 +2396,15 @@ export function buildLocalMoveExplanation({
       [assessmentEvidenceId],
     ),
     moveIdea: semanticClaim(
-      positionEvidence.playedMove.piece === "p"
-        ? "Damit bringst du deinen Bauern weiter nach vorne."
-        : `Damit stellst du ${accusativePiece(positionEvidence.playedMove.piece)} neu auf.`,
+      directPlayedMoveIdea || (
+        positionEvidence.playedMove.piece === "p"
+          ? "Damit bringst du deinen Bauern weiter nach vorne."
+          : `Damit stellst du ${accusativePiece(positionEvidence.playedMove.piece)} neu auf.`
+      ),
       [positionEvidence.playedMove.evidenceId],
-      [],
+      directPlayedMoveIdea
+        ? singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true })
+        : [],
     ),
     opponentReply: null,
     concreteConsequence: null,

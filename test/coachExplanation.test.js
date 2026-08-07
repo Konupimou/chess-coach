@@ -196,7 +196,10 @@ test("der lokale 800-Elo-Coach erklärt eine Entwicklung ohne Lob-Floskel", () =
     },
   });
 
-  assert.equal(explanation.moveIdea.text, "Damit entwickelst du den Springer!");
+  assert.equal(
+    explanation.moveIdea.text,
+    "Damit entwickelst du den Springer nach f3. Er kontrolliert das Feld d4.",
+  );
   assert.doesNotMatch(
     moveExplanationToMarkdown(explanation),
     /Sauber|genau das war gefragt/,
@@ -231,7 +234,10 @@ test("der lokale 800-Elo-Coach erklärt d4 als einfachen Zentrumszug", () => {
     },
   });
 
-  assert.equal(explanation.moveIdea.text, "Damit stellst du einen Bauern ins Zentrum!");
+  assert.equal(
+    explanation.moveIdea.text,
+    "Damit stellst du einen Bauern auf d4 ins Zentrum. Von dort kontrolliert er das Feld e5.",
+  );
   assert.doesNotMatch(explanation.moveIdea.text, /Analysetiefe|Zielfeld/);
 });
 

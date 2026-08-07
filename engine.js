@@ -119,19 +119,23 @@ export class Engine {
     this.optionsDirty = false;
     this.disposed = false;
 
-    // Prefer multi-threaded NNUE when cross-origin isolation allows it.
+    // Start with the portable single-threaded build. The multi-threaded build
+    // can fail silently during its UCI handshake even when the browser reports
+    // cross-origin isolation support, which otherwise delays startup until the
+    // 30-second fallback timeout. Stockfish's browser package also recommends
+    // the lite single-threaded build for the usual web-app case.
     this.workerCandidates = [
-      {
-        path: "/libs/stockfish/stockfish-18-lite.js",
-        name: "Stockfish 18 Lite (multi-thread)",
-        supported: () => allowMultiThread && hasWasm,
-        requiresMultiThread: true
-      },
       {
         path: "/libs/stockfish/stockfish-18-lite-single.js",
         name: "Stockfish 18 Lite (single-thread)",
         supported: () => hasWasm,
         requiresMultiThread: false
+      },
+      {
+        path: "/libs/stockfish/stockfish-18-lite.js",
+        name: "Stockfish 18 Lite (multi-thread)",
+        supported: () => allowMultiThread && hasWasm,
+        requiresMultiThread: true
       },
       {
         path: "/libs/stockfish/stockfish-18-asm.js",

@@ -24,8 +24,14 @@
     "pgn:evaluate": "node scripts/evaluate-concept-transfer.mjs",
     "coach:evaluate": "node scripts/evaluate-coach-corpus.mjs --samples-per-cell=200 --strict",
     "coach:stress": "node scripts/stress-test-coach-games.mjs --games=300 --positions-per-phase=75 --depth=5 --strict",
+    "coach:audit:800": "node scripts/audit-coach-800.mjs",
+    "coach:training:seed": "node scripts/seed-coach-training-candidates.mjs --ratings=800",
+    "coach:training:review": "next dev",
+    "coach:training:build": "node scripts/build-coach-training-dataset.mjs --ratings=800",
+    "coach:training:check": "node scripts/build-coach-training-dataset.mjs --ratings=800 --check",
     "coach:review-stress": "COACH_GAME_REVIEW_STRESS_GAMES=60 COACH_GAME_REVIEW_STRESS_PLIES=36 node --test test/gameReviewStress.test.js",
     "test": "node --test",
+    "test:e2e": "playwright test",
     "check": "npm run pgn:check && npm run test && npm run build"
   },
   "engines": {
@@ -47,6 +53,7 @@
     "sharp": "^0.35.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "fzstd": "^0.1.1",
     "wrangler": "^4.114.0"
   }

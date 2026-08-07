@@ -33,12 +33,12 @@ export default function HomePage() {
                   <div className="stage-four-heading">
                     <h3 id="stage-four-title">Erkannte Muster</h3>
                   </div>
-                  <div id="stage-four-facts" className="stage-four-facts" />
+                  <div id="stage-four-facts" className="stage-four-facts" hidden />
                   <div id="stage-four-feedback" className="stage-four-feedback" hidden />
                   <div id="stage-four-coach" className="stage-four-coach" hidden>
                     <h4>Kurz erklärt</h4>
                     <p id="stage-four-coach-text" />
-                    <details id="stage-four-ai-basis" className="stage-four-ai-basis">
+                    <details id="stage-four-ai-basis" className="stage-four-ai-basis" hidden>
                       <summary>Worauf basiert diese Antwort?</summary>
                       <p id="stage-four-ai-source" />
                       <ul id="stage-four-ai-facts" />
@@ -47,7 +47,17 @@ export default function HomePage() {
                 </section>
               <section className="move-list-section" aria-labelledby="move-list-title">
                 <div className="section-heading">
-                  <h2 id="move-list-title">Züge</h2>
+                  <div>
+                    <h2 id="move-list-title">Züge</h2>
+                    <div className="move-list-actions">
+                      <button id="return-current-position" className="secondary-button" type="button" hidden>
+                        Zur aktuellen Stellung
+                      </button>
+                      <button id="new-analysis" className="secondary-button" type="button">
+                        Neue Analyse
+                      </button>
+                    </div>
+                  </div>
                   <p id="keyboard-hint" className="keyboard-hint">← → navigieren · ↑ ↓ Variante wechseln</p>
                 </div>
                 <div id="move-list" />

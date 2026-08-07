@@ -13,10 +13,14 @@ import {
 } from "../gameReview.js";
 import { PRACTICALLY_EQUIVALENT_LOSS_CP } from "../coachThresholds.js";
 
-const RATINGS = [800, 1000, 1400, 1800];
+const requestedRatings = String(process.env.COACH_GAME_REVIEW_STRESS_RATINGS || "")
+  .split(",")
+  .map((rating) => Number.parseInt(rating.trim(), 10))
+  .filter((rating) => [800, 1000, 1400, 1800].includes(rating));
+const RATINGS = requestedRatings.length > 0 ? [...new Set(requestedRatings)] : [800, 1000, 1400, 1800];
 const GAME_COUNT = Math.max(
   1,
-  Math.min(100, Number.parseInt(process.env.COACH_GAME_REVIEW_STRESS_GAMES, 10) || 8),
+  Math.min(200, Number.parseInt(process.env.COACH_GAME_REVIEW_STRESS_GAMES, 10) || 8),
 );
 const PLIES_PER_GAME = Math.max(
   12,

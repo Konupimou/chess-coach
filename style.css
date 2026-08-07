@@ -230,6 +230,8 @@ summary:focus-visible,
 
 .board-stage {
   display: flex;
+  width: 100%;
+  flex-direction: column;
   justify-content: center;
 }
 
@@ -619,9 +621,22 @@ body > .piece-417db {
 .board-toolbar {
   display: flex;
   align-items: stretch;
+  box-sizing: border-box;
   justify-content: space-between;
   gap: 12px;
-  width: min(100%, 596px);
+  width: 100%;
+  min-height: 52px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(16, 23, 32, 0.9);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
+}
+
+.board-profile-button {
+  min-height: 34px;
+  padding-inline: 12px;
 }
 
 .board-status-group {
@@ -2953,6 +2968,8 @@ button.perspective-alternative-button,
 .stage-four-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
 .stage-four-heading h3 { margin: 1px 0 0; font-size: .92rem; }
 .stage-four-facts { display: grid; gap: 5px; margin-top: 8px; }
+/* In der Musterkarte bleibt nur die Coach-Erklärung sichtbar. */
+.stage-four-explanation [hidden] { display: none !important; }
 .stage-four-fact { display: grid; grid-template-columns: minmax(112px, .8fr) minmax(0, 1.4fr); gap: 8px; padding: 5px 7px; border-radius: 7px; background: rgba(255,255,255,.05); font-size: .73rem; line-height: 1.25; }
 .stage-four-fact strong { color: var(--text-primary); }
 .stage-four-fact span { min-width: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
@@ -4279,6 +4296,79 @@ button.perspective-alternative-button,
   margin: 0;
 }
 
+.profile-page-main {
+  width: min(1100px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 64px;
+}
+
+.profile-page-content {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-page-card {
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(18, 25, 39, 0.92);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.profile-identity-card {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-back-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.profile-page-loading {
+  color: var(--text-secondary);
+}
+
+.profile-game-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.profile-game-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.profile-game-list article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.profile-game-list article span {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
+@media (max-width: 720px) {
+  .profile-page-main {
+    width: min(100% - 20px, 1100px);
+    padding-top: 18px;
+  }
+
+  .profile-page-card {
+    padding: 16px;
+  }
+}
+
 .profile-overview > div,
 .profile-facts > div {
   min-width: 0;
@@ -5119,6 +5209,355 @@ button.perspective-alternative-button,
   }
 }
 
+/* Finale Layout-Regel: Brett und rechte Inhalte bleiben getrennt. */
+@media (min-width: 901px) {
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, var(--analysis-board-size)) minmax(300px, 1fr) !important;
+    gap: 18px !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .analysis-only-page #board-container > .board-stack .board-surface {
+    width: 100%;
+    max-width: var(--analysis-board-size);
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-width: 0;
+    width: 100%;
+  }
+}
+
+/* Feste Analyse-Anordnung: Brett links, Coach und Zugliste immer rechts. */
+.analysis-only-page #board-container {
+  grid-template-columns: minmax(0, calc(var(--analysis-board-size) + 48px)) minmax(320px, 420px);
+  align-items: start;
+}
+
+.analysis-only-page #board-container > #analysis-right-column {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 1;
+  height: var(--analysis-board-size);
+  max-height: var(--analysis-board-size);
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analysis-only-page #analysis-right-column > .move-list-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* FINAL: ein gemeinsames 24px-Raster für alle sichtbaren Kästen. */
+.analysis-only-page {
+  --ui-space: 24px;
+}
+
+.analysis-only-page .workbench {
+  width: calc(100% - (2 * var(--ui-space)));
+  margin: 0 auto;
+  padding: var(--ui-space) 0;
+}
+
+.analysis-only-page .board-toolbar {
+  width: 100%;
+  margin: 0 0 var(--ui-space);
+}
+
+.analysis-only-page #board-container,
+.analysis-only-page #analysis-right-column,
+.analysis-only-page .review-column {
+  gap: var(--ui-space) !important;
+}
+
+.analysis-only-page .stage-four-explanation,
+.analysis-only-page .move-list-section {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+@media (min-width: 1101px) {
+  .analysis-only-page {
+    --analysis-board-size: min(calc(100dvh - 180px), calc(100vw - 488px));
+  }
+
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, calc(var(--analysis-board-size) + 32px + var(--ui-space))) minmax(320px, 1fr) !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack {
+    width: 100%;
+    height: var(--analysis-board-size);
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row {
+    width: 100%;
+    height: var(--analysis-board-size);
+    padding: 0;
+    justify-content: flex-start;
+    gap: var(--ui-space) !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row > .board-surface {
+    width: var(--analysis-board-size);
+    height: var(--analysis-board-size);
+    max-width: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+    flex: 0 0 var(--analysis-board-size);
+  }
+
+  .analysis-only-page .board-row > #analysis-panel {
+    flex: 0 0 32px !important;
+    margin: 0 !important;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100%;
+    height: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+  }
+}
+
+@media (max-width: 1100px) {
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* FINAL: ein gemeinsames Raster überschreibt alle älteren Layoutvarianten. */
+.analysis-only-page {
+  --ui-space: 24px;
+}
+
+.analysis-only-page .workbench {
+  width: calc(100% - (2 * var(--ui-space)));
+  margin: 0 auto;
+  padding: var(--ui-space) 0;
+}
+
+.analysis-only-page .board-toolbar {
+  width: 100%;
+  margin: 0 0 var(--ui-space);
+}
+
+.analysis-only-page #board-container,
+.analysis-only-page #analysis-right-column,
+.analysis-only-page .review-column {
+  gap: var(--ui-space) !important;
+}
+
+.analysis-only-page .stage-four-explanation,
+.analysis-only-page .move-list-section {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+@media (min-width: 1101px) {
+  .analysis-only-page {
+    --analysis-board-size: min(calc(100dvh - 180px), calc(100vw - 488px));
+  }
+
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, calc(var(--analysis-board-size) + 32px + var(--ui-space))) minmax(320px, 1fr) !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack {
+    width: 100%;
+    height: var(--analysis-board-size);
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row {
+    width: 100%;
+    height: var(--analysis-board-size);
+    padding: 0;
+    justify-content: flex-start;
+    gap: var(--ui-space) !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row > .board-surface {
+    width: var(--analysis-board-size);
+    height: var(--analysis-board-size);
+    max-width: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+    flex: 0 0 var(--analysis-board-size);
+  }
+
+  .analysis-only-page .board-row > #analysis-panel {
+    flex: 0 0 32px !important;
+    margin: 0 !important;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100%;
+    height: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+  }
+}
+
+@media (max-width: 1100px) {
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+}
+
+/* Einheitliches Abstands-Raster für die reduzierte Analyseansicht. */
+.analysis-only-page {
+  --ui-space: 24px;
+}
+
+.analysis-only-page .workbench {
+  width: calc(100% - (2 * var(--ui-space)));
+  margin: 0 auto;
+  padding: var(--ui-space) 0;
+}
+
+.analysis-only-page .board-toolbar {
+  width: 100%;
+  margin: 0 0 var(--ui-space);
+}
+
+.analysis-only-page #board-container,
+.analysis-only-page #analysis-right-column,
+.analysis-only-page .review-column {
+  gap: var(--ui-space) !important;
+}
+
+.analysis-only-page .stage-four-explanation,
+.analysis-only-page .move-list-section {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+@media (min-width: 1101px) {
+  .analysis-only-page {
+    --analysis-board-size: min(calc(100dvh - 180px), calc(100vw - 488px));
+  }
+
+  .analysis-only-page #board-container {
+    grid-template-columns:
+      minmax(0, calc(var(--analysis-board-size) + 32px + var(--ui-space)))
+      minmax(320px, 1fr) !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack {
+    width: 100%;
+    height: var(--analysis-board-size);
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row {
+    width: 100%;
+    height: var(--analysis-board-size);
+    padding: 0;
+    justify-content: flex-start;
+    gap: var(--ui-space) !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row > .board-surface {
+    width: var(--analysis-board-size);
+    height: var(--analysis-board-size);
+    max-width: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+    flex: 0 0 var(--analysis-board-size);
+  }
+
+  .analysis-only-page .board-row > #analysis-panel {
+    flex: 0 0 32px !important;
+    margin: 0 !important;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100%;
+    height: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+  }
+}
+
+@media (max-width: 1100px) {
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+}
+
+@media (min-width: 901px) {
+  .analysis-only-page {
+    --analysis-board-size: min(calc(100dvh - 120px), calc(100vw - 590px));
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row {
+    box-sizing: border-box;
+    justify-content: flex-start;
+    padding-left: 24px;
+    gap: 24px;
+  }
+
+  .analysis-only-page .board-row > #analysis-panel {
+    flex: 0 0 32px !important;
+    margin-left: 0 !important;
+  }
+
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, var(--analysis-board-size)) minmax(300px, 1fr) !important;
+    gap: 24px !important;
+  }
+}
+
 /* Gleichmäßige Zuglisten-Zeilen – Variantenpfeile verändern nie die Höhe. */
 .analysis-only-page #move-list table {
   table-layout: fixed;
@@ -5295,7 +5734,37 @@ button.perspective-alternative-button,
 
 .analysis-only-page .board-toolbar {
   width: 100%;
-  justify-content: flex-end;
+  justify-content: space-between;
+}
+
+.analysis-only-page {
+  --analysis-board-size: min(calc(100dvh - 120px), calc(100vw - 540px));
+}
+
+.analysis-only-page #board-container {
+  grid-template-columns: minmax(0, var(--analysis-board-size)) minmax(300px, 1fr);
+  align-items: start;
+  gap: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.analysis-only-page #analysis-right-column {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+/* Bewusst reduzierte Analyseansicht: nur Leiste, Brett, Zugliste und Erklärung. */
+.analysis-only-page .suggestions-card,
+.analysis-only-page .review-journey,
+.analysis-only-page .coach-analysis-card,
+.analysis-only-page .chat-wrapper,
+.analysis-only-page .play-mode-card,
+.analysis-only-page .game-review-sidebar {
+  display: none !important;
 }
 
 .analysis-only-page .game-library-card {
@@ -5614,6 +6083,19 @@ button.perspective-alternative-button,
   font-size: 0.9rem;
 }
 
+.move-list-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+
+.move-list-actions .secondary-button {
+  min-height: 2.25rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+}
+
 .analysis-only-page .keyboard-hint {
   display: none;
 }
@@ -5744,7 +6226,7 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .board-stack {
-  gap: 0;
+  gap: 8px;
 }
 
 .analysis-only-page .board-row {
@@ -5752,7 +6234,12 @@ button.perspective-alternative-button,
   gap: 8px;
 }
 
-.analysis-only-page .board-stack > :not(.board-row) {
+.analysis-only-page .board-row > #analysis-panel {
+  flex: 0 0 32px;
+  margin-left: 16px;
+}
+
+.analysis-only-page .board-stack > :not(.board-row):not(.board-toolbar) {
   display: none !important;
 }
 
@@ -5896,10 +6383,6 @@ button.perspective-alternative-button,
   transform: translate(-50%, -50%);
 }
 
-.analysis-only-page .board-toolbar {
-  display: none !important;
-}
-
 .analysis-only-page .game-library-card {
   min-height: 40px;
   border-color: rgba(255, 255, 255, 0.06);
@@ -5914,6 +6397,14 @@ button.perspective-alternative-button,
 }
 
 .analysis-only-page .analysis-column {
+  gap: 12px;
+}
+
+.analysis-only-page #analysis-right-column {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
   gap: 12px;
 }
 
@@ -5980,6 +6471,13 @@ button.perspective-alternative-button,
     min-height: 0;
   }
 
+  .analysis-only-page #board-container > #analysis-right-column {
+    grid-column: 2;
+    grid-row: 1;
+    height: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+  }
+
   .analysis-only-page .review-column > .move-list-section {
     flex: 1 1 auto;
     min-height: 0;
@@ -5987,6 +6485,25 @@ button.perspective-alternative-button,
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+}
+
+/* Stabiles Desktop-Grundlayout: Brett links, Coach und Zugliste rechts. */
+.analysis-only-page #board-container {
+  grid-template-columns: minmax(0, calc(var(--analysis-board-size) + 48px)) minmax(320px, 420px);
+  align-items: start;
+}
+
+.analysis-only-page #analysis-right-column {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.analysis-only-page #analysis-right-column > .move-list-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 @media (min-width: 1101px) {
@@ -6070,5 +6587,143 @@ button.perspective-alternative-button,
 @media (prefers-reduced-motion: reduce) {
   .analysis-only-page #board .square-55d63 {
     transition: none;
+  }
+}
+
+/* Feste Analyse-Anordnung: Brett links, Coach und Zugliste immer rechts. */
+.analysis-only-page #board-container {
+  grid-template-columns: minmax(0, calc(var(--analysis-board-size) + 48px)) minmax(320px, 420px);
+  align-items: start;
+}
+
+.analysis-only-page #board-container > #analysis-right-column {
+  display: flex !important;
+  grid-column: 2;
+  grid-row: 1;
+  height: var(--analysis-board-size);
+  max-height: var(--analysis-board-size);
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analysis-only-page #analysis-right-column > .move-list-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+/* ABSCHLIESSENDES LAYOUTRASTER */
+.analysis-only-page {
+  --ui-space: 24px;
+}
+
+.analysis-only-page #analysis-right-column > .analysis-column {
+  display: none !important;
+}
+
+.analysis-only-page #analysis-right-column > .review-column {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  align-self: flex-start;
+}
+
+.analysis-only-page #analysis-right-column .stage-four-explanation {
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.analysis-only-page #analysis-right-column .move-list-section {
+  height: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.analysis-only-page .workbench {
+  width: calc(100% - (2 * var(--ui-space)));
+  margin: 0 auto;
+  padding: var(--ui-space) 0;
+}
+
+.analysis-only-page .board-toolbar {
+  width: 100%;
+  margin: 0 0 var(--ui-space);
+}
+
+.analysis-only-page #board-container,
+.analysis-only-page #analysis-right-column,
+.analysis-only-page .review-column {
+  gap: var(--ui-space) !important;
+}
+
+.analysis-only-page .stage-four-explanation,
+.analysis-only-page .move-list-section {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+@media (min-width: 1101px) {
+  .analysis-only-page {
+    --analysis-board-size: min(calc(100dvh - 180px), calc(100vw - 488px));
+  }
+
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, calc(var(--analysis-board-size) + 32px + var(--ui-space))) minmax(320px, 1fr) !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack {
+    width: 100%;
+    height: var(--analysis-board-size);
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row {
+    width: 100%;
+    height: var(--analysis-board-size);
+    padding: 0;
+    justify-content: flex-start;
+    gap: var(--ui-space) !important;
+  }
+
+  .analysis-only-page #board-container > .board-stack > .board-row > .board-surface {
+    width: var(--analysis-board-size);
+    height: var(--analysis-board-size);
+    max-width: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+    flex: 0 0 var(--analysis-board-size);
+  }
+
+  .analysis-only-page .board-row > #analysis-panel {
+    flex: 0 0 32px !important;
+    margin: 0 !important;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    width: 100%;
+    height: var(--analysis-board-size);
+    max-height: var(--analysis-board-size);
+  }
+}
+
+@media (max-width: 1100px) {
+  .analysis-only-page #board-container {
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100%;
+  }
+
+  .analysis-only-page #board-container > #analysis-right-column {
+    display: flex !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    width: 100%;
+    height: auto;
+    max-height: none;
   }
 }

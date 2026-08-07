@@ -116,9 +116,8 @@ import {
 } from "./coachVisualization.js";
 
 const MAX_CHAT_MESSAGES = 160;
-// Vorläufige, bewusst schlanke Analyseoberfläche: Die vollständigen Coach- und
-// Engine-Komponenten bleiben erhalten, werden aber weder angezeigt noch automatisch gestartet.
-const ANALYSIS_ASSISTANTS_ENABLED = false;
+// Die Analyse zeigt Engine-Vorschläge und den fragbaren Coach gemeinsam an.
+const ANALYSIS_ASSISTANTS_ENABLED = true;
 // Etwas mehr Rechenzeit liefert stabilere Zwischenbewertungen für die Leiste,
 // ohne die Züge im Spielmodus oder die explizite Tiefeneinstellung zu ändern.
 const MINIMAL_ANALYSIS_DEPTH = 12;
@@ -465,9 +464,21 @@ export class ChessApp {
       analysisColumn = document.createElement('div');
       analysisColumn.id = 'analysis-column';
       analysisColumn.className = 'analysis-column';
-      wrap.appendChild(analysisColumn);
     }
     this.analysisColumn = analysisColumn;
+
+    let reviewColumn = document.querySelector('#board-container > .review-column');
+    const boardContainer = document.getElementById('board-container');
+    let rightColumn = document.getElementById('analysis-right-column');
+    if (!rightColumn) {
+      rightColumn = document.createElement('div');
+      rightColumn.id = 'analysis-right-column';
+      rightColumn.className = 'analysis-right-column';
+      boardContainer.appendChild(rightColumn);
+    }
+    rightColumn.appendChild(analysisColumn);
+    if (reviewColumn) rightColumn.appendChild(reviewColumn);
+
     this.boardContainer = wrap;
     this.boardStage = document.getElementById("app");
     this.boardSurface = boardSurface;
@@ -478,6 +489,13 @@ export class ChessApp {
     this.moveListEyebrow = document.getElementById("move-list-eyebrow");
     this.moveListTitle = document.getElementById("move-list-title");
     this.keyboardHint = document.getElementById("keyboard-hint");
+    this.returnCurrentPositionButton = document.getElementById("return-current-position");
+    this.newAnalysisButton = document.getElementById("new-analysis");
+    this.returnCurrentPositionButton?.addEventListener("click", () => {
+      const latest = this.getMainlinePath().at(-1);
+      if (latest && latest !== this.currentNode) this.jumpToFen(latest.fen, latest);
+    });
+    this.newAnalysisButton?.addEventListener("click", () => this.resetGame());
     this.stageFourPanel = document.getElementById("stage-four-explanation");
     this.stageFourFactsEl = document.getElementById("stage-four-facts");
     this.stageFourFeedbackEl = document.getElementById("stage-four-feedback");
@@ -510,16 +528,25 @@ export class ChessApp {
     const engineAvailable = this.ensureEngine();
 
     this.evalBar = new EvalBar({ parentEl: boardRow, width: 32, height: null });
-    boardRow.insertBefore(this.evalBar.container, boardSurface);
-    this.evalBar.container.hidden = this.appMode !== "analysis";
+    boardRow.appendChild(this.evalBar.container);
+    this.evalBar.container.hidden = !this.analysisAssistantsEnabled;
     analysisColumn.hidden = !this.analysisAssistantsEnabled;
 
     this.scheduleBoardResize();
 
     const boardToolbar = document.createElement("div");
     boardToolbar.className = "board-toolbar";
-    boardToolbar.hidden = true;
     this.boardToolbar = boardToolbar;
+
+    const profileButton = document.createElement("button");
+    profileButton.type = "button";
+    profileButton.className = "secondary-button board-profile-button";
+    profileButton.textContent = "Profil";
+    profileButton.addEventListener("click", () => {
+      window.location.assign("/profile");
+    });
+    boardToolbar.appendChild(profileButton);
+    this.boardProfileButton = profileButton;
 
     const statusGroup = document.createElement("section");
     statusGroup.className = "board-status-group game-library-card";
@@ -683,7 +710,7 @@ export class ChessApp {
     // Die Aktionen bleiben erreichbar, obwohl die große Metadatenkarte nicht
     // mehr unter dem Brett angezeigt wird.
     boardToolbar.appendChild(moreActions);
-    boardStack.appendChild(boardToolbar);
+    this.boardStage.insertBefore(boardToolbar, this.boardContainer);
 
     this.createReviewJourneyPanel();
 
@@ -720,7 +747,8 @@ export class ChessApp {
     chatWrapper.className = 'chat-wrapper';
     this.chatWrapper = chatWrapper;
     this.createChatPanel(chatWrapper);
-    analysisColumn.appendChild(chatWrapper);
+    // Der freie Chat-Coach bleibt für bestehende Funktionen initialisiert,
+    // wird in der aufgeräumten Analyseansicht aber nicht mehr angezeigt.
 
     const controls = document.createElement('dialog');
     controls.id = 'engine-settings-dialog';
@@ -1928,10 +1956,12 @@ export class ChessApp {
     };
     this._onBoardBlur = () => boardEl.classList.remove("is-keyboard-navigation");
     this._onBoardPointerDown = () => boardEl.classList.remove("is-keyboard-navigation");
+    this._onBoardClick = (event) => this.handleBoardClick(event);
     this._onBoardKeyDown = (event) => this.handleBoardKeyDown(event);
     boardEl.addEventListener("focus", this._onBoardFocus);
     boardEl.addEventListener("blur", this._onBoardBlur);
     boardEl.addEventListener("pointerdown", this._onBoardPointerDown);
+    boardEl.addEventListener("click", this._onBoardClick);
     boardEl.addEventListener("keydown", this._onBoardKeyDown);
     this.skipLink = document.querySelector('.skip-link[href="#board"]');
     this._onSkipLinkClick = (event) => {
@@ -1952,6 +1982,41 @@ export class ChessApp {
       });
       this.boardKeyboardObserver.observe(boardEl, { childList: true, subtree: true });
     }
+    this.updateBoardKeyboardHighlights();
+  }
+
+  handleBoardClick(event) {
+    if (this.pendingDragBoardSync || this.previewState || this.moveListPreviewState || this.reviewRunning) return;
+    const squareEl = event?.target?.closest?.(".square-55d63");
+    const squareClass = [...(squareEl?.classList || [])].find((name) => /^square-[a-h][1-8]$/.test(name));
+    const square = squareClass?.slice(7) || "";
+    if (!square) return;
+    this.boardKeyboardSquare = square;
+    const piece = this.game?.get?.(square);
+    if (!this.boardKeyboardSelectedSquare) {
+      if (!piece || piece.color !== this.game.turn()) return;
+      const pieceCode = `${piece.color}${piece.type.toUpperCase()}`;
+      if (this.handleDragStart(square, pieceCode) === false) return;
+      this.boardKeyboardSelectedSquare = square;
+      this.updateBoardKeyboardHighlights();
+      return;
+    }
+    const source = this.boardKeyboardSelectedSquare;
+    if (source === square) {
+      this.boardKeyboardSelectedSquare = null;
+      this.clearBoardDragHighlights();
+      this.updateBoardKeyboardHighlights();
+      return;
+    }
+    const sourcePiece = this.game?.get?.(source);
+    if (piece && sourcePiece && piece.color === sourcePiece.color) {
+      this.boardKeyboardSelectedSquare = square;
+      this.updateBoardKeyboardHighlights();
+      return;
+    }
+    const result = this.handleMove(source, square);
+    if (result !== "snapback") this.boardKeyboardSelectedSquare = null;
+    this.clearBoardDragHighlights();
     this.updateBoardKeyboardHighlights();
   }
 
@@ -2623,6 +2688,10 @@ export class ChessApp {
     if (this.previewState || this.moveListPreviewState) {
       this.stopAllBoardPreviews();
     }
+    if (this.appMode === "analysis" && !this.analysisAssistantsEnabled) {
+      this.engine?.cancelSearch?.();
+      return;
+    }
     this.resetSuggestionCoachState({ abortChat: true });
     if (this.suggestionRenderTimer) {
       window.clearTimeout(this.suggestionRenderTimer);
@@ -2664,6 +2733,7 @@ export class ChessApp {
         depth: targetDepth,
         pv: [],
         complete: true,
+        final: true,
         terminal: terminal.status,
       };
       this.currentNode.result = terminal.result;
@@ -5046,9 +5116,10 @@ export class ChessApp {
     const path = this.getCurrentPath();
     const minimumDepth = this.appMode === "play" && this.playSession.active
       ? 12
-      : this.engine?.depth || 1;
+      : Math.min(this.engine?.depth || MINIMAL_ANALYSIS_DEPTH, MINIMAL_ANALYSIS_DEPTH);
     const evaluations = path.map((node) => (
       node.analysis?.complete
+      && node.analysis?.final === true
       && Number.isFinite(node.analysis.depth)
       && node.analysis.depth >= minimumDepth
         ? node.analysis
@@ -8296,18 +8367,9 @@ export class ChessApp {
   }
 
   async initializeOpeningBook() {
-    try {
-      this.openingBook = await loadOpeningBook();
-      if (this.destroyed) return;
-      this.refreshOpeningRecognition();
-      this.renderMoveList();
-      if (this.appMode === "analysis") this.evaluateCurrentPosition();
-      else this.refreshCoachContextAfterProfileChange();
-    } catch (error) {
-      if (this.destroyed) return;
-      this.openingBookError = error?.message || "Lokale Eröffnungsdaten nicht verfügbar.";
-      this.updateBoardContext();
-    }
+    // Die Analyse arbeitet ohne lokale Eröffnungsdatenbank.
+    this.openingBook = null;
+    this.openingRecognition = null;
   }
 
   refreshOpeningRecognition() {
@@ -9685,6 +9747,10 @@ export class ChessApp {
       annotations: showAnnotations ? this.buildMoveAnnotations() : new Map(),
       showExplanations,
     });
+    const latestMainline = this.getMainlinePath().at(-1);
+    if (this.returnCurrentPositionButton) {
+      this.returnCurrentPositionButton.hidden = !latestMainline || latestMainline === this.currentNode;
+    }
     this.updateCurrentMoveQualityBadge();
     this.renderStageFourExplanation();
     this.renderGameReviewSidebar();
@@ -9695,6 +9761,19 @@ export class ChessApp {
     const reviewedMove = this.getLatestVerifiedMoveReview();
     const node = this.currentNode;
     const parent = node?.parent;
+    if (node?.move && !reviewedMove) {
+      this.stageFourPanel.hidden = false;
+      const pending = document.createElement("p");
+      pending.className = "stage-four-pending";
+      pending.textContent = `Engine bewertet ${node.move.san} …`;
+      this.stageFourFactsEl.replaceChildren(pending);
+      if (this.stageFourFeedbackEl) {
+        this.stageFourFeedbackEl.replaceChildren();
+        this.stageFourFeedbackEl.hidden = true;
+      }
+      if (this.stageFourCoachEl) this.stageFourCoachEl.hidden = true;
+      return;
+    }
     const moverSign = node?.move?.color === "b" ? -1 : 1;
     const playedUci = node?.move
       ? `${node.move.from || ""}${node.move.to || ""}${node.move.promotion || ""}`.toLowerCase()
@@ -9740,7 +9819,12 @@ export class ChessApp {
     }
     this.stageFourPatternMode = true;
     this.stageFourDetectedPatterns = this.renderStageFourPatterns(move, node);
-    this.renderStageFourFeedback(move, node);
+    // Die Muster- und Feedbackdaten bleiben intern verfügbar, sichtbar ist in
+    // diesem Bereich ausschließlich die verständliche Coach-Erklärung.
+    if (this.stageFourFeedbackEl) {
+      this.stageFourFeedbackEl.replaceChildren();
+      this.stageFourFeedbackEl.hidden = true;
+    }
     this.stageFourPanel.hidden = false;
     const facts = [];
     const addFact = (label, value) => facts.push({ label, value });
@@ -9945,11 +10029,12 @@ export class ChessApp {
         "Das ist Matt. Dein Gegner kommt nicht mehr raus – du gewinnst!",
       ]));
     } else if (opponentMate) {
+      const opponent = move.color === "w" ? "Schwarz" : "Weiß";
       coachSentences.push(phrase("opponent-mate", [
-        `Das ist Matt! Aus und vorbei. Nach ${move.san} kommt ${opponentMate}.`,
-        `Auweia – ${opponentMate} ist Schachmatt. Die Partie ist vorbei.`,
-        `Der Zug lässt ${opponentMate} zu. Das ist sofort Matt!`,
-        `Nach ${move.san} folgt ${opponentMate}. Matt – da gibt es keinen Ausweg mehr.`,
+        `${opponent} kann jetzt mit ${opponentMate} mattsetzen.`,
+        `Der Zug lässt Matt in einem zu: ${opponentMate}.`,
+        `Nach ${move.san} ist ${opponentMate} ein sofortiger Mattzug.`,
+        `${opponent} hat nun ${opponentMate} als sofortigen Mattzug.`,
       ]));
     } else if (openingKnowledgeMode) {
       const openingName = openingContext?.displayName
@@ -10667,6 +10752,9 @@ export class ChessApp {
     }
     if (this._onBoardPointerDown) {
       this.boardEl?.removeEventListener("pointerdown", this._onBoardPointerDown);
+    }
+    if (this._onBoardClick) {
+      this.boardEl?.removeEventListener("click", this._onBoardClick);
     }
     if (this._onBoardKeyDown) {
       this.boardEl?.removeEventListener("keydown", this._onBoardKeyDown);

@@ -1,0 +1,573 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-05T18:46:43.971Z",
+  "coachRating": 800,
+  "fullAudit": {
+    "passed": true,
+    "games": 200,
+    "checkedReports": 200,
+    "checkedMoves": 11972,
+    "checkedTexts": 49786,
+    "output": "TAP version 13\n# Subtest: 200 vollständige Offline-Partieberichte bleiben einfach, widerspruchsfrei und belegt\nok 1 - 200 vollständige Offline-Partieberichte bleiben einfach, widerspruchsfrei und belegt\n  ---\n  duration_ms: 85165.220958\n  type: 'test'\n  ...\n# 200 Berichte · 11972 Zugbewertungen · 49786 sichtbare Texte\n1..1\n# tests 1\n# suites 0\n# pass 1\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 85262.194333\n"
+  },
+  "deepAudit": {
+    "schemaVersion": 2,
+    "generatedAt": "2026-08-05T18:46:43.945Z",
+    "method": "deterministic_random_legal_games_with_local_stockfish",
+    "config": {
+      "games": 200,
+      "positionsPerPhase": 75,
+      "maxPlies": 180,
+      "depth": 5,
+      "seed": "coach-audit-800-v1",
+      "ratings": [
+        800,
+        1000,
+        1400,
+        1800
+      ],
+      "selectedRatings": [
+        800
+      ],
+      "everyPly": false,
+      "workers": 8,
+      "phases": [
+        "opening",
+        "middlegame",
+        "endgame"
+      ],
+      "paidAiCalls": 0,
+      "strictLanguageRules": true,
+      "maximumFailureExamples": 40,
+      "maximumPositiveExamples": 20
+    },
+    "engine": {
+      "name": "Stockfish 18 WASM Multithreaded",
+      "threads": 1,
+      "hashMb": 32,
+      "multiPv": 2,
+      "limit": {
+        "type": "depth",
+        "value": 5
+      }
+    },
+    "generation": {
+      "gamesGenerated": 200,
+      "generatedPlies": 31575,
+      "gamesReachingPhase": {
+        "opening": 200,
+        "middlegame": 196,
+        "endgame": 177
+      },
+      "endings": {
+        "checkmate": 36,
+        "draw": 2,
+        "plyLimit": 162
+      },
+      "coverage": [
+        {
+          "phase": "opening",
+          "gamesReachingPhase": 200,
+          "availableUniquePositions": 199,
+          "requestedPositions": 75,
+          "selectedPositions": 75
+        },
+        {
+          "phase": "middlegame",
+          "gamesReachingPhase": 196,
+          "availableUniquePositions": 196,
+          "requestedPositions": 75,
+          "selectedPositions": 75
+        },
+        {
+          "phase": "endgame",
+          "gamesReachingPhase": 177,
+          "availableUniquePositions": 177,
+          "requestedPositions": 75,
+          "selectedPositions": 75
+        }
+      ],
+      "everyPly": false,
+      "selectionHash": "ebb8b838183db04e0911229bebb9354a1cfea57c780650e860003f9d20137c86"
+    },
+    "totals": {
+      "selectedPositions": 225,
+      "analyzedPositions": 225,
+      "outputs": 225,
+      "passedOutputs": 219,
+      "failedOutputs": 6,
+      "evidenceFailures": 0,
+      "nullExplanations": 0,
+      "verificationFailures": 0,
+      "languageFailures": 1,
+      "semanticFailures": 0,
+      "completenessFailures": 5,
+      "unsupportedMoveFailures": 0,
+      "unsupportedBoardClaimFailures": 0,
+      "unsupportedEvaluationFailures": 0,
+      "phaseMismatches": 0,
+      "passPercent": 97.33
+    },
+    "byRating": {
+      "800": {
+        "evaluated": 225,
+        "passed": 219,
+        "failed": 6,
+        "languageFailures": 1,
+        "semanticFailures": 0,
+        "completenessFailures": 5,
+        "verificationFailures": 0,
+        "unsupportedMoveFailures": 0,
+        "unsupportedBoardClaimFailures": 0,
+        "unsupportedEvaluationFailures": 0,
+        "maximumSentences": 6,
+        "passPercent": 97.33
+      }
+    },
+    "byPhase": {
+      "opening": {
+        "evaluated": 75,
+        "passed": 73,
+        "failed": 2,
+        "languageFailures": 1,
+        "semanticFailures": 0,
+        "completenessFailures": 1,
+        "verificationFailures": 0,
+        "unsupportedMoveFailures": 0,
+        "unsupportedBoardClaimFailures": 0,
+        "unsupportedEvaluationFailures": 0,
+        "maximumSentences": 6,
+        "passPercent": 97.33
+      },
+      "middlegame": {
+        "evaluated": 75,
+        "passed": 72,
+        "failed": 3,
+        "languageFailures": 0,
+        "semanticFailures": 0,
+        "completenessFailures": 3,
+        "verificationFailures": 0,
+        "unsupportedMoveFailures": 0,
+        "unsupportedBoardClaimFailures": 0,
+        "unsupportedEvaluationFailures": 0,
+        "maximumSentences": 5,
+        "passPercent": 96
+      },
+      "endgame": {
+        "evaluated": 75,
+        "passed": 74,
+        "failed": 1,
+        "languageFailures": 0,
+        "semanticFailures": 0,
+        "completenessFailures": 1,
+        "verificationFailures": 0,
+        "unsupportedMoveFailures": 0,
+        "unsupportedBoardClaimFailures": 0,
+        "unsupportedEvaluationFailures": 0,
+        "maximumSentences": 5,
+        "passPercent": 98.67
+      }
+    },
+    "byQuality": {
+      "good": 25,
+      "blunder": 50,
+      "best": 62,
+      "mistake": 35,
+      "inaccuracy": 41,
+      "excellent": 12
+    },
+    "issueCounts": {
+      "language": {
+        "many-clauses": 1
+      },
+      "semantics": {},
+      "completeness": {
+        "schlagzug_nicht_erklaert": 3,
+        "schach_nicht_erklaert": 2
+      }
+    },
+    "gates": {
+      "coverageReady": true,
+      "safetyReady": false,
+      "languageReady": false,
+      "releaseReady": false,
+      "note": "Ein Zufallstest erhöht die messbare Sicherheit, beweist aber nicht jede denkbare Schachstellung."
+    },
+    "privacy": {
+      "rawGamesPersisted": false,
+      "playerIdentitiesPersisted": false,
+      "selectedPositionsPersisted": false,
+      "aggregateResultsOnly": true,
+      "failureExamplesMayContainFen": true
+    },
+    "failureExamples": [
+      {
+        "caseId": "7fef718210f08a61",
+        "category": "completeness",
+        "issues": [
+          "schlagzug_nicht_erklaert"
+        ],
+        "phase": "opening",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Rxh7",
+        "fen": "rnb3nr/pp1pk1pR/2p1pp2/8/1P1P1P2/R3P3/1PPK2P1/1NBQ1BN1 b - - 2 10",
+        "text": "Damit stellst du den Turm neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** a5 ist besser."
+      },
+      {
+        "caseId": "681f8c8a43670ebb",
+        "category": "language",
+        "issues": [
+          "many-clauses"
+        ],
+        "phase": "opening",
+        "rating": 800,
+        "quality": "mistake",
+        "lossCp": 235,
+        "move": "Be3",
+        "fen": "rn2k1nr/pppqpp2/3pb1p1/8/3PP1p1/3B4/PPPB1PPP/RN2K2R w KQkq - 4 9",
+        "text": "Damit ziehst du deinen Läufer nach e3.\n\nDas ist ein klarer Fehler. Deine Stellung wird dadurch deutlich schlechter.\n\n**Stärkste Antwort:** Danach folgt a6.\n\n**Alternative:** Besser: O-O rochiert kurz: Der König verlässt die Mitte und der Turm kommt ins Spiel."
+      },
+      {
+        "caseId": "e90738f1724d8ac8",
+        "category": "completeness",
+        "issues": [
+          "schach_nicht_erklaert"
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "inaccuracy",
+        "lossCp": 109,
+        "move": "Qa7+",
+        "fen": "8/8/q4p2/5p2/8/4K2p/6k1/8 b - - 17 70",
+        "text": "Damit stellst du die Dame neu auf.\n\nDer Zug gibt einen kleinen Teil deiner Stellung ab.\n\n**Alternative:** Kg3 ist besser."
+      },
+      {
+        "caseId": "0e28939789951c15",
+        "category": "completeness",
+        "issues": [
+          "schlagzug_nicht_erklaert"
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Kxd1",
+        "fen": "8/8/8/3k4/8/1P6/2K5/3q4 w - - 1 68",
+        "text": "Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Kc3 ist besser."
+      },
+      {
+        "caseId": "834e222592c1cbfc",
+        "category": "completeness",
+        "issues": [
+          "schlagzug_nicht_erklaert"
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Kxf2",
+        "fen": "Qn2kbn1/p2p2p1/8/1B2pP2/5P2/3P3P/PPP2q2/RNB2K1R w - - 1 14",
+        "text": "Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut."
+      },
+      {
+        "caseId": "ede4e738076b3c84",
+        "category": "completeness",
+        "issues": [
+          "schach_nicht_erklaert"
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Rh1#",
+        "fen": "8/8/8/1P6/P2p4/1p1P1K1k/8/2R5 w - - 1 38",
+        "text": "Rh1# setzt den gegnerischen König matt.\n\nDas ist hier die genaueste Wahl.\n\n**Alternative:** Weitere Möglichkeit: b6 zieht den Bauern nach b6."
+      }
+    ],
+    "positiveExamples": [
+      {
+        "caseId": "7b2b4d2fe5c0773a",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "opening",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "d5",
+        "fen": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
+        "text": "Damit stellst du einen Bauern ins Zentrum!\n\nDer Zug ist in dieser Eröffnung gut spielbar.\n\n**Stärkste Antwort:** Danach folgt Nd2."
+      },
+      {
+        "caseId": "84e9b877ef8229b8",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "opening",
+        "rating": 800,
+        "quality": "excellent",
+        "lossCp": 19,
+        "move": "d4",
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "text": "Damit stellst du einen Bauern ins Zentrum!\n\nDer Zug ist in dieser Eröffnung gut spielbar."
+      },
+      {
+        "caseId": "56ab6cdc1b8460a3",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "opening",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Nxc6",
+        "fen": "r1bqkbnr/ppp1p2p/2np2p1/4N3/4pP2/8/PPPP2PP/R1BQKBNR w KQkq - 0 6",
+        "text": "Nxc6 nimmt den Springer.\n\nDer Zug ist in dieser Eröffnung gut spielbar.\n\n**Stärkste Antwort:** bxc6 nimmt deinen Springer auf c6.\n\n**Merksatz:** Schau vor deinem Zug: Kann dein Gegner eine Figur schlagen?"
+      },
+      {
+        "caseId": "136e08ba962c4afb",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "opening",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "e4",
+        "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "text": "Damit stellst du einen Bauern ins Zentrum!\n\nDer Zug ist in dieser Eröffnung gut spielbar.\n\n**Stärkste Antwort:** Danach folgt c5."
+      },
+      {
+        "caseId": "3a57e4b69119693b",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "opening",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "e4",
+        "fen": "r1b2bnr/ppn1k2p/2p2p2/3p4/P7/3P1N2/1PPKPPPP/R2Q1B1R w - - 2 11",
+        "text": "Damit stellst du einen Bauern ins Zentrum!\n\nDer Zug ist in dieser Eröffnung gut spielbar.\n\n**Stärkste Antwort:** dxe4 nimmt deinen Bauern auf e4. Danach nimmst du mit dxe4 den Bauern zurück."
+      },
+      {
+        "caseId": "525a4fffc1472ee1",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 8,
+        "move": "Qh5+",
+        "fen": "r1b1kb2/p2pp1p1/2n2p1n/1Pp1q3/2B1P3/N6r/1PPP1P2/R1BK2N1 b q - 3 13",
+        "text": "Qh5+ gibt dem gegnerischen König Schach.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Ke1.\n\n**Alternative:** Genauso gut: Qxe4 nimmt den Bauern auf e4."
+      },
+      {
+        "caseId": "57d94316f4ab8385",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Bg2+",
+        "fen": "r1b2br1/1p4pp/n1kqp3/p1p5/2P5/7P/PP2P3/1RB1KBNR w K - 0 16",
+        "text": "Bg2+ gibt dem gegnerischen König Schach.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt Kb6.\n\n**Alternative:** Weitere Möglichkeit: Be3 entwickelt den Läufer nach e3."
+      },
+      {
+        "caseId": "f48ba2323a394c64",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Bxd2",
+        "fen": "rn1k1bnr/p3pp1p/3p4/6p1/R5P1/4PP2/3qK2P/2B2B1R w - - 0 15",
+        "text": "Bxd2 nimmt die Dame.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt Nc6.\n\n**Alternative:** Weitere Möglichkeit: Kxd2 nimmt die Dame auf d2."
+      },
+      {
+        "caseId": "5d3ea6e6c10b9de1",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Rxe1",
+        "fen": "4kbnr/1pp1p3/5p2/7p/2P2P2/6PN/4PK1P/4q2R w k - 1 17",
+        "text": "Rxe1 nimmt die Dame.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt e6.\n\n**Alternative:** Weitere Möglichkeit: Kxe1 nimmt die Dame auf e1."
+      },
+      {
+        "caseId": "da68458566dc6739",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "excellent",
+        "lossCp": 27,
+        "move": "Nxg5",
+        "fen": "b3kr2/p4n1p/4p1p1/1p3pN1/1P1K1P1P/B6P/2QP4/1N6 b - - 2 24",
+        "text": "Nxg5 nimmt den Springer.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** hxg5 nimmt deinen Springer auf g5.\n\n**Alternative:** Genauso gut: Kd7 gibt den König auf d7 mehr Felder."
+      },
+      {
+        "caseId": "36c7c787b2f3134a",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "middlegame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Bh6",
+        "fen": "r4bn1/p3r3/1p2k1p1/8/5Q2/P4P2/1P1PB1P1/R1B1K3 b - - 0 19",
+        "text": "Damit entwickelst du den Läufer!\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Qc4+ gibt Schach.\n\n**Alternative:** Weitere Möglichkeit: Kd7 übernimmt neu die Kontrolle über e4."
+      },
+      {
+        "caseId": "372746c501763c04",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 1,
+        "move": "Ke4",
+        "fen": "8/8/8/1K2k3/8/8/8/8 b - - 7 88",
+        "text": "Damit ziehst du deinen König nach e4.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kc6.\n\n**Alternative:** Genauso gut: Kd4 besetzt d4 und kontrolliert zusätzlich e5."
+      },
+      {
+        "caseId": "5ca6da379c6e527f",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 4,
+        "move": "Kh2",
+        "fen": "8/2n5/8/4k3/p2p3p/7P/8/6K1 w - - 4 69",
+        "text": "Damit ziehst du deinen König nach h2.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt d3.\n\n**Alternative:** Genauso gut: Kg2 bringt den König von g1 näher ins Zentrum nach g2."
+      },
+      {
+        "caseId": "8254229171f5771a",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 2,
+        "move": "Ke1",
+        "fen": "8/8/5p2/5P2/8/8/2k5/5K2 w - - 41 89",
+        "text": "Damit ziehst du deinen König nach e1.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kd3.\n\n**Alternative:** Genauso gut: Ke2 bringt den König von f1 näher ins Zentrum nach e2."
+      },
+      {
+        "caseId": "e0bab93fb9f28552",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Kf7+",
+        "fen": "rn3br1/6k1/1p1p3p/p2p1P2/5P1P/2P5/P1pPN1KR/2B5 b - - 0 23",
+        "text": "Kf7+ gibt dem gegnerischen König Schach.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kf3.\n\n**Alternative:** Genauso gut: Nd7 entwickelt den Springer nach d7."
+      },
+      {
+        "caseId": "60f74e4dfd7087d8",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Kb5",
+        "fen": "8/8/8/4K3/k7/8/8/8 b - - 11 74",
+        "text": "Damit ziehst du deinen König nach b5.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kd4.\n\n**Alternative:** Genauso gut: Kb4 bringt den König von a4 näher ins Zentrum nach b4."
+      },
+      {
+        "caseId": "18a02094f80f2d74",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 1,
+        "move": "Kg1",
+        "fen": "8/8/1k6/8/8/8/8/7K w - - 32 74",
+        "text": "Damit ziehst du deinen König nach g1.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kc6.\n\n**Alternative:** Genauso gut: Kg2 bringt den König von h1 näher ins Zentrum nach g2."
+      },
+      {
+        "caseId": "a56cec6d9a7a1abf",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "excellent",
+        "lossCp": 11,
+        "move": "Bd6",
+        "fen": "8/2B5/2K5/8/4B3/7p/k6P/8 w - - 0 81",
+        "text": "Damit ziehst du deinen Läufer nach d6.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kb2.\n\n**Alternative:** Genauso gut: Be5 besetzt e5 und kontrolliert zusätzlich d4."
+      },
+      {
+        "caseId": "09b19f3939ce2542",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "excellent",
+        "lossCp": 14,
+        "move": "Kc3",
+        "fen": "n3b3/8/4k3/8/4p3/1K2P3/8/8 w - - 4 42",
+        "text": "Damit ziehst du deinen König nach c3.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kd5.\n\n**Alternative:** Genauso gut: Kc4 bringt den König von b3 näher ins Zentrum nach c4."
+      },
+      {
+        "caseId": "c47cdedb4ab0e538",
+        "category": "positive",
+        "issues": [
+          "Alle automatischen Qualitätsprüfungen bestanden."
+        ],
+        "phase": "endgame",
+        "rating": 800,
+        "quality": "best",
+        "lossCp": 0,
+        "move": "Kb5",
+        "fen": "8/8/2K4k/8/8/8/8/8 w - - 3 81",
+        "text": "Damit ziehst du deinen König nach b5.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Kg7.\n\n**Alternative:** Genauso gut: Kc5 bringt den König von c6 näher ins Zentrum nach c5."
+      }
+    ],
+    "durationSeconds": 42.45
+  }
+}

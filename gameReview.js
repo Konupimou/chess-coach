@@ -113,7 +113,7 @@ function reviewPieceName(type) {
 
 function immediateReplyConsequence(move) {
   const verified = verifiedMoveReview(move);
-  if (!verified || !Number.isFinite(verified.lossCp) || verified.lossCp < 120) return "";
+  if (!verified) return "";
   const replyUci = verified.playedContinuationUci?.[1];
   if (!replyUci) return "";
 
@@ -130,6 +130,11 @@ function immediateReplyConsequence(move) {
       to: replyUci.slice(2, 4),
       promotion: replyUci.slice(4, 5) || undefined,
     });
+    if (reply?.san?.includes("#") || game.isCheckmate()) {
+      const opponent = verified.color === "w" ? "Schwarz" : "Weiß";
+      return `Nach ${verified.san} kann ${opponent} mit ${reply.san} mattsetzen.`;
+    }
+    if (!Number.isFinite(verified.lossCp) || verified.lossCp < 120) return "";
     if (!reply?.captured) return "";
     const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9 };
     const canRecapture = game.moves({ verbose: true }).some((candidate) => (
@@ -948,6 +953,7 @@ export function classifyMoveReview({
   mateBefore = null,
   mateAfter = null,
   isBookMove = false,
+  isCheckmate = false,
   isOnlyMove = false,
   isSacrifice = false,
 } = {}) {
@@ -961,7 +967,8 @@ export function classifyMoveReview({
     && !(Number.isFinite(mateBefore) && mateBefore < 0);
 
   let classification;
-  if (isBookMove) classification = "book";
+  if (isCheckmate) classification = "best";
+  else if (allowedMate || missedMate) classification = "blunder";
   else if (
     loss <= MOVE_CLASSIFICATION_CONFIG.brilliantMaxLoss
     && isSacrifice
@@ -969,8 +976,8 @@ export function classifyMoveReview({
     && winChanceAfter >= 50
     && !isOnlyMove
   ) classification = "brilliant";
+  else if (isBookMove) classification = "book";
   else if (isBestMove) classification = "best";
-  else if (allowedMate || missedMate) classification = "blunder";
   else classification = classifyWinChanceLoss(loss);
 
   return {
@@ -979,6 +986,7 @@ export function classifyMoveReview({
     winChanceLoss: loss,
     flags: {
       isBookMove: Boolean(isBookMove),
+      isCheckmate: Boolean(isCheckmate),
       isBestMove,
       isOnlyMove: Boolean(isOnlyMove),
       isSacrifice: Boolean(isSacrifice),
@@ -1126,12 +1134,15 @@ export function summarizeGameReview(
       mateAfter: afterPlayer.mate,
       secondBestWinChance: winChanceForCandidate(secondCandidate),
       isBookMove,
+      isCheckmate: Boolean(node?.move?.san?.includes("#")),
       isOnlyMove: moveNecessity.onlyMove,
       isSacrifice,
     });
     // Ein nachgewiesener Buchzug wird nicht gegen eine einzelne Engine-Hauptvariante
     // bestraft: In der Eröffnung können mehrere Züge gleichermaßen richtig sein.
-    const accuracy = isBookMove ? 100 : moveAccuracy(classificationResult.winChanceLoss);
+    const accuracy = classificationResult.classification === "book"
+      ? 100
+      : moveAccuracy(classificationResult.winChanceLoss);
 
     const reportMove = {
       ply: index,
@@ -1290,6 +1301,7 @@ export function reviewPhaseForMove(move) {
 
 export function openingMoveReviewPresentation(move, { inOpeningBook = false } = {}) {
   if (reviewPhaseForMove(move) !== "opening") return null;
+  if (String(move?.san || "").includes("#")) return null;
   const quality = reviewQualityForDisplay(move);
   if (CRITICAL_MOVE_QUALITIES.includes(quality)) return null;
   return {
@@ -1426,7 +1438,9 @@ export function buildLearningSummary(report, options = {}) {
       ? "Du hast meist gute, sichere Züge gefunden."
       : "Du hast überwiegend stabile Entscheidungen ohne klare Einbrüche getroffen.";
     learningGoal = "Erkläre bei deinen guten Zügen, welche Aufgabe sie lösen.";
-    exercise = `Stelle die Position vor ${focusedLabel} erneut auf und erkläre, warum dein Zug dort gut funktioniert.`;
+    exercise = CRITICAL_MOVE_QUALITIES.includes(focusedMoment.quality)
+      ? focusedExercise
+      : `Stelle die Position vor ${focusedLabel} erneut auf und erkläre, warum dein Zug dort gut funktioniert.`;
   } else {
     recurringPattern = "Die bewerteten Züge zeigen noch kein klares Fehlermuster.";
     learningGoal = "Arbeite zuerst mit dem wichtigsten Moment dieser Partie.";

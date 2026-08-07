@@ -129,6 +129,7 @@ export function generateRandomPositionSample({
   positionsPerPhase = 10,
   maxPlies = 180,
   seed = DEFAULT_SEED,
+  everyPly = false,
 } = {}) {
   const random = seededRandom(seed);
   const pools = Object.fromEntries(COACH_STRESS_PHASES.map((phase) => [phase, []]));
@@ -136,6 +137,7 @@ export function generateRandomPositionSample({
     COACH_STRESS_PHASES.map((phase) => [phase, 0]),
   );
   const endings = { checkmate: 0, draw: 0, plyLimit: 0 };
+  const everyPlySamples = [];
   let generatedPlies = 0;
 
   for (let gameIndex = 0; gameIndex < games; gameIndex += 1) {
@@ -157,7 +159,9 @@ export function generateRandomPositionSample({
         fen: game.fen(),
         playedUci: moveUci(move),
       };
-      if (
+      if (everyPly) {
+        everyPlySamples.push(sample);
+      } else if (
         !reservoir[phase]
         || random() < 1 / phasePositionCounts[phase]
       ) {
@@ -180,9 +184,22 @@ export function generateRandomPositionSample({
     else endings.plyLimit += 1;
   }
 
-  const selected = [];
+  const selected = everyPly ? everyPlySamples : [];
   const coverage = [];
   for (const phase of COACH_STRESS_PHASES) {
+    if (everyPly) {
+      const phaseSamples = everyPlySamples.filter((sample) => sample.phase === phase);
+      coverage.push({
+        phase,
+        gamesReachingPhase: gamesReachingPhase[phase],
+        availableUniquePositions: new Set(
+          phaseSamples.map((sample) => `${sample.fen}|${sample.playedUci}`),
+        ).size,
+        requestedPositions: phaseSamples.length,
+        selectedPositions: phaseSamples.length,
+      });
+      continue;
+    }
     const unique = new Map(
       shuffle(pools[phase], random)
         .map((sample) => [`${sample.fen}|${sample.playedUci}`, sample]),
@@ -206,6 +223,7 @@ export function generateRandomPositionSample({
       gamesReachingPhase,
       endings,
       coverage,
+      everyPly: Boolean(everyPly),
       selectionHash: sha256(selected
         .map((sample) => `${sample.phase}|${sample.fen}|${sample.playedUci}`)
         .join("\n")),
@@ -420,6 +438,37 @@ function directSemanticIssues(explanation, text, positionEvidence) {
   return [...new Set(issues)];
 }
 
+function explanationCompletenessIssues(text, positionEvidence) {
+  const move = positionEvidence?.playedMove;
+  const normalized = String(text || "");
+  const issues = [];
+  if (move?.capture && !/\b(?:schlägt|nimmt|tauscht|gewinnt|erobert)\b/iu.test(normalized)) {
+    issues.push("schlagzug_nicht_erklaert");
+  }
+  if (move?.givesCheckmate) {
+    if (!/\b(?:matt|schachmatt)\b/iu.test(normalized)) {
+      issues.push("matt_nicht_erklaert");
+    }
+  } else if (move?.givesCheck && !/\bschach\b/iu.test(normalized)) {
+    issues.push("schach_nicht_erklaert");
+  }
+  return issues;
+}
+
+function isConcretePositiveExplanation(text, positionEvidence, quality) {
+  if (!["brilliant", "best", "excellent"].includes(quality)) return false;
+  const move = positionEvidence?.playedMove;
+  const normalized = String(text || "");
+  if (move?.givesCheckmate) return /\b(?:matt|schachmatt)\b/iu.test(normalized);
+  if (move?.givesCheck) return /\bschach\b/iu.test(normalized);
+  if (move?.capture) {
+    return /\b(?:schlägt|nimmt|tauscht|gewinnt|erobert)\b/iu.test(normalized)
+      && new RegExp(`\\b${move.to}\\b`, "iu").test(normalized);
+  }
+  return /\b(?:entwickelst|rochiert|Zentrum|verhindert|schützt|kontrolliert)\b/iu.test(normalized)
+    && (/\b[a-h][1-8]\b/u.test(normalized) || /\b(?:rochiert|Zentrum)\b/iu.test(normalized));
+}
+
 function emptyGroup() {
   return {
     evaluated: 0,
@@ -427,6 +476,7 @@ function emptyGroup() {
     failed: 0,
     languageFailures: 0,
     semanticFailures: 0,
+    completenessFailures: 0,
     verificationFailures: 0,
     unsupportedMoveFailures: 0,
     unsupportedBoardClaimFailures: 0,
@@ -602,14 +652,23 @@ export async function stressTestCoachGames({
   maxPlies = 180,
   seed = DEFAULT_SEED,
   maxFailureExamples = 12,
+  maxPositiveExamples = 12,
+  ratings = COACH_STRESS_RATINGS,
+  everyPly = false,
+  workers = 1,
   onProgress = null,
 } = {}) {
   const startedAt = Date.now();
+  const selectedRatings = [...new Set((Array.isArray(ratings) ? ratings : [ratings])
+    .map((rating) => Number.parseInt(rating, 10))
+    .filter((rating) => COACH_STRESS_RATINGS.includes(rating)))];
+  if (selectedRatings.length === 0) selectedRatings.push(800);
   const generation = generateRandomPositionSample({
     games,
     positionsPerPhase,
     maxPlies,
     seed,
+    everyPly,
   });
   const totals = {
     selectedPositions: generation.selected.length,
@@ -622,13 +681,14 @@ export async function stressTestCoachGames({
     verificationFailures: 0,
     languageFailures: 0,
     semanticFailures: 0,
+    completenessFailures: 0,
     unsupportedMoveFailures: 0,
     unsupportedBoardClaimFailures: 0,
     unsupportedEvaluationFailures: 0,
     phaseMismatches: 0,
   };
   const byRating = Object.fromEntries(
-    COACH_STRESS_RATINGS.map((rating) => [rating, emptyGroup()]),
+    selectedRatings.map((rating) => [rating, emptyGroup()]),
   );
   const byPhase = Object.fromEntries(
     COACH_STRESS_PHASES.map((phase) => [phase, emptyGroup()]),
@@ -636,15 +696,32 @@ export async function stressTestCoachGames({
   const byQuality = {};
   const languageIssueCounts = {};
   const semanticIssueCounts = {};
+  const completenessIssueCounts = {};
   const failureExamples = [];
-  const engine = new LocalStockfish();
+  const positiveExamples = [];
+  const workerCount = Math.max(1, Math.min(8, Number.parseInt(workers, 10) || 1));
+  const engines = Array.from({ length: workerCount }, () => new LocalStockfish());
+  let nextIndex = 0;
+  let completedPositions = 0;
 
   const addFailureExample = (example) => {
     if (failureExamples.length < maxFailureExamples) failureExamples.push(example);
   };
 
-  try {
-    for (let index = 0; index < generation.selected.length; index += 1) {
+  const markCompleted = () => {
+    completedPositions += 1;
+    onProgress?.({
+      completed: completedPositions,
+      total: generation.selected.length,
+      failedOutputs: totals.failedOutputs,
+    });
+  };
+
+  const runWorker = async (engine) => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= generation.selected.length) return;
       const sample = generation.selected[index];
       let analyzed;
       try {
@@ -662,11 +739,7 @@ export async function stressTestCoachGames({
           quality: analyzed.quality,
           lossCp: analyzed.lossCp,
         }));
-        onProgress?.({
-          completed: index + 1,
-          total: generation.selected.length,
-          failedOutputs: totals.failedOutputs,
-        });
+        markCompleted();
         continue;
       }
 
@@ -675,11 +748,12 @@ export async function stressTestCoachGames({
       if (actualPhase !== sample.phase) totals.phaseMismatches += 1;
       byQuality[quality] = (byQuality[quality] || 0) + 1;
 
-      for (const rating of COACH_STRESS_RATINGS) {
+      for (const rating of selectedRatings) {
         totals.outputs += 1;
         byRating[rating].evaluated += 1;
         byPhase[sample.phase].evaluated += 1;
         let outputFailed = false;
+        let outputText = "";
         const learnerProfile = learnerProfileForCoach({ rating });
         const explanation = buildLocalMoveExplanation({
           positionEvidence,
@@ -699,6 +773,7 @@ export async function stressTestCoachGames({
           }));
         } else {
           const text = moveExplanationToMarkdown(explanation, { deep: true });
+          outputText = text;
           const checked = verifyMoveExplanation(explanation, {
             positionEvidence: buildTrustedExplanationEvidence({
               positionEvidence,
@@ -796,6 +871,28 @@ export async function stressTestCoachGames({
             }));
           }
 
+          const completenessIssues = explanationCompletenessIssues(
+            text,
+            positionEvidence,
+          );
+          if (completenessIssues.length > 0) {
+            totals.completenessFailures += 1;
+            byRating[rating].completenessFailures += 1;
+            byPhase[sample.phase].completenessFailures += 1;
+            recordIssues(completenessIssueCounts, completenessIssues);
+            outputFailed = true;
+            addFailureExample(failureExample({
+              category: "completeness",
+              issues: completenessIssues,
+              sample,
+              rating,
+              quality,
+              lossCp,
+              san: positionEvidence.playedMove.san,
+              text,
+            }));
+          }
+
           const unsupportedMoves = findUnsupportedMoveTokens(text, engineContext);
           if (unsupportedMoves.length > 0) {
             totals.unsupportedMoveFailures += 1;
@@ -865,17 +962,32 @@ export async function stressTestCoachGames({
           totals.passedOutputs += 1;
           byRating[rating].passed += 1;
           byPhase[sample.phase].passed += 1;
+          if (
+            positiveExamples.length < maxPositiveExamples
+            && isConcretePositiveExplanation(outputText, positionEvidence, quality)
+          ) {
+            positiveExamples.push(failureExample({
+              category: "positive",
+              issues: ["Alle automatischen Qualitätsprüfungen bestanden."],
+              sample,
+              rating,
+              quality,
+              lossCp,
+              san: positionEvidence.playedMove.san,
+              text: outputText,
+            }));
+          }
         }
       }
 
-      onProgress?.({
-        completed: index + 1,
-        total: generation.selected.length,
-        failedOutputs: totals.failedOutputs,
-      });
+      markCompleted();
     }
+  };
+
+  try {
+    await Promise.all(engines.map((engine) => runWorker(engine)));
   } finally {
-    engine.close();
+    engines.forEach((engine) => engine.close());
   }
 
   const coverageReady = generation.summary.coverage.every(
@@ -886,6 +998,7 @@ export async function stressTestCoachGames({
     && totals.nullExplanations === 0
     && totals.verificationFailures === 0
     && totals.semanticFailures === 0
+    && totals.completenessFailures === 0
     && totals.unsupportedMoveFailures === 0
     && totals.unsupportedBoardClaimFailures === 0
     && totals.unsupportedEvaluationFailures === 0
@@ -905,13 +1018,17 @@ export async function stressTestCoachGames({
       depth,
       seed: String(seed),
       ratings: [...COACH_STRESS_RATINGS],
+      selectedRatings,
+      everyPly: Boolean(everyPly),
+      workers: workerCount,
       phases: [...COACH_STRESS_PHASES],
       paidAiCalls: 0,
       strictLanguageRules: true,
       maximumFailureExamples: maxFailureExamples,
+      maximumPositiveExamples: maxPositiveExamples,
     },
     engine: {
-      name: engine.engineName,
+      name: engines[0]?.engineName || "Stockfish",
       threads: 1,
       hashMb: 32,
       multiPv: 2,
@@ -932,6 +1049,7 @@ export async function stressTestCoachGames({
     issueCounts: {
       language: languageIssueCounts,
       semantics: semanticIssueCounts,
+      completeness: completenessIssueCounts,
     },
     gates: {
       coverageReady,
@@ -948,6 +1066,7 @@ export async function stressTestCoachGames({
       failureExamplesMayContainFen: true,
     },
     failureExamples,
+    positiveExamples,
     durationSeconds: Number(((Date.now() - startedAt) / 1000).toFixed(2)),
   };
 }
@@ -967,6 +1086,8 @@ export function coachStressReportMarkdown(result) {
       .map(([issue, count]) => `- Sprache \`${issue}\`: ${count}`),
     ...Object.entries(result.issueCounts.semantics)
       .map(([issue, count]) => `- Brett-Semantik \`${issue}\`: ${count}`),
+    ...Object.entries(result.issueCounts.completeness || {})
+      .map(([issue, count]) => `- Erklärvollständigkeit \`${issue}\`: ${count}`),
   ];
   const failureLines = result.failureExamples.length === 0
     ? ["Keine Fehlerbeispiele vorhanden."]
@@ -981,12 +1102,27 @@ export function coachStressReportMarkdown(result) {
       example.text ? `> ${example.text.replace(/\n+/g, " ")}` : "",
       "",
     ]);
+  const positiveLines = (result.positiveExamples || []).length === 0
+    ? ["Keine besonders guten Beispiele in dieser Stichprobe gefunden."]
+    : result.positiveExamples.flatMap((example) => [
+      `### ${example.move} · ${example.phase} · ${example.rating} Elo`,
+      "",
+      `- Qualität: ${example.quality}; Verlust: ${example.lossCp ?? "–"} cp`,
+      `- FEN: \`${example.fen}\``,
+      "",
+      example.text ? `> ${example.text.replace(/\n+/g, " ")}` : "",
+      "",
+    ]);
+  const ratings = result.config?.selectedRatings || result.config?.ratings || [];
+  const selectionDescription = result.config?.everyPly
+    ? "jeden erzeugten Halbzug"
+    : "je Partie höchstens eine Stellung pro Phase";
   return [
     "# Randomisierter Stockfish-Stresstest des Coaches",
     "",
     `**Status: ${status}.**`,
     "",
-    "Der Test erzeugt deterministisch legale Zufallspartien, wählt je Partie höchstens eine Stellung pro Phase und bewertet die sichtbaren Coach-Texte für alle vier Elo-Stufen. Stockfish läuft ausschließlich lokal; es entstehen keine API-Kosten.",
+    `Der Test erzeugt deterministisch legale Zufallspartien, prüft ${selectionDescription} und bewertet die sichtbaren Coach-Texte für ${ratings.join(", ")} Elo. Stockfish läuft ausschließlich lokal; es entstehen keine API-Kosten.`,
     "",
     "## Ergebnis",
     "",
@@ -1006,6 +1142,7 @@ export function coachStressReportMarkdown(result) {
     `| Struktur/Evidenz-Verifikation | ${result.totals.verificationFailures} |`,
     `| Sprachregeln | ${result.totals.languageFailures} |`,
     `| Direkte Brett-Semantik | ${result.totals.semanticFailures} |`,
+    `| Fehlende Kerninformation | ${result.totals.completenessFailures || 0} |`,
     `| Unbelegte Zugnotation | ${result.totals.unsupportedMoveFailures} |`,
     `| Unbelegte Brettbehauptung | ${result.totals.unsupportedBoardClaimFailures} |`,
     `| Unbelegte Bewertungszahl | ${result.totals.unsupportedEvaluationFailures} |`,
@@ -1039,6 +1176,10 @@ export function coachStressReportMarkdown(result) {
     "",
     ...failureLines,
     "",
+    "## Besonders gute Erklärungen",
+    "",
+    ...positiveLines,
+    "",
     "## Datenschutz",
     "",
     "Der Report speichert keine Rohpartien, Spielernamen oder Partiekennungen. Nur Summen und im Fehlerfall maximal wenige FEN-basierte Reproduktionsbeispiele werden ausgegeben.",
@@ -1066,6 +1207,11 @@ function usage() {
     "  --max-plies=N             maximales Partielimit (Default: 180)",
     `  --seed=VALUE              deterministischer Seed (Default: ${DEFAULT_SEED})`,
     "  --max-failures=N          maximale Fehlerbeispiele (Default: 12)",
+    "  --positive-examples=N     maximale besonders gute Beispiele (Default: 12)",
+    "  --ratings=800,1000        geprüfte Coach-Stufen (Default: alle)",
+    "  --every-ply               jeden erzeugten Halbzug statt Phasenstichprobe prüfen",
+    "  --workers=N                parallele lokale Stockfish-Prozesse (Default: 1)",
+    "  --checkpoint=PATH          fortlaufender Fortschrittsstand als JSON",
     `  --json=PATH               JSON-Report (Default: ${DEFAULT_JSON_PATH})`,
     `  --markdown=PATH           Markdown-Report (Default: ${DEFAULT_MARKDOWN_PATH})`,
     "  --strict                  Exitcode 1, wenn eine Freigabeschwelle scheitert",
@@ -1085,17 +1231,39 @@ async function main() {
     maxPlies: integerOption(argv, "max-plies", 180, 20, 400),
     seed: option(argv, "seed", DEFAULT_SEED),
     maxFailureExamples: integerOption(argv, "max-failures", 12, 0, 100),
+    maxPositiveExamples: integerOption(argv, "positive-examples", 12, 0, 100),
+    ratings: option(argv, "ratings", COACH_STRESS_RATINGS.join(","))
+      .split(",")
+      .map((rating) => Number.parseInt(rating.trim(), 10)),
+    everyPly: argv.includes("--every-ply"),
+    workers: integerOption(argv, "workers", 1, 1, 8),
   };
+  const checkpointPath = option(argv, "checkpoint", "");
+  const progressStep = options.everyPly ? 250 : 10;
+  let checkpointWrites = Promise.resolve();
   const result = await stressTestCoachGames({
     ...options,
     onProgress: ({ completed, total, failedOutputs }) => {
-      if (completed % 10 === 0 || completed === total) {
+      if (completed % progressStep === 0 || completed === total) {
         process.stdout.write(
           `[Coach stress] ${completed}/${total} Stellungen · ${failedOutputs} fehlgeschlagene Ausgaben\n`,
         );
+        if (checkpointPath) {
+          checkpointWrites = checkpointWrites.then(() => writeReport(
+            checkpointPath,
+            `${JSON.stringify({
+              status: completed === total ? "analysis_complete" : "running",
+              completed,
+              total,
+              failedOutputs,
+              updatedAt: new Date().toISOString(),
+            }, null, 2)}\n`,
+          ));
+        }
       }
     },
   });
+  await checkpointWrites;
   const jsonPath = await writeReport(
     option(argv, "json", DEFAULT_JSON_PATH),
     `${JSON.stringify(result, null, 2)}\n`,
@@ -1104,6 +1272,17 @@ async function main() {
     option(argv, "markdown", DEFAULT_MARKDOWN_PATH),
     coachStressReportMarkdown(result),
   );
+  if (checkpointPath) {
+    await writeReport(checkpointPath, `${JSON.stringify({
+      status: "completed",
+      completed: result.totals.analyzedPositions,
+      total: result.totals.selectedPositions,
+      failedOutputs: result.totals.failedOutputs,
+      jsonReport: jsonPath,
+      markdownReport: markdownPath,
+      updatedAt: new Date().toISOString(),
+    }, null, 2)}\n`);
+  }
   process.stdout.write(
     `[Coach stress] ${result.totals.passedOutputs}/${result.totals.outputs} bestanden · JSON: ${jsonPath} · Markdown: ${markdownPath}\n`,
   );
