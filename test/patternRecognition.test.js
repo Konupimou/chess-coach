@@ -66,6 +66,17 @@ test("strategische Treffer gleicher Art und Seite werden gruppiert", () => {
   assert.ok(whiteBadBishops.length <= 1);
 });
 
+test("nach frühem Qh5 werden normale Eröffnungsfiguren nicht als schlechte Läufer oder Raumvorteil gemeldet", () => {
+  const fen = "rnbqkbnr/pppp1ppp/8/4p2Q/4P3/8/PPPP1PPP/RNB1KBNR b KQkq - 1 2";
+  const patterns = recognizePositionPatterns({ fenAfter: fen });
+
+  assert.equal(patterns.some((pattern) => pattern.type === "bad_bishop"), false);
+  assert.equal(patterns.some((pattern) => pattern.type === "space_advantage"), false);
+  const pin = patterns.find((pattern) => pattern.type === "pin" && pattern.side === "w");
+  assert.ok(pin);
+  assert.match(pin.explanation, /h5.*f7.*e8/);
+});
+
 test("ein Spieß wird als eigenes taktisches Muster erkannt", () => {
   const patterns = recognizePositionPatterns({ fenAfter: "q7/k7/8/8/8/8/8/R3K3 b - - 0 1" });
   const skewer = patterns.find((pattern) => pattern.type === "skewer" && pattern.side === "w");

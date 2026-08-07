@@ -10,6 +10,9 @@ export default function ChessCoachClient() {
     let instance;
     try {
       instance = new ChessApp();
+      if (new URLSearchParams(window.location.search).get("view") === "profile") {
+        window.setTimeout(() => instance?.openAccountDialog(), 0);
+      }
     } catch (error) {
       console.error("[Chess Coach] Start fehlgeschlagen", error);
       setStartupError("Das Analysebrett konnte nicht geladen werden. Bitte lade die Seite neu.");

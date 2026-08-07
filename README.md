@@ -142,6 +142,7 @@ Stockfish weiterhin; nur der Coach ist deaktiviert.
 ```bash
 npm run dev       # Entwicklungsserver
 npm test          # automatisierte Tests
+npm run test:e2e  # echte Browserwege mit Playwright testen
 npm run build     # Produktionsbuild
 npm start         # gebauten Produktionsserver starten
 npm run check     # Tests und Build nacheinander
@@ -152,6 +153,19 @@ npm run openings:import  # Index bewusst aus den gepinnten TSV-Dateien neu erzeu
 npm run pgn:index        # PGN-Eingang indexieren und erfolgreiche Quellen nach database/used archivieren
 npm run pgn:check        # Laufzeitindex und Such-Buckets prüfen
 npm run pgn:evaluate     # Konzepttransfer und Suchlatenz messen
+npm run coach:training:seed   # belegte Trainingskandidaten erzeugen
+npm run coach:training:review # lokale Review-Oberfläche starten
+npm run coach:training:check  # menschlich freigegebene Beispiele prüfen
+npm run coach:training:build  # leckagefreie Train/Validation/Test-Dateien bauen
+```
+
+Der vollständige Ablauf für menschliche Freigabe, Dataset-Splits, Training und
+blinde Evaluation steht in [`docs/coach-training.md`](docs/coach-training.md).
+
+Vor dem ersten Browser-Test wird Chromium einmalig installiert:
+
+```bash
+npx playwright install chromium
 ```
 
 ## Bedienung
@@ -324,3 +338,16 @@ Partien. Der OpenAI-Schlüssel bleibt ausschließlich auf dem Server. Chat-Anfra
 werden größenbegrenzt und nicht bei OpenAI gespeichert (`store: false`).
 Das Standardmodell `gpt-5.6-luna` kann über `OPENAI_MODEL` überschrieben
 werden.
+
+### Automatischer 800-Elo-Coach-Audit
+
+`npm run coach:audit:800` erzeugt 200 reproduzierbare legale Partien und prüft
+jeden Halbzug mit lokalem Stockfish sowie der echten 800-Elo-Coach-Logik. Eine
+zweite, tiefere Stichprobe kontrolliert anschließend auffällige Schachurteile.
+Es entstehen keine KI-Kosten und es werden keine Feedbackformulare versendet.
+Der verständliche Ergebnisbericht landet unter
+`reports/coach-audit-800.md`; die maschinenlesbaren Details stehen daneben als
+JSON. Der Bericht enthält nur klare Fehlerbeispiele und eine kleine Auswahl
+besonders guter Erklärungen. Acht lokale Stockfish-Prozesse verkürzen den Lauf;
+`reports/coach-audit-800-progress.json` hält den letzten sicheren Zwischenstand
+fest.

@@ -465,7 +465,14 @@ function detectConcepts(game, items, features) {
     }
     for (const bishop of items.filter((piece) => piece.color === color && piece.type === "b")) {
       const sameColorPawns = ownPawn.pawns.filter((square) => squareColor(square) === squareColor(bishop.square));
-      if (sameColorPawns.length >= 4) {
+      const bishopActivity = ownActivity.find((piece) => (
+        piece.piece === "b" && piece.square === bishop.square
+      ));
+      if (
+        features.phase !== "opening"
+        && sameColorPawns.length >= 4
+        && (bishopActivity?.mobility ?? 0) <= 3
+      ) {
         concepts.push(concept("bad_bishop", color, {
           prerequisites: [`bishop:${bishop.square}`, `same_color_pawns:${sameColorPawns.length}`],
           typicalPlan: ["move_pawns_off_bishop_color", "trade_bad_bishop", "activate_bishop_outside_chain"],
@@ -573,7 +580,7 @@ function detectConcepts(game, items, features) {
       }));
     }
     const space = features.space[color] - features.space[opposite(color)];
-    if (space >= 4) {
+    if (features.phase !== "opening" && space >= 5) {
       concepts.push(concept("space_advantage", color, {
         prerequisites: ["more_controlled_squares_in_enemy_half"],
         typicalPlan: ["improve_worst_piece", "restrict_counterplay", "prepare_break"],

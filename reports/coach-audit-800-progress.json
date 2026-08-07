@@ -1,0 +1,9 @@
+{
+  "status": "completed",
+  "completed": 12197,
+  "total": 12197,
+  "failedOutputs": 6,
+  "markdownReport": "/Users/paulpieper/Desktop/chess-coach/reports/coach-audit-800.md",
+  "jsonReport": "/Users/paulpieper/Desktop/chess-coach/reports/coach-audit-800.json",
+  "updatedAt": "2026-08-05T18:46:44.003Z"
+}

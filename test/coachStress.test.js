@@ -5,6 +5,7 @@ import {
   coachStressReportMarkdown,
   generateRandomPositionSample,
 } from "../scripts/stress-test-coach-games.mjs";
+import { combinedAuditMarkdown } from "../scripts/audit-coach-800.mjs";
 
 test("der Zufallspartie-Stresstest wählt deterministisch nur legale Züge", () => {
   const options = {
@@ -27,6 +28,22 @@ test("der Zufallspartie-Stresstest wählt deterministisch nur legale Züge", () 
     ));
     assert.equal(legal, true, `${sample.playedUci} muss in der gewählten FEN legal sein`);
   });
+});
+
+test("der 800-Elo-Audit kann wirklich jeden Halbzug einer Partie auswählen", () => {
+  const result = generateRandomPositionSample({
+    games: 3,
+    maxPlies: 20,
+    seed: "coach-audit-800-regression",
+    everyPly: true,
+  });
+
+  assert.equal(result.summary.everyPly, true);
+  assert.equal(result.selected.length, result.summary.generatedPlies);
+  assert.equal(
+    result.summary.coverage.reduce((sum, row) => sum + row.selectedPositions, 0),
+    result.summary.generatedPlies,
+  );
 });
 
 test("der Stressbericht führt Brett- und Bewertungswächter getrennt auf", () => {
@@ -64,6 +81,7 @@ test("der Stressbericht führt Brett- und Bewertungswächter getrennt auf", () =
       verificationFailures: 0,
       languageFailures: 0,
       semanticFailures: 0,
+      completenessFailures: 0,
       unsupportedMoveFailures: 0,
       unsupportedBoardClaimFailures: 0,
       unsupportedEvaluationFailures: 0,
@@ -76,8 +94,18 @@ test("der Stressbericht führt Brett- und Bewertungswächter getrennt auf", () =
     },
     byRating: { 800: group },
     byPhase: { opening: group },
-    issueCounts: { language: {}, semantics: {} },
+    issueCounts: { language: {}, semantics: {}, completeness: {} },
     failureExamples: [],
+    positiveExamples: [{
+      move: "e4",
+      phase: "opening",
+      rating: 800,
+      quality: "best",
+      lossCp: 0,
+      fen: new Chess().fen(),
+      text: "e4 besetzt das Zentrum.",
+    }],
+    config: { selectedRatings: [800], everyPly: true },
     durationSeconds: 0.1,
   };
   const markdown = coachStressReportMarkdown(result);
@@ -85,4 +113,63 @@ test("der Stressbericht führt Brett- und Bewertungswächter getrennt auf", () =
   assert.match(markdown, /Unbelegte Brettbehauptung \| 0/);
   assert.match(markdown, /Unbelegte Bewertungszahl \| 0/);
   assert.match(markdown, /keine Rohpartien/iu);
+  assert.match(markdown, /jeden erzeugten Halbzug/);
+  assert.match(markdown, /Besonders gute Erklärungen/);
+  assert.match(markdown, /e4 besetzt das Zentrum/);
+});
+
+test("der kombinierte 800-Elo-Bericht trennt Vollprüfung und tiefe Gegenprüfung", () => {
+  const audit = {
+    passed: true,
+    games: 200,
+    checkedReports: 200,
+    checkedMoves: 12_000,
+    checkedTexts: 30_000,
+    output: "",
+  };
+  const deep = {
+    generation: { gamesGenerated: 200 },
+    totals: { analyzedPositions: 225, selectedPositions: 225, outputs: 225, passedOutputs: 225, failedOutputs: 0 },
+  };
+  const reportStub = (base) => ({
+    ...base,
+    gates: { releaseReady: true, note: "Begrenzt." },
+    engine: { name: "Stockfish", limit: { value: 1 }, multiPv: 2 },
+    byRating: {},
+    byPhase: {},
+    issueCounts: { language: {}, semantics: {} },
+    failureExamples: [],
+    positiveExamples: [],
+    config: { selectedRatings: [800], everyPly: true },
+    durationSeconds: 1,
+    generation: {
+      generatedPlies: base.totals.analyzedPositions,
+      selectionHash: "abc",
+      coverage: [],
+      ...base.generation,
+    },
+    totals: {
+      evidenceFailures: 0,
+      nullExplanations: 0,
+      verificationFailures: 0,
+      languageFailures: 0,
+      semanticFailures: 0,
+      completenessFailures: 0,
+      unsupportedMoveFailures: 0,
+      unsupportedBoardClaimFailures: 0,
+      unsupportedEvaluationFailures: 0,
+      phaseMismatches: 0,
+      passPercent: 100,
+      ...base.totals,
+    },
+  });
+  const markdown = combinedAuditMarkdown({
+    fullAudit: audit,
+    deepAudit: reportStub(deep),
+  });
+
+  assert.match(markdown, /200 reproduzierbaren/);
+  assert.match(markdown, /Teil 1: Jeder Halbzug/);
+  assert.match(markdown, /Teil 2: Tiefere Gegenprüfung/);
+  assert.match(markdown, /12\.000/);
 });

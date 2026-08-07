@@ -369,6 +369,30 @@ function conceptPatterns(fen) {
   const game = load(fen);
   if (!fingerprint) return [];
   const grouped = new Map();
+  const sideName = (side) => side === "w" ? "Weiß" : "Schwarz";
+  const pieceName = (piece) => ({
+    p: "Bauer", n: "Springer", b: "Läufer", r: "Turm", q: "Dame", k: "König",
+  })[piece?.type] || "Figur";
+  const conceptExplanation = (concept, warning) => {
+    const squares = concept.criticalSquares || [];
+    if (concept.id === "pin" && squares.length >= 3) {
+      const attacker = squares.find((square) => {
+        const piece = game?.get(square);
+        return piece?.color === concept.side && ["b", "r", "q"].includes(piece.type);
+      });
+      const king = squares.find((square) => game?.get(square)?.type === "k");
+      const pinned = squares.find((square) => square !== attacker && square !== king);
+      return `${sideName(concept.side)} fesselt mit ${pieceName(game?.get(attacker))} auf ${attacker} `
+        + `${pieceName(game?.get(pinned))} auf ${pinned} an den König auf ${king}.`;
+    }
+    if (concept.id === "bad_bishop" && squares.length >= 2) {
+      const [bishop, ...pawns] = squares;
+      return `Der ${sideName(concept.side).toLowerCase()}e Läufer auf ${bishop} wird durch eigene Bauern auf ${pawns.join(", ")} eingeschränkt.`;
+    }
+    return warning
+      ? `${PATTERN_LABELS[concept.id] || concept.id} ist eine konkrete Schwäche auf ${squares.join(", ") || "dem Brett"}.`
+      : `${PATTERN_LABELS[concept.id] || concept.id} betrifft ${squares.join(", ") || "die aktuelle Stellung"}.`;
+  };
   for (const concept of fingerprint.concepts || []) {
     if (concept.id === "mate_motif") continue;
     const category = TACTICAL.has(concept.id) ? "tactical" : "strategic";
@@ -405,9 +429,7 @@ function conceptPatterns(fen) {
           : forkStatus === "winning" && forkExchange
             ? `Die Gabel bleibt trotz ${forkExchange.line.join(" ")} materiell günstig.`
             : `Eine Figur greift in der aktuellen Stellung gleichzeitig mehrere gegnerische Ziele an.`
-        : warning
-        ? `${PATTERN_LABELS[concept.id] || concept.id} ist eine Schwäche in der aktuellen Stellung.`
-        : `${PATTERN_LABELS[concept.id] || concept.id} ist in der aktuellen Stellung erkennbar.`,
+        : conceptExplanation(concept, warning),
       score: currentFork ? 95 : category === "tactical" ? 70 : 20 + Math.round((concept.confidence || 0.75) * 20),
     });
   }

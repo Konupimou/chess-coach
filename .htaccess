@@ -1,0 +1,12 @@
+PassengerAppRoot /home/u351108412/domains/chessandy.de/hbuilds/current/nodejs
+PassengerAppType node
+PassengerNodejs /opt/alt/alt-nodejs22/root/bin/node
+PassengerStartupFile server.js
+PassengerBaseURI /
+PassengerRestartDir /home/u351108412/domains/chessandy.de/hbuilds/current/nodejs/tmp
+SetEnv NODE_OPTIONS "--require /home/u351108412/domains/chessandy.de/hbuilds/config/preload-timestamp.js"
+SetEnv LSNODE_CONSOLE_LOG console.log
+SetEnv TOKIO_WORKER_THREADS 2
+
+AddType application/wasm .wasm
+Header always unset Cross-Origin-Embedder-Policy

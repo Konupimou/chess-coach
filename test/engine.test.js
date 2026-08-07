@@ -49,6 +49,36 @@ function createReadyEngine({
   return { engine, messages };
 }
 
+test("Engine startet ohne Mehrkern-Handshake mit der Lite-Ein-Kern-Version", () => {
+  const previousWorker = globalThis.Worker;
+  const workers = [];
+
+  globalThis.Worker = class FakeWorker {
+    constructor(path) {
+      this.path = path;
+      workers.push(this);
+    }
+
+    postMessage() {}
+
+    terminate() {}
+  };
+
+  try {
+    const engine = new Engine();
+    assert.equal(
+      engine.workerCandidates[0].path,
+      "/libs/stockfish/stockfish-18-lite-single.js",
+    );
+    assert.equal(engine.activeWorkerPath, "/libs/stockfish/stockfish-18-lite-single.js");
+    assert.equal(workers.length, 1);
+    engine.quit();
+  } finally {
+    if (previousWorker === undefined) delete globalThis.Worker;
+    else globalThis.Worker = previousWorker;
+  }
+});
+
 test("parseInfoLine liest Tiefe, MultiPV, Score und Zugfolge", () => {
   assert.deepEqual(
     parseInfoLine("info depth 18 multipv 2 score cp -37 nodes 10 pv e7e5 g1f3"),

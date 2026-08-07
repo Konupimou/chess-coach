@@ -101,6 +101,10 @@ test("Eröffnungszüge erhalten bei kleinen Unterschieden keine Engine-Rangliste
     openingMoveReviewPresentation({ ...base, moveNumber: 18 }),
     null,
   );
+  assert.equal(
+    openingMoveReviewPresentation({ ...base, san: "Qxf7#" }, { inOpeningBook: true }),
+    null,
+  );
 });
 
 test("stärkste Phase wird aus den Brettstellungen statt aus drei gleich großen Blöcken bestimmt", () => {
@@ -366,6 +370,53 @@ test("Spezialkategorien beachten Priorität, Matt und den einzigen legalen Zug",
   });
   assert.equal(allowedMate.classification, "blunder");
   assert.equal(allowedMate.flags.allowedMate, true);
+  assert.equal(classifyMoveReview({
+    ...base,
+    playedUci: "f6f7",
+    bestMoveUci: "f6f7",
+    isBookMove: true,
+    isCheckmate: true,
+  }).classification, "best");
+  assert.equal(classifyMoveReview({
+    ...base,
+    playedUci: "g8f6",
+    bestMoveUci: "d8e7",
+    isBookMove: true,
+    mateAfter: -1,
+  }).classification, "blunder");
+});
+
+test("eine zugelassene Mattantwort wird konkret und nicht als bereits geschehen erklärt", () => {
+  const explanation = explainMoveQuality({
+    ply: 6,
+    moveNumber: 3,
+    color: "b",
+    san: "Nf6",
+    playedUci: "g8f6",
+    fenBefore: "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 3 3",
+    fenAfter: "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+    lossCp: 900,
+    quality: "blunder",
+    classification: "blunder",
+    bestUci: "d8e7",
+    bestSan: "Qe7",
+    playedContinuationUci: ["g8f6", "h5f7"],
+    playedContinuationSan: ["Nf6", "Qxf7#"],
+  });
+  assert.match(explanation, /Weiß.*Qxf7#.*mattsetzen/);
+  assert.doesNotMatch(explanation, /Das ist Matt|Partie ist vorbei/);
+});
+
+test("Lernübung lobt keinen Zug, der als Ungenauigkeit im Fokus steht", () => {
+  const moves = [
+    { moveNumber: 1, color: "w", san: "e4", quality: "best", accuracy: 100, winPercentLoss: 0 },
+    { moveNumber: 2, color: "w", san: "Qh5", quality: "inaccuracy", accuracy: 80, winPercentLoss: 8 },
+    { moveNumber: 3, color: "w", san: "Bc4", quality: "best", accuracy: 100, winPercentLoss: 0 },
+    { moveNumber: 4, color: "w", san: "Qxf7#", quality: "best", accuracy: 100, winPercentLoss: 0 },
+  ];
+  const summary = buildLearningSummary({ moves, criticalMoments: [moves[1]], playerColor: "w" });
+  assert.match(summary.exercise, /Finde selbst einen guten Zug/);
+  assert.doesNotMatch(summary.exercise, /warum dein Zug dort gut funktioniert/);
 });
 
 test("Materialopfer-Heuristik verlangt eine legale bestätigte Investition", () => {
