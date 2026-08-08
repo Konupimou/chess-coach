@@ -88,9 +88,7 @@ async function loadState() {
     readDecisions(),
     readJsonl(approvedPath),
   ]);
-  const candidates = allCandidates.filter((candidate) => (
-    Number(candidate?.payload?.learnerProfile?.rating) === 800
-  ));
+  const candidates = allCandidates;
   const candidateMap = new Map(candidates.map((candidate) => [candidate.id, candidate]));
   const reviewMap = new Map(decisions.map((review) => {
     const candidate = candidateMap.get(review.id);

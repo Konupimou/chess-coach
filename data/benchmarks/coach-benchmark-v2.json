@@ -1,0 +1,5276 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "coach-benchmark-v2-hard",
+  "description": "Schwierige, getrennte Suite für Multi-Factor-Diagnosen, ruhige Engine-Züge, Prophylaxe, Kompensation, Initiative und komplexe Endspiele.",
+  "contaminationPolicy": "Erwartungen, Konzeptgruppen und Quellenmetadaten sind ausschließlich für den Runner bestimmt und werden nie in Coach-Prompts eingefügt.",
+  "questions": [
+    {
+      "id": "why_bad",
+      "text": "Warum war mein Zug schlecht?"
+    },
+    {
+      "id": "why_evaluation",
+      "text": "Warum ist diese Stellung so bewertet?"
+    },
+    {
+      "id": "why_best",
+      "text": "Warum bevorzugt Stockfish diesen Zug?"
+    },
+    {
+      "id": "overlooked",
+      "text": "Was habe ich übersehen?"
+    },
+    {
+      "id": "position_problem",
+      "text": "Was ist das wichtigste Problem in meiner Stellung?"
+    },
+    {
+      "id": "compare",
+      "text": "Warum ist dieser Zug besser als meiner?"
+    },
+    {
+      "id": "lesson",
+      "text": "Was sollte ich aus diesem Fehler lernen?"
+    },
+    {
+      "id": "was_bad",
+      "text": "War das wirklich ein schlechter Zug?"
+    },
+    {
+      "id": "most_important",
+      "text": "Was ist hier am wichtigsten?"
+    }
+  ],
+  "cases": [
+    {
+      "id": "v2-multi-queen-three-jobs",
+      "fenBefore": "r6k/1pp4q/1b2pp1p/p7/P7/1PN3R1/1PQ2PPP/2K5 w - - 0 25",
+      "fenAfter": "r6k/1pp4q/1b2pp1p/p7/P7/1PN3R1/1P1Q1PPP/2K5 b - - 1 25",
+      "playedMove": {
+        "uci": "c2d2",
+        "san": "Qd2"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "c2e2",
+        "lossCp": 2,
+        "quality": "good",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 134,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c2e2",
+              "a8f8",
+              "e2d2",
+              "b6c5",
+              "g3h3",
+              "h8g7",
+              "c3e4",
+              "c5e7",
+              "d2d7",
+              "g7f7",
+              "h3e3",
+              "h7f5",
+              "d7c7",
+              "f5d5",
+              "c1b1"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 132,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c2d2",
+              "b6c5",
+              "c3e4",
+              "c5e7",
+              "d2d7",
+              "h7e4",
+              "d7e7",
+              "e4e1",
+              "c1c2",
+              "e1e4",
+              "c2d2",
+              "e4d4",
+              "d2c1",
+              "a8g8",
+              "g3g8",
+              "h8g8",
+              "e7e6",
+              "g8g7",
+              "e6e3",
+              "d4e3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 63,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c3e4",
+              "a8d8",
+              "e4f6",
+              "h7c2",
+              "c1c2",
+              "b6f2",
+              "g3g6",
+              "f2e3",
+              "h2h4",
+              "e3f4",
+              "h4h5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 44,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g3d3",
+              "a8g8",
+              "c2e2",
+              "h7f5",
+              "d3f3",
+              "f5e5",
+              "e2e5",
+              "f6e5",
+              "g2g3",
+              "h8g7",
+              "c1d1",
+              "g8d8",
+              "d1c2",
+              "d8e8",
+              "h2h4",
+              "b6d4",
+              "c3e4",
+              "b7b6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 2,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 132,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "c2d2",
+            "b6c5",
+            "c3e4",
+            "c5e7",
+            "d2d7",
+            "h7e4",
+            "d7e7",
+            "e4e1",
+            "c1c2",
+            "e1e4",
+            "c2d2",
+            "e4d4",
+            "d2c1",
+            "a8g8",
+            "g3g8",
+            "h8g8",
+            "e7e6",
+            "g8g7",
+            "e6e3",
+            "d4e3"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "restriction",
+          "coordination",
+          "piece_activity"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis",
+              "restriction"
+            ]
+          },
+          {
+            "id": "coordination",
+            "concepts": [
+              "coordination"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "1fd7d5bb00e1b30d198d",
+        "gameOrdinal": 5,
+        "ply": 49
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "was_bad",
+        "compare",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "922b291192a6f11bb4297df7da8c853b44315d30ebc4d8dce1d08da762221fc0"
+      }
+    },
+    {
+      "id": "v2-multi-bishop-retreat",
+      "fenBefore": "rr4k1/2qnbppp/2p1p3/pbPpP3/1p1P1B1P/1P3BP1/PN1Q1P2/R3R1K1 w - - 2 25",
+      "fenAfter": "rr4k1/2qnbppp/2p1p3/pbPpP3/1p1P1B1P/1P4P1/PN1Q1P2/R2BR1K1 b - - 3 25",
+      "playedMove": {
+        "uci": "f3d1",
+        "san": "Bd1"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "g1g2",
+        "lossCp": 4,
+        "quality": "good",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 189,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g1g2",
+              "d7f8",
+              "f3d1",
+              "c7d7",
+              "h4h5",
+              "h7h6",
+              "d2e3",
+              "d7d8"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 185,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f3d1",
+              "e7d8",
+              "d2e3",
+              "d7f8",
+              "d1c2",
+              "c7e7"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 184,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f3g4",
+              "d7f8",
+              "g4d1",
+              "a8a7",
+              "d1c2",
+              "b8a8",
+              "g1g2",
+              "c7d8",
+              "h4h5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 179,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f3h5",
+              "d7f8",
+              "h5d1",
+              "a8a7",
+              "d1c2",
+              "b8a8",
+              "g1g2",
+              "e7d8",
+              "b2d3",
+              "a5a4",
+              "d3b4",
+              "a4b3",
+              "c2b3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 2,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 185,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f3d1",
+            "e7d8",
+            "d2e3",
+            "d7f8",
+            "d1c2",
+            "c7e7"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "restriction",
+          "piece_activity",
+          "initiative"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "counterplay_restriction",
+            "concepts": [
+              "prophylaxis",
+              "restriction"
+            ]
+          },
+          {
+            "id": "piece_improvement",
+            "concepts": [
+              "piece_activity"
+            ]
+          },
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "25b030d5eea2ebc07bcc",
+        "gameOrdinal": 6,
+        "ply": 49
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "was_bad",
+        "compare",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "d7aa2eee78fc863bcb356d0b2cf99c51ff5fe6f787c3a2f0e63527f32f3dc114"
+      }
+    },
+    {
+      "id": "v2-quiet-weak-square-prophylaxis",
+      "fenBefore": "r2qrnk1/pp3ppb/3b1n1p/1Pp1p3/2P1P2N/P5P1/1B1NQPBP/R4RK1 w - - 0 17",
+      "fenAfter": "r2qrnk1/pp3ppb/3b1n1p/1Pp1p3/2P1P2N/P5PB/1B1NQP1P/R4RK1 b - - 1 17",
+      "playedMove": {
+        "uci": "g2h3",
+        "san": "Bh3"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "g2h3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 96,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g2h3",
+              "d6c7",
+              "f2f3",
+              "d8d6",
+              "f1d1",
+              "f8e6",
+              "h3e6",
+              "d6e6",
+              "h4g2",
+              "f6h5",
+              "g2e3",
+              "f7f5",
+              "e4f5",
+              "h7f5",
+              "e3f5",
+              "e6f5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 14,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h4f5",
+              "f8e6",
+              "f5e3",
+              "e6d4",
+              "e2d3",
+              "d6c7",
+              "f1d1",
+              "h7g6",
+              "f2f3",
+              "h6h5",
+              "h2h4",
+              "d4f3",
+              "d2f3",
+              "d8d3",
+              "d1d3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 10,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1d1",
+              "f8e6",
+              "h4f5",
+              "a7a6",
+              "a3a4",
+              "e6d4",
+              "e2d3",
+              "d6c7",
+              "f5e3",
+              "h7g6",
+              "f2f3",
+              "g6h5",
+              "d3f1",
+              "f6d7",
+              "g1h1",
+              "c7a5",
+              "f1f2",
+              "a5b4"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 4,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a3a4",
+              "f8e6",
+              "h4f5",
+              "e6d4",
+              "e2d1",
+              "a7a6",
+              "f5e3",
+              "d6c7",
+              "f2f3",
+              "c7a5",
+              "d2b3",
+              "a5b4",
+              "f1f2",
+              "h6h5",
+              "h2h4",
+              "a6b5",
+              "a4b5",
+              "d8e7",
+              "a1a8",
+              "e8a8"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 96,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "g2h3",
+            "d6c7",
+            "f2f3",
+            "d8d6",
+            "f1d1",
+            "f8e6",
+            "h3e6",
+            "d6e6",
+            "h4g2",
+            "f6h5",
+            "g2e3",
+            "f7f5",
+            "e4f5",
+            "h7f5",
+            "e3f5",
+            "e6f5"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "POSITIONAL",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "weak_square",
+          "restriction"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "opponents_plan",
+            "concepts": [
+              "prophylaxis"
+            ]
+          },
+          {
+            "id": "weak_square",
+            "concepts": [
+              "weak_square"
+            ]
+          },
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "6be56bac65ba379715b9",
+        "gameOrdinal": 7,
+        "ply": 33
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "POSITIONAL",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "c7d87edefc8327819a6f8f12bd829acc125a9e2dcac0b35db34af07ff1d290d0"
+      }
+    },
+    {
+      "id": "v2-active-prophylaxis-queen-retreat",
+      "fenBefore": "4r1k1/p4pp1/1q3n2/3p2p1/3P2P1/2NQ1P2/Pr1R2P1/5K1R b - - 0 23",
+      "fenAfter": "1q2r1k1/p4pp1/5n2/3p2p1/3P2P1/2NQ1P2/Pr1R2P1/5K1R w - - 1 24",
+      "playedMove": {
+        "uci": "b6b8",
+        "san": "Qb8"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "b6b8",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 133,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b6b8",
+              "h1g1",
+              "f6g4",
+              "d2b2",
+              "g4h2",
+              "f1f2",
+              "b8b2",
+              "c3e2",
+              "g5g4",
+              "a2a4",
+              "g4g3",
+              "f2g3",
+              "e8e2",
+              "g3h2",
+              "b2b8",
+              "h2h3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 53,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a7a5",
+              "g2g3",
+              "a5a4",
+              "h1h2",
+              "a4a3",
+              "c3d1",
+              "b2b1",
+              "h2e2",
+              "b6b4",
+              "f1g2",
+              "g7g6",
+              "d2c2",
+              "e8e2",
+              "c2e2",
+              "b1c1"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 50,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g7g6",
+              "g2g3",
+              "b2b4",
+              "f1f2",
+              "g8g7",
+              "c3d1",
+              "b4a4",
+              "h1e1",
+              "e8e1",
+              "f2e1",
+              "f6e8"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 49,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b6b4",
+              "f1f2",
+              "f6e4",
+              "f3e4",
+              "d5e4",
+              "d3h3",
+              "b2d2",
+              "f2f1",
+              "b4c4",
+              "f1e1",
+              "g8f8",
+              "e1d2",
+              "c4d4",
+              "d2c2",
+              "d4f2",
+              "c2c1",
+              "e4e3",
+              "h3h8",
+              "f8e7",
+              "c3d5"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 133,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "b6b8",
+            "h1g1",
+            "f6g4",
+            "d2b2",
+            "g4h2",
+            "f1f2",
+            "b8b2",
+            "c3e2",
+            "g5g4",
+            "a2a4",
+            "g4g3",
+            "f2g3",
+            "e8e2",
+            "g3h2",
+            "b2b8",
+            "h2h3"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "piece_activity",
+          "restriction"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis",
+              "restriction"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "cba7bb620fc814254169",
+        "gameOrdinal": 8,
+        "ply": 46
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "3b6bf7a54445e1bef97fc4ed29cf0e786e2f21f4b770fb0e99d0afde700cae9b"
+      }
+    },
+    {
+      "id": "v2-quiet-king-step",
+      "fenBefore": "r2r2k1/1q3p2/2p3p1/p3p2p/PnQ1P2b/4B2P/1PPR2P1/1N3RK1 w - - 2 25",
+      "fenAfter": "r2r2k1/1q3p2/2p3p1/p3p2p/PnQ1P2b/4B2P/1PPR2PK/1N3R2 b - - 3 25",
+      "playedMove": {
+        "uci": "g1h2",
+        "san": "Kh2"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "e3h6",
+        "lossCp": 11,
+        "quality": "good",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 155,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e3h6",
+              "a8b8",
+              "g1h2",
+              "c6c5",
+              "d2d8",
+              "b8d8",
+              "b1d2",
+              "b7e7",
+              "h6e3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 151,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g1h1",
+              "h4g3",
+              "e3g5",
+              "d8d2",
+              "b1d2",
+              "g3f4",
+              "g5f4",
+              "e5f4",
+              "f1f4",
+              "a8d8",
+              "d2f3",
+              "b7c7",
+              "e4e5",
+              "d8d1",
+              "h1h2",
+              "b4d5",
+              "f4e4",
+              "d5e7",
+              "f3d4",
+              "c7b6"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 147,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d2d8",
+              "a8d8",
+              "g1h2",
+              "d8d7",
+              "b1a3",
+              "h4d8",
+              "c4e2",
+              "d8b6",
+              "e3h6",
+              "b6d8",
+              "b2b3",
+              "g8h7",
+              "h6e3",
+              "d8b6",
+              "e3b6",
+              "b7b6"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 144,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g1h2",
+              "g8g7",
+              "d2d8",
+              "h4d8",
+              "b1a3",
+              "b7d7",
+              "c4e2",
+              "d8c7",
+              "b2b3",
+              "d7e6",
+              "a3c4",
+              "e6e7",
+              "c2c3",
+              "b4a6",
+              "c4d2",
+              "a6c5",
+              "e2c4",
+              "c5e6",
+              "c4c6",
+              "a8d8"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 4,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 144,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "g1h2",
+            "g8g7",
+            "d2d8",
+            "h4d8",
+            "b1a3",
+            "b7d7",
+            "c4e2",
+            "d8c7",
+            "b2b3",
+            "d7e6",
+            "a3c4",
+            "e6e7",
+            "c2c3",
+            "b4a6",
+            "c4d2",
+            "a6c5",
+            "e2c4",
+            "c5e6",
+            "c4c6",
+            "a8d8"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "PROPHYLAXIS",
+          "KING_SAFETY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "king_safety"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          },
+          {
+            "id": "king_safety",
+            "concepts": [
+              "king_safety"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "ad23812f2999740aa8fe",
+        "gameOrdinal": 26,
+        "ply": 49
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "was_bad",
+        "compare",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "PROPHYLAXIS",
+          "KING_SAFETY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "52c526bcf13ffdf1959582e2c5e864d379ab1eead720c63e08767772ecffceb1"
+      }
+    },
+    {
+      "id": "v2-aggressive-prophylaxis-qh8",
+      "fenBefore": "rnbq4/2k1ppb1/1n1p2p1/p1pP2P1/PpP1P3/1P3N1r/3NBP2/1RBQK1R1 b - - 0 18",
+      "fenAfter": "rnb4q/2k1ppb1/1n1p2p1/p1pP2P1/PpP1P3/1P3N1r/3NBP2/1RBQK1R1 w - - 1 19",
+      "playedMove": {
+        "uci": "d8h8",
+        "san": "Qh8"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "d8h8",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 167,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d8h8",
+              "e2f1",
+              "h3h1",
+              "d1e2",
+              "h1g1",
+              "f3g1",
+              "h8h1",
+              "d2f3",
+              "c8g4",
+              "c1b2",
+              "g7b2",
+              "b1b2",
+              "h1h8"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 123,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b6d7",
+              "e2f1",
+              "h3h7",
+              "d1e2",
+              "g7c3",
+              "e1d1",
+              "d8h8",
+              "d1c2",
+              "d7e5",
+              "f3e5",
+              "c3e5",
+              "d2f3",
+              "e5c3",
+              "c1f4",
+              "b8d7",
+              "f4g3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 122,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g7c3",
+              "c1b2",
+              "d8h8",
+              "d1c2",
+              "b6d7",
+              "e1d1",
+              "b8a6",
+              "e2f1",
+              "h3h5",
+              "f3e1",
+              "c8b7",
+              "f1e2",
+              "h5h7",
+              "d2f3",
+              "c3b2",
+              "c2b2"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 119,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b8d7",
+              "e2f1",
+              "h3h5",
+              "d1c2",
+              "g7c3",
+              "c1b2",
+              "d8h8",
+              "g1g3",
+              "e7e6",
+              "f1g2",
+              "e6d5",
+              "e4d5",
+              "d7f8",
+              "b2c3",
+              "b4c3",
+              "d2e4",
+              "c8f5",
+              "e1f1"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 167,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "d8h8",
+            "e2f1",
+            "h3h1",
+            "d1e2",
+            "h1g1",
+            "f3g1",
+            "h8h1",
+            "d2f3",
+            "c8g4",
+            "c1b2",
+            "g7b2",
+            "b1b2",
+            "h1h8"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "INITIATIVE",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "initiative",
+          "piece_activity"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          },
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "activation",
+            "concepts": [
+              "piece_activity"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "cf418b9b5296b343dcd1",
+        "gameOrdinal": 38,
+        "ply": 36
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "INITIATIVE",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "06e9d7e3ddb661649988cb8f57a5a674dc2ee947a1121d87fe852ea3501f969d"
+      }
+    },
+    {
+      "id": "v2-quiet-kings-indian-rook",
+      "fenBefore": "r1bq1rk1/ppp3bp/3p1nn1/2PPp1p1/4Pp2/2NN1P2/PP2BBPP/2RQ1RK1 b - - 0 15",
+      "fenAfter": "r1bq2k1/ppp2rbp/3p1nn1/2PPp1p1/4Pp2/2NN1P2/PP2BBPP/2RQ1RK1 w - - 1 16",
+      "playedMove": {
+        "uci": "f8f7",
+        "san": "Rf7"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "f8f7",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -46,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f8f7",
+              "a2a4",
+              "h7h5",
+              "c3b5",
+              "g5g4",
+              "f3g4",
+              "c8g4",
+              "h2h3",
+              "g4e2",
+              "d1e2",
+              "a7a6",
+              "b5a3",
+              "g7h6"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -69,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h7h5",
+              "c3b5",
+              "f8f7",
+              "c5d6",
+              "c7d6",
+              "b5a7",
+              "c8d7",
+              "d1b3",
+              "g5g4",
+              "f2b6",
+              "d8e8",
+              "d3e1",
+              "g4g3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -103,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g7h6",
+              "a2a4",
+              "f8f7",
+              "a4a5",
+              "h6f8",
+              "c5c6",
+              "h7h5",
+              "c6b7",
+              "c8b7",
+              "d3b4",
+              "a7a6",
+              "b4c6",
+              "d8c8",
+              "b2b4",
+              "g5g4",
+              "b4b5",
+              "g4g3",
+              "h2g3",
+              "f4g3",
+              "f2g3"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -111,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f6e8",
+              "c3b5",
+              "a7a6",
+              "b5a3",
+              "f8f7",
+              "a3c4",
+              "h7h5",
+              "c1c3",
+              "d8f6",
+              "c5d6",
+              "e8d6",
+              "c4d6",
+              "c7d6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": -46,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f8f7",
+            "a2a4",
+            "h7h5",
+            "c3b5",
+            "g5g4",
+            "f3g4",
+            "c8g4",
+            "h2h3",
+            "g4e2",
+            "d1e2",
+            "a7a6",
+            "b5a3",
+            "g7h6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "piece_activity",
+          "restriction"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "defense",
+            "concepts": [
+              "prophylaxis"
+            ]
+          },
+          {
+            "id": "rook_activity",
+            "concepts": [
+              "piece_activity",
+              "rook_activity"
+            ]
+          },
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "23e77ff0b74ac264400b",
+        "gameOrdinal": 23,
+        "ply": 30
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "5109f901a7d39eaa9e469e571f1b94a776b156c244782bba068eb877134f78a1"
+      }
+    },
+    {
+      "id": "v2-multi-rook-defense-and-pressure",
+      "fenBefore": "r3r1k1/pb3pbp/1pq3p1/n1p2P2/3P4/2PBB1N1/P2Q2PP/2R2R1K w - - 0 19",
+      "fenAfter": "r3r1k1/pb3pbp/1pq3p1/n1p2P2/3P4/2PBB1N1/P2Q1RPP/2R4K b - - 1 19",
+      "playedMove": {
+        "uci": "f1f2",
+        "san": "Rf2"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "f1f2",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 141,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1f2",
+              "a8d8",
+              "e3h6",
+              "g7h8",
+              "f5g6",
+              "h7g6",
+              "c1f1",
+              "c5d4",
+              "f2f7",
+              "d4c3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 33,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1f3",
+              "c6d6",
+              "f3f2",
+              "c5d4",
+              "e3d4",
+              "g7d4",
+              "c3d4",
+              "a8c8",
+              "c1f1",
+              "d6d4",
+              "f5g6",
+              "f7g6",
+              "d2h6",
+              "b7g2",
+              "h1g2",
+              "d4d3",
+              "f2f7",
+              "d3d5",
+              "f1f3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 20,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1g1",
+              "c6d6",
+              "g1f1",
+              "d6d5",
+              "f1f2",
+              "c5d4",
+              "e3d4",
+              "a8d8",
+              "f5g6",
+              "h7g6"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 0,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e3g5",
+              "a8c8",
+              "d2f2",
+              "c6d5",
+              "d3b5",
+              "b7c6",
+              "b5a6",
+              "c8c7",
+              "g5f4",
+              "c7e7",
+              "d4c5"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 141,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f1f2",
+            "a8d8",
+            "e3h6",
+            "g7h8",
+            "f5g6",
+            "h7g6",
+            "c1f1",
+            "c5d4",
+            "f2f7",
+            "d4c3"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "piece_activity",
+          "coordination"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "defense",
+            "concepts": [
+              "prophylaxis"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          },
+          {
+            "id": "coordination",
+            "concepts": [
+              "coordination"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "2c10b77620fdc696a726",
+        "gameOrdinal": 13,
+        "ply": 37
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "9c803ca61620b873e3f77d374801548884140c423370f5b6b9e906babeafa32b"
+      }
+    },
+    {
+      "id": "v2-initiative-forcing-knight",
+      "fenBefore": "4k2r/p4p1p/q2p1PpQ/8/1p1R4/nN3N1P/P1r2PP1/K2R4 b k - 0 26",
+      "fenAfter": "4k2r/p4p1p/q2p1PpQ/8/1pnR4/1N3N1P/P1r2PP1/K2R4 w k - 1 27",
+      "playedMove": {
+        "uci": "a3c4",
+        "san": "Nc4"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "a3c4",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 614,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a3c4",
+              "d4e4",
+              "e8d8",
+              "b3c1",
+              "a6a3",
+              "d1d6",
+              "c4d6",
+              "e4b4",
+              "c2c1",
+              "h6c1",
+              "a3c1",
+              "b4b1",
+              "c1c3",
+              "b1b2",
+              "h7h6",
+              "a1b1",
+              "c3d3",
+              "b1a1",
+              "d3d1",
+              "b2b1"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -126,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a3b5",
+              "h6e3",
+              "e8d8",
+              "b3c1",
+              "b5d4",
+              "e3e7",
+              "d8c8",
+              "f3d4",
+              "c2c7",
+              "e7e3",
+              "c8b8",
+              "e3e4",
+              "h8c8",
+              "c1b3",
+              "a6b7",
+              "e4b7",
+              "c7b7",
+              "g2g4",
+              "c8c3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -226,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c2e2",
+              "d4d2",
+              "a3c2",
+              "a1b2",
+              "c2a3",
+              "d1c1",
+              "a3c4",
+              "b2a1",
+              "c4d2",
+              "f3d2",
+              "d6d5",
+              "h6g7",
+              "h8f8",
+              "f2f4",
+              "e2g2",
+              "h3h4",
+              "g2e2"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -240,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c2a2",
+              "a1a2",
+              "a3b5",
+              "a2b1",
+              "b5c3",
+              "b1c1",
+              "a6a3",
+              "c1d2",
+              "a3b2",
+              "d2e3",
+              "c3d1",
+              "d4d1",
+              "b2b3",
+              "e3e2",
+              "b3c2",
+              "h6d2",
+              "c2c4",
+              "d2d3",
+              "c4d3",
+              "e2d3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 614,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "a3c4",
+            "d4e4",
+            "e8d8",
+            "b3c1",
+            "a6a3",
+            "d1d6",
+            "c4d6",
+            "e4b4",
+            "c2c1",
+            "h6c1",
+            "a3c1",
+            "b4b1",
+            "c1c3",
+            "b1b2",
+            "h7h6",
+            "a1b1",
+            "c3d3",
+            "b1a1",
+            "d3d1",
+            "b2b1"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "INITIATIVE",
+          "KING_SAFETY",
+          "TACTICAL"
+        ],
+        "possibleConcepts": [
+          "initiative",
+          "mating_attack",
+          "prophylaxis"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "king_attack",
+            "concepts": [
+              "mating_attack",
+              "unsafe_king"
+            ]
+          },
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "0c0d846762189a637b99",
+        "gameOrdinal": 10,
+        "ply": 52
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "INITIATIVE",
+          "KING_SAFETY",
+          "TACTICAL"
+        ],
+        "engineCacheKey": "e4444f1b525ba82d2b6126dc19481daa00732d93138664b9eb65cd592793a2d8"
+      }
+    },
+    {
+      "id": "v2-compensation-development-tempi",
+      "fenBefore": "2q1kbnr/2pb2pp/p1pp4/4p3/4P3/2NQBN2/PrP2PPP/R4RK1 w k - 0 2",
+      "fenAfter": "2q1kbnr/2pb2pp/p1pp4/4p3/4P3/2NQB3/PrPN1PPP/R4RK1 b k - 1 2",
+      "playedMove": {
+        "uci": "f3d2",
+        "san": "Nd2"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "f3d2",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 100,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f3d2",
+              "b2b8",
+              "f2f4",
+              "g8f6",
+              "f4e5",
+              "f6g4",
+              "d2c4",
+              "g4e5",
+              "c4e5",
+              "d6e5",
+              "d3c4",
+              "d7e6",
+              "c4c6",
+              "c8d7",
+              "c6a6",
+              "f8d6",
+              "a2a4",
+              "e6f7",
+              "f1b1",
+              "b8b1"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 58,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d3c4",
+              "g8f6",
+              "a1b1",
+              "b2b1",
+              "f1b1",
+              "c8a8",
+              "a2a4",
+              "f8e7",
+              "f3g5",
+              "h8f8",
+              "g5e6",
+              "d7e6",
+              "c4e6"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 39,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a1e1",
+              "f8e7",
+              "f3d2",
+              "b2b4",
+              "a2a3",
+              "b4b7",
+              "f2f4",
+              "g8h6",
+              "f4e5",
+              "h6f7",
+              "e5d6",
+              "c7d6",
+              "e4e5",
+              "d6e5",
+              "d2b3"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 24,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h2h3",
+              "g8f6",
+              "f3d2",
+              "b2b8",
+              "f2f4",
+              "e5f4",
+              "e3f4",
+              "f8e7",
+              "a1e1"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 100,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f3d2",
+            "b2b8",
+            "f2f4",
+            "g8f6",
+            "f4e5",
+            "f6g4",
+            "d2c4",
+            "g4e5",
+            "c4e5",
+            "d6e5",
+            "d3c4",
+            "d7e6",
+            "c4c6",
+            "c8d7",
+            "c6a6",
+            "f8d6",
+            "a2a4",
+            "e6f7",
+            "f1b1",
+            "b8b1"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "DEVELOPMENT"
+        ],
+        "possibleConcepts": [
+          "compensation",
+          "initiative",
+          "development_advantage",
+          "piece_activity"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "compensation",
+            "concepts": [
+              "compensation"
+            ]
+          },
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "development",
+            "concepts": [
+              "development_advantage",
+              "piece_activity"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "a22ffa1a3e6dac787df3",
+        "gameOrdinal": 25,
+        "ply": 3
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "DEVELOPMENT"
+        ],
+        "engineCacheKey": "39a1b8bd494f9a1aed3aa8a9efce9c737b737b5b8048f85008a91ea7eff46db9"
+      }
+    },
+    {
+      "id": "v2-compensation-center-and-attack",
+      "fenBefore": "r4rk1/p3pp1p/np4p1/2pP4/q3P3/2b2N2/P3QPPP/1RB2RK1 w - - 0 16",
+      "fenAfter": "r4rk1/p3pp1p/np4p1/2pP4/q3P3/1Rb2N2/P3QPPP/2B2RK1 b - - 1 16",
+      "playedMove": {
+        "uci": "b1b3",
+        "san": "Rb3"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "b1b3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 225,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b1b3",
+              "c3b4",
+              "f3g5",
+              "a6c7",
+              "b3h3",
+              "f7f6",
+              "g5h7",
+              "f8f7",
+              "d5d6",
+              "e7d6",
+              "e2c4",
+              "c7e8",
+              "c1b2"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 37,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c1h6",
+              "f8d8",
+              "b1b3",
+              "c3h8",
+              "f3g5",
+              "c5c4",
+              "b3h3",
+              "c4c3",
+              "e4e5",
+              "d8d5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -15,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h2h4",
+              "c3g7",
+              "h4h5",
+              "a6b4",
+              "e2c4",
+              "a8c8",
+              "c1g5",
+              "b6b5",
+              "c4e2",
+              "b4a2",
+              "g5e7",
+              "a2c3",
+              "e2e3",
+              "c3b1",
+              "e7f8",
+              "c8f8"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -33,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a2a3",
+              "c3g7",
+              "c1b2",
+              "g7b2",
+              "b1b2",
+              "c5c4",
+              "h2h4",
+              "c4c3",
+              "b2c2",
+              "a6c5",
+              "e4e5"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 225,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "b1b3",
+            "c3b4",
+            "f3g5",
+            "a6c7",
+            "b3h3",
+            "f7f6",
+            "g5h7",
+            "f8f7",
+            "d5d6",
+            "e7d6",
+            "e2c4",
+            "c7e8",
+            "c1b2"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "PIECE_ACTIVITY"
+        ],
+        "possibleConcepts": [
+          "compensation",
+          "initiative",
+          "piece_activity",
+          "center_control"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "compensation",
+            "concepts": [
+              "compensation"
+            ]
+          },
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity",
+              "center_control"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "1a6a4a10543af0b9757c",
+        "gameOrdinal": 56,
+        "ply": 31
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "PIECE_ACTIVITY"
+        ],
+        "engineCacheKey": "a794af8f9187fa477ac4bae6a2faaf08169b8d549e073bddea5f3e51fd51159a"
+      }
+    },
+    {
+      "id": "v2-compensation-hindrance-pawn",
+      "fenBefore": "rnb1k2r/pp1ppp1p/8/2pP4/2P2Q2/2N5/Pq3PPP/1N2KB1R w Kkq - 0 12",
+      "fenAfter": "rnb1k2r/pp1ppp1p/3P4/2p5/2P2Q2/2N5/Pq3PPP/1N2KB1R b Kkq - 0 12",
+      "playedMove": {
+        "uci": "d5d6",
+        "san": "d6"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "d5d6",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 198,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d5d6",
+              "b7b6",
+              "f1d3",
+              "b8c6",
+              "e1g1",
+              "c8b7",
+              "f1e1",
+              "h8g8",
+              "d3h7",
+              "e8c8",
+              "d6e7",
+              "c6e7",
+              "h7g8",
+              "d8g8",
+              "c3b5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 8,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1d3",
+              "d7d6",
+              "e1g1",
+              "b8d7",
+              "f1e1",
+              "d7e5",
+              "f4e3",
+              "f7f5",
+              "c3b5",
+              "e8d8",
+              "f2f4",
+              "e5g6",
+              "b1c3",
+              "b2b4",
+              "e1b1"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -111,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1e2",
+              "d7d6",
+              "e2h5",
+              "b8d7",
+              "f4f7",
+              "e8d8",
+              "e1g1",
+              "d7f6",
+              "f1e1",
+              "h8e8",
+              "h2h3",
+              "f6h5",
+              "f7h5",
+              "e8f8",
+              "c3e4",
+              "b2d4",
+              "h5h6",
+              "f8f7",
+              "b1c3"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -146,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f4g5",
+              "h7h6",
+              "g5g7",
+              "b2c1",
+              "c3d1",
+              "h8f8",
+              "b1c3",
+              "c1f4",
+              "f1e2"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 198,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "d5d6",
+            "b7b6",
+            "f1d3",
+            "b8c6",
+            "e1g1",
+            "c8b7",
+            "f1e1",
+            "h8g8",
+            "d3h7",
+            "e8c8",
+            "d6e7",
+            "c6e7",
+            "h7g8",
+            "d8g8",
+            "c3b5"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "DEVELOPMENT"
+        ],
+        "possibleConcepts": [
+          "compensation",
+          "initiative",
+          "development_advantage",
+          "restriction"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "compensation",
+            "concepts": [
+              "compensation"
+            ]
+          },
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "development_gap",
+            "concepts": [
+              "development_advantage",
+              "restriction"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "9962e17b7902f901f845",
+        "gameOrdinal": 48,
+        "ply": 23
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "DEVELOPMENT"
+        ],
+        "engineCacheKey": "f0089c337f5efdfbfae954684967494801c0d59eb47e603e8441e3685d77fefc"
+      }
+    },
+    {
+      "id": "v2-compensation-queen-sacrifice",
+      "fenBefore": "r1b2rk1/pp1ppp1p/5bp1/q7/3nP2Q/1BN1B3/PPP2PPP/R4RK1 w - - 1 12",
+      "fenAfter": "r1b2rk1/pp1ppp1p/5Qp1/q7/3nP3/1BN1B3/PPP2PPP/R4RK1 b - - 0 12",
+      "playedMove": {
+        "uci": "h4f6",
+        "san": "Qxf6"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "h4f6",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 39,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h4f6",
+              "d4e2",
+              "c3e2",
+              "e7f6",
+              "e2c3",
+              "f8e8",
+              "e3d4",
+              "e8e6",
+              "c3d5",
+              "g8g7",
+              "a1d1",
+              "b7b5",
+              "d5f6",
+              "e6f6",
+              "d1d3",
+              "c8a6"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 39,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h4h6",
+              "f6g7",
+              "h6h4",
+              "g7f6",
+              "h4f6",
+              "d4e2",
+              "c3e2",
+              "e7f6",
+              "e2c3",
+              "b7b5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 31,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h4g4",
+              "d7d6",
+              "g4d1",
+              "d4c6",
+              "d1d2",
+              "c8e6",
+              "a1d1",
+              "f6c3",
+              "b2c3",
+              "e6b3",
+              "c2b3",
+              "f7f6",
+              "e3h6"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -19,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h4h3",
+              "d7d5",
+              "g2g4",
+              "d5e4",
+              "c3e4",
+              "a5e5",
+              "f2f3",
+              "d4b3",
+              "a2b3",
+              "f6g7",
+              "h3h4",
+              "e5c7",
+              "c2c3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 39,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "h4f6",
+            "d4e2",
+            "c3e2",
+            "e7f6",
+            "e2c3",
+            "f8e8",
+            "e3d4",
+            "e8e6",
+            "c3d5",
+            "g8g7",
+            "a1d1",
+            "b7b5",
+            "d5f6",
+            "e6f6",
+            "d1d3",
+            "c8a6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "MATERIAL"
+        ],
+        "possibleConcepts": [
+          "compensation",
+          "initiative",
+          "development_advantage",
+          "space_advantage"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "material_compensation",
+            "concepts": [
+              "compensation"
+            ]
+          },
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "positional_assets",
+            "concepts": [
+              "development_advantage",
+              "space_advantage",
+              "piece_activity"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "5a60da234d5e8467",
+        "gameId": "cba3b32603e098a43559",
+        "gameOrdinal": 3,
+        "ply": 23
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "MATERIAL"
+        ],
+        "engineCacheKey": "26c9a8cf3da688ae90ac9b9ec88f293eb7387a4e2fbdebd238bdc0363536c9fe"
+      }
+    },
+    {
+      "id": "v2-initiative-restricting-sacrifice",
+      "fenBefore": "rqb2rk1/3nbppp/p2pp3/6P1/1p1BPP2/2NB1Q2/PPP4P/2KR3R w - - 0 16",
+      "fenAfter": "rqb2rk1/3nbppp/p2pp3/3N2P1/1p1BPP2/3B1Q2/PPP4P/2KR3R b - - 1 16",
+      "playedMove": {
+        "uci": "c3d5",
+        "san": "Nd5"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "c3e2",
+        "lossCp": 68,
+        "quality": "inaccuracy",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 52,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c3e2",
+              "e6e5",
+              "d4e3",
+              "e5f4",
+              "e2f4",
+              "d7e5",
+              "f3g3",
+              "b8b7",
+              "c1b1",
+              "a6a5",
+              "h1g1",
+              "a5a4",
+              "f4d5",
+              "c8e6"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 42,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c3a4",
+              "e6e5",
+              "d4e3",
+              "e5f4",
+              "f3f4",
+              "b8c7",
+              "h2h4",
+              "a8b8",
+              "b2b3",
+              "d7e5",
+              "h4h5",
+              "e5d3",
+              "d1d3",
+              "c8d7",
+              "h5h6",
+              "g7g6",
+              "a4b2",
+              "f7f6",
+              "b2c4",
+              "f6g5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -16,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c3d5",
+              "e6d5",
+              "e4d5",
+              "g7g6",
+              "h1e1",
+              "e7d8",
+              "f3h3",
+              "d7e5",
+              "h3h6",
+              "d8b6",
+              "d4e5",
+              "d6e5",
+              "f4f5",
+              "c8f5",
+              "d3f5",
+              "g6f5",
+              "d1d3",
+              "b8a7",
+              "d3h3",
+              "f7f6"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -105,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f3h3",
+              "b4c3",
+              "d4c3",
+              "e6e5",
+              "h1g1",
+              "d7c5",
+              "f4f5",
+              "c5a4",
+              "d3c4",
+              "a4c3",
+              "b2c3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 3,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": -16,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "c3d5",
+            "e6d5",
+            "e4d5",
+            "g7g6",
+            "h1e1",
+            "e7d8",
+            "f3h3",
+            "d7e5",
+            "h3h6",
+            "d8b6",
+            "d4e5",
+            "d6e5",
+            "f4f5",
+            "c8f5",
+            "d3f5",
+            "g6f5",
+            "d1d3",
+            "b8a7",
+            "d3h3",
+            "f7f6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "POSITIONAL"
+        ],
+        "possibleConcepts": [
+          "compensation",
+          "initiative",
+          "restriction",
+          "pawn_break"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "compensation",
+            "concepts": [
+              "compensation"
+            ]
+          },
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction",
+              "pawn_break"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "5a60da234d5e8467",
+        "gameId": "1401fb449fecec13089f",
+        "gameOrdinal": 39,
+        "ply": 31
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_bad",
+        "compare",
+        "overlooked",
+        "lesson"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPENSATION",
+          "INITIATIVE",
+          "POSITIONAL"
+        ],
+        "engineCacheKey": "c008538357bcb08362e1703089a44d269497c19f62244ca1c20ec47d41f109cc"
+      }
+    },
+    {
+      "id": "v2-restriction-pawn-activates-pieces",
+      "fenBefore": "br4k1/2nnqppp/p3p3/8/1PN5/4P3/3B1PPP/2R1QBK1 w - - 0 25",
+      "fenAfter": "br4k1/2nnqppp/p3p3/8/1PN1P3/8/3B1PPP/2R1QBK1 b - - 0 25",
+      "playedMove": {
+        "uci": "e3e4",
+        "san": "e4"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "e3e4",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 133,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e3e4",
+              "h7h6",
+              "d2e3",
+              "e6e5",
+              "f2f3",
+              "c7b5",
+              "e1d2",
+              "d7f8",
+              "e3c5",
+              "e7f6",
+              "d2b2",
+              "b8e8",
+              "b2a1",
+              "a8b7"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 126,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h2h3",
+              "c7b5",
+              "f2f3",
+              "e6e5",
+              "e3e4",
+              "b5d4",
+              "d2c3",
+              "b8d8",
+              "e1f2",
+              "d7f8",
+              "c1d1",
+              "f8g6",
+              "c4e3",
+              "e7f6"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 122,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f2f3",
+              "c7d5",
+              "c4a5",
+              "e7d6",
+              "g1h1",
+              "h7h5",
+              "h2h3",
+              "d7e5",
+              "e3e4",
+              "d5b4",
+              "d2b4",
+              "d6b4",
+              "e1b4",
+              "b8b4"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 99,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c4a5",
+              "c7b5",
+              "e3e4",
+              "b8d8",
+              "a5c4",
+              "b5d4",
+              "f2f3",
+              "e6e5",
+              "d2e3",
+              "a8c6",
+              "e1c3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 133,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "e3e4",
+            "h7h6",
+            "d2e3",
+            "e6e5",
+            "f2f3",
+            "c7b5",
+            "e1d2",
+            "d7f8",
+            "e3c5",
+            "e7f6",
+            "d2b2",
+            "b8e8",
+            "b2a1",
+            "a8b7"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "restriction",
+          "piece_activity",
+          "pawn_break"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          },
+          {
+            "id": "pawn_play",
+            "concepts": [
+              "pawn_break"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "ef0ae3455e09e4c3610d",
+        "gameOrdinal": 45,
+        "ply": 49
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "4e37cba08668485e8ea95148661fca0fcda48e7b0a81cbe062459adaa37496e4"
+      }
+    },
+    {
+      "id": "v2-restriction-c5-bishop",
+      "fenBefore": "r5k1/pbr1qpp1/1pp1p2p/4N3/1bPPpP2/1P2P2Q/PB4PP/R4RK1 w - - 0 18",
+      "fenAfter": "r5k1/pbr1qpp1/1pp1p2p/2P1N3/1b1PpP2/1P2P2Q/PB4PP/R4RK1 b - - 0 18",
+      "playedMove": {
+        "uci": "c4c5",
+        "san": "c5"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "c4c5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 95,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c4c5",
+              "f7f6",
+              "a2a3",
+              "b4a5",
+              "e5g4",
+              "b6c5",
+              "d4c5",
+              "c7d7",
+              "b2f6",
+              "g7f6",
+              "f4f5",
+              "e6e5",
+              "b3b4",
+              "b7a6",
+              "a1d1",
+              "a5d8",
+              "g4h6",
+              "g8f8"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 91,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g2g4",
+              "f7f6",
+              "e5g6",
+              "e7e8",
+              "f4f5",
+              "b4d6",
+              "g1h1",
+              "c6c5",
+              "d4c5",
+              "d6c5",
+              "a1d1",
+              "b7c6",
+              "b2d4",
+              "c5d4",
+              "d1d4",
+              "c7d7"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 62,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h3g3",
+              "f7f6",
+              "e5g6",
+              "e7f7",
+              "f4f5",
+              "e6f5",
+              "a2a3",
+              "b4f8",
+              "f1f5",
+              "a8d8"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 44,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1f2",
+              "f7f6",
+              "e5g4",
+              "a8f8",
+              "c4c5",
+              "b6c5",
+              "a2a3",
+              "b4a5",
+              "d4c5",
+              "c7d7",
+              "f4f5",
+              "e6f5",
+              "f2f5",
+              "b7c8",
+              "a1f1",
+              "d7d5",
+              "f5f6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 95,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "c4c5",
+            "f7f6",
+            "a2a3",
+            "b4a5",
+            "e5g4",
+            "b6c5",
+            "d4c5",
+            "c7d7",
+            "b2f6",
+            "g7f6",
+            "f4f5",
+            "e6e5",
+            "b3b4",
+            "b7a6",
+            "a1d1",
+            "a5d8",
+            "g4h6",
+            "g8f8"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "restriction",
+          "piece_activity",
+          "pawn_break"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          },
+          {
+            "id": "pawn_play",
+            "concepts": [
+              "pawn_break"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "005679dffd5d0e3cb0e5",
+        "gameOrdinal": 46,
+        "ply": 35
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "d3826b04b07b0ffebac40176cb1b57778fc8965e40c815a910473425df0f39ca"
+      }
+    },
+    {
+      "id": "v2-prophylaxis-permanent-bind",
+      "fenBefore": "r2r4/pb2kppp/1pp1p3/4P3/1PP5/6P1/P4PBP/2KRR3 w - - 0 24",
+      "fenAfter": "r2r4/pb2kppp/1pp1p3/2P1P3/1P6/6P1/P4PBP/2KRR3 b - - 0 24",
+      "playedMove": {
+        "uci": "c4c5",
+        "san": "c5"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "c4c5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 99,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c4c5",
+              "a7a5",
+              "b4b5",
+              "b6c5",
+              "d1d8",
+              "a8d8",
+              "b5c6",
+              "b7a6",
+              "e1e3",
+              "d8d3",
+              "g2f1",
+              "d3e3",
+              "f1a6",
+              "e3e1",
+              "c1d2",
+              "e1a1"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 62,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d1d8",
+              "a8d8",
+              "c1c2",
+              "b7a6",
+              "c2c3",
+              "c6c5",
+              "b4c5",
+              "b6c5",
+              "e1b1",
+              "d8d4",
+              "g2f1",
+              "f7f6",
+              "b1b3",
+              "f6e5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 56,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e1e3",
+              "a7a5",
+              "b4b5",
+              "a8c8",
+              "d1d8",
+              "e7d8",
+              "e3d3",
+              "d8c7",
+              "c1d2",
+              "c6b5",
+              "g2b7",
+              "c7b7",
+              "c4b5",
+              "c8c5",
+              "d3d7",
+              "b7c8",
+              "d7f7",
+              "c5b5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 49,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c1c2",
+              "a7a5",
+              "b4b5",
+              "a8c8",
+              "a2a4",
+              "d8d1",
+              "e1d1",
+              "f7f6",
+              "e5f6",
+              "g7f6",
+              "c4c5",
+              "b6c5",
+              "b5b6",
+              "b7a6",
+              "g2f1",
+              "a6f1",
+              "d1f1"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 99,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "c4c5",
+            "a7a5",
+            "b4b5",
+            "b6c5",
+            "d1d8",
+            "a8d8",
+            "b5c6",
+            "b7a6",
+            "e1e3",
+            "d8d3",
+            "g2f1",
+            "d3e3",
+            "f1a6",
+            "e3e1",
+            "c1d2",
+            "e1a1"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "POSITIONAL",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis",
+          "restriction",
+          "piece_activity"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          },
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "c555c0a299b0c3a702cc",
+        "gameOrdinal": 59,
+        "ply": 47
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "PROPHYLAXIS",
+          "POSITIONAL",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "d3ec02eadb69e83e7f50e1f6dc7b94f9b8c8b6a40a40d76f4d3f62df14671412"
+      }
+    },
+    {
+      "id": "v2-endgame-reti-pawn-race",
+      "fenBefore": "7K/8/k1P5/7p/8/8/8/8 w - - 0 1",
+      "fenAfter": "8/6K1/k1P5/7p/8/8/8/8 b - - 1 1",
+      "playedMove": {
+        "uci": "h8g7",
+        "san": "Kg7"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "h8g7",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -4,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h8g7",
+              "a6a7",
+              "g7f6",
+              "a7b6",
+              "f6e5",
+              "b6c6",
+              "e5e4",
+              "h5h4",
+              "e4f3",
+              "c6c7",
+              "f3g4",
+              "c7d7",
+              "g4h3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -503,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h8h7",
+              "a6b6",
+              "h7h6",
+              "h5h4",
+              "h6g5",
+              "h4h3",
+              "g5f4",
+              "h3h2",
+              "f4f3",
+              "h2h1r"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -513,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6c7",
+              "a6b7",
+              "h8g7",
+              "h5h4",
+              "g7f6",
+              "h4h3",
+              "f6e5",
+              "b7c7",
+              "e5e4",
+              "h3h2",
+              "e4f4",
+              "h2h1q",
+              "f4e3",
+              "h1d5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -514,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h8g8",
+              "a6b6",
+              "c6c7",
+              "b6b7",
+              "g8f7",
+              "h5h4",
+              "f7e6",
+              "b7c7",
+              "e6e5",
+              "h4h3",
+              "e5e4",
+              "h3h2",
+              "e4f4",
+              "c7d7"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": -4,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "h8g7",
+            "a6a7",
+            "g7f6",
+            "a7b6",
+            "f6e5",
+            "b6c6",
+            "e5e4",
+            "h5h4",
+            "e4f3",
+            "c6c7",
+            "f3g4",
+            "c7d7",
+            "g4h3"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "pawn_race",
+          "king_activity_endgame",
+          "prophylaxis"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "pawn_race",
+            "concepts": [
+              "pawn_race"
+            ]
+          },
+          {
+            "id": "king_activity",
+            "concepts": [
+              "king_activity_endgame"
+            ]
+          },
+          {
+            "id": "dual_purpose",
+            "concepts": [
+              "prophylaxis"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "71b44e40859f6f841f5c",
+        "gameOrdinal": 41,
+        "ply": 1
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "9bf7ce4cd49a773a940a7498a02676b8a8cd6227b440090e21da68c284d07163"
+      }
+    },
+    {
+      "id": "v2-endgame-rook-drawing-geometry",
+      "fenBefore": "8/8/8/8/1r3PK1/8/k7/8 w - - 0 1",
+      "fenAfter": "8/8/8/5K2/1r3P2/8/k7/8 b - - 1 1",
+      "playedMove": {
+        "uci": "g4f5",
+        "san": "Kf5"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "g4f5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -26,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g4f5",
+              "a2b3",
+              "f5e5",
+              "b4b5",
+              "e5e6",
+              "b3c3",
+              "f4f5",
+              "c3d4",
+              "f5f6",
+              "b5b6",
+              "e6e7",
+              "d4e5",
+              "f6f7",
+              "b6b7",
+              "e7e8",
+              "e5e6"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -470,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g4g5",
+              "a2b3",
+              "g5f5",
+              "b3c4",
+              "f5e6",
+              "c4d4",
+              "e6d6",
+              "b4b6",
+              "d6e7",
+              "d4d5",
+              "e7d7",
+              "b6b7",
+              "d7e8",
+              "b7b8",
+              "e8f7"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -501,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g4f3",
+              "a2b3",
+              "f4f5",
+              "b3c4",
+              "f5f6",
+              "c4d5",
+              "f6f7",
+              "b4b8",
+              "f3f4",
+              "d5d6",
+              "f7f8b",
+              "b8f8",
+              "f4e4",
+              "f8f7",
+              "e4d4",
+              "f7b7",
+              "d4e4",
+              "d6e6"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -501,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g4h5",
+              "a2b3",
+              "f4f5",
+              "b3c4",
+              "f5f6",
+              "c4d5",
+              "f6f7",
+              "b4b8",
+              "h5g4",
+              "d5d6",
+              "g4f5",
+              "d6e7",
+              "f5g6",
+              "b8f8",
+              "g6f5",
+              "f8f7",
+              "f5e5",
+              "e7e8"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": -26,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "g4f5",
+            "a2b3",
+            "f5e5",
+            "b4b5",
+            "e5e6",
+            "b3c3",
+            "f4f5",
+            "c3d4",
+            "f5f6",
+            "b5b6",
+            "e6e7",
+            "d4e5",
+            "f6f7",
+            "b6b7",
+            "e7e8",
+            "e5e6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "king_activity_endgame",
+          "prophylaxis",
+          "rook_activity"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "king_activity",
+            "concepts": [
+              "king_activity_endgame"
+            ]
+          },
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          },
+          {
+            "id": "rook_geometry",
+            "concepts": [
+              "rook_activity"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "735fc2a7c10b6921d681",
+        "gameOrdinal": 43,
+        "ply": 1
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "fb7114270349ae65cb8a6ecf252fce9badacc442fda941419d4748d2d4ed1fbc"
+      }
+    },
+    {
+      "id": "v2-endgame-bodycheck",
+      "fenBefore": "8/p7/P3K3/8/8/2k5/8/8 w - - 0 2",
+      "fenAfter": "8/p7/P7/3K4/8/2k5/8/8 b - - 1 2",
+      "playedMove": {
+        "uci": "e6d5",
+        "san": "Kd5"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "e6d5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 507,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6d5",
+              "c3b4",
+              "d5c6",
+              "b4c4",
+              "c6b7",
+              "c4c5",
+              "b7a7",
+              "c5c6",
+              "a7b8",
+              "c6b6",
+              "a6a7",
+              "b6b5",
+              "b8b7",
+              "b5c4",
+              "b7c6",
+              "c4b4",
+              "c6b6",
+              "b4c4",
+              "b6a5",
+              "c4c5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 0,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6d7",
+              "c3d4",
+              "d7d6",
+              "d4e4",
+              "d6c7",
+              "e4d5",
+              "c7b7",
+              "d5d6",
+              "b7a7",
+              "d6c7",
+              "a7a8",
+              "c7b6",
+              "a8b8",
+              "b6a6",
+              "b8c7",
+              "a6a7"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 0,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6d6",
+              "c3d4",
+              "d6c6",
+              "d4e5",
+              "c6b7",
+              "e5d6",
+              "b7a7",
+              "d6c7",
+              "a7a8",
+              "c7b6",
+              "a6a7",
+              "b6c7"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -7,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6f6",
+              "c3d4",
+              "f6e7",
+              "d4c5",
+              "e7d7"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 507,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "e6d5",
+            "c3b4",
+            "d5c6",
+            "b4c4",
+            "c6b7",
+            "c4c5",
+            "b7a7",
+            "c5c6",
+            "a7b8",
+            "c6b6",
+            "a6a7",
+            "b6b5",
+            "b8b7",
+            "b5c4",
+            "b7c6",
+            "c4b4",
+            "c6b6",
+            "b4c4",
+            "b6a5",
+            "c4c5"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "opposition",
+          "king_activity_endgame",
+          "prophylaxis"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "opposition",
+            "concepts": [
+              "opposition"
+            ]
+          },
+          {
+            "id": "king_activity",
+            "concepts": [
+              "king_activity_endgame"
+            ]
+          },
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "9dd3e0c260c2627bbc01",
+        "gameOrdinal": 44,
+        "ply": 3
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "0a439e991d8c00e3622a227df50ced83d9b7a46dc22c205127f6e08ba1f2f8ac"
+      }
+    },
+    {
+      "id": "v2-endgame-rook-two-functions",
+      "fenBefore": "8/5rk1/P1R4p/8/6P1/8/7K/8 w - - 0 1",
+      "fenAfter": "8/5rk1/P6p/8/6P1/8/2R4K/8 b - - 1 1",
+      "playedMove": {
+        "uci": "c6c2",
+        "san": "Rc2"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "c6c2",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 344,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6c2",
+              "f7a7",
+              "c2a2",
+              "g7f6",
+              "a2a5",
+              "f6e6",
+              "h2g3",
+              "e6d6",
+              "a5a4",
+              "d6e7",
+              "g3f4",
+              "e7d6",
+              "f4f5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 40,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h2g3",
+              "f7f1",
+              "c6b6",
+              "g7h7",
+              "b6e6",
+              "h7g7",
+              "e6c6",
+              "g7h7",
+              "c6b6",
+              "h7g7",
+              "b6e6",
+              "g7h7",
+              "e6d6",
+              "h7g7",
+              "d6d7",
+              "g7g6",
+              "d7d5",
+              "f1a1",
+              "d5d6",
+              "g6g5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 16,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6c4",
+              "f7f2",
+              "h2g3",
+              "f2a2",
+              "c4c6",
+              "a2a4",
+              "g3f3",
+              "g7h7",
+              "c6d6",
+              "h7g7",
+              "f3g3",
+              "g7h7"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 15,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6c3",
+              "f7f2",
+              "h2g3",
+              "f2a2",
+              "c3c6",
+              "a2a4",
+              "g3f3",
+              "g7h7",
+              "c6d6",
+              "h7g7",
+              "f3e3",
+              "a4g4",
+              "d6d7",
+              "g7g6",
+              "d7d4",
+              "g4g3",
+              "e3e4"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 344,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "c6c2",
+            "f7a7",
+            "c2a2",
+            "g7f6",
+            "a2a5",
+            "f6e6",
+            "h2g3",
+            "e6d6",
+            "a5a4",
+            "d6e7",
+            "g3f4",
+            "e7d6",
+            "f4f5"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "PIECE_ACTIVITY"
+        ],
+        "possibleConcepts": [
+          "rook_activity",
+          "passed_pawn",
+          "prophylaxis"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "rook_activity",
+            "concepts": [
+              "rook_activity",
+              "piece_activity"
+            ]
+          },
+          {
+            "id": "passed_pawn",
+            "concepts": [
+              "passed_pawn"
+            ]
+          },
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "1d06341b1316d7de35d8",
+        "gameOrdinal": 54,
+        "ply": 1
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "PIECE_ACTIVITY"
+        ],
+        "engineCacheKey": "d63bd95f1df53c33d99060bc67e6fb47b1760a189735550157ecee4da8a23157"
+      }
+    },
+    {
+      "id": "v2-endgame-pawn-race-dual-king",
+      "fenBefore": "3k4/8/8/1KP4p/8/8/8/8 w - - 0 2",
+      "fenAfter": "3k4/8/2K5/2P4p/8/8/8/8 b - - 1 2",
+      "playedMove": {
+        "uci": "b5c6",
+        "san": "Kc6"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "b5c6",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -5,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b5c6",
+              "d8c8",
+              "c6d5",
+              "c8d7",
+              "c5c6",
+              "d7c7",
+              "d5e5",
+              "c7c6"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -513,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b5b6",
+              "d8c8",
+              "c5c6",
+              "h5h4",
+              "c6c7",
+              "h4h3",
+              "b6c6",
+              "h3h2",
+              "c6c5",
+              "h2h1q",
+              "c5d4",
+              "c8c7",
+              "d4d3",
+              "c7b6",
+              "d3e3",
+              "b6c5",
+              "e3f4",
+              "h1h4",
+              "f4e5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -527,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b5c4",
+              "h5h4",
+              "c5c6",
+              "d8c7",
+              "c4d5",
+              "h4h3",
+              "d5e4",
+              "h3h2",
+              "e4f3",
+              "h2h1q",
+              "f3g3",
+              "h1h7",
+              "g3g4"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": -528,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c5c6",
+              "d8c7",
+              "b5c5",
+              "h5h4",
+              "c5d4",
+              "h4h3",
+              "d4e4",
+              "h3h2",
+              "e4d3",
+              "h2h1q",
+              "d3d2",
+              "h1e4",
+              "d2c3",
+              "e4e5",
+              "c3b4",
+              "e5d4",
+              "b4b5"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": -5,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "b5c6",
+            "d8c8",
+            "c6d5",
+            "c8d7",
+            "c5c6",
+            "d7c7",
+            "d5e5",
+            "c7c6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "pawn_race",
+          "king_activity_endgame",
+          "prophylaxis"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "pawn_race",
+            "concepts": [
+              "pawn_race"
+            ]
+          },
+          {
+            "id": "king_activity",
+            "concepts": [
+              "king_activity_endgame"
+            ]
+          },
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "e4718d6274cfc5ccb272",
+        "gameOrdinal": 73,
+        "ply": 3
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "COMPLEX_ENDGAME",
+          "ENDGAME",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "e6e7decf727b9816dfc09914e7477928a98817b1ba15ccac30756a8c18bdcc7e"
+      }
+    },
+    {
+      "id": "v2-no-single-motif-queen-realignment",
+      "fenBefore": "r1b2rk1/p3q1pp/1p2pp2/5n2/R4P2/1PNR4/1PP3PP/2BQ3K b - - 0 18",
+      "fenAfter": "r1b1qrk1/p5pp/1p2pp2/5n2/R4P2/1PNR4/1PP3PP/2BQ3K w - - 1 19",
+      "playedMove": {
+        "uci": "e7e8",
+        "san": "Qe8"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "a8b8",
+        "lossCp": 6,
+        "quality": "good",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 92,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a8b8",
+              "d1e1",
+              "f8e8",
+              "h1g1",
+              "b6b5",
+              "a4a1",
+              "c8b7"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 92,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f8f7",
+              "d3d8",
+              "f7f8",
+              "d8d3",
+              "e7e8",
+              "d1f3",
+              "c8d7",
+              "a4c4",
+              "a8c8",
+              "c4c8",
+              "e8c8",
+              "f3f2",
+              "d7c6",
+              "c1e3",
+              "h7h5",
+              "h2h3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 86,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e7e8",
+              "d1f3",
+              "c8d7",
+              "a4c4",
+              "a8c8",
+              "c4c8",
+              "e8c8",
+              "f3f2",
+              "d7c6",
+              "h2h3",
+              "h7h5",
+              "h1h2",
+              "h5h4",
+              "b3b4",
+              "g8h7",
+              "c1e3",
+              "f5g3",
+              "c3e2",
+              "c6b5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 75,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f8e8",
+              "b3b4",
+              "c8b7",
+              "d3d7",
+              "a8d8",
+              "d7e7",
+              "d8d1",
+              "c3d1",
+              "e8e7",
+              "d1e3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 3,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 86,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "e7e8",
+            "d1f3",
+            "c8d7",
+            "a4c4",
+            "a8c8",
+            "c4c8",
+            "e8c8",
+            "f3f2",
+            "d7c6",
+            "h2h3",
+            "h7h5",
+            "h1h2",
+            "h5h4",
+            "b3b4",
+            "g8h7",
+            "c1e3",
+            "f5g3",
+            "c3e2",
+            "c6b5"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "QUIET_MOVE",
+          "UNCERTAIN"
+        ],
+        "possibleConcepts": [
+          "piece_activity",
+          "coordination",
+          "prophylaxis"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          },
+          {
+            "id": "coordination",
+            "concepts": [
+              "coordination"
+            ]
+          },
+          {
+            "id": "prevention",
+            "concepts": [
+              "prophylaxis"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "73aefb730ef338ed1aa4",
+        "gameOrdinal": 20,
+        "ply": 36
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "was_bad",
+        "compare",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "QUIET_MOVE",
+          "UNCERTAIN"
+        ],
+        "engineCacheKey": "96c30d12cadbfda7bc9d50bf09f998fbf4f28fa011b551122c3c195598e7ea7b"
+      }
+    },
+    {
+      "id": "v2-no-single-motif-restraining-center",
+      "fenBefore": "q1r3k1/1br1bpp1/p2pnn1p/1p2p3/4P3/PP1B3P/1BPN1PPN/2RQR1K1 b - - 8 19",
+      "fenAfter": "q1r3k1/1brnbpp1/p2pn2p/1p2p3/4P3/PP1B3P/1BPN1PPN/2RQR1K1 w - - 9 20",
+      "playedMove": {
+        "uci": "f6d7",
+        "san": "Nd7"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "e6c5",
+        "lossCp": 18,
+        "quality": "good",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 143,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6c5",
+              "d1e2",
+              "c5d3",
+              "c2d3",
+              "c7c1",
+              "b2c1",
+              "c8c2",
+              "e2d1",
+              "a8c8",
+              "b3b4",
+              "d6d5",
+              "h2f3",
+              "e7d6",
+              "e4d5",
+              "b7d5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 126,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6f4",
+              "h2f1",
+              "d6d5",
+              "f1g3",
+              "h6h5",
+              "e4d5",
+              "b7d5",
+              "d2e4",
+              "f6e4",
+              "d3e4",
+              "d5e4",
+              "g3e4",
+              "f7f6",
+              "d1f3"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 125,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f6d7",
+              "h2g4",
+              "e6f4",
+              "d3f1",
+              "d7c5",
+              "g4e3",
+              "c5e4",
+              "d2e4",
+              "b7e4",
+              "c2c4",
+              "e7f8",
+              "g1h2",
+              "b5c4",
+              "c1c4",
+              "c7c4",
+              "b3c4",
+              "f4e6"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 106,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6g5",
+              "d1e2",
+              "g5e6",
+              "c2c4",
+              "e6f4",
+              "e2f3",
+              "f4d3",
+              "f3d3",
+              "b5c4",
+              "c1c4",
+              "c7c4",
+              "b3c4",
+              "f6d7"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 3,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 125,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f6d7",
+            "h2g4",
+            "e6f4",
+            "d3f1",
+            "d7c5",
+            "g4e3",
+            "c5e4",
+            "d2e4",
+            "b7e4",
+            "c2c4",
+            "e7f8",
+            "g1h2",
+            "b5c4",
+            "c1c4",
+            "c7c4",
+            "b3c4",
+            "f4e6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "QUIET_MOVE",
+          "UNCERTAIN"
+        ],
+        "possibleConcepts": [
+          "restriction",
+          "piece_activity",
+          "coordination"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction"
+            ]
+          },
+          {
+            "id": "activity",
+            "concepts": [
+              "piece_activity"
+            ]
+          },
+          {
+            "id": "coordination",
+            "concepts": [
+              "coordination"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "a41fadde70b34bb461d0",
+        "gameOrdinal": 17,
+        "ply": 38
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "was_bad",
+        "compare",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "POSITIONAL",
+          "QUIET_MOVE",
+          "UNCERTAIN"
+        ],
+        "engineCacheKey": "532cdd6e183f210f698d25cd99d36af6f806bc637f5a012240c1d17cd0227181"
+      }
+    },
+    {
+      "id": "v2-initiative-quiet-pawn",
+      "fenBefore": "1n3q2/p2p2kp/1p3pp1/3Pp3/4P1NP/1P3QP1/P4P2/6K1 w - - 0 37",
+      "fenAfter": "1n3q2/p2p2kp/1p3pp1/3Pp2P/4P1N1/1P3QP1/P4P2/6K1 b - - 0 37",
+      "playedMove": {
+        "uci": "h4h5",
+        "san": "h5"
+      },
+      "engine": {
+        "provider": "stockfish_18_curated_pgn",
+        "depth": 14,
+        "bestMove": "h4h5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 239,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h4h5",
+              "f8d6",
+              "f3e3",
+              "d6f8",
+              "e3h6",
+              "g7g8",
+              "h6c1",
+              "b8a6",
+              "g4f6",
+              "f8f6",
+              "c1c8",
+              "f6f8",
+              "c8a6"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 133,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g4e3",
+              "b8a6",
+              "h4h5",
+              "g7f7",
+              "e3g4",
+              "f8d6",
+              "f3e3",
+              "d6f8",
+              "e3c1",
+              "a6c5",
+              "c1c4",
+              "a7a5",
+              "a2a3",
+              "f8d6",
+              "b3b4",
+              "a5b4",
+              "a3b4",
+              "c5b7"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 127,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g1f1",
+              "d7d6",
+              "f3c3",
+              "f8d8",
+              "b3b4",
+              "d8d7",
+              "g4e3",
+              "b6b5",
+              "f1g2",
+              "h7h5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 14,
+            "evaluation": {
+              "unit": "cp",
+              "value": 117,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f3e2",
+              "h7h5",
+              "g4e3",
+              "f8b4",
+              "e3f1",
+              "g7f7",
+              "g3g4",
+              "h5g4",
+              "f1g3",
+              "b4d4",
+              "a2a3",
+              "d7d6",
+              "e2g4",
+              "f6f5",
+              "g3f5",
+              "g6f5",
+              "g4f5",
+              "f7g7"
+            ]
+          }
+        ],
+        "playedLine": {
+          "rank": 1,
+          "depth": 14,
+          "evaluation": {
+            "unit": "cp",
+            "value": 239,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "h4h5",
+            "f8d6",
+            "f3e3",
+            "d6f8",
+            "e3h6",
+            "g7g8",
+            "h6c1",
+            "b8a6",
+            "g4f6",
+            "f8f6",
+            "c1c8",
+            "f6f8",
+            "c8a6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "MULTI_FACTOR",
+          "INITIATIVE",
+          "KING_SAFETY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "initiative",
+          "king_safety",
+          "restriction"
+        ],
+        "requiredConceptGroups": [
+          {
+            "id": "initiative",
+            "concepts": [
+              "initiative"
+            ]
+          },
+          {
+            "id": "king_safety",
+            "concepts": [
+              "king_safety"
+            ]
+          },
+          {
+            "id": "restriction",
+            "concepts": [
+              "restriction"
+            ]
+          }
+        ],
+        "requiredFacts": [],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "reasonMode": "multi_factor",
+        "groundTruth": "curated_annotated_master_position"
+      },
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "184db3d0af72559f748b",
+        "gameOrdinal": 75,
+        "ply": 73
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important",
+        "why_evaluation"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 2000,
+        "benchmarkFocus": [
+          "MULTI_FACTOR",
+          "INITIATIVE",
+          "KING_SAFETY",
+          "QUIET_MOVE"
+        ],
+        "engineCacheKey": "e97d99cbb6e2205200772bc34c4c67428b4689b7f3e349c1d9ef663954f08a69"
+      }
+    }
+  ]
+}

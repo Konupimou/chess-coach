@@ -1,0 +1,5712 @@
+{
+  "resultVersion": 1,
+  "runId": "v2-causal-validation",
+  "createdAt": "2026-08-07T20:16:57.431Z",
+  "datasetId": "coach-benchmark-v2-hard",
+  "datasetFingerprint": "4e3cb42298d7f28976c877c1ba7ad0c19b0a02e6dc636ddaa4cbc85ed65cb6ba",
+  "config": {
+    "full": false,
+    "category": null,
+    "failuresOnly": false,
+    "coachMode": "local",
+    "judge": false,
+    "model": null
+  },
+  "results": [
+    {
+      "caseId": "v2-multi-queen-three-jobs",
+      "questionId": "was_bad",
+      "question": "War das wirklich ein schlechter Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "1fd7d5bb00e1b30d198d",
+        "gameOrdinal": 5,
+        "ply": 49
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "PIECE_ACTIVITY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "restriction",
+        "coordination",
+        "piece_activity"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Damit stellst du die Dame neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Genauso gut geht Qe2.",
+      "score": 75.25,
+      "objective": {
+        "score": 75.25,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 40,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention",
+          "missing_diagnosis_factor:coordination",
+          "missing_explanation_factor:coordination",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 134,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 132,
+            "perspective": "player"
+          },
+          "changeCp": -2,
+          "lossCp": 2
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-multi-bishop-retreat",
+      "questionId": "was_bad",
+      "question": "War das wirklich ein schlechter Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "25b030d5eea2ebc07bcc",
+        "gameOrdinal": 6,
+        "ply": 49
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "PIECE_ACTIVITY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "restriction",
+        "piece_activity",
+        "initiative"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Bd1 stellt den Läufer nach d1.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Bd8.\n\n**Alternative:** Genauso gut: Kg2 gibt den König auf g2 mehr Felder.\n\n**Der Unterschied:** Der andere Zug schützt die Figur auf a1.\n\n**Merksatz:** Schau nach deinem Zug: Ist eine deiner Figuren angegriffen und ungedeckt?",
+      "score": 77,
+      "objective": {
+        "score": 77,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 40,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:counterplay_restriction",
+          "missing_explanation_factor:counterplay_restriction",
+          "missing_diagnosis_factor:piece_improvement",
+          "missing_explanation_factor:piece_improvement",
+          "missing_diagnosis_factor:initiative",
+          "missing_explanation_factor:initiative"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 189,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 185,
+            "perspective": "player"
+          },
+          "changeCp": -4,
+          "lossCp": 4
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-quiet-weak-square-prophylaxis",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "6be56bac65ba379715b9",
+        "gameOrdinal": 7,
+        "ply": 33
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "POSITIONAL",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "weak_square",
+        "restriction"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr. Bh3 gibt den Läufer auf h3 mehr Felder.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt Bc7.\n\n**Alternative:** Weitere Möglichkeit: Nf5 stellt die Figur geschützt nach f5.",
+      "score": 94.33,
+      "objective": {
+        "score": 94.33,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 71.6665,
+          "questionRelevance": 100,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 66.67
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:weak_square",
+          "missing_explanation_factor:weak_square",
+          "missing_diagnosis_factor:restriction"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.91,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 96,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 96,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 0.91,
+          "relevanceScore": 88,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "g2h3"
+              }
+            },
+            {
+              "id": "multipv:opponent_reply_suppressed",
+              "weight": 34,
+              "evidence": {
+                "uci": "f8e6",
+                "alternatives": 3,
+                "evaluationGapCp": 82
+              }
+            },
+            {
+              "id": "multipv:prevention_is_critical",
+              "weight": 18,
+              "evidence": {
+                "gapCp": 82
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": null,
+            "preventedDangerCount": 0,
+            "suppressedReply": "f8e6",
+            "counterfactualLines": 3
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 104,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "strategic",
+            "concept": "initiative",
+            "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+            "confidence": 0.93,
+            "relevanceScore": 85,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1",
+              "engine.pv.2",
+              "engine.move_comparison"
+            ],
+            "signals": [
+              {
+                "id": "multipv:initiative_gap",
+                "weight": 34,
+                "evidence": {
+                  "gapCp": 82
+                }
+              },
+              {
+                "id": "move:quiet_tempo",
+                "weight": 14,
+                "evidence": {
+                  "uci": "g2h3"
+                }
+              },
+              {
+                "id": "engine:advantage_preserved",
+                "weight": 15,
+                "evidence": {
+                  "evaluationCp": 96
+                }
+              },
+              {
+                "id": "pv:pressure_continues",
+                "weight": 22,
+                "evidence": {
+                  "uci": "h3e6",
+                  "san": "Bxe6",
+                  "givesCheck": false,
+                  "capture": {
+                    "capturedPiece": "n",
+                    "square": "e6",
+                    "enPassant": false
+                  }
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "multiPvGapCp": 82,
+              "evaluationCp": 96,
+              "pressureMove": {
+                "uci": "h3e6",
+                "san": "Bxe6"
+              }
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 95,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.91,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-active-prophylaxis-queen-retreat",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "cba7bb620fc814254169",
+        "gameOrdinal": 8,
+        "ply": 46
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "PIECE_ACTIVITY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "piece_activity",
+        "restriction"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr. Qb8 stellt die Dame nach b8.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt Rg1.\n\n**Alternative:** Weitere Möglichkeit: a5 zieht den Bauern nach a5.",
+      "score": 94.5,
+      "objective": {
+        "score": 94.5,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 72.5,
+          "questionRelevance": 100,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 50,
+          "answerFactorCoverage": 50
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.91,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 133,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 133,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 0.91,
+          "relevanceScore": 88,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "b6b8"
+              }
+            },
+            {
+              "id": "multipv:opponent_reply_suppressed",
+              "weight": 34,
+              "evidence": {
+                "uci": "g2g3",
+                "alternatives": 2,
+                "evaluationGapCp": 80
+              }
+            },
+            {
+              "id": "multipv:prevention_is_critical",
+              "weight": 18,
+              "evidence": {
+                "gapCp": 80
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": null,
+            "preventedDangerCount": 0,
+            "suppressedReply": "g2g3",
+            "counterfactualLines": 2
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 104,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "strategic",
+            "concept": "initiative",
+            "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+            "confidence": 0.93,
+            "relevanceScore": 85,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1",
+              "engine.pv.2",
+              "engine.move_comparison"
+            ],
+            "signals": [
+              {
+                "id": "multipv:initiative_gap",
+                "weight": 34,
+                "evidence": {
+                  "gapCp": 80
+                }
+              },
+              {
+                "id": "move:quiet_tempo",
+                "weight": 14,
+                "evidence": {
+                  "uci": "b6b8"
+                }
+              },
+              {
+                "id": "engine:advantage_preserved",
+                "weight": 15,
+                "evidence": {
+                  "evaluationCp": 133
+                }
+              },
+              {
+                "id": "pv:pressure_continues",
+                "weight": 22,
+                "evidence": {
+                  "uci": "f6g4",
+                  "san": "Nxg4",
+                  "givesCheck": false,
+                  "capture": {
+                    "capturedPiece": "p",
+                    "square": "g4",
+                    "enPassant": false
+                  }
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "multiPvGapCp": 80,
+              "evaluationCp": 133,
+              "pressureMove": {
+                "uci": "f6g4",
+                "san": "Nxg4"
+              }
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 95,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.91,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-quiet-king-step",
+      "questionId": "was_bad",
+      "question": "War das wirklich ein schlechter Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "ad23812f2999740aa8fe",
+        "gameOrdinal": 26,
+        "ply": 49
+      },
+      "categories": [
+        "PROPHYLAXIS",
+        "KING_SAFETY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "king_safety"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Genauso gut geht Bh6.",
+      "score": 75.25,
+      "objective": {
+        "score": 75.25,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 40,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention",
+          "missing_diagnosis_factor:king_safety",
+          "missing_explanation_factor:king_safety"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 155,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 144,
+            "perspective": "player"
+          },
+          "changeCp": -11,
+          "lossCp": 11
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-aggressive-prophylaxis-qh8",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "cf418b9b5296b343dcd1",
+        "gameOrdinal": 38,
+        "ply": 36
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "INITIATIVE",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "initiative",
+        "piece_activity"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund: Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab. Qh8 gibt die Dame auf h8 mehr Felder.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt Bf1.\n\n**Alternative:** Weitere Möglichkeit: N6d7 stellt den Springer nach d7.",
+      "score": 87.75,
+      "objective": {
+        "score": 87.75,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 54.998999999999995,
+          "questionRelevance": 70,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:activation",
+          "missing_explanation_factor:activation"
+        ],
+        "diagnosis": {
+          "concept": "initiative",
+          "confidence": 0.93,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 167,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 167,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "initiative",
+          "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+          "confidence": 0.93,
+          "relevanceScore": 85,
+          "evidenceStrength": 4,
+          "evidenceIds": [
+            "engine.pv.1",
+            "engine.pv.2",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "multipv:initiative_gap",
+              "weight": 34,
+              "evidence": {
+                "gapCp": 44
+              }
+            },
+            {
+              "id": "move:quiet_tempo",
+              "weight": 14,
+              "evidence": {
+                "uci": "d8h8"
+              }
+            },
+            {
+              "id": "engine:advantage_preserved",
+              "weight": 15,
+              "evidence": {
+                "evaluationCp": 167
+              }
+            },
+            {
+              "id": "pv:pressure_continues",
+              "weight": 22,
+              "evidence": {
+                "uci": "h1g1",
+                "san": "Rxg1",
+                "givesCheck": false,
+                "capture": {
+                  "capturedPiece": "r",
+                  "square": "g1",
+                  "enPassant": false
+                }
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "multiPvGapCp": 44,
+            "evaluationCp": 167,
+            "pressureMove": {
+              "uci": "h1g1",
+              "san": "Rxg1"
+            }
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 95,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.93,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-quiet-kings-indian-rook",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "23e77ff0b74ac264400b",
+        "gameOrdinal": 23,
+        "ply": 30
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "PIECE_ACTIVITY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "piece_activity",
+        "restriction"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr. Rf7 gibt den Turm auf f7 mehr Felder.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt a4.\n\n**Alternative:** Genauso gut: h5 zieht den Bauern nach h5.",
+      "score": 94.33,
+      "objective": {
+        "score": 94.33,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 71.6665,
+          "questionRelevance": 100,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 66.67
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:rook_activity",
+          "missing_explanation_factor:rook_activity",
+          "missing_diagnosis_factor:restriction"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.78,
+          "level": "medium",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": -46,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": -46,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 0.78,
+          "relevanceScore": 70,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "f8f7"
+              }
+            },
+            {
+              "id": "multipv:opponent_reply_suppressed",
+              "weight": 34,
+              "evidence": {
+                "uci": "c3b5",
+                "alternatives": 2,
+                "evaluationGapCp": 23
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": null,
+            "preventedDangerCount": 0,
+            "suppressedReply": "c3b5",
+            "counterfactualLines": 2
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 86,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.78,
+          "level": "medium"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-multi-rook-defense-and-pressure",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "2c10b77620fdc696a726",
+        "gameOrdinal": 13,
+        "ply": 37
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "PIECE_ACTIVITY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "piece_activity",
+        "coordination"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr. Rf2 stellt den Turm nach f2.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt Rad8.\n\n**Alternative:** Weitere Möglichkeit: Rf3 stellt den Turm nach f3.",
+      "score": 92.67,
+      "objective": {
+        "score": 92.67,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 63.33149999999999,
+          "questionRelevance": 100,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 33.33
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:coordination",
+          "missing_explanation_factor:coordination"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.91,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 141,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 141,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 0.91,
+          "relevanceScore": 88,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "f1f2"
+              }
+            },
+            {
+              "id": "multipv:opponent_reply_suppressed",
+              "weight": 34,
+              "evidence": {
+                "uci": "c6d6",
+                "alternatives": 2,
+                "evaluationGapCp": 108
+              }
+            },
+            {
+              "id": "multipv:prevention_is_critical",
+              "weight": 18,
+              "evidence": {
+                "gapCp": 108
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": null,
+            "preventedDangerCount": 0,
+            "suppressedReply": "c6d6",
+            "counterfactualLines": 2
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 104,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "strategic",
+            "concept": "initiative",
+            "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+            "confidence": 0.93,
+            "relevanceScore": 85,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1",
+              "engine.pv.2",
+              "engine.move_comparison"
+            ],
+            "signals": [
+              {
+                "id": "multipv:initiative_gap",
+                "weight": 34,
+                "evidence": {
+                  "gapCp": 108
+                }
+              },
+              {
+                "id": "move:quiet_tempo",
+                "weight": 14,
+                "evidence": {
+                  "uci": "f1f2"
+                }
+              },
+              {
+                "id": "engine:advantage_preserved",
+                "weight": 15,
+                "evidence": {
+                  "evaluationCp": 141
+                }
+              },
+              {
+                "id": "pv:pressure_continues",
+                "weight": 22,
+                "evidence": {
+                  "uci": "f5g6",
+                  "san": "fxg6",
+                  "givesCheck": false,
+                  "capture": {
+                    "capturedPiece": "p",
+                    "square": "g6",
+                    "enPassant": false
+                  }
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "multiPvGapCp": 108,
+              "evaluationCp": 141,
+              "pressureMove": {
+                "uci": "f5g6",
+                "san": "fxg6"
+              }
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 95,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.91,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-initiative-forcing-knight",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "0c0d846762189a637b99",
+        "gameOrdinal": 10,
+        "ply": 52
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "INITIATIVE",
+        "KING_SAFETY",
+        "TACTICAL"
+      ],
+      "expectedConcepts": [
+        "initiative",
+        "mating_attack",
+        "prophylaxis"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund: Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab. Damit stellst du den Springer neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Nb5 ist besser.",
+      "score": 88,
+      "objective": {
+        "score": 88,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 65.001,
+          "questionRelevance": 35,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 66.67,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:king_attack",
+          "missing_explanation_factor:king_attack",
+          "missing_explanation_factor:prevention"
+        ],
+        "diagnosis": {
+          "concept": "initiative",
+          "confidence": 0.93,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 614,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 614,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "initiative",
+          "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+          "confidence": 0.93,
+          "relevanceScore": 85,
+          "evidenceStrength": 4,
+          "evidenceIds": [
+            "engine.pv.1",
+            "engine.pv.2",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "multipv:initiative_gap",
+              "weight": 34,
+              "evidence": {
+                "gapCp": 740
+              }
+            },
+            {
+              "id": "move:quiet_tempo",
+              "weight": 14,
+              "evidence": {
+                "uci": "a3c4"
+              }
+            },
+            {
+              "id": "engine:advantage_preserved",
+              "weight": 15,
+              "evidence": {
+                "evaluationCp": 614
+              }
+            },
+            {
+              "id": "pv:pressure_continues",
+              "weight": 22,
+              "evidence": {
+                "uci": "c4d6",
+                "san": "Nxd6",
+                "givesCheck": false,
+                "capture": {
+                  "capturedPiece": "r",
+                  "square": "d6",
+                  "enPassant": false
+                }
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "multiPvGapCp": 740,
+            "evaluationCp": 614,
+            "pressureMove": {
+              "uci": "c4d6",
+              "san": "Nxd6"
+            }
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 95,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "tactical",
+            "concept": "discovered_attack",
+            "description": "Die beste Fortsetzung bestätigt das taktische Motiv discovered_attack.",
+            "confidence": 0.92,
+            "relevanceScore": 84,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1"
+            ],
+            "signals": [
+              {
+                "id": "pv:verified_motif",
+                "weight": 28,
+                "evidence": {
+                  "branch": "best",
+                  "ply": 0,
+                  "type": "tactical_motif",
+                  "concept": "discovered_attack",
+                  "moveUci": "a3c4",
+                  "details": {
+                    "type": "discovered_attack",
+                    "movedPiece": {
+                      "piece": "n",
+                      "from": "a3",
+                      "to": "c4"
+                    },
+                    "targets": [
+                      {
+                        "piece": "p",
+                        "square": "a2",
+                        "attackers": [
+                          "a6"
+                        ]
+                      }
+                    ]
+                  },
+                  "evidenceId": "engine.pv.1"
+                }
+              },
+              {
+                "id": "line:best",
+                "weight": 15,
+                "evidence": {
+                  "move": {
+                    "uci": "a3c4",
+                    "san": "Nc4"
+                  }
+                }
+              },
+              {
+                "id": "engine:primary_move",
+                "weight": 25,
+                "evidence": {
+                  "uci": "a3c4"
+                }
+              },
+              {
+                "id": "move:immediate_motif",
+                "weight": 16
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "verified_principal_variation",
+            "featureId": null,
+            "details": {
+              "branch": "best",
+              "ply": 0,
+              "type": "tactical_motif",
+              "concept": "discovered_attack",
+              "moveUci": "a3c4",
+              "details": {
+                "type": "discovered_attack",
+                "movedPiece": {
+                  "piece": "n",
+                  "from": "a3",
+                  "to": "c4"
+                },
+                "targets": [
+                  {
+                    "piece": "p",
+                    "square": "a2",
+                    "attackers": [
+                      "a6"
+                    ]
+                  }
+                ]
+              },
+              "evidenceId": "engine.pv.1"
+            },
+            "kind": "primitive_feature",
+            "causalScore": 84,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": [
+                "motif_is_executed_by_branch_move"
+              ]
+            }
+          },
+          {
+            "rank": 3,
+            "type": "tactical",
+            "concept": "prophylaxis",
+            "description": "Der Zug verhindert eine zuvor legal vorhandene direkte Gefahr (die konkrete Antwort).",
+            "confidence": 0.74,
+            "relevanceScore": 65,
+            "evidenceStrength": 3,
+            "evidenceIds": [
+              "position.danger.comparison",
+              "position.danger.before"
+            ],
+            "signals": [
+              {
+                "id": "change:danger_prevented",
+                "weight": 24,
+                "evidence": {
+                  "type": "loose_piece",
+                  "piece": "p",
+                  "square": "b4",
+                  "attackers": [
+                    "d4"
+                  ]
+                }
+              },
+              {
+                "id": "calculation:legal_danger",
+                "weight": 16,
+                "evidence": {
+                  "type": "loose_piece",
+                  "piece": "p",
+                  "square": "b4",
+                  "attackers": [
+                    "d4"
+                  ]
+                }
+              },
+              {
+                "id": "engine:primary_move",
+                "weight": 25,
+                "evidence": {
+                  "uci": "a3c4"
+                }
+              }
+            ],
+            "squares": [
+              "b4"
+            ],
+            "pieces": [
+              "p"
+            ],
+            "source": "danger_comparison",
+            "featureId": null,
+            "details": {
+              "relation": "prevented",
+              "danger": {
+                "type": "loose_piece",
+                "piece": "p",
+                "square": "b4",
+                "attackers": [
+                  "d4"
+                ]
+              }
+            },
+            "kind": "primitive_feature",
+            "causalScore": 65,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": []
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.93,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-compensation-development-tempi",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "a22ffa1a3e6dac787df3",
+        "gameOrdinal": 25,
+        "ply": 3
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPENSATION",
+        "INITIATIVE",
+        "DEVELOPMENT"
+      ],
+      "expectedConcepts": [
+        "compensation",
+        "initiative",
+        "development_advantage",
+        "piece_activity"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund: Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung. Nd2 stellt den Springer nach d2.\n\nDer Zug ist in dieser Eröffnung gut spielbar.\n\n**Stärkste Antwort:** Danach folgt Rb8.",
+      "score": 89.75,
+      "objective": {
+        "score": 89.75,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 65.001,
+          "questionRelevance": 70,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 66.67,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:compensation",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:development",
+          "missing_explanation_factor:development"
+        ],
+        "diagnosis": {
+          "concept": "compensation",
+          "confidence": 0.78,
+          "level": "medium",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "opening",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 100,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 100,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "compensation",
+          "description": "Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung.",
+          "confidence": 0.78,
+          "relevanceScore": 76,
+          "evidenceStrength": 2,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.before.material",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "position:material_deficit",
+              "weight": 34,
+              "evidence": {
+                "pawns": 1
+              }
+            },
+            {
+              "id": "engine:evaluation_resilience",
+              "weight": 26,
+              "evidence": {
+                "evaluationCp": 100
+              }
+            },
+            {
+              "id": "engine:selected_line_supported",
+              "weight": 16,
+              "evidence": {
+                "lossCp": 0
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "materialBalanceBefore": -1,
+            "minimumMaterialBalance": -1,
+            "finalMaterialBalance": -1,
+            "evaluationCp": 100,
+            "selectedLossCp": 0,
+            "horizon": 8
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 121,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "strategic",
+            "concept": "prophylaxis",
+            "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+            "confidence": 0.91,
+            "relevanceScore": 88,
+            "evidenceStrength": 3,
+            "evidenceIds": [
+              "engine.pv.1",
+              "position.danger.comparison",
+              "engine.move_comparison",
+              "engine.pv.2",
+              "engine.pv.3",
+              "engine.pv.4"
+            ],
+            "signals": [
+              {
+                "id": "engine:selected_move_supported",
+                "weight": 24,
+                "evidence": {
+                  "lossCp": 0
+                }
+              },
+              {
+                "id": "move:quiet_prevention",
+                "weight": 12,
+                "evidence": {
+                  "uci": "f3d2"
+                }
+              },
+              {
+                "id": "multipv:opponent_reply_suppressed",
+                "weight": 34,
+                "evidence": {
+                  "uci": "g8f6",
+                  "alternatives": 2,
+                  "evaluationGapCp": 42
+                }
+              },
+              {
+                "id": "multipv:prevention_is_critical",
+                "weight": 18,
+                "evidence": {
+                  "gapCp": 42
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "danger": null,
+              "preventedDangerCount": 0,
+              "suppressedReply": "g8f6",
+              "counterfactualLines": 2
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 104,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          },
+          {
+            "rank": 3,
+            "type": "strategic",
+            "concept": "initiative",
+            "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+            "confidence": 0.93,
+            "relevanceScore": 85,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1",
+              "engine.pv.2",
+              "engine.move_comparison"
+            ],
+            "signals": [
+              {
+                "id": "multipv:initiative_gap",
+                "weight": 34,
+                "evidence": {
+                  "gapCp": 42
+                }
+              },
+              {
+                "id": "move:quiet_tempo",
+                "weight": 14,
+                "evidence": {
+                  "uci": "f3d2"
+                }
+              },
+              {
+                "id": "engine:advantage_preserved",
+                "weight": 15,
+                "evidence": {
+                  "evaluationCp": 100
+                }
+              },
+              {
+                "id": "pv:pressure_continues",
+                "weight": 22,
+                "evidence": {
+                  "uci": "f4e5",
+                  "san": "fxe5",
+                  "givesCheck": false,
+                  "capture": {
+                    "capturedPiece": "p",
+                    "square": "e5",
+                    "enPassant": false
+                  }
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "multiPvGapCp": 42,
+              "evaluationCp": 100,
+              "pressureMove": {
+                "uci": "f4e5",
+                "san": "fxe5"
+              }
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 95,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.78,
+          "level": "medium"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-compensation-center-and-attack",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "1a6a4a10543af0b9757c",
+        "gameOrdinal": 56,
+        "ply": 31
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPENSATION",
+        "INITIATIVE",
+        "PIECE_ACTIVITY"
+      ],
+      "expectedConcepts": [
+        "compensation",
+        "initiative",
+        "piece_activity",
+        "center_control"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund: Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung. Damit stellst du den Turm neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Bh6 ist besser.",
+      "score": 88,
+      "objective": {
+        "score": 88,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 65.001,
+          "questionRelevance": 35,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 66.67,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:compensation",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity"
+        ],
+        "diagnosis": {
+          "concept": "compensation",
+          "confidence": 0.78,
+          "level": "medium",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 225,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 225,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "compensation",
+          "description": "Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung.",
+          "confidence": 0.78,
+          "relevanceScore": 76,
+          "evidenceStrength": 2,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.before.material",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "position:material_deficit",
+              "weight": 34,
+              "evidence": {
+                "pawns": 1
+              }
+            },
+            {
+              "id": "engine:evaluation_resilience",
+              "weight": 26,
+              "evidence": {
+                "evaluationCp": 225
+              }
+            },
+            {
+              "id": "engine:selected_line_supported",
+              "weight": 16,
+              "evidence": {
+                "lossCp": 0
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "materialBalanceBefore": -1,
+            "minimumMaterialBalance": -1,
+            "finalMaterialBalance": 0,
+            "evaluationCp": 225,
+            "selectedLossCp": 0,
+            "horizon": 8
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 121,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "strategic",
+            "concept": "prophylaxis",
+            "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+            "confidence": 0.91,
+            "relevanceScore": 88,
+            "evidenceStrength": 3,
+            "evidenceIds": [
+              "engine.pv.1",
+              "position.danger.comparison",
+              "engine.move_comparison",
+              "engine.pv.2",
+              "engine.pv.3",
+              "engine.pv.4"
+            ],
+            "signals": [
+              {
+                "id": "engine:selected_move_supported",
+                "weight": 24,
+                "evidence": {
+                  "lossCp": 0
+                }
+              },
+              {
+                "id": "move:quiet_prevention",
+                "weight": 12,
+                "evidence": {
+                  "uci": "b1b3"
+                }
+              },
+              {
+                "id": "multipv:opponent_reply_suppressed",
+                "weight": 34,
+                "evidence": {
+                  "uci": "c3g7",
+                  "alternatives": 2,
+                  "evaluationGapCp": 240
+                }
+              },
+              {
+                "id": "multipv:prevention_is_critical",
+                "weight": 18,
+                "evidence": {
+                  "gapCp": 188
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "danger": null,
+              "preventedDangerCount": 0,
+              "suppressedReply": "c3g7",
+              "counterfactualLines": 2
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 104,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          },
+          {
+            "rank": 3,
+            "type": "strategic",
+            "concept": "initiative",
+            "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+            "confidence": 0.93,
+            "relevanceScore": 85,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1",
+              "engine.pv.2",
+              "engine.move_comparison"
+            ],
+            "signals": [
+              {
+                "id": "multipv:initiative_gap",
+                "weight": 34,
+                "evidence": {
+                  "gapCp": 188
+                }
+              },
+              {
+                "id": "move:quiet_tempo",
+                "weight": 14,
+                "evidence": {
+                  "uci": "b1b3"
+                }
+              },
+              {
+                "id": "engine:advantage_preserved",
+                "weight": 15,
+                "evidence": {
+                  "evaluationCp": 225
+                }
+              },
+              {
+                "id": "pv:pressure_continues",
+                "weight": 22,
+                "evidence": {
+                  "uci": "g5h7",
+                  "san": "Nxh7",
+                  "givesCheck": false,
+                  "capture": {
+                    "capturedPiece": "p",
+                    "square": "h7",
+                    "enPassant": false
+                  }
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "multiPvGapCp": 188,
+              "evaluationCp": 225,
+              "pressureMove": {
+                "uci": "g5h7",
+                "san": "Nxh7"
+              }
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 95,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          },
+          {
+            "rank": 4,
+            "type": "tactical",
+            "concept": "deflection",
+            "description": "Rb3 lockt den einzigen Verteidiger von a6 weg. Nach Qxb3 wird Qxa6 möglich.",
+            "confidence": 0.96,
+            "relevanceScore": 89,
+            "evidenceStrength": 5,
+            "evidenceIds": [],
+            "signals": [
+              {
+                "id": "detection:board_geometry",
+                "weight": 10,
+                "evidence": {
+                  "confidence": 0.81
+                }
+              },
+              {
+                "id": "change:pattern_removed",
+                "weight": 15
+              },
+              {
+                "id": "move:subject_creates_or_uses",
+                "weight": 27,
+                "evidence": {
+                  "uci": "b1b3"
+                }
+              },
+              {
+                "id": "engine:primary_line",
+                "weight": 25,
+                "evidence": {
+                  "status": "primary_line",
+                  "depth": 14,
+                  "primaryMoveUci": "b1b3",
+                  "supportsMove": true,
+                  "absenceDoesNotRefute": true
+                }
+              },
+              {
+                "id": "calculation:proof_line",
+                "weight": 12,
+                "evidence": {
+                  "moves": [
+                    "Rb3",
+                    "Qxb3",
+                    "Qxa6"
+                  ]
+                }
+              }
+            ],
+            "squares": [
+              "b1",
+              "b3",
+              "a4",
+              "a6"
+            ],
+            "pieces": [
+              "b3",
+              "n"
+            ],
+            "source": "pattern_recognition",
+            "featureId": "deflection:b1b3:a4:a6",
+            "details": {
+              "status": "unclear",
+              "timing": "removed",
+              "move": {
+                "uci": "b1b3",
+                "san": "Rb3",
+                "from": "b1",
+                "to": "b3"
+              },
+              "targets": [
+                {
+                  "square": "a6",
+                  "piece": "n",
+                  "value": 3
+                }
+              ],
+              "engineEvidence": {
+                "status": "primary_line",
+                "depth": 14,
+                "primaryMoveUci": "b1b3",
+                "supportsMove": true,
+                "absenceDoesNotRefute": true
+              }
+            },
+            "kind": "primitive_feature",
+            "causalScore": 89,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": [
+                "pattern_move_matches_engine_selected_subject_move"
+              ]
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.78,
+          "level": "medium"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-compensation-hindrance-pawn",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "9962e17b7902f901f845",
+        "gameOrdinal": 48,
+        "ply": 23
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPENSATION",
+        "INITIATIVE",
+        "DEVELOPMENT"
+      ],
+      "expectedConcepts": [
+        "compensation",
+        "initiative",
+        "development_advantage",
+        "restriction"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund: Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung. d6 greift die Bauern auf e7 an.\n\nDer Zug ist in dieser Eröffnung gut spielbar.\n\n**Stärkste Antwort:** Danach folgt b6.\n\n**Der Unterschied:** Nur dieser Zug behält den klaren Vorteil. Der andere gibt viel davon ab.",
+      "score": 91.5,
+      "objective": {
+        "score": 91.5,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 65.001,
+          "questionRelevance": 70,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 66.67,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:compensation",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:development_gap",
+          "missing_explanation_factor:development_gap"
+        ],
+        "diagnosis": {
+          "concept": "compensation",
+          "confidence": 0.7,
+          "level": "medium",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "opening",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 198,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 198,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "compensation",
+          "description": "Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung.",
+          "confidence": 0.7,
+          "relevanceScore": 76,
+          "evidenceStrength": 2,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.before.material",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "position:material_deficit",
+              "weight": 34,
+              "evidence": {
+                "pawns": 3
+              }
+            },
+            {
+              "id": "engine:evaluation_resilience",
+              "weight": 26,
+              "evidence": {
+                "evaluationCp": 198
+              }
+            },
+            {
+              "id": "engine:selected_line_supported",
+              "weight": 16,
+              "evidence": {
+                "lossCp": 0
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "materialBalanceBefore": -3,
+            "minimumMaterialBalance": -3,
+            "finalMaterialBalance": -3,
+            "evaluationCp": 198,
+            "selectedLossCp": 0,
+            "horizon": 8
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 121,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "strategic",
+            "concept": "prophylaxis",
+            "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+            "confidence": 1,
+            "relevanceScore": 100,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1",
+              "position.danger.comparison",
+              "engine.move_comparison",
+              "engine.pv.2",
+              "engine.pv.3",
+              "engine.pv.4"
+            ],
+            "signals": [
+              {
+                "id": "engine:selected_move_supported",
+                "weight": 24,
+                "evidence": {
+                  "lossCp": 0
+                }
+              },
+              {
+                "id": "move:quiet_prevention",
+                "weight": 12,
+                "evidence": {
+                  "uci": "d5d6"
+                }
+              },
+              {
+                "id": "change:danger_prevented",
+                "weight": 42,
+                "evidence": {
+                  "type": "overload",
+                  "move": {
+                    "uci": "d7d6",
+                    "san": "d6",
+                    "piece": "p",
+                    "from": "d7",
+                    "to": "d6",
+                    "capture": null,
+                    "givesCheck": false,
+                    "givesCheckmate": false
+                  },
+                  "motif": {
+                    "type": "overload",
+                    "defender": {
+                      "piece": "n",
+                      "square": "c3"
+                    },
+                    "duties": [
+                      {
+                        "piece": "p",
+                        "square": "a2"
+                      },
+                      {
+                        "piece": "n",
+                        "square": "b1"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "multipv:opponent_reply_suppressed",
+                "weight": 34,
+                "evidence": {
+                  "uci": "d7d6",
+                  "alternatives": 2,
+                  "evaluationGapCp": 190
+                }
+              },
+              {
+                "id": "multipv:prevention_is_critical",
+                "weight": 18,
+                "evidence": {
+                  "gapCp": 190
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "danger": {
+                "type": "overload",
+                "move": {
+                  "uci": "d7d6",
+                  "san": "d6",
+                  "piece": "p",
+                  "from": "d7",
+                  "to": "d6",
+                  "capture": null,
+                  "givesCheck": false,
+                  "givesCheckmate": false
+                },
+                "motif": {
+                  "type": "overload",
+                  "defender": {
+                    "piece": "n",
+                    "square": "c3"
+                  },
+                  "duties": [
+                    {
+                      "piece": "p",
+                      "square": "a2"
+                    },
+                    {
+                      "piece": "n",
+                      "square": "b1"
+                    }
+                  ]
+                }
+              },
+              "preventedDangerCount": 1,
+              "suppressedReply": "d7d6",
+              "counterfactualLines": 2
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 116,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          },
+          {
+            "rank": 3,
+            "type": "strategic",
+            "concept": "initiative",
+            "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+            "confidence": 0.73,
+            "relevanceScore": 63,
+            "evidenceStrength": 3,
+            "evidenceIds": [
+              "engine.pv.1",
+              "engine.pv.2",
+              "engine.move_comparison"
+            ],
+            "signals": [
+              {
+                "id": "multipv:initiative_gap",
+                "weight": 34,
+                "evidence": {
+                  "gapCp": 190
+                }
+              },
+              {
+                "id": "move:quiet_tempo",
+                "weight": 14,
+                "evidence": {
+                  "uci": "d5d6"
+                }
+              },
+              {
+                "id": "engine:advantage_preserved",
+                "weight": 15,
+                "evidence": {
+                  "evaluationCp": 198
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "causal_synthesis",
+            "featureId": null,
+            "details": {
+              "multiPvGapCp": 190,
+              "evaluationCp": 198,
+              "pressureMove": null
+            },
+            "kind": "candidate_explanation",
+            "causalScore": 73,
+            "causalValidation": {
+              "status": "validated",
+              "role": "evaluation_cause",
+              "reasons": [
+                "cross_validated_by_position_pv_and_multipv"
+              ]
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.7,
+          "level": "medium"
+        },
+        "uncertainties": [
+          {
+            "code": "multiple_plausible_drivers",
+            "severity": "medium",
+            "concepts": [
+              "compensation",
+              "prophylaxis"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-compensation-queen-sacrifice",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "5a60da234d5e8467",
+        "gameId": "cba3b32603e098a43559",
+        "gameOrdinal": 3,
+        "ply": 23
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPENSATION",
+        "INITIATIVE",
+        "MATERIAL"
+      ],
+      "expectedConcepts": [
+        "compensation",
+        "initiative",
+        "development_advantage",
+        "space_advantage"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "unavailable",
+      "answer": "",
+      "score": 81,
+      "objective": {
+        "score": 81,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 54.998999999999995,
+          "questionRelevance": 0,
+          "specificity": 0,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:material_compensation",
+          "missing_diagnosis_factor:initiative",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:positional_assets",
+          "missing_explanation_factor:positional_assets",
+          "language:empty"
+        ],
+        "diagnosis": {
+          "concept": "compensation",
+          "confidence": 0.99,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "opening",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 39,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 39,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "compensation",
+          "description": "Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung.",
+          "confidence": 0.99,
+          "relevanceScore": 100,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.before.material",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "position:material_deficit",
+              "weight": 34,
+              "evidence": {
+                "pawns": 3
+              }
+            },
+            {
+              "id": "engine:evaluation_resilience",
+              "weight": 26,
+              "evidence": {
+                "evaluationCp": 39
+              }
+            },
+            {
+              "id": "engine:selected_line_supported",
+              "weight": 16,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "pv:material_investment",
+              "weight": 30,
+              "evidence": {
+                "before": 0,
+                "minimum": -3
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "materialBalanceBefore": 0,
+            "minimumMaterialBalance": -3,
+            "finalMaterialBalance": -3,
+            "evaluationCp": 39,
+            "selectedLossCp": 0,
+            "horizon": 8
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 145,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "tactical",
+            "concept": "prophylaxis",
+            "description": "Der Zug verhindert eine zuvor legal vorhandene direkte Gefahr (Ne2+).",
+            "confidence": 0.97,
+            "relevanceScore": 91,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "position.danger.comparison",
+              "position.danger.before"
+            ],
+            "signals": [
+              {
+                "id": "change:danger_prevented",
+                "weight": 24,
+                "evidence": {
+                  "type": "double_attack",
+                  "move": {
+                    "uci": "f6g5",
+                    "san": "Bg5",
+                    "piece": "b",
+                    "from": "f6",
+                    "to": "g5",
+                    "capture": null,
+                    "givesCheck": false,
+                    "givesCheckmate": false
+                  },
+                  "motif": {
+                    "type": "double_attack",
+                    "attacker": {
+                      "piece": "b",
+                      "square": "g5"
+                    },
+                    "targets": [
+                      {
+                        "piece": "q",
+                        "square": "h4",
+                        "value": 9
+                      },
+                      {
+                        "piece": "b",
+                        "square": "e3",
+                        "value": 3
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "calculation:legal_danger",
+                "weight": 16,
+                "evidence": {
+                  "type": "double_attack",
+                  "move": {
+                    "uci": "f6g5",
+                    "san": "Bg5",
+                    "piece": "b",
+                    "from": "f6",
+                    "to": "g5",
+                    "capture": null,
+                    "givesCheck": false,
+                    "givesCheckmate": false
+                  },
+                  "motif": {
+                    "type": "double_attack",
+                    "attacker": {
+                      "piece": "b",
+                      "square": "g5"
+                    },
+                    "targets": [
+                      {
+                        "piece": "q",
+                        "square": "h4",
+                        "value": 9
+                      },
+                      {
+                        "piece": "b",
+                        "square": "e3",
+                        "value": 3
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "engine:primary_move",
+                "weight": 25,
+                "evidence": {
+                  "uci": "h4f6"
+                }
+              },
+              {
+                "id": "pv:strongest_reply",
+                "weight": 26,
+                "evidence": {
+                  "uci": "d4e2"
+                }
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "danger_comparison",
+            "featureId": null,
+            "details": {
+              "relation": "prevented",
+              "danger": {
+                "type": "discovered_attack",
+                "move": {
+                  "uci": "d4e2",
+                  "san": "Ne2+",
+                  "piece": "n",
+                  "from": "d4",
+                  "to": "e2",
+                  "capture": null,
+                  "givesCheck": true,
+                  "givesCheckmate": false
+                },
+                "motif": {
+                  "type": "discovered_attack",
+                  "movedPiece": {
+                    "piece": "n",
+                    "from": "d4",
+                    "to": "e2"
+                  },
+                  "targets": [
+                    {
+                      "piece": "n",
+                      "square": "c3",
+                      "attackers": [
+                        "f6"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            "kind": "primitive_feature",
+            "causalScore": 91,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": []
+            }
+          },
+          {
+            "rank": 3,
+            "type": "tactical",
+            "concept": "removes_defender",
+            "description": "Die beste Fortsetzung bestätigt das taktische Motiv removes_defender.",
+            "confidence": 0.92,
+            "relevanceScore": 84,
+            "evidenceStrength": 4,
+            "evidenceIds": [
+              "engine.pv.1"
+            ],
+            "signals": [
+              {
+                "id": "pv:verified_motif",
+                "weight": 28,
+                "evidence": {
+                  "branch": "best",
+                  "ply": 0,
+                  "type": "tactical_motif",
+                  "concept": "removes_defender",
+                  "moveUci": "h4f6",
+                  "details": {
+                    "type": "removes_defender",
+                    "removed": {
+                      "piece": "b",
+                      "square": "f6"
+                    },
+                    "previouslyDefended": [
+                      {
+                        "piece": "p",
+                        "square": "e7"
+                      },
+                      {
+                        "piece": "n",
+                        "square": "d4"
+                      }
+                    ]
+                  },
+                  "evidenceId": "engine.pv.1"
+                }
+              },
+              {
+                "id": "line:best",
+                "weight": 15,
+                "evidence": {
+                  "move": {
+                    "uci": "h4f6",
+                    "san": "Qxf6"
+                  }
+                }
+              },
+              {
+                "id": "engine:primary_move",
+                "weight": 25,
+                "evidence": {
+                  "uci": "h4f6"
+                }
+              },
+              {
+                "id": "move:immediate_motif",
+                "weight": 16
+              }
+            ],
+            "squares": [],
+            "pieces": [],
+            "source": "verified_principal_variation",
+            "featureId": null,
+            "details": {
+              "branch": "best",
+              "ply": 0,
+              "type": "tactical_motif",
+              "concept": "removes_defender",
+              "moveUci": "h4f6",
+              "details": {
+                "type": "removes_defender",
+                "removed": {
+                  "piece": "b",
+                  "square": "f6"
+                },
+                "previouslyDefended": [
+                  {
+                    "piece": "p",
+                    "square": "e7"
+                  },
+                  {
+                    "piece": "n",
+                    "square": "d4"
+                  }
+                ]
+              },
+              "evidenceId": "engine.pv.1"
+            },
+            "kind": "primitive_feature",
+            "causalScore": 84,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": [
+                "motif_is_executed_by_branch_move"
+              ]
+            }
+          },
+          {
+            "rank": 4,
+            "type": "material",
+            "concept": "material_change",
+            "description": "Die beste Fortsetzung verändert das Material durch einen konkreten Schlagzug.",
+            "confidence": 0.71,
+            "relevanceScore": 60,
+            "evidenceStrength": 3,
+            "evidenceIds": [
+              "engine.move_comparison.best"
+            ],
+            "signals": [
+              {
+                "id": "change:best",
+                "weight": 19,
+                "evidence": {
+                  "type": "capture",
+                  "capturedPiece": "b",
+                  "square": "f6",
+                  "enPassant": false
+                }
+              },
+              {
+                "id": "engine:primary_move",
+                "weight": 25,
+                "evidence": {
+                  "uci": "h4f6"
+                }
+              },
+              {
+                "id": "forcing:capture",
+                "weight": 16
+              }
+            ],
+            "squares": [
+              "f6"
+            ],
+            "pieces": [
+              "b"
+            ],
+            "source": "best_move_effect",
+            "featureId": null,
+            "details": {
+              "type": "capture",
+              "capturedPiece": "b",
+              "square": "f6",
+              "enPassant": false
+            },
+            "kind": "primitive_feature",
+            "causalScore": 60,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": []
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.99,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-initiative-restricting-sacrifice",
+      "questionId": "why_bad",
+      "question": "Warum war mein Zug schlecht?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "5a60da234d5e8467",
+        "gameId": "1401fb449fecec13089f",
+        "gameOrdinal": 39,
+        "ply": 31
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPENSATION",
+        "INITIATIVE",
+        "POSITIONAL"
+      ],
+      "expectedConcepts": [
+        "compensation",
+        "initiative",
+        "restriction",
+        "pawn_break"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund: Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung. Damit stellst du den Springer neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Ne2 ist besser.",
+      "score": 86,
+      "objective": {
+        "score": 86,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 54.998999999999995,
+          "questionRelevance": 35,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:compensation",
+          "missing_diagnosis_factor:initiative",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction"
+        ],
+        "diagnosis": {
+          "concept": "compensation",
+          "confidence": 0.99,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 52,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": -16,
+            "perspective": "player"
+          },
+          "changeCp": -68,
+          "lossCp": 68
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "compensation",
+          "description": "Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung.",
+          "confidence": 0.99,
+          "relevanceScore": 100,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.3",
+            "position.before.material",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "position:material_deficit",
+              "weight": 34,
+              "evidence": {
+                "pawns": 3
+              }
+            },
+            {
+              "id": "engine:evaluation_resilience",
+              "weight": 26,
+              "evidence": {
+                "evaluationCp": -16
+              }
+            },
+            {
+              "id": "engine:selected_line_supported",
+              "weight": 16,
+              "evidence": {
+                "lossCp": 68
+              }
+            },
+            {
+              "id": "pv:material_investment",
+              "weight": 30,
+              "evidence": {
+                "before": 0,
+                "minimum": -3
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "materialBalanceBefore": 0,
+            "minimumMaterialBalance": -3,
+            "finalMaterialBalance": -2,
+            "evaluationCp": -16,
+            "selectedLossCp": 68,
+            "horizon": 8
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 145,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [
+          {
+            "rank": 2,
+            "type": "material",
+            "concept": "hanging_piece",
+            "description": "Nach dem gespielten Zug kann Material auf d5 geschlagen werden.",
+            "confidence": 1,
+            "relevanceScore": 100,
+            "evidenceStrength": 5,
+            "evidenceIds": [
+              "engine.move_comparison.difference.2",
+              "engine.move_comparison",
+              "position.danger.comparison",
+              "position.danger.after"
+            ],
+            "signals": [
+              {
+                "id": "comparison:equal_horizon",
+                "weight": 34,
+                "evidence": {
+                  "horizon": 14
+                }
+              },
+              {
+                "id": "outcome:material",
+                "weight": 24,
+                "evidence": {
+                  "branch": "played",
+                  "type": "material_balance_change",
+                  "delta": -3,
+                  "horizon": 14,
+                  "evidenceId": "engine.pv.3"
+                }
+              },
+              {
+                "id": "pv:capture",
+                "weight": 14,
+                "evidence": {
+                  "branch": "played",
+                  "ply": 1,
+                  "type": "capture",
+                  "move": {
+                    "uci": "e6d5",
+                    "san": "exd5"
+                  },
+                  "capturedPiece": "n",
+                  "square": "d5",
+                  "evidenceId": "engine.pv.3"
+                }
+              },
+              {
+                "id": "change:danger_created",
+                "weight": 24,
+                "evidence": {
+                  "type": "material_capture",
+                  "move": {
+                    "uci": "e6d5",
+                    "san": "exd5",
+                    "piece": "p",
+                    "from": "e6",
+                    "to": "d5",
+                    "capture": {
+                      "capturedPiece": "n",
+                      "square": "d5",
+                      "enPassant": false
+                    },
+                    "givesCheck": false,
+                    "givesCheckmate": false
+                  },
+                  "capture": {
+                    "capturedPiece": "n",
+                    "square": "d5",
+                    "enPassant": false
+                  }
+                }
+              },
+              {
+                "id": "calculation:legal_danger",
+                "weight": 16,
+                "evidence": {
+                  "type": "material_capture",
+                  "move": {
+                    "uci": "e6d5",
+                    "san": "exd5",
+                    "piece": "p",
+                    "from": "e6",
+                    "to": "d5",
+                    "capture": {
+                      "capturedPiece": "n",
+                      "square": "d5",
+                      "enPassant": false
+                    },
+                    "givesCheck": false,
+                    "givesCheckmate": false
+                  },
+                  "capture": {
+                    "capturedPiece": "n",
+                    "square": "d5",
+                    "enPassant": false
+                  }
+                }
+              },
+              {
+                "id": "pv:strongest_reply",
+                "weight": 26,
+                "evidence": {
+                  "uci": "e6d5"
+                }
+              }
+            ],
+            "squares": [
+              "d5"
+            ],
+            "pieces": [
+              "n"
+            ],
+            "source": "move_comparison+danger_comparison",
+            "featureId": null,
+            "details": {
+              "type": "allows_material_threat",
+              "side": "played",
+              "move": "e6d5",
+              "piece": "n",
+              "square": "d5",
+              "evidenceId": "engine.move_comparison.difference.2"
+            },
+            "kind": "primitive_feature",
+            "causalScore": 100,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": []
+            }
+          },
+          {
+            "rank": 3,
+            "type": "tactical",
+            "concept": "removes_defender",
+            "description": "Der Zug ist mit der konkreten Gefahr removes_defender verbunden.",
+            "confidence": 0.75,
+            "relevanceScore": 66,
+            "evidenceStrength": 3,
+            "evidenceIds": [
+              "position.danger.comparison",
+              "position.danger.after"
+            ],
+            "signals": [
+              {
+                "id": "change:danger_created",
+                "weight": 24,
+                "evidence": {
+                  "type": "removes_defender",
+                  "move": {
+                    "uci": "e6d5",
+                    "san": "exd5",
+                    "piece": "p",
+                    "from": "e6",
+                    "to": "d5",
+                    "capture": {
+                      "capturedPiece": "n",
+                      "square": "d5",
+                      "enPassant": false
+                    },
+                    "givesCheck": false,
+                    "givesCheckmate": false
+                  },
+                  "motif": {
+                    "type": "removes_defender",
+                    "removed": {
+                      "piece": "n",
+                      "square": "d5"
+                    },
+                    "previouslyDefended": [
+                      {
+                        "piece": "p",
+                        "square": "f4"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "calculation:legal_danger",
+                "weight": 16,
+                "evidence": {
+                  "type": "removes_defender",
+                  "move": {
+                    "uci": "e6d5",
+                    "san": "exd5",
+                    "piece": "p",
+                    "from": "e6",
+                    "to": "d5",
+                    "capture": {
+                      "capturedPiece": "n",
+                      "square": "d5",
+                      "enPassant": false
+                    },
+                    "givesCheck": false,
+                    "givesCheckmate": false
+                  },
+                  "motif": {
+                    "type": "removes_defender",
+                    "removed": {
+                      "piece": "n",
+                      "square": "d5"
+                    },
+                    "previouslyDefended": [
+                      {
+                        "piece": "p",
+                        "square": "f4"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "id": "pv:strongest_reply",
+                "weight": 26,
+                "evidence": {
+                  "uci": "e6d5"
+                }
+              }
+            ],
+            "squares": [
+              "d5"
+            ],
+            "pieces": [
+              "n"
+            ],
+            "source": "danger_comparison",
+            "featureId": null,
+            "details": {
+              "relation": "created",
+              "danger": {
+                "type": "removes_defender",
+                "move": {
+                  "uci": "e6d5",
+                  "san": "exd5",
+                  "piece": "p",
+                  "from": "e6",
+                  "to": "d5",
+                  "capture": {
+                    "capturedPiece": "n",
+                    "square": "d5",
+                    "enPassant": false
+                  },
+                  "givesCheck": false,
+                  "givesCheckmate": false
+                },
+                "motif": {
+                  "type": "removes_defender",
+                  "removed": {
+                    "piece": "n",
+                    "square": "d5"
+                  },
+                  "previouslyDefended": [
+                    {
+                      "piece": "p",
+                      "square": "f4"
+                    }
+                  ]
+                }
+              }
+            },
+            "kind": "primitive_feature",
+            "causalScore": 66,
+            "causalValidation": {
+              "status": "validated",
+              "role": "local_mechanism",
+              "reasons": []
+            }
+          }
+        ],
+        "confidence": {
+          "value": 0.99,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-restriction-pawn-activates-pieces",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "ef0ae3455e09e4c3610d",
+        "gameOrdinal": 45,
+        "ply": 49
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "POSITIONAL",
+        "PIECE_ACTIVITY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "restriction",
+        "piece_activity",
+        "pawn_break"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. e4 besetzt e4 und kontrolliert zusätzlich d5.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt h6.\n\n**Alternative:** Genauso gut: h3 zieht den Bauern nach h3.",
+      "score": 78.5,
+      "objective": {
+        "score": 78.5,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 70,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:pawn_play",
+          "missing_explanation_factor:pawn_play"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 133,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 133,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-restriction-c5-bishop",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "005679dffd5d0e3cb0e5",
+        "gameOrdinal": 46,
+        "ply": 35
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "POSITIONAL",
+        "PIECE_ACTIVITY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "restriction",
+        "piece_activity",
+        "pawn_break"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. c5 greift die Bauern auf b6 an.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt f6.\n\n**Alternative:** Genauso gut: g4 zieht den Bauern nach g4.",
+      "score": 78.5,
+      "objective": {
+        "score": 78.5,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 70,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:pawn_play",
+          "missing_explanation_factor:pawn_play"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 95,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 95,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-prophylaxis-permanent-bind",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "c555c0a299b0c3a702cc",
+        "gameOrdinal": 59,
+        "ply": 47
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "PROPHYLAXIS",
+        "POSITIONAL",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "prophylaxis",
+        "restriction",
+        "piece_activity"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert den direkten gegnerischen Angriff über c5. c5 greift die Bauern auf b6 an.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt a5.\n\n**Alternative:** Weitere Möglichkeit: Rxd8 nimmt den Turm auf d8.",
+      "score": 94.33,
+      "objective": {
+        "score": 94.33,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 71.6665,
+          "questionRelevance": 100,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 66.67
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:restriction",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 1,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "endgame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 99,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 99,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 1,
+          "relevanceScore": 96,
+          "evidenceStrength": 4,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "c4c5"
+              }
+            },
+            {
+              "id": "change:danger_prevented",
+              "weight": 42,
+              "evidence": {
+                "type": "discovered_attack",
+                "move": {
+                  "uci": "c6c5",
+                  "san": "c5",
+                  "piece": "p",
+                  "from": "c6",
+                  "to": "c5",
+                  "capture": null,
+                  "givesCheck": false,
+                  "givesCheckmate": false
+                },
+                "motif": {
+                  "type": "discovered_attack",
+                  "movedPiece": {
+                    "piece": "p",
+                    "from": "c6",
+                    "to": "c5"
+                  },
+                  "targets": [
+                    {
+                      "piece": "b",
+                      "square": "g2",
+                      "attackers": [
+                        "b7"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "id": "multipv:prevention_is_critical",
+              "weight": 18,
+              "evidence": {
+                "gapCp": 37
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": {
+              "type": "discovered_attack",
+              "move": {
+                "uci": "c6c5",
+                "san": "c5",
+                "piece": "p",
+                "from": "c6",
+                "to": "c5",
+                "capture": null,
+                "givesCheck": false,
+                "givesCheckmate": false
+              },
+              "motif": {
+                "type": "discovered_attack",
+                "movedPiece": {
+                  "piece": "p",
+                  "from": "c6",
+                  "to": "c5"
+                },
+                "targets": [
+                  {
+                    "piece": "b",
+                    "square": "g2",
+                    "attackers": [
+                      "b7"
+                    ]
+                  }
+                ]
+              }
+            },
+            "preventedDangerCount": 1,
+            "suppressedReply": null,
+            "counterfactualLines": 0
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 112,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 1,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-endgame-reti-pawn-race",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "71b44e40859f6f841f5c",
+        "gameOrdinal": 41,
+        "ply": 1
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPLEX_ENDGAME",
+        "ENDGAME",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "pawn_race",
+        "king_activity_endgame",
+        "prophylaxis"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr. Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Kh7 ist besser.",
+      "score": 90.92,
+      "objective": {
+        "score": 90.92,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 63.33149999999999,
+          "questionRelevance": 65,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 33.33
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:pawn_race",
+          "missing_explanation_factor:pawn_race",
+          "missing_diagnosis_factor:king_activity",
+          "missing_explanation_factor:king_activity"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.91,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "endgame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": -4,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": -4,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 0.91,
+          "relevanceScore": 88,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "h8g7"
+              }
+            },
+            {
+              "id": "multipv:opponent_reply_suppressed",
+              "weight": 34,
+              "evidence": {
+                "uci": "a6b6",
+                "alternatives": 2,
+                "evaluationGapCp": 499
+              }
+            },
+            {
+              "id": "multipv:prevention_is_critical",
+              "weight": 18,
+              "evidence": {
+                "gapCp": 499
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": null,
+            "preventedDangerCount": 0,
+            "suppressedReply": "a6b6",
+            "counterfactualLines": 2
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 104,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.91,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-endgame-rook-drawing-geometry",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "735fc2a7c10b6921d681",
+        "gameOrdinal": 43,
+        "ply": 1
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPLEX_ENDGAME",
+        "ENDGAME",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "king_activity_endgame",
+        "prophylaxis",
+        "rook_activity"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert den direkten gegnerischen Angriff über c4. Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Kg5 ist besser.",
+      "score": 90.92,
+      "objective": {
+        "score": 90.92,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 63.33149999999999,
+          "questionRelevance": 65,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 33.33
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:king_activity",
+          "missing_explanation_factor:king_activity",
+          "missing_diagnosis_factor:rook_geometry",
+          "missing_explanation_factor:rook_geometry"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.74,
+          "level": "medium",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "endgame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": -26,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": -26,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "tactical",
+          "concept": "prophylaxis",
+          "description": "Der Zug verhindert eine zuvor legal vorhandene direkte Gefahr (Rc4).",
+          "confidence": 0.74,
+          "relevanceScore": 65,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "position.danger.comparison",
+            "position.danger.before"
+          ],
+          "signals": [
+            {
+              "id": "change:danger_prevented",
+              "weight": 24,
+              "evidence": {
+                "type": "pin",
+                "move": {
+                  "uci": "b4c4",
+                  "san": "Rc4",
+                  "piece": "r",
+                  "from": "b4",
+                  "to": "c4",
+                  "capture": null,
+                  "givesCheck": false,
+                  "givesCheckmate": false
+                },
+                "motif": {
+                  "type": "pin",
+                  "attacker": {
+                    "piece": "r",
+                    "square": "c4"
+                  },
+                  "pinned": {
+                    "piece": "p",
+                    "square": "f4"
+                  },
+                  "king": {
+                    "square": "g4"
+                  }
+                }
+              }
+            },
+            {
+              "id": "calculation:legal_danger",
+              "weight": 16,
+              "evidence": {
+                "type": "pin",
+                "move": {
+                  "uci": "b4c4",
+                  "san": "Rc4",
+                  "piece": "r",
+                  "from": "b4",
+                  "to": "c4",
+                  "capture": null,
+                  "givesCheck": false,
+                  "givesCheckmate": false
+                },
+                "motif": {
+                  "type": "pin",
+                  "attacker": {
+                    "piece": "r",
+                    "square": "c4"
+                  },
+                  "pinned": {
+                    "piece": "p",
+                    "square": "f4"
+                  },
+                  "king": {
+                    "square": "g4"
+                  }
+                }
+              }
+            },
+            {
+              "id": "engine:primary_move",
+              "weight": 25,
+              "evidence": {
+                "uci": "g4f5"
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "danger_comparison",
+          "featureId": null,
+          "details": {
+            "relation": "prevented",
+            "danger": {
+              "type": "pin",
+              "move": {
+                "uci": "b4c4",
+                "san": "Rc4",
+                "piece": "r",
+                "from": "b4",
+                "to": "c4",
+                "capture": null,
+                "givesCheck": false,
+                "givesCheckmate": false
+              },
+              "motif": {
+                "type": "pin",
+                "attacker": {
+                  "piece": "r",
+                  "square": "c4"
+                },
+                "pinned": {
+                  "piece": "p",
+                  "square": "f4"
+                },
+                "king": {
+                  "square": "g4"
+                }
+              }
+            }
+          },
+          "kind": "primitive_feature",
+          "causalScore": 65,
+          "causalValidation": {
+            "status": "validated",
+            "role": "local_mechanism",
+            "reasons": []
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.74,
+          "level": "medium"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-endgame-bodycheck",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "9dd3e0c260c2627bbc01",
+        "gameOrdinal": 44,
+        "ply": 3
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPLEX_ENDGAME",
+        "ENDGAME",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "opposition",
+        "king_activity_endgame",
+        "prophylaxis"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr. Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Kd7 ist besser.",
+      "score": 90.92,
+      "objective": {
+        "score": 90.92,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 63.33149999999999,
+          "questionRelevance": 65,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 33.33
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:opposition",
+          "missing_explanation_factor:opposition",
+          "missing_diagnosis_factor:king_activity",
+          "missing_explanation_factor:king_activity"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.91,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "endgame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 507,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 507,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 0.91,
+          "relevanceScore": 88,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "e6d5"
+              }
+            },
+            {
+              "id": "multipv:opponent_reply_suppressed",
+              "weight": 34,
+              "evidence": {
+                "uci": "c3d4",
+                "alternatives": 3,
+                "evaluationGapCp": 507
+              }
+            },
+            {
+              "id": "multipv:prevention_is_critical",
+              "weight": 18,
+              "evidence": {
+                "gapCp": 507
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": null,
+            "preventedDangerCount": 0,
+            "suppressedReply": "c3d4",
+            "counterfactualLines": 3
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 104,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.91,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-endgame-rook-two-functions",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "1d06341b1316d7de35d8",
+        "gameOrdinal": 54,
+        "ply": 1
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPLEX_ENDGAME",
+        "ENDGAME",
+        "PIECE_ACTIVITY"
+      ],
+      "expectedConcepts": [
+        "rook_activity",
+        "passed_pawn",
+        "prophylaxis"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr. Damit stellst du den Turm neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Kg3 ist besser.",
+      "score": 90.92,
+      "objective": {
+        "score": 90.92,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 63.33149999999999,
+          "questionRelevance": 65,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 33.33
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": true,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "missing_diagnosis_factor:rook_activity",
+          "missing_explanation_factor:rook_activity",
+          "missing_diagnosis_factor:passed_pawn",
+          "missing_explanation_factor:passed_pawn"
+        ],
+        "diagnosis": {
+          "concept": "prophylaxis",
+          "confidence": 0.91,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "endgame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 344,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 344,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "prophylaxis",
+          "description": "Der Zug nimmt dem Gegner eine konkrete Ressource, die in den schwächeren MultiPV-Alternativen verfügbar bleibt.",
+          "confidence": 0.91,
+          "relevanceScore": 88,
+          "evidenceStrength": 3,
+          "evidenceIds": [
+            "engine.pv.1",
+            "position.danger.comparison",
+            "engine.move_comparison",
+            "engine.pv.2",
+            "engine.pv.3",
+            "engine.pv.4"
+          ],
+          "signals": [
+            {
+              "id": "engine:selected_move_supported",
+              "weight": 24,
+              "evidence": {
+                "lossCp": 0
+              }
+            },
+            {
+              "id": "move:quiet_prevention",
+              "weight": 12,
+              "evidence": {
+                "uci": "c6c2"
+              }
+            },
+            {
+              "id": "multipv:opponent_reply_suppressed",
+              "weight": 34,
+              "evidence": {
+                "uci": "f7f2",
+                "alternatives": 2,
+                "evaluationGapCp": 328
+              }
+            },
+            {
+              "id": "multipv:prevention_is_critical",
+              "weight": 18,
+              "evidence": {
+                "gapCp": 304
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "danger": null,
+            "preventedDangerCount": 0,
+            "suppressedReply": "f7f2",
+            "counterfactualLines": 2
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 104,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.91,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    },
+    {
+      "caseId": "v2-endgame-pawn-race-dual-king",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "e4718d6274cfc5ccb272",
+        "gameOrdinal": 73,
+        "ply": 3
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "COMPLEX_ENDGAME",
+        "ENDGAME",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "pawn_race",
+        "king_activity_endgame",
+        "prophylaxis"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Kb6 ist besser.",
+      "score": 75,
+      "objective": {
+        "score": 75,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 35,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:pawn_race",
+          "missing_explanation_factor:pawn_race",
+          "missing_diagnosis_factor:king_activity",
+          "missing_explanation_factor:king_activity",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "endgame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": -5,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": -5,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-no-single-motif-queen-realignment",
+      "questionId": "was_bad",
+      "question": "War das wirklich ein schlechter Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "73aefb730ef338ed1aa4",
+        "gameOrdinal": 20,
+        "ply": 36
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "POSITIONAL",
+        "QUIET_MOVE",
+        "UNCERTAIN"
+      ],
+      "expectedConcepts": [
+        "piece_activity",
+        "coordination",
+        "prophylaxis"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Qe8 stellt die Dame nach e8.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Qf3.\n\n**Alternative:** Genauso gut: Rb8 gibt den Turm auf b8 mehr Felder.",
+      "score": 75.25,
+      "objective": {
+        "score": 75.25,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 40,
+          "specificity": 65,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:coordination",
+          "missing_explanation_factor:coordination",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 92,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 86,
+            "perspective": "player"
+          },
+          "changeCp": -6,
+          "lossCp": 6
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-no-single-motif-restraining-center",
+      "questionId": "was_bad",
+      "question": "War das wirklich ein schlechter Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "a41fadde70b34bb461d0",
+        "gameOrdinal": 17,
+        "ply": 38
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "POSITIONAL",
+        "QUIET_MOVE",
+        "UNCERTAIN"
+      ],
+      "expectedConcepts": [
+        "restriction",
+        "piece_activity",
+        "coordination"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Nd7 stellt den Springer nach d7.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Ng4.\n\n**Alternative:** Genauso gut: Nc5 stellt den Springer nach c5.\n\n**Der Unterschied:** Der andere Zug schützt die Figur auf e7.\n\n**Merksatz:** Schau nach deinem Zug: Ist eine deiner Figuren angegriffen und ungedeckt?",
+      "score": 77,
+      "objective": {
+        "score": 77,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 0,
+          "questionRelevance": 40,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 0,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:coordination",
+          "missing_explanation_factor:coordination"
+        ],
+        "diagnosis": {
+          "concept": null,
+          "confidence": 0.25,
+          "level": "limited",
+          "correct": false,
+          "calibrationClass": "uncertain_wrong"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 143,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 125,
+            "perspective": "player"
+          },
+          "changeCp": -18,
+          "lossCp": 18
+        },
+        "primaryReason": null,
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.25,
+          "level": "limited"
+        },
+        "uncertainties": [
+          {
+            "code": "no_causal_feature_confirmed",
+            "severity": "high",
+            "message": "Kein erkanntes Merkmal ist stark genug mit Zugvergleich, Stellungsänderung oder Hauptvariante verbunden."
+          }
+        ]
+      }
+    },
+    {
+      "caseId": "v2-initiative-quiet-pawn",
+      "questionId": "why_best",
+      "question": "Warum bevorzugt Stockfish diesen Zug?",
+      "source": {
+        "type": "curated_pgn",
+        "sourceId": "e6f2050f2af11ba4",
+        "gameId": "184db3d0af72559f748b",
+        "gameOrdinal": 75,
+        "ply": 73
+      },
+      "categories": [
+        "MULTI_FACTOR",
+        "INITIATIVE",
+        "KING_SAFETY",
+        "QUIET_MOVE"
+      ],
+      "expectedConcepts": [
+        "initiative",
+        "king_safety",
+        "restriction"
+      ],
+      "difficulty": "advanced",
+      "needsReview": false,
+      "coachSource": "local",
+      "answer": "Der Hauptgrund: Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab. h5 greift die Bauern auf g6 an.\n\nDas ist hier die genaueste Wahl.\n\n**Stärkste Antwort:** Danach folgt Qd6.\n\n**Alternative:** Weitere Möglichkeit: Ne3 gibt den Springer auf e3 mehr Felder.",
+      "score": 89.5,
+      "objective": {
+        "score": 89.5,
+        "metrics": {
+          "moveLegality": 100,
+          "evidenceIntegrity": 100,
+          "noHallucination": 100,
+          "engineConsistency": 100,
+          "mainReason": 54.998999999999995,
+          "questionRelevance": 70,
+          "specificity": 100,
+          "diagnosisFactorCoverage": 33.33,
+          "answerFactorCoverage": 0
+        },
+        "flags": {
+          "hallucination": false,
+          "majorChessError": false,
+          "mainConceptFound": false,
+          "contradictsEngine": false,
+          "confidentlyWrong": false
+        },
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:king_safety",
+          "missing_explanation_factor:king_safety",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction",
+          "language:long-sentence"
+        ],
+        "diagnosis": {
+          "concept": "initiative",
+          "confidence": 0.93,
+          "level": "high",
+          "correct": true,
+          "calibrationClass": "confident_correct"
+        }
+      },
+      "subjective": null,
+      "diagnosis": {
+        "version": 2,
+        "phase": "middlegame",
+        "evaluation": {
+          "before": {
+            "unit": "cp",
+            "value": 239,
+            "perspective": "player"
+          },
+          "after": {
+            "unit": "cp",
+            "value": 239,
+            "perspective": "player"
+          },
+          "changeCp": 0,
+          "lossCp": 0
+        },
+        "primaryReason": {
+          "rank": 1,
+          "type": "strategic",
+          "concept": "initiative",
+          "description": "Der Zug hält den Handlungsdruck aufrecht; ruhigere Alternativen geben laut MultiPV einen wesentlichen Teil des Vorteils ab.",
+          "confidence": 0.93,
+          "relevanceScore": 85,
+          "evidenceStrength": 4,
+          "evidenceIds": [
+            "engine.pv.1",
+            "engine.pv.2",
+            "engine.move_comparison"
+          ],
+          "signals": [
+            {
+              "id": "multipv:initiative_gap",
+              "weight": 34,
+              "evidence": {
+                "gapCp": 106
+              }
+            },
+            {
+              "id": "move:quiet_tempo",
+              "weight": 14,
+              "evidence": {
+                "uci": "h4h5"
+              }
+            },
+            {
+              "id": "engine:advantage_preserved",
+              "weight": 15,
+              "evidence": {
+                "evaluationCp": 239
+              }
+            },
+            {
+              "id": "pv:pressure_continues",
+              "weight": 22,
+              "evidence": {
+                "uci": "e3h6",
+                "san": "Qh6+",
+                "givesCheck": true,
+                "capture": null
+              }
+            }
+          ],
+          "squares": [],
+          "pieces": [],
+          "source": "causal_synthesis",
+          "featureId": null,
+          "details": {
+            "multiPvGapCp": 106,
+            "evaluationCp": 239,
+            "pressureMove": {
+              "uci": "e3h6",
+              "san": "Qh6+"
+            }
+          },
+          "kind": "candidate_explanation",
+          "causalScore": 95,
+          "causalValidation": {
+            "status": "validated",
+            "role": "evaluation_cause",
+            "reasons": [
+              "cross_validated_by_position_pv_and_multipv"
+            ]
+          }
+        },
+        "secondaryReasons": [],
+        "confidence": {
+          "value": 0.93,
+          "level": "high"
+        },
+        "uncertainties": []
+      }
+    }
+  ],
+  "summary": {
+    "overall": {
+      "cases": 25,
+      "overallScore": 85.88,
+      "objectiveScore": 85.88,
+      "chessAccuracy": 100,
+      "mainReasonPercent": 36,
+      "hallucinationRate": 0,
+      "majorErrorRate": 0,
+      "diagnosisFactorCoverage": 28.67,
+      "answerFactorCoverage": 16.67
+    },
+    "byCategory": {
+      "COMPENSATION": {
+        "cases": 5,
+        "overallScore": 87.25,
+        "objectiveScore": 87.25,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 53.33,
+        "answerFactorCoverage": 0
+      },
+      "COMPLEX_ENDGAME": {
+        "cases": 5,
+        "overallScore": 87.74,
+        "objectiveScore": 87.74,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 80,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 26.66,
+        "answerFactorCoverage": 26.66
+      },
+      "DEVELOPMENT": {
+        "cases": 2,
+        "overallScore": 90.63,
+        "objectiveScore": 90.63,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 66.67,
+        "answerFactorCoverage": 0
+      },
+      "ENDGAME": {
+        "cases": 5,
+        "overallScore": 87.74,
+        "objectiveScore": 87.74,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 80,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 26.66,
+        "answerFactorCoverage": 26.66
+      },
+      "INITIATIVE": {
+        "cases": 8,
+        "overallScore": 87.69,
+        "objectiveScore": 87.69,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 50,
+        "answerFactorCoverage": 0
+      },
+      "KING_SAFETY": {
+        "cases": 3,
+        "overallScore": 84.25,
+        "objectiveScore": 84.25,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 33.33,
+        "answerFactorCoverage": 0
+      },
+      "MATERIAL": {
+        "cases": 1,
+        "overallScore": 81,
+        "objectiveScore": 81,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 33.33,
+        "answerFactorCoverage": 0
+      },
+      "MULTI_FACTOR": {
+        "cases": 24,
+        "overallScore": 86.33,
+        "objectiveScore": 86.33,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 37.5,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 29.86,
+        "answerFactorCoverage": 17.36
+      },
+      "PIECE_ACTIVITY": {
+        "cases": 9,
+        "overallScore": 85.52,
+        "objectiveScore": 85.52,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 44.44,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 24.07,
+        "answerFactorCoverage": 20.37
+      },
+      "POSITIONAL": {
+        "cases": 7,
+        "overallScore": 83.42,
+        "objectiveScore": 83.42,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 28.57,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 14.28,
+        "answerFactorCoverage": 19.05
+      },
+      "PROPHYLAXIS": {
+        "cases": 9,
+        "overallScore": 87.27,
+        "objectiveScore": 87.27,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 55.56,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 24.07,
+        "answerFactorCoverage": 31.48
+      },
+      "QUIET_MOVE": {
+        "cases": 18,
+        "overallScore": 85.11,
+        "objectiveScore": 85.11,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 44.44,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 19.44,
+        "answerFactorCoverage": 21.3
+      },
+      "TACTICAL": {
+        "cases": 1,
+        "overallScore": 88,
+        "objectiveScore": 88,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 66.67,
+        "answerFactorCoverage": 0
+      },
+      "UNCERTAIN": {
+        "cases": 2,
+        "overallScore": 76.13,
+        "objectiveScore": 76.13,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 0,
+        "answerFactorCoverage": 0
+      }
+    },
+    "byDifficulty": {
+      "advanced": {
+        "cases": 25,
+        "overallScore": 85.88,
+        "objectiveScore": 85.88,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 36,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 28.67,
+        "answerFactorCoverage": 16.67
+      }
+    },
+    "byQuestion": {
+      "was_bad": {
+        "cases": 5,
+        "overallScore": 75.95,
+        "objectiveScore": 75.95,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 0,
+        "answerFactorCoverage": 0
+      },
+      "why_bad": {
+        "cases": 1,
+        "overallScore": 86,
+        "objectiveScore": 86,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 0,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 33.33,
+        "answerFactorCoverage": 0
+      },
+      "why_best": {
+        "cases": 19,
+        "overallScore": 88.49,
+        "objectiveScore": 88.49,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 47.37,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 35.96,
+        "answerFactorCoverage": 21.93
+      }
+    },
+    "bySource": {
+      "curated_pgn": {
+        "cases": 25,
+        "overallScore": 85.88,
+        "objectiveScore": 85.88,
+        "chessAccuracy": 100,
+        "mainReasonPercent": 36,
+        "hallucinationRate": 0,
+        "majorErrorRate": 0,
+        "diagnosisFactorCoverage": 28.67,
+        "answerFactorCoverage": 16.67
+      }
+    },
+    "calibration": {
+      "evaluated": 25,
+      "brierScore": 0.0347,
+      "expectedCalibrationError": 0.1596,
+      "confidentlyWrong": 0,
+      "classes": {
+        "uncertain_wrong": 8,
+        "confident_correct": 17
+      }
+    },
+    "failedCases": 25,
+    "failureCaseIds": [
+      "v2-multi-queen-three-jobs",
+      "v2-multi-bishop-retreat",
+      "v2-quiet-weak-square-prophylaxis",
+      "v2-active-prophylaxis-queen-retreat",
+      "v2-quiet-king-step",
+      "v2-aggressive-prophylaxis-qh8",
+      "v2-quiet-kings-indian-rook",
+      "v2-multi-rook-defense-and-pressure",
+      "v2-initiative-forcing-knight",
+      "v2-compensation-development-tempi",
+      "v2-compensation-center-and-attack",
+      "v2-compensation-hindrance-pawn",
+      "v2-compensation-queen-sacrifice",
+      "v2-initiative-restricting-sacrifice",
+      "v2-restriction-pawn-activates-pieces",
+      "v2-restriction-c5-bishop",
+      "v2-prophylaxis-permanent-bind",
+      "v2-endgame-reti-pawn-race",
+      "v2-endgame-rook-drawing-geometry",
+      "v2-endgame-bodycheck",
+      "v2-endgame-rook-two-functions",
+      "v2-endgame-pawn-race-dual-king",
+      "v2-no-single-motif-queen-realignment",
+      "v2-no-single-motif-restraining-center",
+      "v2-initiative-quiet-pawn"
+    ],
+    "topFailures": [
+      {
+        "caseId": "v2-endgame-pawn-race-dual-king",
+        "questionId": "why_best",
+        "score": 75,
+        "expected": [
+          "pawn_race",
+          "king_activity_endgame",
+          "prophylaxis"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:pawn_race",
+          "missing_explanation_factor:pawn_race",
+          "missing_diagnosis_factor:king_activity",
+          "missing_explanation_factor:king_activity",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Kb6 ist besser."
+      },
+      {
+        "caseId": "v2-multi-queen-three-jobs",
+        "questionId": "was_bad",
+        "score": 75.25,
+        "expected": [
+          "prophylaxis",
+          "restriction",
+          "coordination",
+          "piece_activity"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention",
+          "missing_diagnosis_factor:coordination",
+          "missing_explanation_factor:coordination",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Damit stellst du die Dame neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Genauso gut geht Qe2."
+      },
+      {
+        "caseId": "v2-no-single-motif-queen-realignment",
+        "questionId": "was_bad",
+        "score": 75.25,
+        "expected": [
+          "piece_activity",
+          "coordination",
+          "prophylaxis"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:coordination",
+          "missing_explanation_factor:coordination",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Qe8 stellt die Dame nach e8.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Qf3.\n\n**Alternative:** Genauso gut: Rb8 gibt den Turm auf b8 mehr Felder."
+      },
+      {
+        "caseId": "v2-quiet-king-step",
+        "questionId": "was_bad",
+        "score": 75.25,
+        "expected": [
+          "prophylaxis",
+          "king_safety"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:prevention",
+          "missing_explanation_factor:prevention",
+          "missing_diagnosis_factor:king_safety",
+          "missing_explanation_factor:king_safety"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Damit stellst du den König neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Genauso gut geht Bh6."
+      },
+      {
+        "caseId": "v2-multi-bishop-retreat",
+        "questionId": "was_bad",
+        "score": 77,
+        "expected": [
+          "prophylaxis",
+          "restriction",
+          "piece_activity",
+          "initiative"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:counterplay_restriction",
+          "missing_explanation_factor:counterplay_restriction",
+          "missing_diagnosis_factor:piece_improvement",
+          "missing_explanation_factor:piece_improvement",
+          "missing_diagnosis_factor:initiative",
+          "missing_explanation_factor:initiative"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Bd1 stellt den Läufer nach d1.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Bd8.\n\n**Alternative:** Genauso gut: Kg2 gibt den König auf g2 mehr Felder.\n\n**Der Unterschied:** Der andere Zug schützt die Figur auf a1.\n\n**Merksatz:** Schau nach deinem Zug: Ist eine deiner Figuren angegriffen und ungedeckt?"
+      },
+      {
+        "caseId": "v2-no-single-motif-restraining-center",
+        "questionId": "was_bad",
+        "score": 77,
+        "expected": [
+          "restriction",
+          "piece_activity",
+          "coordination"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:coordination",
+          "missing_explanation_factor:coordination"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. Nd7 stellt den Springer nach d7.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt Ng4.\n\n**Alternative:** Genauso gut: Nc5 stellt den Springer nach c5.\n\n**Der Unterschied:** Der andere Zug schützt die Figur auf e7.\n\n**Merksatz:** Schau nach deinem Zug: Ist eine deiner Figuren angegriffen und ungedeckt?"
+      },
+      {
+        "caseId": "v2-restriction-c5-bishop",
+        "questionId": "why_best",
+        "score": 78.5,
+        "expected": [
+          "restriction",
+          "piece_activity",
+          "pawn_break"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:pawn_play",
+          "missing_explanation_factor:pawn_play"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. c5 greift die Bauern auf b6 an.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt f6.\n\n**Alternative:** Genauso gut: g4 zieht den Bauern nach g4."
+      },
+      {
+        "caseId": "v2-restriction-pawn-activates-pieces",
+        "questionId": "why_best",
+        "score": 78.5,
+        "expected": [
+          "restriction",
+          "piece_activity",
+          "pawn_break"
+        ],
+        "diagnosis": null,
+        "issues": [
+          "wrong_primary_reason:none",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction",
+          "missing_diagnosis_factor:activity",
+          "missing_explanation_factor:activity",
+          "missing_diagnosis_factor:pawn_play",
+          "missing_explanation_factor:pawn_play"
+        ],
+        "answer": "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt. e4 besetzt e4 und kontrolliert zusätzlich d5.\n\nDer Zug hält deine Stellung.\n\n**Stärkste Antwort:** Danach folgt h6.\n\n**Alternative:** Genauso gut: h3 zieht den Bauern nach h3."
+      },
+      {
+        "caseId": "v2-compensation-queen-sacrifice",
+        "questionId": "why_best",
+        "score": 81,
+        "expected": [
+          "compensation",
+          "initiative",
+          "development_advantage",
+          "space_advantage"
+        ],
+        "diagnosis": "compensation",
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:material_compensation",
+          "missing_diagnosis_factor:initiative",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:positional_assets",
+          "missing_explanation_factor:positional_assets",
+          "language:empty"
+        ],
+        "answer": ""
+      },
+      {
+        "caseId": "v2-initiative-restricting-sacrifice",
+        "questionId": "why_bad",
+        "score": 86,
+        "expected": [
+          "compensation",
+          "initiative",
+          "restriction",
+          "pawn_break"
+        ],
+        "diagnosis": "compensation",
+        "issues": [
+          "main_reason_not_explained",
+          "missing_explanation_factor:compensation",
+          "missing_diagnosis_factor:initiative",
+          "missing_explanation_factor:initiative",
+          "missing_diagnosis_factor:restriction",
+          "missing_explanation_factor:restriction"
+        ],
+        "answer": "Der Hauptgrund: Die Engine-Bewertung bleibt trotz des materiellen Rückstands stabil; die nichtmateriellen Vorteile tragen die Stellung. Damit stellst du den Springer neu auf.\n\nDer Zug hält deine Stellung gut.\n\n**Alternative:** Ne2 ist besser."
+      }
+    ]
+  },
+  "comparison": {
+    "baselineRunId": "v2-hard-local-baseline",
+    "matchedResults": 25,
+    "overallDelta": 22.21,
+    "metricDeltas": {
+      "chessAccuracy": 1,
+      "mainReasonPercent": 32,
+      "hallucinationRate": -4
+    },
+    "categoryDeltas": {
+      "MULTI_FACTOR": 22.91,
+      "PROPHYLAXIS": 24.91,
+      "PIECE_ACTIVITY": 22.6,
+      "QUIET_MOVE": 19.28,
+      "POSITIONAL": 22.99,
+      "KING_SAFETY": 16.42,
+      "INITIATIVE": 32,
+      "TACTICAL": 33,
+      "COMPENSATION": 31.85,
+      "DEVELOPMENT": 33,
+      "MATERIAL": 31,
+      "COMPLEX_ENDGAME": 9.55,
+      "ENDGAME": 9.55,
+      "UNCERTAIN": 20
+    },
+    "regressions": [],
+    "improvements": [
+      {
+        "caseId": "v2-aggressive-prophylaxis-qh8",
+        "questionId": "why_best",
+        "before": 35,
+        "after": 87.75,
+        "delta": 52.75
+      },
+      {
+        "caseId": "v2-active-prophylaxis-queen-retreat",
+        "questionId": "why_best",
+        "before": 50,
+        "after": 94.5,
+        "delta": 44.5
+      },
+      {
+        "caseId": "v2-quiet-weak-square-prophylaxis",
+        "questionId": "why_best",
+        "before": 58.5,
+        "after": 94.33,
+        "delta": 35.83
+      },
+      {
+        "caseId": "v2-multi-rook-defense-and-pressure",
+        "questionId": "why_best",
+        "before": 58.5,
+        "after": 92.67,
+        "delta": 34.17
+      },
+      {
+        "caseId": "v2-initiative-forcing-knight",
+        "questionId": "why_best",
+        "before": 55,
+        "after": 88,
+        "delta": 33
+      },
+      {
+        "caseId": "v2-compensation-development-tempi",
+        "questionId": "why_best",
+        "before": 56.75,
+        "after": 89.75,
+        "delta": 33
+      },
+      {
+        "caseId": "v2-compensation-center-and-attack",
+        "questionId": "why_best",
+        "before": 55,
+        "after": 88,
+        "delta": 33
+      },
+      {
+        "caseId": "v2-compensation-hindrance-pawn",
+        "questionId": "why_best",
+        "before": 58.5,
+        "after": 91.5,
+        "delta": 33
+      },
+      {
+        "caseId": "v2-compensation-queen-sacrifice",
+        "questionId": "why_best",
+        "before": 50,
+        "after": 81,
+        "delta": 31
+      },
+      {
+        "caseId": "v2-initiative-restricting-sacrifice",
+        "questionId": "why_bad",
+        "before": 56.75,
+        "after": 86,
+        "delta": 29.25
+      },
+      {
+        "caseId": "v2-restriction-pawn-activates-pieces",
+        "questionId": "why_best",
+        "before": 58.5,
+        "after": 78.5,
+        "delta": 20
+      },
+      {
+        "caseId": "v2-restriction-c5-bishop",
+        "questionId": "why_best",
+        "before": 58.5,
+        "after": 78.5,
+        "delta": 20
+      },
+      {
+        "caseId": "v2-no-single-motif-queen-realignment",
+        "questionId": "was_bad",
+        "before": 55.25,
+        "after": 75.25,
+        "delta": 20
+      },
+      {
+        "caseId": "v2-no-single-motif-restraining-center",
+        "questionId": "was_bad",
+        "before": 57,
+        "after": 77,
+        "delta": 20
+      },
+      {
+        "caseId": "v2-multi-queen-three-jobs",
+        "questionId": "was_bad",
+        "before": 57,
+        "after": 75.25,
+        "delta": 18.25
+      },
+      {
+        "caseId": "v2-quiet-kings-indian-rook",
+        "questionId": "why_best",
+        "before": 76.75,
+        "after": 94.33,
+        "delta": 17.58
+      },
+      {
+        "caseId": "v2-endgame-reti-pawn-race",
+        "questionId": "why_best",
+        "before": 75,
+        "after": 90.92,
+        "delta": 15.92
+      },
+      {
+        "caseId": "v2-endgame-bodycheck",
+        "questionId": "why_best",
+        "before": 75,
+        "after": 90.92,
+        "delta": 15.92
+      },
+      {
+        "caseId": "v2-endgame-rook-two-functions",
+        "questionId": "why_best",
+        "before": 75,
+        "after": 90.92,
+        "delta": 15.92
+      },
+      {
+        "caseId": "v2-prophylaxis-permanent-bind",
+        "questionId": "why_best",
+        "before": 78.5,
+        "after": 94.33,
+        "delta": 15.83
+      }
+    ]
+  }
+}

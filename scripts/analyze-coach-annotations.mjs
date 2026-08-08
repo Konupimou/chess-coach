@@ -31,7 +31,7 @@ export function parseInfo(line) {
   };
 }
 
-class StockfishBatch {
+export class StockfishBatch {
   constructor({ multiPv = 3 } = {}) {
     const cli = resolve(dirname(fileURLToPath(import.meta.url)), "../node_modules/stockfish/scripts/cli.js");
     this.child = spawn(process.execPath, [cli], { stdio: ["pipe", "pipe", "pipe"] });

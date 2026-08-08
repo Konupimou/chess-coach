@@ -1,0 +1,1944 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "coach-benchmark-v1",
+  "description": "Stabiler MVP-Benchmark aus kuratierten und PGN-basierten Stellungen.",
+  "contaminationPolicy": "Erwartungen und Labels sind ausschließlich für den Runner bestimmt und werden nie in Coach-Prompts eingefügt.",
+  "questions": [
+    {
+      "id": "why_bad",
+      "text": "Warum war mein Zug schlecht?"
+    },
+    {
+      "id": "why_evaluation",
+      "text": "Warum ist diese Stellung so bewertet?"
+    },
+    {
+      "id": "why_best",
+      "text": "Warum bevorzugt Stockfish diesen Zug?"
+    },
+    {
+      "id": "overlooked",
+      "text": "Was habe ich übersehen?"
+    },
+    {
+      "id": "position_problem",
+      "text": "Was ist das wichtigste Problem in meiner Stellung?"
+    },
+    {
+      "id": "compare",
+      "text": "Warum ist dieser Zug besser als meiner?"
+    },
+    {
+      "id": "lesson",
+      "text": "Was sollte ich aus diesem Fehler lernen?"
+    },
+    {
+      "id": "was_bad",
+      "text": "War das wirklich ein schlechter Zug?"
+    },
+    {
+      "id": "most_important",
+      "text": "Was ist hier am wichtigsten?"
+    }
+  ],
+  "cases": [
+    {
+      "id": "controlled-tactic-mate-threat",
+      "fenBefore": "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR w KQkq - 0 2",
+      "fenAfter": "rnbqkbnr/pppp1ppp/8/4p3/5PP1/8/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+      "playedMove": {
+        "uci": "f3f4",
+        "san": "f4"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "g1h3",
+        "lossCp": 980,
+        "quality": "blunder",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": -20,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g1h3",
+              "d8h4"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": -1000,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f3f4",
+              "d8h4"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": -1000,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f3f4",
+            "d8h4"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL",
+          "KING_SAFETY",
+          "MATING_ATTACK",
+          "BLUNDER"
+        ],
+        "possibleConcepts": [
+          "mating_attack"
+        ],
+        "requiredFacts": [
+          "allows_checkmate",
+          "Qh4#"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "tactic-mate-threat"
+      },
+      "difficulty": "beginner",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson",
+        "was_bad"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 800
+      }
+    },
+    {
+      "id": "controlled-tactic-hanging-queen",
+      "fenBefore": "3q2k1/8/8/8/8/8/3Q4/6K1 w - - 0 1",
+      "fenAfter": "3q2k1/8/8/8/8/3Q4/8/6K1 b - - 1 1",
+      "playedMove": {
+        "uci": "d2d3",
+        "san": "Qd3"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "d2e3",
+        "lossCp": 900,
+        "quality": "blunder",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 0,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d2e3",
+              "g8f7"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": -900,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d2d3",
+              "d8d3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": -900,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "d2d3",
+            "d8d3"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL",
+          "MATERIAL",
+          "BLUNDER"
+        ],
+        "possibleConcepts": [
+          "hanging_piece",
+          "material_loss"
+        ],
+        "requiredFacts": [
+          "material_outcome",
+          "capturedPiece"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "tactic-hanging-queen"
+      },
+      "difficulty": "beginner",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson",
+        "was_bad"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 800
+      }
+    },
+    {
+      "id": "controlled-tactic-knight-fork",
+      "fenBefore": "r3k3/8/8/1N6/8/8/8/4K3 w - - 0 1",
+      "fenAfter": "r3k3/2N5/8/8/8/8/8/4K3 b - - 1 1",
+      "playedMove": {
+        "uci": "b5c7",
+        "san": "Nc7+"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "b5c7",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b5c7",
+              "e8d7"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "b5c7",
+            "e8d7"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL",
+          "MATERIAL"
+        ],
+        "possibleConcepts": [
+          "fork",
+          "double_attack"
+        ],
+        "requiredFacts": [
+          "fork"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "tactic-knight-fork"
+      },
+      "difficulty": "beginner",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 800
+      }
+    },
+    {
+      "id": "controlled-tactic-pin",
+      "fenBefore": "r1bqkbnr/ppp2ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+      "fenAfter": "r1bqkbnr/ppp2ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3",
+      "playedMove": {
+        "uci": "f1b5",
+        "san": "Bb5"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "f1b5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f1b5"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f1b5"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL"
+        ],
+        "possibleConcepts": [
+          "pin"
+        ],
+        "requiredFacts": [
+          "pin"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "tactic-pin"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1400
+      }
+    },
+    {
+      "id": "controlled-tactic-back-rank",
+      "fenBefore": "6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1",
+      "fenAfter": "4R1k1/5ppp/8/8/8/8/8/6K1 b - - 1 1",
+      "playedMove": {
+        "uci": "e1e8",
+        "san": "Re8#"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "e1e8",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e1e8"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "e1e8"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL",
+          "KING_SAFETY",
+          "MATING_ATTACK"
+        ],
+        "possibleConcepts": [
+          "back_rank_mate",
+          "mating_attack"
+        ],
+        "requiredFacts": [
+          "back_rank_mate",
+          "gives_checkmate"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "tactic-back-rank"
+      },
+      "difficulty": "beginner",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 800
+      }
+    },
+    {
+      "id": "controlled-strategy-missed-castle",
+      "fenBefore": "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+      "fenAfter": "r3k2r/8/8/8/8/8/8/R4K1R b kq - 1 1",
+      "playedMove": {
+        "uci": "e1f1",
+        "san": "Kf1"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "e1g1",
+        "lossCp": 220,
+        "quality": "mistake",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 40,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e1g1"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": -180,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e1f1"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": -180,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "e1f1"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "KING_SAFETY",
+          "DEVELOPMENT",
+          "MULTI_FACTOR"
+        ],
+        "possibleConcepts": [
+          "discovered_attack",
+          "king_safety"
+        ],
+        "requiredFacts": [
+          "castles",
+          "castlingRightsLost"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "strategy-missed-castle"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson",
+        "was_bad"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1400
+      }
+    },
+    {
+      "id": "controlled-strategy-prophylaxis",
+      "fenBefore": "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2",
+      "fenAfter": "rnbqkbnr/pppp1ppp/8/4p3/8/5PP1/PPPPP2P/RNBQKBNR b KQkq - 0 2",
+      "playedMove": {
+        "uci": "g2g3",
+        "san": "g3"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "g2g3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g2g3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "g2g3"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "POSITIONAL",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "prophylaxis"
+        ],
+        "requiredFacts": [
+          "dangerPreventedByMove"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "strategy-prophylaxis"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1800
+      }
+    },
+    {
+      "id": "controlled-strategy-pawn-break",
+      "fenBefore": "6k1/8/8/4p3/8/8/5P2/6K1 w - - 0 1",
+      "fenAfter": "6k1/8/8/4p3/5P2/8/8/6K1 b - - 0 1",
+      "playedMove": {
+        "uci": "f2f4",
+        "san": "f4"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "f2f4",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f2f4"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f2f4"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "POSITIONAL",
+          "PAWN_STRUCTURE",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "pawn_break"
+        ],
+        "requiredFacts": [
+          "pawn_break",
+          "e5"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "strategy-pawn-break"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1400
+      }
+    },
+    {
+      "id": "controlled-strategy-outpost",
+      "fenBefore": "6k1/8/8/8/4P3/2N5/8/6K1 w - - 0 1",
+      "fenAfter": "6k1/8/8/3N4/4P3/8/8/6K1 b - - 1 1",
+      "playedMove": {
+        "uci": "c3d5",
+        "san": "Nd5"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "c3d5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c3d5"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "c3d5"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "POSITIONAL",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "outpost"
+        ],
+        "requiredFacts": [
+          "creates_outpost",
+          "d5"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "strategy-outpost"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1400
+      }
+    },
+    {
+      "id": "controlled-strategy-open-file-rook",
+      "fenBefore": "4k3/8/8/8/8/8/8/R3K3 w - - 0 1",
+      "fenAfter": "4k3/8/8/8/8/8/8/3RK3 b - - 1 1",
+      "playedMove": {
+        "uci": "a1d1",
+        "san": "Rd1"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "a1d1",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a1d1"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "a1d1"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "POSITIONAL",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "rook_on_open_file",
+          "open_file"
+        ],
+        "requiredFacts": [
+          "rook_on_open_file",
+          "d"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "strategy-open-file-rook"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1400
+      }
+    },
+    {
+      "id": "controlled-endgame-king-centralization",
+      "fenBefore": "8/8/4k3/8/8/8/4K2P/8 w - - 0 1",
+      "fenAfter": "8/8/4k3/8/8/4K3/7P/8 b - - 1 1",
+      "playedMove": {
+        "uci": "e2e3",
+        "san": "Ke3"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "e2e3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e2e3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "e2e3"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "ENDGAME",
+          "PIECE_ACTIVITY",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "king_activity_endgame"
+        ],
+        "requiredFacts": [
+          "king_centralization"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "endgame-king-centralization"
+      },
+      "difficulty": "beginner",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 800
+      }
+    },
+    {
+      "id": "controlled-endgame-passed-pawn",
+      "fenBefore": "7k/8/8/8/2p5/3P4/2P5/7K w - - 0 1",
+      "fenAfter": "7k/8/8/8/2P5/8/2P5/7K b - - 0 1",
+      "playedMove": {
+        "uci": "d3c4",
+        "san": "dxc4"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "d3c4",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d3c4"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "d3c4"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "ENDGAME",
+          "PAWN_STRUCTURE"
+        ],
+        "possibleConcepts": [
+          "passed_pawn"
+        ],
+        "requiredFacts": [
+          "creates_passed_pawn"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "endgame-passed-pawn"
+      },
+      "difficulty": "beginner",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 800
+      }
+    },
+    {
+      "id": "controlled-opening-poor-development",
+      "fenBefore": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+      "fenAfter": "rnbqkbnr/pppp1ppp/8/4p3/4P3/N7/PPPP1PPP/R1BQKBNR b KQkq - 1 2",
+      "playedMove": {
+        "uci": "b1a3",
+        "san": "Na3"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "g1f3",
+        "lossCp": 70,
+        "quality": "inaccuracy",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 30,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g1f3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": -40,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b1a3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": -40,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "b1a3"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "DEVELOPMENT",
+          "POSITIONAL",
+          "QUIET_MOVE"
+        ],
+        "possibleConcepts": [
+          "development_advantage"
+        ],
+        "requiredFacts": [
+          "develops_piece"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "opening-poor-development"
+      },
+      "difficulty": "beginner",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson",
+        "was_bad"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 800
+      }
+    },
+    {
+      "id": "controlled-tactic-zwischenzug",
+      "fenBefore": "4k3/8/q7/8/8/8/P7/4KB2 w - - 0 1",
+      "fenAfter": "4k3/8/q7/8/8/P7/8/4KB2 b - - 0 1",
+      "playedMove": {
+        "uci": "a2a3",
+        "san": "a3"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "a2a3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a2a3",
+              "a6a3",
+              "f1b5"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "a2a3",
+            "a6a3",
+            "f1b5"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL",
+          "MATERIAL"
+        ],
+        "possibleConcepts": [
+          "zwischenzug"
+        ],
+        "requiredFacts": [
+          "zwischenzug"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "tactic-zwischenzug"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1800
+      }
+    },
+    {
+      "id": "controlled-exchange-unfavorable",
+      "fenBefore": "q5k1/b7/8/8/8/8/7K/R7 w - - 0 1",
+      "fenAfter": "q5k1/R7/8/8/8/8/7K/8 b - - 0 1",
+      "playedMove": {
+        "uci": "a1a7",
+        "san": "Rxa7"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "a1b1",
+        "lossCp": 300,
+        "quality": "mistake",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 0,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a1b1",
+              "g8f7"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": -300,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "a1a7",
+              "a8a7"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": -300,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "a1a7",
+            "a8a7"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "MATERIAL",
+          "TACTICAL"
+        ],
+        "possibleConcepts": [
+          "hanging_piece",
+          "material_loss",
+          "unfavorable_exchange"
+        ],
+        "requiredFacts": [
+          "material_outcome",
+          "forced_capture_sequence"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "exchange-unfavorable"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson",
+        "was_bad"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1400
+      }
+    },
+    {
+      "id": "controlled-quiet-best-without-tactic",
+      "fenBefore": "8/8/4k3/8/8/8/4K2P/8 w - - 0 1",
+      "fenAfter": "8/8/4k3/8/8/7P/4K3/8 b - - 0 1",
+      "playedMove": {
+        "uci": "h2h3",
+        "san": "h3"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "h2h3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "h2h3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "h2h3"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "QUIET_MOVE",
+          "POSITIONAL"
+        ],
+        "possibleConcepts": [],
+        "requiredFacts": [
+          "moves_piece"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "quiet-best-without-tactic"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1800
+      }
+    },
+    {
+      "id": "controlled-quiet-no-reliable-motif",
+      "fenBefore": "8/8/8/4k3/8/8/4K3/8 w - - 0 1",
+      "fenAfter": "8/8/8/4k3/8/8/5K2/8 b - - 1 1",
+      "playedMove": {
+        "uci": "e2f2",
+        "san": "Kf2"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "e2f2",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 35,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e2f2"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": 35,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "e2f2"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "QUIET_MOVE",
+          "UNCERTAIN"
+        ],
+        "possibleConcepts": [],
+        "requiredFacts": [
+          "moves_piece"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": true,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "quiet-no-reliable-motif"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "why_evaluation",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1800
+      }
+    },
+    {
+      "id": "controlled-plausible-idea-bad-result",
+      "fenBefore": "3q2k1/8/8/8/8/8/3Q4/6K1 w - - 0 1",
+      "fenAfter": "3q2k1/8/8/8/8/3Q4/8/6K1 b - - 1 1",
+      "playedMove": {
+        "uci": "d2d3",
+        "san": "Qd3"
+      },
+      "engine": {
+        "provider": "stockfish_fixture",
+        "depth": 18,
+        "bestMove": "d2e3",
+        "lossCp": 900,
+        "quality": "blunder",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": 0,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d2e3",
+              "g8f7"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 18,
+            "evaluation": {
+              "unit": "cp",
+              "value": -900,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d2d3",
+              "d8d3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 18,
+          "evaluation": {
+            "unit": "cp",
+            "value": -900,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "d2d3",
+            "d8d3"
+          ]
+        },
+        "onlyMove": false,
+        "onlyMoveEvidence": null
+      },
+      "expected": {
+        "categories": [
+          "MATERIAL",
+          "BLUNDER",
+          "MULTI_FACTOR"
+        ],
+        "possibleConcepts": [
+          "hanging_piece",
+          "material_loss"
+        ],
+        "requiredFacts": [
+          "material_outcome"
+        ],
+        "needsReview": false,
+        "expectNoPrimaryReason": false,
+        "groundTruth": "curated_legal_fixture"
+      },
+      "source": {
+        "type": "controlled",
+        "fixtureId": "plausible-idea-bad-result"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson",
+        "was_bad"
+      ],
+      "metadata": {
+        "generated": false,
+        "rating": 1400
+      }
+    },
+    {
+      "id": "pgn-a2d6539cae1476faf03b-010",
+      "fenBefore": "r1bqkb1r/ppp2ppp/2n2n2/3Pp1N1/2B5/8/PPPP1PPP/RNBQK2R b KQkq - 0 5",
+      "fenAfter": "r1bqkb1r/ppp2ppp/2n5/3np1N1/2B5/8/PPPP1PPP/RNBQK2R w KQkq - 0 6",
+      "playedMove": {
+        "uci": "f6d5",
+        "san": "Nxd5"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "f6d5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": 120,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f6d5",
+              "c4d5",
+              "d8d5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -10,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6d4",
+              "c2c3",
+              "b7b5",
+              "c3d4",
+              "b5c4",
+              "d4e5",
+              "f6d5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -33,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6a5",
+              "c4b5",
+              "c8d7",
+              "d1e2",
+              "d7b5",
+              "e2b5",
+              "c7c6",
+              "d5c6",
+              "a5c6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": 120,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f6d5",
+            "c4d5",
+            "d8d5"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL"
+        ],
+        "possibleConcepts": [
+          "discovered_attack"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 10,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "9a70dc3f7bcc1916b20e204d8d29cf8723cb1ae23f9135d38b428c684aa8b9e2",
+        "diagnosisConfidenceAtGeneration": 0.92
+      }
+    },
+    {
+      "id": "pgn-a2d6539cae1476faf03b-026",
+      "fenBefore": "r1bq1r2/pp2b1p1/2p1k2p/3np3/2BPQ3/2N5/PPP2PPP/2KR3R b - - 3 13",
+      "fenAfter": "r1bq4/pp2b1p1/2p1k2p/3np3/2BPQ3/2N5/PPP2rPP/2KR3R w - - 0 14",
+      "playedMove": {
+        "uci": "f8f2",
+        "san": "Rxf2"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "e7g5",
+        "lossCp": 183,
+        "quality": "mistake",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -60,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e7g5",
+              "c1b1",
+              "b7b5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -91,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e7b4",
+              "c3d5",
+              "c6d5",
+              "d4e5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -131,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6f7",
+              "c3d5",
+              "c6d5",
+              "c4d5",
+              "f7e8",
+              "d4e5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -243,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f8f2",
+              "d4e5",
+              "e6f7",
+              "c3d5",
+              "c8e6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": -243,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f8f2",
+            "d4e5",
+            "e6f7",
+            "c3d5",
+            "c8e6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL",
+          "MISSED_OPPORTUNITY"
+        ],
+        "possibleConcepts": [
+          "discovered_attack"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 26,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "9dfc5bfd7852ba94959ddb92514a746d99fa26807d5ce717e15b90f5ee536d6c",
+        "diagnosisConfidenceAtGeneration": 1
+      }
+    },
+    {
+      "id": "pgn-a2d6539cae1476faf03b-030",
+      "fenBefore": "r1bq4/pp4p1/2p1k2p/3nP1b1/2B1Q3/2N5/PPP2rPP/1K1R3R b - - 2 15",
+      "fenAfter": "r1bq4/pp4p1/2p1k2p/3nP1b1/2B1Q3/2N5/PPPr2PP/1K1R3R w - - 3 16",
+      "playedMove": {
+        "uci": "f2d2",
+        "san": "Rd2"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "e6e7",
+        "lossCp": 162,
+        "quality": "mistake",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -145,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6e7",
+              "e4g6",
+              "d5c3",
+              "b2c3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -194,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6f7",
+              "c3d5",
+              "c6d5",
+              "c4d5",
+              "f7f8",
+              "e5e6"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -277,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g5d2",
+              "e4g6",
+              "e6e7",
+              "c3d5",
+              "c6d5",
+              "g6g7",
+              "e7e8"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -307,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f2d2",
+              "e4g6",
+              "e6d7",
+              "d1d2",
+              "g5d2",
+              "g6g7",
+              "d7e6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": -307,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f2d2",
+            "e4g6",
+            "e6d7",
+            "d1d2",
+            "g5d2",
+            "g6g7",
+            "d7e6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "KING_SAFETY",
+          "MISSED_OPPORTUNITY"
+        ],
+        "possibleConcepts": [
+          "unsafe_king"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 30,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "4f128f691d2b5b89d1295b82beed375deb6471a9e14b269942d0c4b26d72c5b5",
+        "diagnosisConfidenceAtGeneration": 1
+      }
+    },
+    {
+      "id": "pgn-a2d6539cae1476faf03b-013",
+      "fenBefore": "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+      "fenAfter": "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R b KQ - 1 7",
+      "playedMove": {
+        "uci": "d1f3",
+        "san": "Qf3+"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "d1f3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": 136,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d1f3",
+              "d8f6",
+              "c4d5",
+              "f7e8",
+              "b1c3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -134,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b1c3",
+              "c8e6",
+              "c4d5",
+              "e6d5",
+              "c3d5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -210,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d2d3",
+              "f7g8",
+              "b1c3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": 136,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "d1f3",
+            "d8f6",
+            "c4d5",
+            "f7e8",
+            "b1c3"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL"
+        ],
+        "possibleConcepts": [
+          "fork"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 13,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "55358a9834c991e4a233c1c37abc689e0f891bb55b1102e7f534a0ad50065899",
+        "diagnosisConfidenceAtGeneration": 0.92
+      }
+    }
+  ]
+}

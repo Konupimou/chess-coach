@@ -1,7 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { Chess } from "chess.js";
 import { coachTrainingPositionAfterMove } from "../coachTrainingBoard.js";
+
+const reviewBoardCss = await readFile(
+  new URL("../app/training-review/training-review.module.css", import.meta.url),
+  "utf8",
+);
 
 function pieceAt(fen, square) {
   return new Chess(fen).get(square);
@@ -12,6 +18,18 @@ test("das Review-Brett zeigt die Stellung nach dem gespielten Zug", () => {
   const after = coachTrainingPositionAfterMove(fen, "e2e4");
   assert.equal(pieceAt(after, "e2"), undefined);
   assert.deepEqual(pieceAt(after, "e4"), { color: "w", type: "p" });
+});
+
+test("das Review-Brett teilt seine Fläche in 64 gleich große Felder", () => {
+  assert.match(
+    reviewBoardCss,
+    /grid-template-columns:\s*repeat\(8,\s*minmax\(0,\s*1fr\)\)/u,
+  );
+  assert.match(
+    reviewBoardCss,
+    /grid-template-rows:\s*repeat\(8,\s*minmax\(0,\s*1fr\)\)/u,
+  );
+  assert.match(reviewBoardCss, /\.square\s*\{[^}]*aspect-ratio:\s*auto/su);
 });
 
 test("Rochade, en passant und Umwandlung werden auf dem Review-Brett ausgeführt", () => {
