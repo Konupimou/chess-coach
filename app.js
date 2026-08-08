@@ -538,6 +538,19 @@ export class ChessApp {
     boardToolbar.className = "board-toolbar";
     this.boardToolbar = boardToolbar;
 
+    const boardModeActions = document.createElement("div");
+    boardModeActions.className = "board-mode-actions";
+
+    const trainingButton = document.createElement("button");
+    trainingButton.type = "button";
+    trainingButton.className = "secondary-button board-profile-button";
+    trainingButton.textContent = "Training";
+    trainingButton.addEventListener("click", () => {
+      window.location.assign("/training");
+    });
+    boardModeActions.appendChild(trainingButton);
+    this.boardTrainingButton = trainingButton;
+
     const profileButton = document.createElement("button");
     profileButton.type = "button";
     profileButton.className = "secondary-button board-profile-button";
@@ -545,7 +558,8 @@ export class ChessApp {
     profileButton.addEventListener("click", () => {
       window.location.assign("/profile");
     });
-    boardToolbar.appendChild(profileButton);
+    boardModeActions.appendChild(profileButton);
+    boardToolbar.appendChild(boardModeActions);
     this.boardProfileButton = profileButton;
 
     const statusGroup = document.createElement("section");

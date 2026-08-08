@@ -10,6 +10,14 @@ import { COACH_EVALUATION_CASES } from "./fixtures/coachEvaluationCases.js";
 
 const FAST_CASES = COACH_EVALUATION_CASES.slice(0, 20);
 
+test("der Standard-Kandidatenpool deckt alle Coach-Spielstärken ab", () => {
+  const candidates = seedCoachTrainingCandidates({ cases: FAST_CASES.slice(0, 3) });
+  assert.deepEqual(
+    [...new Set(candidates.map((candidate) => candidate.payload.learnerProfile.rating))],
+    [800, 1000, 1400, 1800],
+  );
+});
+
 function approve(record, reviewer = "Chess Reviewer") {
   return {
     ...structuredClone(record),

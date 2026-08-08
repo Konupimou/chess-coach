@@ -241,6 +241,8 @@ test("Prompt trennt vertrauenswürdige Anweisungen von Stellungsdaten", () => {
   assert.match(prompt, /<stockfish_analysis>/);
   assert.match(prompt, /<opening_context>/);
   assert.match(prompt, /<chess_knowledge>/);
+  assert.match(prompt, /<position_diagnosis>/);
+  assert.match(prompt, /"primaryReason":/);
   assert.match(prompt, /"concepts":\[\{/);
   assert.match(prompt, /"basis":"position-evidence"/);
   assert.match(prompt, /"eco":"B90"/);

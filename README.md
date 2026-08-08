@@ -195,6 +195,7 @@ npx playwright install chromium
 - „Partie analysieren“: alle Stellungen prüfen, Genauigkeit und Abschlussfeedback anzeigen
 - „Mein Account“: Spielerprofil, Key Facts, Eröffnungsrepertoire, Bestpartien und alle gespeicherten Partien anzeigen
 - „Mit Lichess verbinden“: per OAuth ohne Zusatzrechte abgeschlossene Standardpartien filtern, auswählen und bewusst importieren
+- „Spielerprofil“: öffentliche Chess.com- und Lichess-Benutzernamen inkrementell synchronisieren, Zeitkontrollen/Zeitraum filtern und die exakte Analysemenge vormerken
 - „PGN“: Hauptlinie samt Varianten exportieren
 
 Die private Live-Seite erkennt den angemeldeten Sites-Nutzer. Bis eine
@@ -229,6 +230,7 @@ Neuladen erhalten.
 - `api/siteIdentity.js`: serverseitige Sites-Identität für den Account-Bereich
 - `api/lichess.js`: OAuth-PKCE, sichere Cookies und begrenzte Lichess-API-Anfragen
 - `lichessImport.js`: validierte Umwandlung von Lichess-Partien in analysierbare Spielstände
+- `gameSync/`: provider-neutrale Chess.com-/Lichess-Synchronisierung, kanonische Zeitkontrollen, IndexedDB-Bibliothek, Filtervorschau und versionierte Analysejobs; Details in [`docs/game-sync.md`](docs/game-sync.md)
 - `chatMarkup.js`: sichere Inline-Formatierung für Coach-Antworten
 - `public/libs/`: lokale Chessboard- und Stockfish-Assets
 - `test/`: Tests mit dem eingebauten Node-Test-Runner

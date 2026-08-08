@@ -17,7 +17,10 @@ export default function ProfilePage() {
               <p>Deine Entwicklung aus allen gespeicherten Partien.</p>
             </div>
           </div>
-          <a className="secondary-button profile-back-link" href="/">Zur Analyse</a>
+          <div className="profile-header-actions">
+            <a className="secondary-button profile-back-link" href="/training">Zum Training</a>
+            <a className="secondary-button profile-back-link" href="/">Zur Analyse</a>
+          </div>
         </div>
       </header>
       <main className="profile-page-main">

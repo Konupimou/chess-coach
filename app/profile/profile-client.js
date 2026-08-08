@@ -9,6 +9,7 @@ import {
   storageKeyForIdentity,
 } from "../../gameStorage.js";
 import { buildPlayerProfile } from "../../playerProfile.js";
+import GameSyncPanel from "./game-sync-panel.js";
 
 function newestAccountKey(storage) {
   const fallback = storageKeyForIdentity(null);
@@ -95,6 +96,8 @@ export default function ProfileClient() {
           </div>
         )}
       </section>
+
+      <GameSyncPanel />
 
       <section className="profile-page-card">
         <div className="account-section-title profile-section-title">

@@ -999,7 +999,7 @@ test("der Cache-Digest ändert sich mit Variante, Bewertung und Wissensinhalt", 
 
   assert.notEqual(first, changedLine);
   assert.notEqual(first, changedKnowledge);
-  assert.match(first, /^v7:[a-f0-9]{64}$/);
+  assert.match(first, /^v9:[a-f0-9]{64}$/);
 });
 
 test("Eröffnungsankündigungen und Zugumstellungen gehören zum Cache-Schlüssel", () => {

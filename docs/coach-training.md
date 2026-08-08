@@ -22,9 +22,8 @@ verwendet werden.
 
 ## 1. Kandidaten erzeugen
 
-Der Seed-Befehl erzeugt derzeit ausschließlich didaktische Varianten für
-800 Elo. Weitere Zielstufen werden erst ergänzt, wenn der erste 800-Elo-Lauf
-ausreichend kuratiert und blind evaluiert wurde:
+Der Seed-Befehl erzeugt didaktische Varianten für alle im Coach angebotenen
+Spielstärken: 800, 1000, 1400 und 1800 Elo:
 
 ```bash
 npm run coach:training:seed
@@ -34,7 +33,8 @@ Die Ausgabe liegt standardmäßig in
 `.cache/coach-training/candidates.jsonl`. Diese Datensätze tragen bewusst
 `lifecycle: "generated"` und werden vom Dataset-Builder abgelehnt.
 
-Eine andere Stufe kann später weiterhin ausdrücklich gewählt werden:
+Für gezielte Teilprüfungen lassen sich einzelne Stufen weiterhin ausdrücklich
+auswählen:
 
 ```bash
 node scripts/seed-coach-training-candidates.mjs \
@@ -55,10 +55,10 @@ npm run coach:training:review
 ```
 
 Danach wird im Browser `http://localhost:3000/training-review` geöffnet. Die
-Oberfläche zeigt Stellung, Zug, Stockfish-Variante und Ziel-Spielstärke. Nur die
-Texte vorhandener Erklärungsfelder lassen sich verändern; Belege,
-Zugreferenzen, Bewertungen und der Stockfish-Kontext bleiben gesperrt. Aktuell
-zeigt die Oberfläche ausschließlich 800-Elo-Kandidaten.
+Oberfläche zeigt Stellung, Zug, Stockfish-Variante und Ziel-Spielstärke. Sie
+enthält Kandidaten für alle angebotenen Spielstärken. Nur die Texte vorhandener
+Erklärungsfelder lassen sich verändern; Belege, Zugreferenzen, Bewertungen und
+der Stockfish-Kontext bleiben gesperrt.
 
 Beim Freigeben durchläuft der redigierte Text unmittelbar dieselben Evidence-,
 Zug-, Bewertungs- und Sprach-Guards wie der Produktivcoach. Eine abgelehnte
@@ -107,9 +107,9 @@ npm run coach:training:build
 Der Builder rekonstruiert für jede Zeile den Stockfish- und Brettkontext und
 wendet dieselben Evidence-, Zug-, Bewertungs- und Sprach-Guards an wie der
 Produktivcoach. Schon ein zurückgesetztes oder unbelegtes Feld verhindert den
-Export. Der Standardexport berücksichtigt aktuell ausschließlich freigegebene
-800-Elo-Beispiele der aktuellen Kandidatenrevision; vorhandene andere
-Zielstufen und ältere Entwürfe werden weder gelöscht noch verwendet.
+Export. Der Standardexport berücksichtigt freigegebene Beispiele aller
+angebotenen Spielstärken aus der aktuellen Kandidatenrevision. Ältere Entwürfe
+werden weder gelöscht noch verwendet.
 
 Die Ausgabe unter `.cache/coach-training/` enthält:
 

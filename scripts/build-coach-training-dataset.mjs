@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join, resolve } from "node:path";
 import {
+  COACH_TRAINING_RATINGS,
   buildCoachTrainingDataset,
   heldOutEvaluationRecord,
   supervisedJsonlRecord,
@@ -12,11 +13,13 @@ function option(argv, name, fallback = "") {
 }
 
 function ratingsOption(argv) {
-  const ratings = option(argv, "ratings", "800")
+  const ratings = option(argv, "ratings", COACH_TRAINING_RATINGS.join(","))
     .split(",")
     .map((value) => Number.parseInt(value.trim(), 10))
-    .filter(Number.isFinite);
-  return [...new Set(ratings)];
+    .filter((value) => COACH_TRAINING_RATINGS.includes(value));
+  return ratings.length > 0
+    ? [...new Set(ratings)]
+    : [...COACH_TRAINING_RATINGS];
 }
 
 function parseJsonLines(source, inputPath) {
@@ -52,7 +55,7 @@ export async function buildTrainingDatasetFiles({
   outputDir,
   seed = "coach-training-v1",
   checkOnly = false,
-  ratings = [800],
+  ratings = COACH_TRAINING_RATINGS,
 } = {}) {
   const sourcePath = resolve(inputPath);
   const records = await readRecords(sourcePath);
@@ -62,7 +65,7 @@ export async function buildTrainingDatasetFiles({
     && (Number.parseInt(record?.version, 10) || 1) >= 2
   ));
   if (selectedRecords.length === 0) {
-    throw new Error(`Keine freigegebenen Beispiele für ${ratings.join(", ")} Elo gefunden.`);
+    throw new Error(`Keine freigegebenen Beispiele für die gewählten Spielstärken (${ratings.join(", ")} Elo) gefunden.`);
   }
   const dataset = buildCoachTrainingDataset(selectedRecords, { seed });
   if (!dataset.valid) {

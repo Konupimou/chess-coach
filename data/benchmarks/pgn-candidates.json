@@ -1,0 +1,524 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "pgn-candidates-6978b281e8db",
+  "description": "Automatisch erzeugte PGN-Benchmarkkandidaten; vor Konzeptwertung manuell prüfen.",
+  "contaminationPolicy": "Erwartungen werden ausschließlich vom Runner gelesen und nie an den Coach übergeben.",
+  "questions": [
+    {
+      "id": "why_bad",
+      "text": "Warum war mein Zug schlecht?"
+    },
+    {
+      "id": "why_evaluation",
+      "text": "Warum ist diese Stellung so bewertet?"
+    },
+    {
+      "id": "why_best",
+      "text": "Warum bevorzugt Stockfish diesen Zug?"
+    },
+    {
+      "id": "overlooked",
+      "text": "Was habe ich übersehen?"
+    },
+    {
+      "id": "position_problem",
+      "text": "Was ist das wichtigste Problem in meiner Stellung?"
+    },
+    {
+      "id": "compare",
+      "text": "Warum ist dieser Zug besser als meiner?"
+    },
+    {
+      "id": "lesson",
+      "text": "Was sollte ich aus diesem Fehler lernen?"
+    },
+    {
+      "id": "was_bad",
+      "text": "War das wirklich ein schlechter Zug?"
+    },
+    {
+      "id": "most_important",
+      "text": "Was ist hier am wichtigsten?"
+    }
+  ],
+  "cases": [
+    {
+      "id": "pgn-a2d6539cae1476faf03b-010",
+      "fenBefore": "r1bqkb1r/ppp2ppp/2n2n2/3Pp1N1/2B5/8/PPPP1PPP/RNBQK2R b KQkq - 0 5",
+      "fenAfter": "r1bqkb1r/ppp2ppp/2n5/3np1N1/2B5/8/PPPP1PPP/RNBQK2R w KQkq - 0 6",
+      "playedMove": {
+        "uci": "f6d5",
+        "san": "Nxd5"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "f6d5",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": 120,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f6d5",
+              "c4d5",
+              "d8d5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -10,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6d4",
+              "c2c3",
+              "b7b5",
+              "c3d4",
+              "b5c4",
+              "d4e5",
+              "f6d5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -33,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "c6a5",
+              "c4b5",
+              "c8d7",
+              "d1e2",
+              "d7b5",
+              "e2b5",
+              "c7c6",
+              "d5c6",
+              "a5c6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": 120,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f6d5",
+            "c4d5",
+            "d8d5"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL"
+        ],
+        "possibleConcepts": [
+          "discovered_attack"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 10,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "9a70dc3f7bcc1916b20e204d8d29cf8723cb1ae23f9135d38b428c684aa8b9e2",
+        "diagnosisConfidenceAtGeneration": 0.92
+      }
+    },
+    {
+      "id": "pgn-a2d6539cae1476faf03b-026",
+      "fenBefore": "r1bq1r2/pp2b1p1/2p1k2p/3np3/2BPQ3/2N5/PPP2PPP/2KR3R b - - 3 13",
+      "fenAfter": "r1bq4/pp2b1p1/2p1k2p/3np3/2BPQ3/2N5/PPP2rPP/2KR3R w - - 0 14",
+      "playedMove": {
+        "uci": "f8f2",
+        "san": "Rxf2"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "e7g5",
+        "lossCp": 183,
+        "quality": "mistake",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -60,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e7g5",
+              "c1b1",
+              "b7b5"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -91,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e7b4",
+              "c3d5",
+              "c6d5",
+              "d4e5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -131,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6f7",
+              "c3d5",
+              "c6d5",
+              "c4d5",
+              "f7e8",
+              "d4e5"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -243,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f8f2",
+              "d4e5",
+              "e6f7",
+              "c3d5",
+              "c8e6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": -243,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f8f2",
+            "d4e5",
+            "e6f7",
+            "c3d5",
+            "c8e6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL",
+          "MISSED_OPPORTUNITY"
+        ],
+        "possibleConcepts": [
+          "discovered_attack"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 26,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "9dfc5bfd7852ba94959ddb92514a746d99fa26807d5ce717e15b90f5ee536d6c",
+        "diagnosisConfidenceAtGeneration": 1
+      }
+    },
+    {
+      "id": "pgn-a2d6539cae1476faf03b-030",
+      "fenBefore": "r1bq4/pp4p1/2p1k2p/3nP1b1/2B1Q3/2N5/PPP2rPP/1K1R3R b - - 2 15",
+      "fenAfter": "r1bq4/pp4p1/2p1k2p/3nP1b1/2B1Q3/2N5/PPPr2PP/1K1R3R w - - 3 16",
+      "playedMove": {
+        "uci": "f2d2",
+        "san": "Rd2"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "e6e7",
+        "lossCp": 162,
+        "quality": "mistake",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -145,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6e7",
+              "e4g6",
+              "d5c3",
+              "b2c3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -194,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "e6f7",
+              "c3d5",
+              "c6d5",
+              "c4d5",
+              "f7f8",
+              "e5e6"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -277,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "g5d2",
+              "e4g6",
+              "e6e7",
+              "c3d5",
+              "c6d5",
+              "g6g7",
+              "e7e8"
+            ]
+          },
+          {
+            "rank": 4,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -307,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "f2d2",
+              "e4g6",
+              "e6d7",
+              "d1d2",
+              "g5d2",
+              "g6g7",
+              "d7e6"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": -307,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "f2d2",
+            "e4g6",
+            "e6d7",
+            "d1d2",
+            "g5d2",
+            "g6g7",
+            "d7e6"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "KING_SAFETY",
+          "MISSED_OPPORTUNITY"
+        ],
+        "possibleConcepts": [
+          "unsafe_king"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 30,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "intermediate",
+      "questionIds": [
+        "why_bad",
+        "overlooked",
+        "compare",
+        "lesson"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "4f128f691d2b5b89d1295b82beed375deb6471a9e14b269942d0c4b26d72c5b5",
+        "diagnosisConfidenceAtGeneration": 1
+      }
+    },
+    {
+      "id": "pgn-a2d6539cae1476faf03b-013",
+      "fenBefore": "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/8/PPPP1PPP/RNBQK2R w KQ - 0 7",
+      "fenAfter": "r1bq1b1r/ppp2kpp/2n5/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R b KQ - 1 7",
+      "playedMove": {
+        "uci": "d1f3",
+        "san": "Qf3+"
+      },
+      "engine": {
+        "provider": "stockfish",
+        "depth": 6,
+        "bestMove": "d1f3",
+        "lossCp": 0,
+        "quality": "best",
+        "lines": [
+          {
+            "rank": 1,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": 136,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d1f3",
+              "d8f6",
+              "c4d5",
+              "f7e8",
+              "b1c3"
+            ]
+          },
+          {
+            "rank": 2,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -134,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "b1c3",
+              "c8e6",
+              "c4d5",
+              "e6d5",
+              "c3d5"
+            ]
+          },
+          {
+            "rank": 3,
+            "depth": 6,
+            "evaluation": {
+              "unit": "cp",
+              "value": -210,
+              "perspective": "player"
+            },
+            "pvUci": [
+              "d2d3",
+              "f7g8",
+              "b1c3"
+            ]
+          }
+        ],
+        "playedLine": {
+          "depth": 6,
+          "evaluation": {
+            "unit": "cp",
+            "value": 136,
+            "perspective": "player"
+          },
+          "pvUci": [
+            "d1f3",
+            "d8f6",
+            "c4d5",
+            "f7e8",
+            "b1c3"
+          ]
+        }
+      },
+      "expected": {
+        "categories": [
+          "TACTICAL"
+        ],
+        "possibleConcepts": [
+          "fork"
+        ],
+        "requiredFacts": [],
+        "needsReview": true,
+        "groundTruth": "engine_and_deterministic_candidate"
+      },
+      "source": {
+        "type": "pgn",
+        "gameId": "a2d6539cae1476faf03b",
+        "ply": 13,
+        "sourceId": "0e67054c6e6687a5"
+      },
+      "difficulty": "advanced",
+      "questionIds": [
+        "why_best",
+        "most_important"
+      ],
+      "metadata": {
+        "generated": true,
+        "rating": 1400,
+        "engineCacheKey": "55358a9834c991e4a233c1c37abc689e0f891bb55b1102e7f534a0ad50065899",
+        "diagnosisConfidenceAtGeneration": 0.92
+      }
+    }
+  ]
+}

@@ -3,7 +3,7 @@ const MOVE_TOKEN_PATTERN =
   /\b(?:[a-h][1-8][a-h][1-8][qrbn]?|(?:O-O(?:-O)?|0-0(?:-0)?)[+#]?|[KQRBNDTLS][a-h]?[1-8]?x?[a-h][1-8](?:=[QRBNDTLS])?[+#]?|[a-h](?:x[a-h])?[1-8](?:=[QRBNDTLS])?[+#]?)\b/gi;
 
 export const MOVE_EXPLANATION_SCHEMA_VERSION = 3;
-export const MOVE_EXPLANATION_CACHE_VERSION = 7;
+export const MOVE_EXPLANATION_CACHE_VERSION = 9;
 
 const CLAIM_KINDS = Object.freeze([
   "assessment",
@@ -320,6 +320,8 @@ function evidenceSupportsClaimKind(record, claimKind) {
   const isOpeningKnowledge = id.startsWith("opening.knowledge.");
   if (claimKind === "assessment") {
     return ["engine.best_move", "engine.move_assessment"].includes(id)
+      || id === "diagnosis.primary_reason"
+      || id === "diagnosis.uncertainty"
       || id.startsWith("engine.pv.")
       || id === "engine.move_comparison"
       || id === "engine.move_comparison.necessity"
@@ -328,6 +330,9 @@ function evidenceSupportsClaimKind(record, claimKind) {
   if (claimKind === "move_effect") {
     return id.startsWith("move.played.")
       || kind.startsWith("move.")
+      || id === "diagnosis.primary_reason"
+      || id === "diagnosis.explanation_bundle"
+      || id === "diagnosis.uncertainty"
       || id.startsWith("position.change.")
       || id === "engine.move_comparison.played"
       || id.startsWith("engine.move_comparison.difference.")
@@ -336,6 +341,7 @@ function evidenceSupportsClaimKind(record, claimKind) {
   if (claimKind === "position_change") {
     return id.startsWith("position.change.")
       || kind.startsWith("position.")
+      || id === "diagnosis.explanation_bundle"
       || id.startsWith("engine.move_comparison.difference.")
       || id === "engine.move_comparison.necessity";
   }
@@ -511,6 +517,16 @@ function validateClaimContent(
       && fact.immediateEffects.some((effect) => types.includes(effect.type))
     ),
   );
+  const diagnosisBundle = records.get("diagnosis.explanation_bundle")?.fact;
+  const diagnosedConcepts = new Set([
+    records.get("diagnosis.primary_reason")?.fact?.primaryReason?.concept,
+    diagnosisBundle?.primaryReason?.concept,
+    ...(diagnosisBundle?.candidateExplanations || []).map((reason) => reason?.concept),
+    ...(diagnosisBundle?.supportingFactors || []).map((reason) => reason?.concept),
+  ].filter(Boolean));
+  const hasDiagnosisConcept = (...concepts) => concepts.some(
+    (concept) => diagnosedConcepts.has(concept),
+  );
   const hasMeaningful = (id) => (
     ids.has(id) && factContainsChange(records.get(id))
   );
@@ -526,9 +542,11 @@ function validateClaimContent(
               "controls_new_square",
               "king_centralization",
             )
+            || hasDiagnosisConcept("center_control", "king_activity_endgame")
           : evidenceId === "position.change.development"
             ? hasDifference("develops_piece")
               || hasComparisonEffect("develops_piece")
+              || hasDiagnosisConcept("development_advantage")
             : evidenceId === "position.change.files"
               ? hasDifference("opens_file")
                 || hasComparisonEffect(
@@ -537,6 +555,7 @@ function validateClaimContent(
                   "rook_on_open_file",
                   "rook_on_semi_open_file",
                 )
+                || hasDiagnosisConcept("open_file", "rook_on_open_file", "rook_on_semi_open_file")
               : evidenceId === "position.change.pawn_structure"
                 ? hasDifference("pawn_structure")
                   || hasComparisonEffect(
@@ -544,6 +563,7 @@ function validateClaimContent(
                     "creates_isolated_pawn",
                     "creates_passed_pawn",
                   )
+                  || hasDiagnosisConcept("passed_pawn", "isolated_pawn", "doubled_pawns", "pawn_break")
                 : evidenceId === "position.change.piece_safety"
                   ? hasDifference("avoids_loose_piece", "allows_material_threat")
                     || hasComparisonEffect(
@@ -589,6 +609,7 @@ function validateClaimContent(
     && !hasMeaningful("move.played.properties")
     && !hasDifference("improves_king_safety", "allows_check", "allows_checkmate")
     && !hasComparisonEffect("castles", "gives_check", "gives_checkmate")
+    && !hasDiagnosisConcept("king_safety", "unsafe_king", "king_activity_endgame")
   ) {
     errors.push(`${label}: die behauptete Königssicherheit ist nicht konkret nachgewiesen.`);
   }
@@ -598,6 +619,7 @@ function validateClaimContent(
     && !hasMeaningful("move.played.properties")
     && !hasDifference("material_outcome", "allows_material_threat")
     && !hasComparisonEffect("capture")
+    && !hasDiagnosisConcept("compensation")
   ) {
     errors.push(`${label}: die behauptete Materialwirkung ist nicht konkret nachgewiesen.`);
   }
@@ -878,8 +900,45 @@ export function buildTrustedExplanationEvidence({
   positionEvidence = null,
   engineContext = null,
   openingContext = null,
+  diagnosis = null,
 } = {}) {
   const supplementalEvidence = [];
+  if (diagnosis?.primaryReason) {
+    supplementalEvidence.push({
+      id: "diagnosis.primary_reason",
+      kind: "diagnosis.primary_reason",
+      source: "position_diagnosis",
+      fact: {
+        primaryReason: diagnosis.primaryReason,
+        confidence: diagnosis.confidence || null,
+      },
+    });
+    supplementalEvidence.push({
+      id: "diagnosis.explanation_bundle",
+      kind: "diagnosis.explanation_bundle",
+      source: "position_diagnosis",
+      fact: {
+        primaryReason: diagnosis.primaryReason,
+        candidateExplanations: (diagnosis.candidateExplanations || []).filter(
+          (reason) => reason?.causalValidation?.status === "validated",
+        ),
+        supportingFactors: [
+          ...(diagnosis.secondaryReasons || []),
+          ...(diagnosis.backgroundFeatures || []),
+        ].filter((reason) => reason?.causalValidation?.status === "validated"),
+      },
+    });
+  } else if (diagnosis?.confidence?.level === "limited") {
+    supplementalEvidence.push({
+      id: "diagnosis.uncertainty",
+      kind: "diagnosis.uncertainty",
+      source: "position_diagnosis",
+      fact: {
+        confidence: diagnosis.confidence,
+        uncertainties: diagnosis.uncertainties || [],
+      },
+    });
+  }
   const review = engineContext?.moveReview;
   if (review) {
     supplementalEvidence.push({
@@ -1928,6 +1987,288 @@ function lineMoveReference(positionEvidence, line, startPly, length = 1) {
     : [];
 }
 
+function diagnosisPrimaryReasonText(diagnosis) {
+  const reason = diagnosis?.primaryReason;
+  if (!reason) {
+    return diagnosis?.confidence?.level === "limited"
+      ? "Ein eindeutiger Stellungsgrund ist hier nicht sicher belegt."
+      : "";
+  }
+  const details = reason.details || {};
+  const nested = details.details || {};
+  const square = details.square || reason.squares?.[0] || "";
+  const target = details.targets?.[0] || reason.squares?.[0] || "";
+  switch (reason.concept) {
+    case "mating_attack":
+      return "Der Hauptgrund ist die Mattgefahr: Der Zug erlaubt eine direkte Mattdrohung.";
+    case "back_rank_mate":
+    case "checkmate":
+      return "Der Hauptgrund ist das Grundreihenmatt: Der gegnerische König hat kein Fluchtfeld.";
+    case "hanging_piece":
+    case "loose_piece":
+      return square
+        ? `Der Hauptgrund ist die ungedeckte Figur auf ${square}: Sie kann unmittelbar angegriffen oder geschlagen werden.`
+        : "Der Hauptgrund ist eine ungedeckte Figur, die unmittelbar angegriffen oder geschlagen werden kann.";
+    case "fork": {
+      const [first, second] = details.targets || [];
+      return details.engineEvidence?.supportsMove === true && first?.square && second?.square
+        ? "Bei einer Gabel greift eine Figur zwei Ziele gleichzeitig an. Das ist hier der Hauptgrund."
+        : "";
+    }
+    case "pin": {
+      const pinned = nested.pinned || {};
+      const king = nested.king || {};
+      return pinned.square && king.square
+        ? "Das Fesselungsmotiv ist der Hauptgrund. Bei einer Fesselung ist die Figur nicht frei beweglich."
+        : "Der Hauptgrund ist eine Fesselung: Die gebundene Figur kann sich nicht ohne Nachteil bewegen.";
+    }
+    case "discovered_attack":
+      return target
+        ? `Der Hauptgrund ist ein Abzugsangriff: Der Zug legt eine Angriffslinie gegen die Figur auf ${target.square || target} frei.`
+        : "Der Hauptgrund ist ein Abzugsangriff: Der Zug legt eine zuvor verdeckte Angriffslinie frei.";
+    case "prophylaxis":
+      return details.danger?.move?.to
+        ? `Der Hauptgrund ist Prophylaxe: Der Zug verhindert den direkten gegnerischen Angriff über ${details.danger.move.to}.`
+        : "Der Hauptgrund ist Prophylaxe: Der Zug verhindert die unmittelbare gegnerische Gefahr.";
+    case "pawn_break":
+      return target
+        ? `Der Bauernhebel ist der Hauptgrund. Er richtet sich gegen den Bauern auf ${target}.`
+        : "Der Hauptgrund ist ein Bauernhebel, der die gegnerische Bauernstruktur angreift.";
+    case "outpost":
+      return square
+        ? `Der Hauptgrund ist der Vorposten auf ${square}: Dort steht die Figur geschützt und aktiv.`
+        : "Der Hauptgrund ist ein geschützter Vorposten für die Figur.";
+    case "rook_on_open_file":
+    case "open_file":
+      return details.file
+        ? `Der Hauptgrund ist die offene ${details.file}-Linie: Dort kann der Turm aktiv eindringen.`
+        : "Der Hauptgrund ist die offene Linie, auf der der Turm aktiv werden kann.";
+    case "king_activity_endgame":
+      return details.to
+        ? "Königsaktivität ist im Endspiel der Hauptgrund. Der König nähert sich dem Zentrum."
+        : "Der Hauptgrund ist die Königsaktivität im Endspiel: Der König wird im Zentrum zur aktiven Figur.";
+    case "passed_pawn":
+      return square
+        ? "Der Freibauer ist der Hauptgrund. Sein Weg zur Umwandlung bestimmt das Endspiel."
+        : "Der Hauptgrund ist der Freibauer, dessen Vormarsch den gegnerischen König bindet.";
+    case "development_advantage":
+      return details.square
+        ? `Der Hauptgrund ist die Entwicklung: Die bessere Fortsetzung bringt eine Figur nach ${details.square} ins Spiel.`
+        : "Der Hauptgrund ist die Entwicklung: Eine Figur kommt mit Tempo ins Spiel.";
+    case "zwischenzug":
+      return "Der Hauptgrund ist ein Zwischenzug: Vor der erwarteten Fortsetzung wird ein zwingender Läuferzug eingeschoben.";
+    case "unsafe_king":
+    case "king_safety":
+      return "Der Hauptgrund ist die Königssicherheit: Der König gerät unmittelbar in Gefahr.";
+    case "center_control":
+      return square
+        ? `Hauptgrund ist die Zentrumskontrolle auf ${square}.`
+        : "Hauptgrund ist die Zentrumskontrolle.";
+    default:
+      return reason.description
+        ? `Der Hauptgrund: ${reason.description}`
+        : "";
+  }
+}
+
+function diagnosisReasonMoveRefs(diagnosis, positionEvidence, playedLine) {
+  const concept = diagnosis?.primaryReason?.concept;
+  if (["back_rank_mate", "checkmate"].includes(concept)) {
+    return lineMoveReference(positionEvidence, playedLine, 0);
+  }
+  return [];
+}
+
+const MULTI_FACTOR_PRIMARY_CONCEPTS = new Set([
+  "initiative",
+  "compensation",
+  "prophylaxis",
+]);
+
+const EXPLAINABLE_SUPPORT_CONCEPTS = new Set([
+  "initiative",
+  "compensation",
+  "prophylaxis",
+  "development_advantage",
+  "piece_activity",
+  "center_control",
+  "pawn_break",
+  "king_safety",
+  "restriction",
+  "coordination",
+  "rook_activity",
+]);
+
+function verifiedDiagnosisReason(reason) {
+  return Boolean(
+    reason?.concept
+    && reason?.causalValidation?.status === "validated",
+  );
+}
+
+function multiFactorSupportingReasons(diagnosis) {
+  const primary = diagnosis?.primaryReason;
+  if (!verifiedDiagnosisReason(primary)) return [];
+  const candidateReasons = (diagnosis?.candidateExplanations || [])
+    .filter((reason) => reason?.concept !== primary.concept)
+    .filter(verifiedDiagnosisReason)
+    .sort((left, right) => (right.causalScore || 0) - (left.causalScore || 0));
+  const supportingReasons = [
+    ...(diagnosis?.secondaryReasons || []),
+    ...(diagnosis?.backgroundFeatures || []),
+  ]
+    .filter(verifiedDiagnosisReason)
+    .filter((reason) => EXPLAINABLE_SUPPORT_CONCEPTS.has(reason.concept))
+    .filter((reason) => reason.type !== "tactical")
+    .sort((left, right) => (right.causalScore || 0) - (left.causalScore || 0));
+  const selected = [];
+  for (const reason of [...candidateReasons, ...supportingReasons]) {
+    if (selected.some((entry) => entry.concept === reason.concept)) continue;
+    selected.push(reason);
+    if (selected.length >= 3) break;
+  }
+  return selected;
+}
+
+function supportingReasonText(reason) {
+  if (reason.concept === "initiative") {
+    return "Als unterstützender Faktor bleibt die Initiative erhalten: Der Gegner bekommt keine Zeit, den Druck vollständig abzubauen.";
+  }
+  if (reason.concept === "prophylaxis") {
+    return "Zugleich wirkt der Zug prophylaktisch, weil er eine gegnerische Ressource aus den schwächeren Vergleichsvarianten verhindert.";
+  }
+  if (reason.concept === "development_advantage") {
+    return "Zusätzlich hilft die Entwicklung: Eine eigene Figur kommt wirksamer ins Spiel.";
+  }
+  if (reason.concept === "piece_activity") {
+    return "Zusätzlich steigt die Figurenaktivität, weil die gezogene Figur mehr wirksame Möglichkeiten erhält.";
+  }
+  if (reason.concept === "center_control") {
+    return "Die diagnostizierte Zentrumskontrolle unterstützt dabei die Hauptidee.";
+  }
+  if (reason.concept === "pawn_break") {
+    return "Der Bauernhebel unterstützt die Idee, weil er neue Angriffslinien vorbereitet.";
+  }
+  if (reason.concept === "king_safety") {
+    return "Außerdem verbessert der Zug die Königssicherheit und nimmt unmittelbaren Druck vom König.";
+  }
+  if (reason.concept === "restriction") {
+    return "Zusätzlich schränkt der Zug das gegnerische Gegenspiel ein.";
+  }
+  if (reason.concept === "coordination") {
+    return "Die Figurenkoordination unterstützt die Idee, weil mehrere Figuren danach besser zusammenwirken.";
+  }
+  if (reason.concept === "rook_activity") {
+    return "Auch die Turmaktivität hilft, weil der Turm danach wirksamer eingreifen kann.";
+  }
+  return "";
+}
+
+function primaryCausalExplanationText(reason) {
+  if (reason.concept === "compensation") {
+    const invested = Number(reason.details?.finalMaterialBalance)
+      < Number(reason.details?.materialBalanceBefore);
+    return invested
+      ? "Die Kompensation ist der Hauptgrund: Der Zug investiert Material, erhält dafür aber genügend Aktivität und praktische Möglichkeiten."
+      : "Die Kompensation ist der Hauptgrund: Trotz des Materialrückstands hält der Zug die Stellung durch aktive Möglichkeiten zusammen.";
+  }
+  if (reason.concept === "initiative") {
+    return "Die Initiative ist der Hauptgrund: Der ruhige Zug hält den Handlungsdruck aufrecht, statt dem Gegner Zeit zur Konsolidierung zu geben.";
+  }
+  if (reason.concept === "prophylaxis") {
+    return "Der Hauptgrund ist Prophylaxe: Der Zug verhindert eine konkrete gegnerische Ressource, die in schwächeren Engine-Fortsetzungen verfügbar bleibt.";
+  }
+  return "";
+}
+
+function verifiedMoveOccurrence(
+  positionEvidence,
+  uci,
+  { excludeSubjectLine = false, subjectLineOnly = false } = {},
+) {
+  const subjectUci = positionEvidence?.playedMove?.uci || "";
+  const lines = (positionEvidence?.verifiedLines || []).filter(
+    (line) => line?.legal && line?.complete,
+  );
+  for (const line of lines) {
+    if (excludeSubjectLine && line.moves?.[0]?.uci === subjectUci) continue;
+    if (subjectLineOnly && line.moves?.[0]?.uci !== subjectUci) continue;
+    const ply = (line.moves || []).findIndex((move) => move?.uci === uci);
+    if (ply >= 0) return { line, ply, move: line.moves[ply] };
+  }
+  return null;
+}
+
+function reasonEngineEvidence(reason, positionEvidence) {
+  if (reason.concept === "compensation") {
+    const best = Number(reason.details?.selectedLossCp) === 0;
+    return {
+      text: best
+        ? "Die Engine bestätigt das konkret: Sie führt den Zug trotz des Materialminus als erste Wahl."
+        : "Die Enginebewertung bleibt trotz der Materialinvestition im spielbaren Bereich.",
+      moveRefs: [],
+    };
+  }
+  if (reason.concept === "initiative") {
+    const pressureUci = cleanUci(reason.details?.pressureMove?.uci);
+    const occurrence = pressureUci
+      ? verifiedMoveOccurrence(positionEvidence, pressureUci, { subjectLineOnly: true })
+      : null;
+    return occurrence
+      ? {
+        text: `Die Hauptvariante zeigt den fortgesetzten Druck konkret: Dort folgt ${occurrence.move.san}.`,
+        moveRefs: lineMoveReference(positionEvidence, occurrence.line, occurrence.ply),
+      }
+      : {
+        text: "Der MultiPV-Vergleich bestätigt die Ursache: Die ruhigeren Alternativen geben einen wesentlichen Teil des Vorteils ab.",
+        moveRefs: [],
+      };
+  }
+  if (reason.concept === "prophylaxis") {
+    const suppressedUci = cleanUci(reason.details?.suppressedReply);
+    const occurrence = suppressedUci
+      ? verifiedMoveOccurrence(positionEvidence, suppressedUci, { excludeSubjectLine: true })
+      : null;
+    if (occurrence) {
+      const count = Math.max(2, Number.parseInt(reason.details?.counterfactualLines, 10) || 2);
+      return {
+        text: `Der MultiPV-Vergleich macht das sichtbar: In ${count} schwächeren Varianten erhält der Gegner ${occurrence.move.san}; nach dem gewählten Zug nicht.`,
+        moveRefs: lineMoveReference(positionEvidence, occurrence.line, occurrence.ply),
+      };
+    }
+    return {
+      text: "Der Vorher-/Nachher-Vergleich bestätigt, dass die gegnerische Ressource nach dem Zug nicht mehr verfügbar ist.",
+      moveRefs: [],
+    };
+  }
+  return { text: "", moveRefs: [] };
+}
+
+function causalMultiFactorExplanation(diagnosis, positionEvidence) {
+  const primary = diagnosis?.primaryReason;
+  if (
+    !verifiedDiagnosisReason(primary)
+    || primary.kind !== "candidate_explanation"
+    || !MULTI_FACTOR_PRIMARY_CONCEPTS.has(primary.concept)
+  ) return null;
+  const supports = multiFactorSupportingReasons(diagnosis);
+  const primaryText = primaryCausalExplanationText(primary);
+  const supportTexts = supports.map(supportingReasonText).filter(Boolean);
+  const evidenceParts = [primary, ...supports]
+    .map((reason) => reasonEngineEvidence(reason, positionEvidence))
+    .filter((entry) => entry.text);
+  return {
+    moveIdeaText: [primaryText, ...supportTexts].filter(Boolean).join(" "),
+    comparisonText: evidenceParts.map((entry) => entry.text).join(" "),
+    moveRefs: evidenceParts.flatMap((entry) => entry.moveRefs).slice(0, 3),
+    evidenceIds: [...new Set([
+      "diagnosis.explanation_bundle",
+      ...[primary, ...supports].flatMap((reason) => reason.evidenceIds || []),
+    ])].slice(0, 8),
+    supportingConcepts: supports.map((reason) => reason.concept),
+  };
+}
+
 function comparisonDifferenceText(comparison) {
   if (comparison?.onlyMove) {
     if (comparison.moveNecessity?.type === "only_legal_move") {
@@ -1999,12 +2340,14 @@ export function buildLocalMoveExplanation({
   openingContext = null,
   learnerProfile = null,
   recognizedPatterns = [],
+  diagnosis = null,
 } = {}) {
   if (!positionEvidence?.valid) return null;
   const trusted = buildTrustedExplanationEvidence({
     positionEvidence,
     engineContext,
     openingContext,
+    diagnosis,
   });
   const subject = resolveExplanationSubject(positionEvidence, engineContext);
   const comparison = positionEvidence.moveComparison;
@@ -2063,7 +2406,12 @@ export function buildLocalMoveExplanation({
   const playedLine = positionEvidence.verifiedLines?.find(
     (line) => line.moves?.[0]?.uci === subject.uci,
   );
-  const primaryDifference = comparison.differences?.[0];
+  const diagnosedDifferenceId = diagnosis?.primaryReason?.evidenceIds?.find(
+    (id) => String(id || "").startsWith("engine.move_comparison.difference."),
+  );
+  const primaryDifference = comparison.differences?.find(
+    (difference) => difference.evidenceId === diagnosedDifferenceId,
+  ) || comparison.differences?.[0];
   if (["inaccuracy", "mistake", "blunder"].includes(quality)) {
     if (primaryDifference?.type === "allows_check") {
       verdictText = `Das Problem: Der Zug erlaubt sofort ${playedLine?.moves?.[1]?.san || "ein Schach"}.`;
@@ -2252,14 +2600,39 @@ export function buildLocalMoveExplanation({
       : "");
   const moveIdeaText = foundationsMoveIdea
     || effectText(comparison.played, subject.san);
+  const primaryReasonText = diagnosisPrimaryReasonText(diagnosis);
+  const multiFactorExplanation = causalMultiFactorExplanation(
+    diagnosis,
+    positionEvidence,
+  );
+  const diagnosedPatternId = diagnosis?.primaryReason?.featureId;
   const matchingPattern = (recognizedPatterns || []).find((pattern) => (
+    pattern?.id === diagnosedPatternId
+    && pattern?.move?.uci === subject.uci
+    && ["winning", "active", "warning"].includes(pattern.status)
+    && pattern.timing !== "removed"
+  )) || (recognizedPatterns || []).find((pattern) => (
     pattern?.move?.uci === subject.uci
     && ["winning", "active", "warning"].includes(pattern.status)
     && pattern.timing !== "removed"
+    && diagnosis?.primaryReason?.concept === pattern.type
   ));
-  const connectedMoveIdeaText = matchingPattern?.explanation
-    ? `${moveIdeaText} ${matchingPattern.explanation}`.trim()
-    : moveIdeaText;
+  const connectedMoveIdeaText = multiFactorExplanation?.moveIdeaText
+    || (primaryReasonText
+    ? `${primaryReasonText} ${moveIdeaText}`.trim()
+    : matchingPattern?.explanation
+      ? `${moveIdeaText} ${matchingPattern.explanation}`.trim()
+      : moveIdeaText);
+  const primaryReasonEvidenceId = diagnosis?.primaryReason
+    ? "diagnosis.primary_reason"
+    : diagnosis?.confidence?.level === "limited"
+      ? "diagnosis.uncertainty"
+      : null;
+  const primaryReasonMoveRefs = diagnosisReasonMoveRefs(
+    diagnosis,
+    positionEvidence,
+    playedLine,
+  );
   const candidate = {
     schemaVersion: MOVE_EXPLANATION_SCHEMA_VERSION,
     subjectUci: subject.uci,
@@ -2277,8 +2650,22 @@ export function buildLocalMoveExplanation({
     ),
     moveIdea: semanticClaim(
       connectedMoveIdeaText,
-      [positionEvidence.playedMove.evidenceId, "engine.move_comparison.played"],
-      directPlayedMoveIdea
+      multiFactorExplanation
+        ? [
+          "diagnosis.explanation_bundle",
+          positionEvidence.playedMove.evidenceId,
+          "engine.move_comparison.played",
+        ]
+        : [
+          primaryReasonEvidenceId,
+          positionEvidence.playedMove.evidenceId,
+          "engine.move_comparison.played",
+        ],
+      multiFactorExplanation
+        ? []
+        : primaryReasonMoveRefs.length > 0
+        ? primaryReasonMoveRefs
+        : directPlayedMoveIdea
         ? singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true })
         : foundationsMoveIdea
           ? []
@@ -2319,11 +2706,15 @@ export function buildLocalMoveExplanation({
         lineMoveReference(positionEvidence, alternativeLine, 0),
       )
       : null,
-    comparison: differenceText
+    comparison: (multiFactorExplanation?.comparisonText || differenceText)
       ? semanticClaim(
-        differenceText,
-        [comparisonEvidenceId].filter(Boolean),
-        !comparison.onlyMove
+        multiFactorExplanation?.comparisonText || differenceText,
+        multiFactorExplanation
+          ? ["diagnosis.explanation_bundle"]
+          : [comparisonEvidenceId].filter(Boolean),
+        multiFactorExplanation
+          ? multiFactorExplanation.moveRefs
+          : !comparison.onlyMove
           && ["allows_check", "allows_checkmate"].includes(primaryDifference?.type)
           ? lineMoveReference(positionEvidence, playedLine, 1)
           : [],
@@ -2335,16 +2726,19 @@ export function buildLocalMoveExplanation({
         [takeawayDifference?.evidenceId].filter(Boolean),
       )
       : null,
-    confidence: (
-      analysis?.verdict?.confidence === "high"
+    confidence: diagnosis?.confidence?.level === "limited"
+      ? "limited"
+      : (
+        analysis?.verdict?.confidence === "high"
+          || (
+            positionEvidence.candidateLines?.length >= 2
+            && (Number.parseInt(engineContext?.depth, 10) || 0) >= 15
+          )
+      )
         ? "high"
-        : positionEvidence.candidateLines?.length >= 2
-      && (Number.parseInt(engineContext?.depth, 10) || 0) >= 15
-    )
-      ? "high"
-      : positionEvidence.candidateLines?.length >= 1
-        ? "medium"
-        : "limited",
+        : positionEvidence.candidateLines?.length >= 1
+          ? "medium"
+          : "limited",
   };
   if (candidate.opponentReply && candidate.concreteConsequence) {
     candidate.concreteConsequence = null;
@@ -2353,7 +2747,7 @@ export function buildLocalMoveExplanation({
     // Für 800/1000 Elo reicht eine klare Wirkung, die wichtigste Antwort und
     // höchstens eine Alternative. Die ausführlichen Felder wiederholen sonst
     // denselben taktischen Punkt in fünf verschiedenen Abschnitten.
-    candidate.comparison = null;
+    if (!multiFactorExplanation) candidate.comparison = null;
     if (clearlyBad && (
       clearDirectLoss
       || ["allows_check", "allows_checkmate"].includes(primaryDifference?.type)
@@ -2363,7 +2757,7 @@ export function buildLocalMoveExplanation({
     }
     candidate.takeaway = candidate.alternative ? null : candidate.takeaway;
   } else if (Number(learnerProfile?.rating) <= 1400) {
-    if (candidate.alternative && candidate.comparison) {
+    if (candidate.alternative && candidate.comparison && !multiFactorExplanation) {
       candidate.comparison = null;
     }
   }
@@ -2396,13 +2790,26 @@ export function buildLocalMoveExplanation({
       [assessmentEvidenceId],
     ),
     moveIdea: semanticClaim(
-      directPlayedMoveIdea || (
+      multiFactorExplanation?.moveIdeaText
+        || (primaryReasonText
+        ? `${primaryReasonText} ${directPlayedMoveIdea || (
+          positionEvidence.playedMove.piece === "p"
+            ? "Damit bringst du deinen Bauern weiter nach vorne."
+            : `Damit stellst du ${accusativePiece(positionEvidence.playedMove.piece)} neu auf.`
+        )}`
+        : directPlayedMoveIdea || (
         positionEvidence.playedMove.piece === "p"
           ? "Damit bringst du deinen Bauern weiter nach vorne."
           : `Damit stellst du ${accusativePiece(positionEvidence.playedMove.piece)} neu auf.`
-      ),
-      [positionEvidence.playedMove.evidenceId],
-      directPlayedMoveIdea
+      )),
+      multiFactorExplanation
+        ? ["diagnosis.explanation_bundle", positionEvidence.playedMove.evidenceId]
+        : [primaryReasonEvidenceId, positionEvidence.playedMove.evidenceId],
+      multiFactorExplanation
+        ? []
+        : primaryReasonMoveRefs.length > 0
+        ? primaryReasonMoveRefs
+        : directPlayedMoveIdea
         ? singleMoveReference(positionEvidence, subject.uci, { preferPlayed: true })
         : [],
     ),
@@ -2415,7 +2822,13 @@ export function buildLocalMoveExplanation({
         lineMoveReference(positionEvidence, alternativeLine, 0),
       )
       : null,
-    comparison: null,
+    comparison: multiFactorExplanation?.comparisonText
+      ? semanticClaim(
+        multiFactorExplanation.comparisonText,
+        ["diagnosis.explanation_bundle"],
+        multiFactorExplanation.moveRefs,
+      )
+      : null,
     takeaway: null,
     confidence: "limited",
   };
@@ -2670,6 +3083,7 @@ export function moveExplanationCacheKey({
   engineContext = null,
   positionEvidence = null,
   knowledgeContext = null,
+  diagnosis = null,
 } = {}) {
   const opening = openingContext?.matched
     ? openingContext
@@ -2721,6 +3135,7 @@ export function moveExplanationCacheKey({
       }
       : null,
     engineContext,
+    diagnosis,
     citableEvidence,
   })}`;
 }

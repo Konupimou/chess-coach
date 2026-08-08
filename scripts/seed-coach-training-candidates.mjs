@@ -4,8 +4,11 @@ import {
   buildMoveExplanationContext,
   validateMoveExplanationTrainingTarget,
 } from "../api/chat.js";
+import { COACH_TRAINING_RATINGS } from "../coachTrainingDataset.js";
 import { buildPositionEvidence } from "../positionEvidence.js";
 import { COACH_EVALUATION_CASES } from "../test/fixtures/coachEvaluationCases.js";
+
+export { COACH_TRAINING_RATINGS };
 
 function option(argv, name, fallback = "") {
   const prefix = `--${name}=`;
@@ -13,11 +16,13 @@ function option(argv, name, fallback = "") {
 }
 
 function ratingsOption(argv) {
-  const ratings = option(argv, "ratings", "800")
+  const ratings = option(argv, "ratings", COACH_TRAINING_RATINGS.join(","))
     .split(",")
     .map((value) => Number.parseInt(value, 10))
-    .filter((value) => [800, 1000, 1400, 1800].includes(value));
-  return [...new Set(ratings)];
+    .filter((value) => COACH_TRAINING_RATINGS.includes(value));
+  return ratings.length > 0
+    ? [...new Set(ratings)]
+    : [...COACH_TRAINING_RATINGS];
 }
 
 function engineContextForCase(coachCase) {
@@ -76,7 +81,7 @@ function engineContextForCase(coachCase) {
 }
 
 export function seedCoachTrainingCandidates({
-  ratings = [800],
+  ratings = COACH_TRAINING_RATINGS,
   cases = COACH_EVALUATION_CASES,
   onSkip = null,
 } = {}) {

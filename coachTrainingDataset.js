@@ -3,8 +3,10 @@ import {
   MOVE_EXPLANATION_INSTRUCTIONS,
   validateMoveExplanationTrainingTarget,
 } from "./api/chat.js";
+import { COACH_RATING_OPTIONS } from "./learnerProfile.js";
 
 export const COACH_TRAINING_DATASET_VERSION = 1;
+export const COACH_TRAINING_RATINGS = COACH_RATING_OPTIONS;
 export const COACH_TRAINING_SPLITS = Object.freeze([
   "train",
   "validation",

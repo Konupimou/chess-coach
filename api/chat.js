@@ -13,6 +13,7 @@ import {
   openingKnowledgeForVariation,
 } from "../openingKnowledge.js";
 import { buildPositionEvidence } from "../positionEvidence.js";
+import { buildPositionDiagnosis } from "../positionDiagnosis.js";
 import { PATTERN_LABELS, recognizePositionPatterns } from "../patternRecognition.js";
 import { buildCoachKnowledgeContext } from "../knowledgeClaims.js";
 import {
@@ -47,7 +48,7 @@ const MAX_HISTORY_ITEMS = 300;
 const MAX_CONVERSATION_ITEMS = 10;
 const MAX_REVIEW_MOMENTS = 8;
 const MOVE_EXPLANATION_TASK = "move_explanation";
-const MOVE_EXPLANATION_STYLE_VERSION = "comparison-schema-v12-opening-replies";
+const MOVE_EXPLANATION_STYLE_VERSION = "comparison-schema-v13-causal-multifactor";
 const MOVE_EXPLANATION_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1_000;
 const MOVE_EXPLANATION_CACHE_LIMIT = 300;
 const moveExplanationCache =
@@ -122,7 +123,11 @@ const SYSTEM_INSTRUCTIONS = [
 export const MOVE_EXPLANATION_INSTRUCTIONS = [
   "Du erklärst einen bereits legal geprüften Schachzug auf Deutsch.",
   "Beginne mit der konkreten Aufgabe oder Wirkung des gespielten Zuges und ordne dann ein, warum er gut, ungenau oder schlecht ist.",
-  "Nutze zuerst coachAnalysis, dangers und die einzelnen moveComparison.difference-Einträge aus <position_evidence>. Ziehe erst danach die dazugehörigen legal geprüften Linien heran.",
+  "Nutze zuerst primaryReason aus <position_diagnosis>. Prüfe dessen Belege in coachAnalysis, dangers und den einzelnen moveComparison.difference-Einträgen aus <position_evidence>; ziehe danach die dazugehörigen legal geprüften Linien heran.",
+  "Bei einer kausal validierten Multi-Factor-Diagnose erklärst du zuerst die Ursache aus primaryReason, danach nur validierte candidateExplanations und supporting factors mit hohem causalScore und zuletzt die konkrete PV-, MultiPV- oder Vorher-/Nachher-Evidenz.",
+  "Verbinde die Faktoren in einer Ursache-Wirkungs-Erklärung. Zähle weder Diagnoselabels noch Fachbegriffe bloß auf.",
+  "secondaryReasons und validierte backgroundFeatures sind nur unterstützende Faktoren. Stelle sie niemals als Hauptgrund dar.",
+  "Wenn <position_diagnosis>.primaryReason null ist oder die Diagnose confidence limited meldet, sage offen, dass aus den gelieferten Daten kein sicherer Stellungsgrund hervorgeht.",
   "Trenne den gespielten Zug und die Alternative sprachlich eindeutig.",
   "Außerhalb einer erkannten Eröffnung nennst du die belegte gegnerische Antwort kompakt. Wiederhole eine Überschrift wie «Stärkste Antwort» nicht noch einmal mit «Am stärksten ...» im Satz.",
   "In einer erkannten Eröffnung darf opponentReply nur gefüllt bleiben, wenn grounded_draft dafür einen opening.continuation-Beleg enthält. Formuliere sie dann als typische, niemals als beste oder stärkste Antwort.",
@@ -972,6 +977,9 @@ export function buildPrompt({
       `<position_evidence>\n${JSON.stringify(grounded.positionEvidence)}\n</position_evidence>`,
     );
     sections.push(
+      `<position_diagnosis>\n${JSON.stringify(grounded.diagnosis)}\n</position_diagnosis>`,
+    );
+    sections.push(
       `<verified_knowledge>\n${JSON.stringify(grounded.knowledgeContext)}\n</verified_knowledge>`,
     );
     if (effectiveEngineContext?.kind !== "game_review") {
@@ -1175,6 +1183,11 @@ export function buildMoveExplanationContext(payload) {
       lastMoveWasCapture: Boolean(positionEvidence.playedMove?.capture),
     },
   });
+  const diagnosis = buildPositionDiagnosis({
+    engineContext,
+    positionEvidence,
+    recognizedPatterns,
+  });
   const phase = phaseFromPositionEvidence(positionEvidence);
   const featureIds = knowledgeFeatureIdsFromPositionEvidence(positionEvidence);
   const verifiedKnowledge = buildCoachKnowledgeContext({
@@ -1192,6 +1205,7 @@ export function buildMoveExplanationContext(payload) {
     positionEvidence,
     engineContext,
     openingContext: payload?.openingContext,
+    diagnosis,
   });
   const localExplanation = buildLocalMoveExplanation({
     positionEvidence,
@@ -1199,6 +1213,7 @@ export function buildMoveExplanationContext(payload) {
     openingContext: payload?.openingContext,
     learnerProfile,
     recognizedPatterns,
+    diagnosis,
   });
   const subject = positionEvidence.playedMove;
   const cacheKey = moveExplanationCacheKey({
@@ -1211,6 +1226,7 @@ export function buildMoveExplanationContext(payload) {
     positionEvidence: trustedEvidence,
     knowledgeContext,
     recognizedPatterns,
+    diagnosis,
   });
   return {
     engineContext,
@@ -1219,6 +1235,8 @@ export function buildMoveExplanationContext(payload) {
     phase,
     featureIds,
     knowledgeContext,
+    recognizedPatterns,
+    diagnosis,
     trustedEvidence,
     localExplanation,
     openingContext: payload?.openingContext || null,
@@ -1309,7 +1327,15 @@ export function buildMoveExplanationPrompt({
   openingContext,
   localExplanation,
   recognizedPatterns = [],
+  diagnosis = null,
 }) {
+  const diagnosedFeatureIds = new Set([
+    diagnosis?.primaryReason?.featureId,
+    ...(diagnosis?.secondaryReasons || []).map((reason) => reason?.featureId),
+  ].filter(Boolean));
+  const relevantPatterns = recognizedPatterns.filter(
+    (pattern) => diagnosedFeatureIds.has(pattern?.id),
+  );
   const compactBranch = (branch) => branch
     ? {
       move: branch.move || null,
@@ -1373,10 +1399,11 @@ export function buildMoveExplanationPrompt({
     `<learner_profile>\n${JSON.stringify(learnerProfile)}\n</learner_profile>`,
     `<position_phase>\n${JSON.stringify({ phase, featureIds })}\n</position_phase>`,
     `<position_evidence>\n${JSON.stringify(compactEvidence)}\n</position_evidence>`,
+    `<position_diagnosis>\n${JSON.stringify(diagnosis)}\n</position_diagnosis>`,
     `<stockfish_analysis>\n${JSON.stringify(compactEngine)}\n</stockfish_analysis>`,
     `<opening_context>\n${JSON.stringify(openingContext || null)}\n</opening_context>`,
     `<verified_knowledge>\n${JSON.stringify(knowledgeContext)}\n</verified_knowledge>`,
-    `<recognized_patterns>\n${JSON.stringify(recognizedPatterns.slice(0, 6).map((pattern) => ({
+    `<recognized_patterns>\n${JSON.stringify(relevantPatterns.slice(0, 4).map((pattern) => ({
       id: pattern.id,
       type: pattern.type,
       label: PATTERN_LABELS[pattern.type] || pattern.type,
@@ -1390,6 +1417,7 @@ export function buildMoveExplanationPrompt({
     [
       "<task>",
       "Erkläre genau den legal verifizierten playedMove aus position_evidence.",
+      "Nutze primaryReason aus position_diagnosis als Hauptursache, wenn es vorhanden ist. Verbinde kausal validierte candidateExplanations und supporting factors entsprechend causalScore knapp damit und erkläre danach die konkrete Engine-Evidenz. Zähle keine Diagnoselabels auf. Ist primaryReason null oder confidence limited, behaupte keine sichere Ursache.",
       "Wenn ein recognized_pattern zum playedMove passt, verbinde die Erklärung natürlich mit diesem Muster. Nutze dabei nur Muster mit status winning, active oder warning; ein refuted-Muster darfst du nur als widerlegte Idee erwähnen.",
       "grounded_draft legt fest, welche Felder belegt sind: Übernimm schemaVersion, subjectUci, subjectSan, null-Felder, evidenceIds und moveRefs daraus exakt und in derselben Reihenfolge.",
       "Du darfst ausschließlich die text-Werte der nichtleeren semantischen Felder sprachlich verbessern und confidence unverändert übernehmen.",
@@ -1444,6 +1472,12 @@ function verifyGroundedAiExplanation(candidate, context, payload) {
     context.localExplanation,
   );
   const rejectedFields = new Set();
+  if (context?.diagnosis?.primaryReason || context?.diagnosis?.confidence?.level === "limited") {
+    // Die Diagnose ist die kausale Quelle. Eine reine Sprachüberarbeitung darf
+    // ihren priorisierten Hauptgrund weder abschwächen noch auslassen.
+    grounded.moveIdea = context.localExplanation.moveIdea;
+    aiFields.delete("moveIdea");
+  }
   const equivalent = (
     context?.positionEvidence?.moveComparison?.explanationType === "equivalent"
     || context?.positionEvidence?.moveComparison?.alternative?.relation === "equivalent"
